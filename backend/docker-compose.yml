@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-slife_marketplace}
+      MYSQL_USER: ${DB_USER:-slife}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-slife123}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    ports: ["3306:3306"]
+    volumes: ["mysql_data:/var/lib/mysql"]
+  backend:
+    build: .
+    depends_on: [mysql]
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${DB_NAME:-slife_marketplace}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-slife}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-slife123}
+    ports: ["8080:8080"]
+volumes:
+  mysql_data:
