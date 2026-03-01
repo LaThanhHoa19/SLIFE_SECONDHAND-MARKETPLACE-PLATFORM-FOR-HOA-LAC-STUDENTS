@@ -14,17 +14,22 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "categories")
-public class Category {
+@Table(name = "configurations")
+public class Configuration {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "category_id", nullable = false)
+    @Column(name = "config_id", nullable = false)
     private Long id;
 
     @Size(max = 200)
     @NotNull
-    @Column(name = "name", nullable = false, length = 200)
-    private String name;
+    @Column(name = "config_name", nullable = false, length = 200)
+    private String configName;
+
+    @Size(max = 2000)
+    @NotNull
+    @Column(name = "config_value", nullable = false, length = 2000)
+    private String configValue;
 
     @Lob
     @Column(name = "description")
@@ -32,13 +37,8 @@ public class Category {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "parent_id")
-    private Category parent;
-
-    @NotNull
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @JoinColumn(name = "updated_by")
+    private User updatedBy;
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")

@@ -1,28 +1,39 @@
-/**
- * Mục đích: Entity SavedListing
- * Endpoints liên quan: JPA
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
-@Data
+import java.time.Instant;
+
+@Getter
+@Setter
 @Entity
-@Table(name = "savedlisting")
+@Table(name = "saved_listings")
 public class SavedListing {
+    @EmbeddedId
+    private SavedListingId id;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @MapsId("userId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    private Long listingId;
-} // TODO composite key
+    @MapsId("listingId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "listing_id", nullable = false)
+    private Listing listing;
+
+    @NotNull
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+
+}

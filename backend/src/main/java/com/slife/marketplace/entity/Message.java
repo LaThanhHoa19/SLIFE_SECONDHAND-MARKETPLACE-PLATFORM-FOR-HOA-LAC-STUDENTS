@@ -1,11 +1,51 @@
-/**
- * Mục đích: Entity Message
- * Endpoints liên quan: JPA
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.entity;
-import jakarta.persistence.*;import lombok.Data;
-@Data @Entity @Table(name="message") public class Message { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id; private String placeholder; }
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
+import java.time.Instant;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "messages")
+public class Message {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "message_id", nullable = false)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "conversation_id", nullable = false)
+    private Conversation conversation;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "sender_id", nullable = false)
+    private User sender;
+
+    @NotNull
+    @Lob
+    @Column(name = "content", nullable = false)
+    private String content;
+
+    @NotNull
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "sent_at", nullable = false)
+    private Instant sentAt;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "is_read", nullable = false)
+    private Boolean isRead;
+
+
+}
