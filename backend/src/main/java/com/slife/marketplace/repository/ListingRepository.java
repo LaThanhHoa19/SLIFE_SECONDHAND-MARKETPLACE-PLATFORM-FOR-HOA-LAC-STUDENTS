@@ -8,4 +8,4 @@
  */
 package com.slife.marketplace.repository;
 import com.slife.marketplace.entity.Listing;import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface ListingRepository extends JpaRepository<Listing,Long> { // TODO query methods. }
+@Repository public interface ListingRepository extends JpaRepository<Listing,Long> { }// TODO query methods. }

@@ -8,4 +8,4 @@
  */
 package com.slife.marketplace.repository;
 import com.slife.marketplace.entity.SavedListing;import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface SavedListingRepository extends JpaRepository<SavedListing,Long> { // TODO query methods. }
+@Repository public interface SavedListingRepository extends JpaRepository<SavedListing,Long> { }// TODO query methods.
