@@ -7,5 +7,22 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.entity;
-import jakarta.persistence.*;import lombok.Data;
-@Data @Entity @Table(name="savedlisting") public class SavedListing { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id; private Long id; // TODO composite key }
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Data;
+
+@Data
+@Entity
+@Table(name = "savedlisting")
+public class SavedListing {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long listingId;
+} // TODO composite key

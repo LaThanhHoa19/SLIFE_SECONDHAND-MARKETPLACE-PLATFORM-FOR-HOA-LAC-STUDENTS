@@ -8,4 +8,4 @@
  */
 package com.slife.marketplace.repository;
 import com.slife.marketplace.entity.Review;import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface ReviewRepository extends JpaRepository<Review,Long> { // TODO query methods. }
+@Repository public interface ReviewRepository extends JpaRepository<Review,Long> { }// TODO query methods.
