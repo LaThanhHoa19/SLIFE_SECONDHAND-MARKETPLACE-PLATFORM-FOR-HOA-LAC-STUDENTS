@@ -1,28 +1,39 @@
-/**
- * Mục đích: Entity Block
- * Endpoints liên quan: JPA
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.Data;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
-@Data
+import java.time.Instant;
+
+@Getter
+@Setter
 @Entity
-@Table(name = "block")
+@Table(name = "blocks")
 public class Block {
+    @EmbeddedId
+    private BlockId id;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @MapsId("blockerId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "blocker_id", nullable = false)
+    private User blocker;
 
-    private Long blockedUserId;
-} // TODO composite key
+    @MapsId("blockedId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "blocked_id", nullable = false)
+    private User blocked;
+
+    @NotNull
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
+
+
+}
