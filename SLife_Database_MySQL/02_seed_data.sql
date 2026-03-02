@@ -1,191 +1,225 @@
 -- 02_seed_data.sql
--- Seed data for slife_db. Run AFTER 01_create_schema.sql.
--- Use transactions and idempotent inserts where reasonable.
+-- Demo seed data for slife_db.
 USE `slife_db`;
 
 START TRANSACTION;
 
---------------------------------------------------------------------------------
--- Admin + sample users
--- NOTE: password_hash placeholders. Replace with properly hashed passwords or
--- create accounts via registration endpoints.
---------------------------------------------------------------------------------
 INSERT INTO users (email, password_hash, full_name, phone_number, role, status, reputation_score)
 VALUES
-    ('admin@example.com', NULL, 'System Admin', '0000000000', 'ADMIN', 'ACTIVE', 5.0),
-    ('alice@example.com', NULL, 'Alice Nguyen', '0912345678', 'USER', 'ACTIVE', 5.0),
-    ('bob@example.com', NULL, 'Bob Tran', '0987654321', 'USER', 'ACTIVE', 5.0)
-    ON DUPLICATE KEY UPDATE full_name = VALUES(full_name);
+  ('admin@slife.local', '$2a$10$demo_admin_hash', 'SLife Admin', '0900000000', 'ADMIN', 'ACTIVE', 5.00),
+  ('alice@example.com', '$2a$10$demo_alice_hash', 'Alice Nguyen', '0911111111', 'USER', 'ACTIVE', 4.80),
+  ('bob@example.com', '$2a$10$demo_bob_hash', 'Bob Tran', '0922222222', 'USER', 'ACTIVE', 4.60),
+  ('charlie@example.com', '$2a$10$demo_charlie_hash', 'Charlie Le', '0933333333', 'USER', 'ACTIVE', 4.20)
+ON DUPLICATE KEY UPDATE
+  full_name = VALUES(full_name),
+  phone_number = VALUES(phone_number),
+  role = VALUES(role),
+  status = VALUES(status),
+  reputation_score = VALUES(reputation_score);
 
--- Retrieve user IDs for seeded users (for clarity in later inserts)
--- NOTE: adapt queries in code if you want to compute IDs. We'll assume:
---   admin = id 1 (if DB was empty) but NOT rely on that in production.
-
---------------------------------------------------------------------------------
--- Configurations (key-value)
---------------------------------------------------------------------------------
-INSERT INTO configurations (config_name, config_value, description, updated_by)
-VALUES
-    ('listing_expiration_days', '3', 'Default number of days before an active listing expires', NULL),
-    ('max_posts_per_day', '5', 'Default daily post limit for new/spam flagged users', NULL),
-    ('auto_confirm_days', '3', 'System auto-confirms completed deals after this many days of inactivity', NULL)
-    ON DUPLICATE KEY UPDATE config_value = VALUES(config_value), updated_at = CURRENT_TIMESTAMP;
-
---------------------------------------------------------------------------------
--- Banned keywords
---------------------------------------------------------------------------------
-INSERT IGNORE INTO banned_keywords (keyword) VALUES
-  ('ma túy'),
-  ('súng đạn'),
-  ('ma tuy'),
-  ('heroin'),
-  ('firearm');
-
---------------------------------------------------------------------------------
--- Categories (multi-level)
--- For parent_id values we use subselects so it is idempotent and robust.
---------------------------------------------------------------------------------
--- Top-level categories
-INSERT INTO categories (name, description, parent_id)
-VALUES
-    ('Electronics', 'Phones, laptops and accessories', NULL),
-    ('Furniture', 'Home and office furniture', NULL),
-    ('Books', 'Textbooks and novels', NULL)
-    ON DUPLICATE KEY UPDATE description = VALUES(description);
-
--- Insert some child categories using SELECT to find parent ids (idempotent)
-INSERT INTO categories (name, description, parent_id)
-SELECT 'Phones', 'Mobile phones and accessories', c.category_id
-FROM categories c WHERE c.name = 'Electronics'
-    ON DUPLICATE KEY UPDATE description = VALUES(description);
-
-INSERT INTO categories (name, description, parent_id)
-SELECT 'Laptops', 'Laptop computers and accessories', c.category_id
-FROM categories c WHERE c.name = 'Electronics'
-    ON DUPLICATE KEY UPDATE description = VALUES(description);
-
---------------------------------------------------------------------------------
--- Addresses for sample users
---------------------------------------------------------------------------------
--- get user ids via subselects
 INSERT INTO addresses (user_id, location_name, address_text, lat, lng, is_default)
-SELECT u.user_id, 'Dorm A - Room 101', 'Block A room 101, Hoa Lac', NULL, NULL, 1
+SELECT u.user_id, 'KTX Khu A', 'KTX Khu A - Thu Duc', 10.8779012, 106.8061234, 1
 FROM users u WHERE u.email = 'alice@example.com'
-    ON DUPLICATE KEY UPDATE address_text = VALUES(address_text);
+  AND NOT EXISTS (
+    SELECT 1 FROM addresses a WHERE a.user_id = u.user_id AND a.location_name = 'KTX Khu A'
+  );
 
 INSERT INTO addresses (user_id, location_name, address_text, lat, lng, is_default)
-SELECT u.user_id, 'Canteen Alpha', 'Near main canteen, Hoa Lac', NULL, NULL, 1
+SELECT u.user_id, 'Canteen Alpha', 'Khu canteen truong', 10.8800111, 106.8053555, 1
 FROM users u WHERE u.email = 'bob@example.com'
-    ON DUPLICATE KEY UPDATE address_text = VALUES(address_text);
+  AND NOT EXISTS (
+    SELECT 1 FROM addresses a WHERE a.user_id = u.user_id AND a.location_name = 'Canteen Alpha'
+  );
 
---------------------------------------------------------------------------------
--- Sample listings (include one giveaway with price=0)
---------------------------------------------------------------------------------
--- Get referenced ids
--- Insert an active sale listing
-INSERT INTO listings (seller_id, category_id, title, description, price, condition, status, is_giveaway, purpose, pickup_address_id)
-SELECT s.user_id, cat.category_id, 'Iphone 7plus cũ hơi trầy xước nhẹ', 'Iphone 7plus, cũ, trầy xước nhẹ, pin 80%', 1200000.00, 'USED_GOOD', 'ACTIVE', 0, 'SALE', a.address_id
-FROM users s
-         JOIN categories cat ON cat.name = 'Phones'
-         LEFT JOIN addresses a ON a.user_id = s.user_id
-WHERE s.email = 'alice@example.com'
-    LIMIT 1
-ON DUPLICATE KEY UPDATE title = VALUES(title), price = VALUES(price);
+INSERT INTO categories (name, description, parent_id)
+VALUES
+  ('Electronics', 'Do dien tu', NULL),
+  ('Phones', 'Dien thoai di dong', NULL),
+  ('Furniture', 'Noi that', NULL),
+  ('Books', 'Sach va tai lieu', NULL)
+ON DUPLICATE KEY UPDATE description = VALUES(description);
 
--- Insert a giveaway listing (price must be 0)
-INSERT INTO listings (seller_id, category_id, title, description, price, condition, status, is_giveaway, purpose, pickup_address_id)
-SELECT s.user_id, cat.category_id, 'Bàn gỗ tặng miễn phí', 'Dọn nhà tặng bàn gỗ, lấy tại Canteen Alpha', 0.00, 'USED_GOOD', 'ACTIVE', 1, 'GIVEAWAY',
-       (SELECT address_id FROM addresses WHERE user_id = s.user_id LIMIT 1)
-FROM users s
-    JOIN categories cat ON cat.name = 'Furniture'
-WHERE s.email = 'bob@example.com'
-    LIMIT 1
-ON DUPLICATE KEY UPDATE title = VALUES(title), status = VALUES(status);
+INSERT INTO listings (seller_id, category_id, pickup_address_id, title, description, price, item_condition, status, purpose, is_giveaway, expiration_date)
+SELECT
+  seller.user_id,
+  cat.category_id,
+  addr.address_id,
+  'iPhone 12 64GB cu',
+  'May ngon, pin 85%, full phu kien co ban',
+  8900000,
+  'USED_GOOD',
+  'ACTIVE',
+  'SALE',
+  0,
+  DATE_ADD(NOW(), INTERVAL 30 DAY)
+FROM users seller
+JOIN categories cat ON cat.name = 'Phones'
+LEFT JOIN addresses addr ON addr.user_id = seller.user_id AND addr.is_default = 1
+WHERE seller.email = 'alice@example.com'
+  AND NOT EXISTS (SELECT 1 FROM listings l WHERE l.title = 'iPhone 12 64GB cu');
 
---------------------------------------------------------------------------------
--- Listing images (seed small demo images)
---------------------------------------------------------------------------------
--- For listing created by Alice (assumes title match)
+INSERT INTO listings (seller_id, category_id, pickup_address_id, title, description, price, item_condition, status, purpose, is_giveaway, expiration_date)
+SELECT
+  seller.user_id,
+  cat.category_id,
+  addr.address_id,
+  'Ban hoc tang mien phi',
+  'Ban hoc cu, con chac chan, uu tien ban den lay som',
+  0,
+  'USED_FAIR',
+  'ACTIVE',
+  'GIVEAWAY',
+  1,
+  DATE_ADD(NOW(), INTERVAL 15 DAY)
+FROM users seller
+JOIN categories cat ON cat.name = 'Furniture'
+LEFT JOIN addresses addr ON addr.user_id = seller.user_id AND addr.is_default = 1
+WHERE seller.email = 'bob@example.com'
+  AND NOT EXISTS (SELECT 1 FROM listings l WHERE l.title = 'Ban hoc tang mien phi');
+
 INSERT INTO listing_images (listing_id, image_url, display_order)
-SELECT l.listing_id, 'https://example.com/images/iphone7-1.jpg', 1
-FROM listings l WHERE l.title LIKE '%Iphone 7plus%'
-    ON DUPLICATE KEY UPDATE image_url = VALUES(image_url);
-
-INSERT INTO listing_images (listing_id, image_url, display_order)
-SELECT l.listing_id, 'https://example.com/images/iphone7-2.jpg', 2
-FROM listings l WHERE l.title LIKE '%Iphone 7plus%'
-    ON DUPLICATE KEY UPDATE image_url = VALUES(image_url);
-
---------------------------------------------------------------------------------
--- Saved listings & follows
---------------------------------------------------------------------------------
--- Alice saves Bob's giveaway (if both exist)
-INSERT IGNORE INTO saved_listings (user_id, listing_id)
-SELECT u.user_id, l.listing_id
-FROM users u, listings l
-WHERE u.email = 'alice@example.com' AND l.title LIKE '%Bàn gỗ tặng%';
-
--- Follow: Alice follows Bob
-INSERT IGNORE INTO follows (follower_id, followed_id)
-SELECT a.user_id, b.user_id
-FROM users a, users b
-WHERE a.email = 'alice@example.com' AND b.email = 'bob@example.com';
-
---------------------------------------------------------------------------------
--- Seed a deal with pickup_time (confirmed) for demo
---------------------------------------------------------------------------------
--- Create a deal: Alice buys Alice's own? For demonstration we create Bob->Alice or inverse:
--- We'll find a sale listing (Iphone) and create a deal between buyer Bob and seller Alice
-INSERT INTO deals (listing_id, buyer_id, seller_id, price_agreed, pickup_address_id, pickup_time, reminder_sent, status)
-SELECT l.listing_id,
-       (SELECT user_id FROM users WHERE email = 'bob@example.com' LIMIT 1) AS buyer_id,
-       (SELECT user_id FROM users WHERE email = 'alice@example.com' LIMIT 1) AS seller_id,
-       1150000.00,
-       (SELECT address_id FROM addresses WHERE user_id = (SELECT user_id FROM users WHERE email = 'bob@example.com') LIMIT 1),
-       -- Example pickup_time (adjust as desired): 2 days from now (use explicit datetime if needed)
-       DATE_ADD(NOW(), INTERVAL 2 DAY),
-       0,
-       'CONFIRMED'
+SELECT l.listing_id, 'https://picsum.photos/seed/slife-iphone/1280/720', 1
 FROM listings l
-WHERE l.title LIKE '%Iphone 7plus%'
-    LIMIT 1
-ON DUPLICATE KEY UPDATE status = VALUES(status);
+WHERE l.title = 'iPhone 12 64GB cu'
+ON DUPLICATE KEY UPDATE image_url = VALUES(image_url);
 
---------------------------------------------------------------------------------
--- Reviews sample
---------------------------------------------------------------------------------
-INSERT INTO reviews (reviewer_id, listing_id, rating, comment)
-SELECT (SELECT user_id FROM users WHERE email = 'bob@example.com'),
-       l.listing_id,
-       5,
-       'Máy dùng tốt, cảm ơn!'
-FROM listings l WHERE l.title LIKE '%Iphone 7plus%'
-    ON DUPLICATE KEY UPDATE rating = VALUES(rating), comment = VALUES(comment);
+INSERT INTO listing_images (listing_id, image_url, display_order)
+SELECT l.listing_id, 'https://picsum.photos/seed/slife-desk/1280/720', 1
+FROM listings l
+WHERE l.title = 'Ban hoc tang mien phi'
+ON DUPLICATE KEY UPDATE image_url = VALUES(image_url);
 
---------------------------------------------------------------------------------
--- Notifications demo: when Bob follows Alice or when a listing is posted, system will generate notifications.
---------------------------------------------------------------------------------
-INSERT INTO notifications (user_id, type, ref_type, ref_id, content, is_read)
-SELECT (SELECT user_id FROM users WHERE email = 'alice@example.com'),
-       'FOLLOW', NULL, NULL,
-       'Bob bắt đầu theo dõi bạn', 0
-    WHERE EXISTS (SELECT 1 FROM users WHERE email = 'bob@example.com')
-LIMIT 1;
+INSERT INTO configurations (config_name, config_value, description)
+VALUES
+  ('MAX_DAILY_POSTS_DEFAULT', '3', 'So bai dang toi da mac dinh trong 1 ngay'),
+  ('REPORT_THRESHOLD_TO_RESTRICT', '3', 'So report truoc khi he thong gioi han dang bai'),
+  ('PICKUP_REMINDER_MINUTES', '30', 'So phut nhac lich hen lay hang')
+ON DUPLICATE KEY UPDATE
+  config_value = VALUES(config_value),
+  description = VALUES(description);
 
---------------------------------------------------------------------------------
--- Offers demo (buyer proposes new price)
---------------------------------------------------------------------------------
+INSERT INTO banned_keywords (keyword)
+VALUES ('ma tuy'), ('sung'), ('lua dao')
+ON DUPLICATE KEY UPDATE keyword = VALUES(keyword);
+
+INSERT INTO follows (follower_id, followed_id)
+SELECT a.user_id, b.user_id
+FROM users a
+JOIN users b ON b.email = 'bob@example.com'
+WHERE a.email = 'alice@example.com'
+ON DUPLICATE KEY UPDATE followed_id = VALUES(followed_id);
+
+INSERT INTO saved_listings (user_id, listing_id)
+SELECT u.user_id, l.listing_id
+FROM users u
+JOIN listings l ON l.title = 'Ban hoc tang mien phi'
+WHERE u.email = 'alice@example.com'
+ON DUPLICATE KEY UPDATE listing_id = VALUES(listing_id);
+
+INSERT INTO conversations (user_id1, user_id2, listing_id, last_message_at)
+SELECT
+  u1.user_id,
+  u2.user_id,
+  l.listing_id,
+  NOW()
+FROM users u1
+JOIN users u2 ON u2.email = 'bob@example.com'
+JOIN listings l ON l.title = 'iPhone 12 64GB cu'
+WHERE u1.email = 'alice@example.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM conversations c
+    WHERE c.user_id1 = u1.user_id AND c.user_id2 = u2.user_id AND c.listing_id = l.listing_id
+  );
+
+INSERT INTO messages (conversation_id, sender_id, content, sent_at, is_read)
+SELECT c.conversation_id, u.user_id, 'Con iPhone nay con fix gia khong ban?', DATE_SUB(NOW(), INTERVAL 20 MINUTE), 1
+FROM conversations c
+JOIN users u ON u.email = 'bob@example.com'
+JOIN listings l ON l.listing_id = c.listing_id
+WHERE l.title = 'iPhone 12 64GB cu'
+  AND NOT EXISTS (
+    SELECT 1 FROM messages m WHERE m.conversation_id = c.conversation_id AND m.content = 'Con iPhone nay con fix gia khong ban?'
+  );
+
+INSERT INTO messages (conversation_id, sender_id, content, sent_at, is_read)
+SELECT c.conversation_id, u.user_id, 'Co, minh de 8.7 trieu nhe.', DATE_SUB(NOW(), INTERVAL 15 MINUTE), 0
+FROM conversations c
+JOIN users u ON u.email = 'alice@example.com'
+JOIN listings l ON l.listing_id = c.listing_id
+WHERE l.title = 'iPhone 12 64GB cu'
+  AND NOT EXISTS (
+    SELECT 1 FROM messages m WHERE m.conversation_id = c.conversation_id AND m.content = 'Co, minh de 8.7 trieu nhe.'
+  );
+
 INSERT INTO offers (listing_id, buyer_id, amount, status)
-SELECT l.listing_id, (SELECT user_id FROM users WHERE email = 'bob@example.com'), 1100000.00, 'PENDING'
-FROM listings l WHERE l.title LIKE '%Iphone 7plus%'
-    ON DUPLICATE KEY UPDATE amount = VALUES(amount), status = VALUES(status);
+SELECT l.listing_id, u.user_id, 8700000, 'PENDING'
+FROM listings l
+JOIN users u ON u.email = 'bob@example.com'
+WHERE l.title = 'iPhone 12 64GB cu'
+  AND NOT EXISTS (
+    SELECT 1 FROM offers o WHERE o.listing_id = l.listing_id AND o.buyer_id = u.user_id AND o.amount = 8700000
+  );
 
---------------------------------------------------------------------------------
--- Commit seed data
---------------------------------------------------------------------------------
+INSERT INTO deals (conversation_id, listing_id, proposed_by_id, address_id, deal_price, status, pickup_time, reminder_sent)
+SELECT
+  c.conversation_id,
+  l.listing_id,
+  bob.user_id,
+  addr.address_id,
+  8700000,
+  'CONFIRMED',
+  DATE_ADD(NOW(), INTERVAL 2 DAY),
+  0
+FROM conversations c
+JOIN listings l ON l.listing_id = c.listing_id
+JOIN users bob ON bob.email = 'bob@example.com'
+LEFT JOIN addresses addr ON addr.user_id = bob.user_id AND addr.is_default = 1
+WHERE l.title = 'iPhone 12 64GB cu'
+  AND NOT EXISTS (
+    SELECT 1 FROM deals d WHERE d.conversation_id = c.conversation_id AND d.listing_id = l.listing_id
+  );
+
+INSERT INTO reviews (conversation_id, reviewer_id, reviewee_id, rating, comment)
+SELECT
+  c.conversation_id,
+  bob.user_id,
+  alice.user_id,
+  5,
+  'Nguoi ban than thien, hang dung mo ta.'
+FROM conversations c
+JOIN users bob ON bob.email = 'bob@example.com'
+JOIN users alice ON alice.email = 'alice@example.com'
+JOIN listings l ON l.listing_id = c.listing_id
+WHERE l.title = 'iPhone 12 64GB cu'
+  AND NOT EXISTS (
+    SELECT 1 FROM reviews r WHERE r.conversation_id = c.conversation_id AND r.reviewer_id = bob.user_id
+  );
+
+INSERT INTO notifications (user_id, type, ref_type, ref_id, content, is_read)
+SELECT alice.user_id, 'FOLLOW', 'USER', bob.user_id, 'Bob vua theo doi ban.', 0
+FROM users alice
+JOIN users bob ON bob.email = 'bob@example.com'
+WHERE alice.email = 'alice@example.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM notifications n
+    WHERE n.user_id = alice.user_id AND n.type = 'FOLLOW' AND n.ref_id = bob.user_id
+  );
+
+INSERT INTO reports (reporter_id, target_type, target_id, reason, evidence_image, status, admin_note, handled_by)
+SELECT
+  charlie.user_id,
+  'LISTING',
+  l.listing_id,
+  'Nghi van thong tin gia chua ro rang',
+  'https://picsum.photos/seed/slife-report/800/600',
+  'PENDING',
+  NULL,
+  NULL
+FROM users charlie
+JOIN listings l ON l.title = 'iPhone 12 64GB cu'
+WHERE charlie.email = 'charlie@example.com'
+  AND NOT EXISTS (
+    SELECT 1 FROM reports r WHERE r.reporter_id = charlie.user_id AND r.target_type = 'LISTING' AND r.target_id = l.listing_id
+  );
+
 COMMIT;
-
--- Seed notes / TODOs:
--- - Replace password_hash NULLs with real hashed passwords or use OAuth for login.
--- - Adjust pickup_time example to real datetimes according to your timezone.
--- - If you use Flyway, convert to V2__seed.sql or load via application initializer.

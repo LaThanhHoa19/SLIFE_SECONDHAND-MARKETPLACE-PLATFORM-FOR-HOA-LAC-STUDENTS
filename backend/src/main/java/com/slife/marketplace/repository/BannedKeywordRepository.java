@@ -7,7 +7,7 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.repository;
-import com.slife.marketplace.entity.BannedKeyword;import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface BannedKeywordRepository extends JpaRepository<BannedKeyword,Long> {
-    // TODO query methods.
-}
+import com.slife.marketplace.entity.BannedKeyword;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+@Repository public interface BannedKeywordRepository extends JpaRepository<BannedKeyword,Long> { }// TODO query methods.

@@ -7,5 +7,6 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.repository;
-import com.slife.marketplace.entity.Deal;import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface DealRepository extends JpaRepository<Deal,Long> { // TODO query methods. }
+import com.slife.marketplace.entity.Deal;
+import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
+@Repository public interface DealRepository extends JpaRepository<Deal,Long> { }// TODO query methods.

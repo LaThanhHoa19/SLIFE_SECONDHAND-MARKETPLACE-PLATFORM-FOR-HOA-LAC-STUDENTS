@@ -8,4 +8,4 @@
  */
 package com.slife.marketplace.service;
 import org.springframework.stereotype.Service;
-@Service public class UserService { // TODO: triển khai methods theo spec, chỉ rõ validation/transaction/security. }
+@Service public class UserService { }// TODO: triển khai methods theo spec, chỉ rõ validation/transaction/security. }
