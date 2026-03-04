@@ -57,6 +57,43 @@ class ListingControllerTest {
                 .andExpect(jsonPath("$.data[0].title").value("Sample listing"));
     }
 
+
+    @Test
+    void getListingsLegacyPath_withoutAuth_shouldReturn200AndData() throws Exception {
+        ListingResponse listing = new ListingResponse();
+        listing.setId(1L);
+        listing.setTitle("Sample listing");
+
+        PagedResponse<ListingResponse> response = new PagedResponse<>();
+        response.setData(List.of(listing));
+        response.setTotalElements(1L);
+        response.setTotalPages(1);
+        response.setPage(0);
+        response.setSize(10);
+
+        when(listingService.getListings(0, 10)).thenReturn(response);
+
+        mockMvc.perform(get("/api/listing")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("Sample listing"));
+    }
+
+    @Test
+    void getListings_whenServiceThrows_shouldReturn500Not403() throws Exception {
+        when(listingService.getListings(0, 10)).thenThrow(new RuntimeException("Simulated DB failure"));
+
+        mockMvc.perform(get("/api/listings")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isInternalServerError());
+    }
+
+
     @Test
     void createListing_withoutAuth_shouldReturn403() throws Exception {
         mockMvc.perform(post("/api/listings")
