@@ -30,7 +30,7 @@ public class ListingController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/api/listings")
+    @GetMapping({"/api/listings", "/api/listing"})
     public ResponseEntity<PagedResponse<ListingResponse>> m2(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
