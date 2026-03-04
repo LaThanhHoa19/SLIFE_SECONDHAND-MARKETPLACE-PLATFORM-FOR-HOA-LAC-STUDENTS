@@ -15,16 +15,12 @@ export default function MainLayout() {
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
+
     // Các routes không cần sidebar
-    const noSidebarRoutes = ['/login', '/register', '/admin', '/profile'];
+    const noSidebarRoutes = ['/login', '/register', '/admin'];
     const shouldShowSidebar = !noSidebarRoutes.some(route =>
         location.pathname.startsWith(route)
     );
-
-    // Reset sidebar state khi thay đổi route
-    useEffect(() => {
-        setSidebarOpen(shouldShowSidebar);
-    }, [shouldShowSidebar, location.pathname]);
 
     const toggleSidebar = () => {
         setSidebarOpen(!sidebarOpen);
@@ -44,20 +40,9 @@ export default function MainLayout() {
 
             {/* Main Content Area */}
             <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-                {/* Sidebar */}
+                {/* Sidebar - Fixed position, outside normal flow */}
                 {shouldShowSidebar && (
-                    <Box
-                        sx={{
-                            width: sidebarOpen ? 280 : 0,
-                            transition: theme.transitions.create(['width'], {
-                                duration: theme.transitions.duration.shorter,
-                            }),
-                            overflow: 'hidden',
-                            flexShrink: 0
-                        }}
-                    >
-                        <Sidebar open={sidebarOpen} />
-                    </Box>
+                    <Sidebar open={sidebarOpen} />
                 )}
 
                 {/* Main Content */}
@@ -68,7 +53,11 @@ export default function MainLayout() {
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'auto',
-                        backgroundColor: theme.palette.background.default
+                        backgroundColor: theme.palette.background.default,
+                        marginLeft: shouldShowSidebar && sidebarOpen ? '280px' : 0,
+                        transition: theme.transitions.create(['margin-left'], {
+                            duration: theme.transitions.duration.shorter,
+                        })
                     }}
                 >
                     {/* Content Container */}

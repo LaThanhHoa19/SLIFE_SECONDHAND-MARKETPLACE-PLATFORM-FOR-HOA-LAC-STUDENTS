@@ -156,7 +156,8 @@ export default function Header({ onToggleSidebar }) {
             sx={{
                 backgroundColor: '#201D26',
                 boxShadow: 'none',
-                borderBottom: 'none'
+                borderBottom: 'none',
+                zIndex: 1300 // Higher than sidebar
             }}
         >
             <Toolbar sx={{ gap: 1, py: 0.5, px: 2, minHeight: '56px' }}>
