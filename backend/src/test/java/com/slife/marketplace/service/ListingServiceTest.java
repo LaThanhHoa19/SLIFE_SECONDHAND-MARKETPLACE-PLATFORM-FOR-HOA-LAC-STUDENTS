@@ -23,9 +23,10 @@ import org.springframework.data.domain.PageRequest;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.when;
-import static org.skyscreamer.jsonassert.JSONAssert.assertEquals;
+
 
 @ExtendWith(MockitoExtension.class)
 class ListingServiceTest {
