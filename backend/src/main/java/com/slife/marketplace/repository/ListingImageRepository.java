@@ -17,4 +17,4 @@ import java.util.List;
 @Repository
 public interface ListingImageRepository extends JpaRepository<ListingImage, Long> {
     List<ListingImage> findByListingIdOrderByDisplayOrderAsc(Long listingId);
-}// TODO query methods.
+}

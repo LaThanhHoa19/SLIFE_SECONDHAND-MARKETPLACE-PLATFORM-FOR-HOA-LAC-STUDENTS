@@ -38,6 +38,8 @@ public class ListingService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Listing> listingPage = listingRepository.findAll(pageable);
 
+        System.out.println("Total listings in DB: " + listingPage.getTotalElements());
+
         List<ListingResponse> listingResponses = listingPage.getContent().stream()
                 .map(this::toListingResponse)
                 .toList();
@@ -48,7 +50,6 @@ public class ListingService {
         response.setTotalPages(listingPage.getTotalPages());
         response.setPage(listingPage.getNumber());
         response.setSize(listingPage.getSize());
-
         return response;
     }
 
@@ -81,4 +82,5 @@ public class ListingService {
                 "avatarUrl", listing.getSeller().getAvatarUrl()
         );
     }
-}// TODO: triển khai methods theo spec, chỉ rõ validation/transaction/security. }
+}
+// TODO: triển khai methods theo spec, chỉ rõ validation/transaction/security. }
