@@ -38,21 +38,21 @@ public class ListingService {
     }
     @Transactional(readOnly = true)
     public PagedResponse<ListingResponse> getListings(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Listing> listingPage = listingRepository.findAll(pageable);
-
-        System.out.println("Total listings in DB: " + listingPage.getTotalElements());
+        int normalizedPage = Math.max(page, 0);
+        int normalizedSize = size > 0 ? Math.min(size, 20) : 10;
+        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, Sort.by("createdAt").descending());
+        Page<Listing> listingPage = listingRepository.findByStatus("ACTIVE", pageable);
 
         List<ListingResponse> listingResponses = listingPage.getContent().stream()
                 .map(this::toListingResponse)
                 .toList();
 
         PagedResponse<ListingResponse> response = new PagedResponse<>();
-        response.setData(listingResponses);
-        response.setTotalElements(listingPage.getTotalElements());
-        response.setTotalPages(listingPage.getTotalPages());
+        response.setContent(listingResponses);
         response.setPage(listingPage.getNumber());
         response.setSize(listingPage.getSize());
+        response.setTotalElements(listingPage.getTotalElements());
+        response.setTotalPages(listingPage.getTotalPages());
         return response;
     }
 
