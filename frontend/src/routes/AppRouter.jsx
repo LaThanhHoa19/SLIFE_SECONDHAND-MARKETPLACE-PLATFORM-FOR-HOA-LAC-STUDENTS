@@ -20,7 +20,8 @@ import {
   SuspenseDealDetailPage,
   SuspenseDashboardPage,
   SuspenseReportManagementPage,
-  SuspenseUserManagementPage
+  SuspenseUserManagementPage,
+  SuspenseBackendTestPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -30,6 +31,7 @@ export default function AppRouter() {
           {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
           <Route path="/" element={<SuspenseListingsPage />} />
           <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+          <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
           {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
           <Route path="/login" element={
