@@ -14,20 +14,23 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './providers/NotificationProvider';
+import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
 import theme from './theme/theme';
 import './styles/global.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <BrowserRouter>
-          <AuthProvider>
-            <NotificationProvider>
-              <App />
-            </NotificationProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
+        <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <BrowserRouter>
+                <AuthProvider>
+                    <AuthErrorBoundary>
+                        <NotificationProvider>
+                            <App />
+                        </NotificationProvider>
+                    </AuthErrorBoundary>
+                </AuthProvider>
+            </BrowserRouter>
+        </ThemeProvider>
     </React.StrictMode>
 );
