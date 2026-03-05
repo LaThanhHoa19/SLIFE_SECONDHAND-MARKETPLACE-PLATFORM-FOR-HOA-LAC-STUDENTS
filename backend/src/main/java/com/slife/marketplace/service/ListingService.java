@@ -14,11 +14,13 @@ import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -33,9 +35,9 @@ public class ListingService {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
     }
-
+    @Transactional(readOnly = true)
     public PagedResponse<ListingResponse> getListings(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "created_at"));
         Page<Listing> listingPage = listingRepository.findAll(pageable);
 
         System.out.println("Total listings in DB: " + listingPage.getTotalElements());

@@ -19,9 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ListingController.class)
@@ -83,14 +82,16 @@ class ListingControllerTest {
     }
 
     @Test
-    void getListings_whenServiceThrows_shouldReturn500Not403() throws Exception {
+    void getListings_whenServiceThrows_shouldReturn500WithErrorPayloadNot403() throws Exception {
         when(listingService.getListings(0, 10)).thenThrow(new RuntimeException("Simulated DB failure"));
 
         mockMvc.perform(get("/api/listings")
                         .param("page", "0")
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.message").value("Internal server error"));
     }
 
 
@@ -100,5 +101,13 @@ class ListingControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void listingsPreflight_withoutAuth_shouldNotReturn403() throws Exception {
+        mockMvc.perform(options("/api/listings")
+                        .header("Origin", "http://localhost:5173")
+                        .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk());
     }
 }
