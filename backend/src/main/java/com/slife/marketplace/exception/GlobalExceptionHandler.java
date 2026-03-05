@@ -33,4 +33,13 @@ public class GlobalExceptionHandler {
         response.setMessage(e.getMessage());
         return ResponseEntity.badRequest().body(response);
     }
+
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> handleUnhandled(Exception e) {
+        ApiErrorResponse response = new ApiErrorResponse();
+        response.setCode("INTERNAL_SERVER_ERROR");
+        response.setMessage("Internal server error");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
 }
