@@ -7,5 +7,17 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.dto.response;
+
 import lombok.Data;
-@Data public class ListingResponse { private Long id; private String title; private java.util.List<String> images; private Object sellerSummary; private Boolean isSaved; private Boolean isFollowed; }
+
+@Data
+public class ListingResponse {
+    private Long id;
+    private String title;
+    private java.util.List<String> images;
+    private Object sellerSummary;
+    private Boolean isSaved;
+    private Boolean isFollowed;
+
+    
+}

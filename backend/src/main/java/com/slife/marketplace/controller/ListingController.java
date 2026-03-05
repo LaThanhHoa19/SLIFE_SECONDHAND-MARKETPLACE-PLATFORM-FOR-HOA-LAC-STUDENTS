@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api/listings")
 public class ListingController {
     // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
 
@@ -24,14 +25,13 @@ public class ListingController {
         this.listingService = listingService;
     }
 
-    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
-    @PostMapping("/api/listings")
-    public ResponseEntity<?> m1(@RequestBody Object r) {/* Example */
-        return ResponseEntity.ok().build();
-    }
+//    @PostMapping("/api/listings")
+//    public ResponseEntity<?> m1(@RequestBody Object r) {/* Example */
+//        return ResponseEntity.ok().build();
+//    }
 
-    @GetMapping({"/api/listings", "/api/listing"})
-    public ResponseEntity<PagedResponse<ListingResponse>> m2(
+    @GetMapping
+    public ResponseEntity<PagedResponse<ListingResponse>> getListings(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {

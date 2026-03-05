@@ -22,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +38,7 @@ public class ListingService {
     }
     @Transactional(readOnly = true)
     public PagedResponse<ListingResponse> getListings(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "created_at"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Listing> listingPage = listingRepository.findAll(pageable);
 
         System.out.println("Total listings in DB: " + listingPage.getTotalElements());
@@ -78,11 +79,11 @@ public class ListingService {
             return null;
         }
 
-        return Map.of(
-                "id", listing.getSeller().getId(),
-                "fullName", listing.getSeller().getFullName(),
-                "avatarUrl", listing.getSeller().getAvatarUrl()
-        );
+        Map<String, Object> sellerSummary = new HashMap<>();
+        sellerSummary.put("id", listing.getSeller().getId());
+        sellerSummary.put("fullName", listing.getSeller().getFullName());
+        sellerSummary.put("avatarUrl", listing.getSeller().getAvatarUrl());
+        return sellerSummary;
     }
 }
 // TODO: triển khai methods theo spec, chỉ rõ validation/transaction/security. }
