@@ -130,11 +130,11 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleLogin = () => {
-        navigate('/auth/login');
+        navigate('/login');
     };
 
     const handleRegister = () => {
-        navigate('/auth/register');
+        navigate('/register');
     };
 
     const handleProfile = () => {
