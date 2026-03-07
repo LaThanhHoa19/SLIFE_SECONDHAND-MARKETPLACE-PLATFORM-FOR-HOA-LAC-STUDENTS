@@ -60,12 +60,33 @@ public class ListingService {
         ListingResponse response = new ListingResponse();
         response.setId(listing.getId());
         response.setTitle(listing.getTitle());
+        response.setDescription(listing.getDescription());
+        response.setPrice(listing.getPrice());
+        response.setCondition(listing.getItemCondition());
+        response.setLocation(resolveLocation(listing));
+        response.setCreatedAt(listing.getCreatedAt());
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
         response.setIsSaved(false);
         response.setIsFollowed(false);
         return response;
     }
+
+
+    private String resolveLocation(Listing listing) {
+        if (Objects.isNull(listing.getPickupAddress())) {
+            return null;
+        }
+
+        String locationName = listing.getPickupAddress().getLocationName();
+        if (locationName != null && !locationName.isBlank()) {
+            return locationName;
+        }
+
+        return listing.getPickupAddress().getAddressText();
+    }
+
+
 
     private List<String> findImageUrls(Long listingId) {
         return listingImageRepository.findByListingIdOrderByDisplayOrderAsc(listingId)
