@@ -18,6 +18,7 @@ export default function AppRouter() {
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<ListingsPage />} />
+        <Route path="/ListingsPage" element={<ListingsPage />} />
         <Route path="/listings/:id" element={<ListingDetailPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
