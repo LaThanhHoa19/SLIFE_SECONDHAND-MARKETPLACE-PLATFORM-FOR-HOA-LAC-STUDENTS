@@ -18,8 +18,12 @@ export default function useListings(initialParams = {}) {
       setLoading(true);
       try {
         const { data: res } = await getListings({ ...params, q: debouncedQuery });
-        setData(params.page === 0 ? res.content : [...data, ...res.content]);
-        setMeta({ totalPages: res.totalPages, totalElements: res.totalElements });
+        const list = Array.isArray(res?.data) ? res.data : Array.isArray(res?.content) ? res.content : [];
+        setData(params.page === 0 ? list : [...data, ...list]);
+        setMeta({
+          totalPages: res?.totalPages ?? 1,
+          totalElements: res?.totalElements ?? list.length,
+        });
       } finally { setLoading(false); }
     };
     run();
