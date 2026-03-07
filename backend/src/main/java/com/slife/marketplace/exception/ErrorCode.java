@@ -26,7 +26,10 @@ public enum ErrorCode {
     GOOGLE_DOMAIN_NOT_ALLOWED("GOOGLE_DOMAIN_NOT_ALLOWED", "Only @fpt.edu.vn email is allowed to sign in", HttpStatus.FORBIDDEN),
 
     // Listing related
-    LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND);
+    LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+
+    // Upload
+    FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Upload failed", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String message;

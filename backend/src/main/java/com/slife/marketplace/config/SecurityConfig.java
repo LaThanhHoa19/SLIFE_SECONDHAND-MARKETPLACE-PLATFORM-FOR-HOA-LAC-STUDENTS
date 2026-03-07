@@ -37,6 +37,28 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 );
 
+  @Bean
+  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+        .cors(Customizer.withDefaults())
+        .csrf(c -> c.disable())
+        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(a -> a
+            .requestMatchers("/actuator/health").permitAll()
+            .requestMatchers(
+                "/api/auth/**",
+                "/swagger-ui/**",
+                "/v3/api-docs/**",
+                "/uploads/**")
+            .permitAll()
+            // Guest access
+            .requestMatchers("/api/listings/**").permitAll()
+            // Admin-only
+            .requestMatchers("/api/admin/**").hasRole("ADMIN")
+            // Everything else requires authentication
+            .anyRequest()
+            .authenticated())
+        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
