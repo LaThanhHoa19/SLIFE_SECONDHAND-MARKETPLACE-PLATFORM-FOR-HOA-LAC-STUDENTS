@@ -81,5 +81,20 @@ export default function AppRouter() {
           } />
         </Route>
       </Routes>
+    <Routes>
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<ListingsPage />} />
+        <Route path="/ListingsPage" element={<ListingsPage />} />
+        <Route path="/listings/:id" element={<ListingDetailPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/listings/new" element={<ProtectedRoute><CreateListingPage /></ProtectedRoute>} />
+        <Route path="/profile/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><DashboardPage /></ProtectedRoute>} />
+        <Route path="/admin/reports" element={<ProtectedRoute roles={['ADMIN']}><ReportManagementPage /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute roles={['ADMIN']}><UserManagementPage /></ProtectedRoute>} />
+      </Route>
+    </Routes>
   );
 }

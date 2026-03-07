@@ -8,20 +8,16 @@
  */
 package com.slife.marketplace.controller;
 
-import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.service.ListingService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api/listings")
 public class ListingController {
+    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
 
     private final ListingService listingService;
 
@@ -29,28 +25,46 @@ public class ListingController {
         this.listingService = listingService;
     }
 
-    @PostMapping("/api/listings")
-    public ResponseEntity<ApiResponse<Void>> createListing(@RequestBody Object r) {
-        // Chưa triển khai, chỉ stub để compile
-        return ResponseEntity.ok(ApiResponse.success("Create listing stub", null));
-    }
+//    @PostMapping("/api/listings")
+//    public ResponseEntity<?> m1(@RequestBody Object r) {/* Example */
+//        return ResponseEntity.ok().build();
+//    }
 
-    @GetMapping("/api/listings")
-    public ResponseEntity<ApiResponse<List<ListingResponse>>> getListings() {
-        List<ListingResponse> listings = listingService.getAllListingsForTest();
-        return ResponseEntity.ok(ApiResponse.success("Listings fetched", listings));
+    @GetMapping
+    public ResponseEntity<PagedResponse<ListingResponse>> getListings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(listingService.getListings(page, size));
     }
 
     @GetMapping("/api/listings/{id}")
-    public ResponseEntity<ApiResponse<Void>> getListingDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Listing detail stub", null));
+    public ResponseEntity<?> m3(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/api/listings/{id}")
+    public ResponseEntity<?> m4(@PathVariable Long id, @RequestBody Object r) {
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/api/listings/{id}/hide")
+    public ResponseEntity<?> m5(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/api/listings/{id}/sold")
+    public ResponseEntity<?> m6(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/api/listings/{id}/report")
-    public ResponseEntity<ApiResponse<Void>> reportListing(
-            @PathVariable Long id,
-            @RequestBody Object r
-    ) {
-        return ResponseEntity.ok(ApiResponse.success("Report listing stub", null));
+    public ResponseEntity<?> m7(@PathVariable Long id, @RequestBody Object r) {
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/listings/{id}/images")
+    public ResponseEntity<?> m8(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
     }
 }

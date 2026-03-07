@@ -7,6 +7,14 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.repository;
+
 import com.slife.marketplace.entity.Listing;
-import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface ListingRepository extends JpaRepository<Listing,Long> { }// TODO query methods. }
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface ListingRepository extends JpaRepository<Listing, Long> {
+    Page<Listing> findByStatus(String status, Pageable pageable);
+}
