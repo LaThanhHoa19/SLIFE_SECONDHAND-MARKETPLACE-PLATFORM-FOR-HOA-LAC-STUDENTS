@@ -1,16 +1,16 @@
 /**
  * Mục đích: Controller Listing
  * Endpoints liên quan: api
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.controller;
 
+import com.slife.marketplace.dto.request.CreateListingRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.ListingService;
+import com.slife.marketplace.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,15 +24,19 @@ import java.util.List;
 public class ListingController {
 
     private final ListingService listingService;
+    private final UserService userService;
 
-    public ListingController(ListingService listingService) {
+    public ListingController(ListingService listingService, UserService userService) {
         this.listingService = listingService;
+        this.userService = userService;
     }
 
     @PostMapping("/api/listings")
-    public ResponseEntity<ApiResponse<Void>> createListing(@RequestBody Object r) {
-        // Chưa triển khai, chỉ stub để compile
-        return ResponseEntity.ok(ApiResponse.success("Create listing stub", null));
+    public ResponseEntity<ApiResponse<ListingResponse>> createListing(@RequestBody CreateListingRequest request) {
+        User currentUser = userService.getCurrentUser();
+        Listing created = listingService.createListing(currentUser, request);
+        ListingResponse response = listingService.toResponse(created);
+        return ResponseEntity.ok(ApiResponse.success("Tạo tin thành công", response));
     }
 
     @GetMapping("/api/listings")
