@@ -63,10 +63,10 @@ class ListingServiceTest {
 
         PagedResponse<ListingResponse> result = listingService.getListings(0, 10);
 
-        assertEquals(1, result.getData().size());
+        assertEquals(1, result.getContent().size());
         assertEquals(1L, result.getTotalElements());
 
-        ListingResponse listingResponse = result.getData().get(0);
+        ListingResponse listingResponse = result.getContent().get(0);
         assertEquals(10L, listingResponse.getId());
         assertEquals("iPhone 12", listingResponse.getTitle());
         assertEquals(List.of("https://example.com/iphone.jpg"), listingResponse.getImages());
