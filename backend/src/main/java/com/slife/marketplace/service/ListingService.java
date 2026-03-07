@@ -3,15 +3,22 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.CreateListingRequest;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CategoryRepository;
+import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -25,21 +32,45 @@ public class ListingService {
 
     private static final String DEFAULT_CONDITION = "USED_GOOD";
     private static final String DEFAULT_PURPOSE = "SALE";
+    private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
+    private final ListingImageRepository listingImageRepository;
+    private final Path uploadBasePath;
 
-    public ListingService(ListingRepository listingRepository, CategoryRepository categoryRepository) {
+    public ListingService(ListingRepository listingRepository,
+                          CategoryRepository categoryRepository,
+                          ListingImageRepository listingImageRepository,
+                          Path uploadBasePath) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
+        this.listingImageRepository = listingImageRepository;
+        this.uploadBasePath = uploadBasePath;
     }
 
     /**
-     * Trả về danh sách listing đơn giản để test.
+     * Trả về danh sách listing (có kèm ảnh).
      */
     public List<ListingResponse> getAllListingsForTest() {
         List<Listing> listings = listingRepository.findAll();
         return listings.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Chi tiết một listing (có ảnh).
+     */
+    public ListingResponse getListingById(Long id) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        return toResponse(listing);
+    }
+
+    private List<String> getImageUrls(Long listingId) {
+        return listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId).stream()
+                .map(ListingImage::getImageUrl)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -80,12 +111,69 @@ public class ListingService {
         ListingResponse res = new ListingResponse();
         res.setId(listing.getId());
         res.setTitle(listing.getTitle());
-        res.setImages(List.of());
+        res.setDescription(listing.getDescription());
+        res.setPrice(listing.getPrice());
+        res.setIsGiveaway(listing.getIsGiveaway() != null && listing.getIsGiveaway());
+        res.setImages(getImageUrls(listing.getId()));
         res.setSellerSummary(
                 listing.getSeller() != null ? listing.getSeller().getFullName() : null
         );
         res.setIsSaved(false);
         res.setIsFollowed(false);
         return res;
+    }
+
+    /**
+     * Upload ảnh cho listing: lưu file vào uploads/listings/{listingId}/, ghi bảng listing_images.
+     * Chỉ seller của listing mới được upload.
+     */
+    @Transactional
+    public void uploadListingImages(Long listingId, User currentUser, List<MultipartFile> files) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        if (listing.getSeller() == null || !listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        if (files == null || files.isEmpty()) {
+            return;
+        }
+        Path dir = uploadBasePath.resolve("listings").resolve(listingId.toString());
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
+        }
+        int nextOrder = listingImageRepository.countByListing_Id(listingId) + 1;
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) continue;
+            if (file.getSize() > MAX_IMAGE_SIZE) continue;
+            String ext = getImageExtension(file.getOriginalFilename());
+            String filename = System.currentTimeMillis() + "_" + nextOrder + ext;
+            Path target = dir.resolve(filename).normalize();
+            try (InputStream in = file.getInputStream()) {
+                Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
+            }
+            String url = "/uploads/listings/" + listingId + "/" + filename;
+            ListingImage img = new ListingImage();
+            img.setListing(listing);
+            img.setImageUrl(url);
+            img.setDisplayOrder(nextOrder);
+            img.setCreatedAt(Instant.now());
+            listingImageRepository.save(img);
+            nextOrder++;
+        }
+    }
+
+    private static String getImageExtension(String filename) {
+        if (filename == null || filename.isBlank()) return ".jpg";
+        int i = filename.lastIndexOf('.');
+        if (i <= 0) return ".jpg";
+        String ext = filename.substring(i).toLowerCase();
+        for (String e : ALLOWED_EXT) {
+            if (ext.equals(e)) return ext;
+        }
+        return ".jpg";
     }
 }

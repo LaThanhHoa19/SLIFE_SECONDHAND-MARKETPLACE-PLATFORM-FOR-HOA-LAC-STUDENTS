@@ -17,7 +17,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -46,8 +51,22 @@ public class ListingController {
     }
 
     @GetMapping("/api/listings/{id}")
-    public ResponseEntity<ApiResponse<Void>> getListingDetail(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success("Listing detail stub", null));
+    public ResponseEntity<ApiResponse<ListingResponse>> getListingDetail(@PathVariable Long id) {
+        ListingResponse listing = listingService.getListingById(id);
+        return ResponseEntity.ok(ApiResponse.success("OK", listing));
+    }
+
+    @PostMapping(value = "/api/listings/{id}/images", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<Void>> uploadListingImages(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        User currentUser = userService.getCurrentUser();
+        List<MultipartFile> files = new ArrayList<>();
+        if (request instanceof MultipartHttpServletRequest multipartRequest) {
+            multipartRequest.getMultiFileMap().getOrDefault("images", Collections.emptyList()).forEach(files::add);
+        }
+        listingService.uploadListingImages(id, currentUser, files);
+        return ResponseEntity.ok(ApiResponse.success("Đã tải ảnh lên", null));
     }
 
     @PostMapping("/api/listings/{id}/report")
