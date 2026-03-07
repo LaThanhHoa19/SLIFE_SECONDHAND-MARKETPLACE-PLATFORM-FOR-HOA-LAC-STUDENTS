@@ -35,13 +35,9 @@ export default function CreateListingPage() {
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
       if (id && imageFiles?.length > 0) {
-        try {
-          const formData = new FormData();
-          imageFiles.forEach((f) => formData.append('images', f));
-          await uploadImages(id, formData);
-        } catch (_) {
-          // Nếu backend chưa có endpoint upload ảnh, vẫn chuyển trang
-        }
+        const formData = new FormData();
+        imageFiles.forEach((f) => formData.append('images', f));
+        await uploadImages(id, formData);
       }
       if (id) {
         navigate(`/listings/${id}`, { replace: true });
