@@ -5,7 +5,7 @@
  * - Route guards với middleware pattern
  * - Role-based access control
  */
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
 
@@ -51,6 +51,7 @@ export default function AppRouter() {
               <SuspenseCreateListingPage />
             </RouteGuard>
           } />
+          <Route path="/profile" element={<Navigate to="/profile/me" replace />} />
           <Route path="/profile/:id" element={
             <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
               <SuspenseProfilePage />
