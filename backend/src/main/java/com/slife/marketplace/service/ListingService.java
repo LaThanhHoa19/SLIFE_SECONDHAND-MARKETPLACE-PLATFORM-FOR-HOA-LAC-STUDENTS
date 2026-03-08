@@ -55,16 +55,16 @@ public class ListingService {
      */
     public List<ListingResponse> getAllListingsForTest() {
         List<Listing> listings = listingRepository.findAll();
-        return listings.stream().map(this::toResponse).collect(Collectors.toList());
+        return listings.stream().map(l -> toResponse(l, null)).collect(Collectors.toList());
     }
 
     /**
-     * Chi tiết một listing (có ảnh).
+     * Chi tiết một listing (có ảnh). currentUser = null nếu khách, dùng để set isOwnListing.
      */
-    public ListingResponse getListingById(Long id) {
+    public ListingResponse getListingById(Long id, User currentUser) {
         Listing listing = listingRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-        return toResponse(listing);
+        return toResponse(listing, currentUser);
     }
 
     private List<String> getImageUrls(Long listingId) {
@@ -107,7 +107,12 @@ public class ListingService {
         return listingRepository.save(listing);
     }
 
+    /** Overload khi không có currentUser (list view). */
     public ListingResponse toResponse(Listing listing) {
+        return toResponse(listing, null);
+    }
+
+    public ListingResponse toResponse(Listing listing, User currentUser) {
         ListingResponse res = new ListingResponse();
         res.setId(listing.getId());
         res.setTitle(listing.getTitle());
@@ -115,9 +120,16 @@ public class ListingService {
         res.setPrice(listing.getPrice());
         res.setIsGiveaway(listing.getIsGiveaway() != null && listing.getIsGiveaway());
         res.setImages(getImageUrls(listing.getId()));
-        res.setSellerSummary(
-                listing.getSeller() != null ? listing.getSeller().getFullName() : null
-        );
+        User seller = listing.getSeller();
+        res.setSellerId(seller != null ? seller.getId() : null);
+        res.setSellerSummary(seller != null ? seller.getFullName() : null);
+        boolean isOwn = false;
+        if (currentUser != null && seller != null) {
+            if (currentUser.getId().equals(seller.getId())) isOwn = true;
+            else if (seller.getEmail() != null && currentUser.getEmail() != null
+                    && seller.getEmail().trim().equalsIgnoreCase(currentUser.getEmail().trim())) isOwn = true;
+        }
+        res.setIsOwnListing(isOwn);
         res.setIsSaved(false);
         res.setIsFollowed(false);
         return res;

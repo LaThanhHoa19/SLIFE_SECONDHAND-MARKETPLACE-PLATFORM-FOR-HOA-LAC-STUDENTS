@@ -1,4 +1,4 @@
-/** Chi tiết listing: ảnh, title, mô tả, giá, seller. */
+/** Chi tiết listing: ảnh, title, mô tả, giá, seller + link profile + Nhắn tin. */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -9,10 +9,14 @@ import {
   CircularProgress,
   ImageList,
   ImageListItem,
+  Link,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ChatIcon from '@mui/icons-material/Chat';
 import { getListing } from '../../api/listingApi';
+import * as chatApi from '../../api/chatApi';
 import { fullImageUrl } from '../../utils/constants';
+import { useAuth } from '../../hooks/useAuth';
 
 function getPayload(res) {
   const body = res?.data;
@@ -22,9 +26,11 @@ function getPayload(res) {
 export default function ListingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -101,10 +107,47 @@ export default function ListingDetailPage() {
           <Typography variant="h6" color="primary.main" fontWeight={600} sx={{ mb: 1 }}>
             {listing.isGiveaway ? 'Cho tặng' : listing.price != null ? `${Number(listing.price).toLocaleString('vi-VN')} ₫` : '—'}
           </Typography>
-          {listing.sellerSummary && (
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Người đăng: {listing.sellerSummary}
-            </Typography>
+          {(listing.sellerSummary || listing.sellerId) && (
+            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="body2" color="text.secondary">
+                Người đăng:{' '}
+                {listing.sellerId ? (
+                  <Link
+                    component="button"
+                    variant="body2"
+                    onClick={() => navigate(`/profile/${listing.sellerId}`)}
+                    sx={{ fontWeight: 600, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                  >
+                    {listing.sellerSummary || 'Xem profile'}
+                  </Link>
+                ) : (
+                  listing.sellerSummary
+                )}
+              </Typography>
+              {listing.sellerId && !listing.isOwnListing && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<ChatIcon />}
+                  disabled={startingChat}
+                  onClick={async () => {
+                    setStartingChat(true);
+                    try {
+                      const res = await chatApi.getSession(listing.id);
+                      const sessionId = res?.data?.data ?? res?.data;
+                      if (sessionId) navigate(`/chat${sessionId ? `?sessionId=${sessionId}` : ''}`);
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setStartingChat(false);
+                    }
+                  }}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {startingChat ? 'Đang mở...' : 'Nhắn tin'}
+                </Button>
+              )}
+            </Box>
           )}
           {listing.description && (
             <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
