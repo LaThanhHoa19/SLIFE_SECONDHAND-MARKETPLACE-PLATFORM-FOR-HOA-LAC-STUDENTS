@@ -28,6 +28,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import ReportIcon from '@mui/icons-material/Report';
 import { useAuth } from '../../hooks/useAuth';
 import * as userApi from '../../api/userApi';
+import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
 import ProfileListingCard from '../../components/profile/ProfileListingCard';
 import Loading from '../../components/common/Loading';
@@ -72,6 +73,7 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
 
@@ -428,9 +430,24 @@ export default function ProfilePage() {
                       variant="contained"
                       size="small"
                       startIcon={<ChatIcon />}
+                      disabled={chatLoading || (listings.length === 0 && listingsLoading)}
                       sx={{ textTransform: 'none', borderRadius: 2 }}
+                      onClick={async () => {
+                        const firstListing = listings[0];
+                        if (!firstListing?.id) return;
+                        setChatLoading(true);
+                        try {
+                          const res = await chatApi.getSession(firstListing.id);
+                          const sessionId = res?.data?.data ?? res?.data;
+                          if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
+                        } catch (e) {
+                          console.error(e);
+                        } finally {
+                          setChatLoading(false);
+                        }
+                      }}
                     >
-                      Chat
+                      {chatLoading ? 'Đang mở...' : 'Nhắn tin'}
                     </Button>
                     <Button
                       variant="outlined"

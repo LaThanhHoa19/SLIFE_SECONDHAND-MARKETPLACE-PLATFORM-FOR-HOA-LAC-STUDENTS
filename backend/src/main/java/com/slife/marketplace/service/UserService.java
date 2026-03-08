@@ -49,6 +49,15 @@ public class UserService {
         return user;
     }
 
+    /** Trả về user hiện tại nếu đã đăng nhập, Optional.empty() nếu chưa. */
+    public java.util.Optional<User> getCurrentUserOptional() {
+        try {
+            return java.util.Optional.of(getCurrentUser());
+        } catch (Exception e) {
+            return java.util.Optional.empty();
+        }
+    }
+
     public String getCurrentUserEmail() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         log.debug("getCurrentUserEmail - auth null={}, authenticated={}, principal null={}",
