@@ -20,6 +20,15 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     // Dành cho Seller Dashboard: Lấy tất cả bài đăng của một Seller
     List<Listing> findBySellerOrderByCreatedAtDesc(User seller);
 
+    // Lấy tất cả bài đăng của seller (dùng cho merge test user)
+    List<Listing> findBySeller(User seller);
+
+    // UC-32: Filter theo location + category (derived queries)
+    List<Listing> findByStatusAndCategory_IdAndPickupAddress_LocationNameOrderByCreatedAtDesc(
+            String status, Long categoryId, String locationName);
+    List<Listing> findByStatusAndCategory_IdOrderByCreatedAtDesc(String status, Long categoryId);
+    List<Listing> findByStatusAndPickupAddress_LocationNameOrderByCreatedAtDesc(String status, String locationName);
+
     // UC-32: Xem các bài đăng đang hoạt động (Active) trên Feed chung
     List<Listing> findByStatusOrderByCreatedAtDesc(String status);
 
@@ -29,14 +38,14 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     // UC-34: Tìm kiếm nâng cao với Filter (Category, Location, Keyword)
     // NFR-P2: Hỗ trợ phân trang 10-20 item/page
+    // Note: Không dùng JOIN FETCH với Pageable (Hibernate 6 sẽ reject). Lazy-load được xử lý sau.
+    // MySQL LIKE với utf8mb4_general_ci là case-insensitive mặc định, không cần LOWER()
     @Query("SELECT l FROM Listing l " +
-            "LEFT JOIN FETCH l.category " +
-            "LEFT JOIN FETCH l.pickupAddress " +
             "WHERE l.status = 'ACTIVE' " +
             "AND (:categoryId IS NULL OR l.category.id = :categoryId) " +
-            "AND (:location IS NULL OR :location = '' OR (l.pickupAddress IS NOT NULL AND l.pickupAddress.locationName = :location)) " +
-            "AND (:q IS NULL OR :q = '' OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%')) " +
-            "OR LOWER(l.description) LIKE LOWER(CONCAT('%', :q, '%')))")
+            "AND (:location IS NULL OR :location = '' OR l.pickupAddress.locationName = :location) " +
+            "AND (:q IS NULL OR :q = '' OR l.title LIKE CONCAT('%', :q, '%') " +
+            "     OR l.description LIKE CONCAT('%', :q, '%'))")
     Page<Listing> findByFilters(@Param("categoryId") Long categoryId,
                                 @Param("location") String location,
                                 @Param("q") String q,
