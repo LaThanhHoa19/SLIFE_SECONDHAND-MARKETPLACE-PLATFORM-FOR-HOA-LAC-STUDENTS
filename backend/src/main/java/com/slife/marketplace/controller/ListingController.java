@@ -41,7 +41,7 @@ public class ListingController {
     public ResponseEntity<ApiResponse<ListingResponse>> createListing(@RequestBody CreateListingRequest request) {
         User currentUser = userService.getCurrentUser();
         Listing created = listingService.createListing(currentUser, request);
-        ListingResponse response = listingService.toResponse(created);
+        ListingResponse response = listingService.toResponse(created, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Tạo tin thành công", response));
     }
 
@@ -55,7 +55,8 @@ public class ListingController {
 
     @GetMapping("/api/listings/{id}")
     public ResponseEntity<ApiResponse<ListingResponse>> getListingDetail(@PathVariable Long id) {
-        ListingResponse listing = listingService.getListingById(id);
+        User currentUser = userService.getCurrentUserOptional().orElse(null);
+        ListingResponse listing = listingService.getListingById(id, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", listing));
     }
 

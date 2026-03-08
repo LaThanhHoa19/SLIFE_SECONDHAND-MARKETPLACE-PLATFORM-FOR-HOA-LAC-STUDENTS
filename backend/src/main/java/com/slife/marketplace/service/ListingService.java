@@ -11,10 +11,10 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -28,11 +28,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Mục đích: Service ListingService
- * Endpoints liên quan: controller
- */
 @Service
+@Slf4j
 public class ListingService {
 
     private static final String DEFAULT_CONDITION = "USED_GOOD";
@@ -56,8 +53,7 @@ public class ListingService {
     }
 
     /**
-     * Trả về danh sách listing (có kèm ảnh).
-     * Filter theo category và/hoặc location nếu truyền vào.
+     * UC-32: Trả về danh sách bài đăng Active.
      */
     public List<ListingResponse> getListings(Long categoryId, String location) {
         List<Listing> listings;
@@ -73,23 +69,19 @@ public class ListingService {
         return listings.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    /** @deprecated Dùng getListings(categoryId, location) */
-    public List<ListingResponse> getAllListingsForTest() {
-        return getListings(null, null);
-    }
-
     /**
-     * Filter listings theo category, location, keyword với pagination.
-     * Tối ưu query &lt;500ms với index.
+     * UC-34: Filter listings nâng cao với Pagination (NFR-P2).
      */
     public ListingPageResponse getFilteredListings(Long categoryId, String location, String q,
                                                    String sort, int page, int size) {
         Sort s = parseSort(sort);
         Pageable pageable = PageRequest.of(page, size, s);
         var pageResult = listingRepository.findByFilters(categoryId, location, q, pageable);
+        
         List<ListingResponse> content = pageResult.getContent().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+                
         return new ListingPageResponse(content, pageResult.getTotalPages(), pageResult.getTotalElements());
     }
 
@@ -103,12 +95,74 @@ public class ListingService {
     }
 
     /**
-     * Chi tiết một listing (có ảnh).
+     * UC-02: Tạo bài đăng mới. Tuân thủ BR-31 (Mặc định là DRAFT).
      */
-    public ListingResponse getListingById(Long id) {
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-        return toResponse(listing);
+    @Transactional
+    public Listing createListing(User seller, CreateListingRequest req) {
+        if (seller == null) throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        
+        // BR-03: Validate bắt buộc tên và giá
+        if (req == null || req.getTitle() == null || req.getTitle().isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT);
+        }
+
+        Listing listing = new Listing();
+        listing.setSeller(seller);
+        listing.setTitle(req.getTitle().trim());
+        listing.setDescription(req.getDescription() != null ? req.getDescription().trim() : null);
+
+        // Xử lý logic Giveaway (BR-11)
+        BigDecimal price = req.getPrice() != null ? req.getPrice() : BigDecimal.ZERO;
+        boolean isGiveaway = Boolean.TRUE.equals(req.getIsGiveaway());
+        if (isGiveaway) price = BigDecimal.ZERO;
+
+        listing.setPrice(price);
+        listing.setIsGiveaway(isGiveaway);
+        listing.setItemCondition(req.getCondition() != null && !req.getCondition().isBlank()
+                ? req.getCondition().trim().toUpperCase() : DEFAULT_CONDITION);
+        listing.setPurpose(req.getPurpose() != null && !req.getPurpose().isBlank()
+                ? req.getPurpose().trim().toUpperCase() : DEFAULT_PURPOSE);
+
+        // BR-31: Mặc định là DRAFT để admin hoặc system kiểm duyệt sau
+        listing.setStatus("DRAFT");
+
+        if (req.getCategoryId() != null) {
+            categoryRepository.findById(req.getCategoryId()).ifPresent(listing::setCategory);
+        }
+
+        listing.setCreatedAt(Instant.now());
+        listing.setUpdatedAt(Instant.now());
+
+        log.info("New listing created by user {}: {}", seller.getId(), listing.getTitle());
+        return listingRepository.save(listing);
+    }
+
+    /**
+     * Chuyển đổi Entity sang DTO với check quyền sở hữu (BR-01).
+     */
+    public ListingResponse toResponse(Listing listing, User currentUser) {
+        ListingResponse res = new ListingResponse();
+        res.setId(listing.getId());
+        res.setTitle(listing.getTitle());
+        res.setDescription(listing.getDescription());
+        res.setPrice(listing.getPrice());
+        res.setIsGiveaway(listing.getIsGiveaway() != null && listing.getIsGiveaway());
+        res.setImages(getImageUrls(listing.getId()));
+        res.setStatus(listing.getStatus());
+
+        User seller = listing.getSeller();
+        res.setSellerId(seller != null ? seller.getId() : null);
+        res.setSellerSummary(seller != null ? seller.getFullName() : "Unknown");
+
+        // Check if current viewer is the owner
+        boolean isOwn = currentUser != null && seller != null && currentUser.getId().equals(seller.getId());
+        res.setIsOwnListing(isOwn);
+
+        return res;
+    }
+
+    public ListingResponse toResponse(Listing listing) {
+        return toResponse(listing, null);
     }
 
     private List<String> getImageUrls(Long listingId) {
@@ -118,95 +172,45 @@ public class ListingService {
     }
 
     @Transactional
-    public Listing createListing(User seller, CreateListingRequest req) {
-        if (seller == null) {
-            throw new SlifeException(ErrorCode.UNAUTHORIZED);
-        }
-        if (req == null || req.getTitle() == null || req.getTitle().isBlank()) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT);
-        }
-        Listing listing = new Listing();
-        listing.setSeller(seller);
-        listing.setTitle(req.getTitle().trim());
-        listing.setDescription(req.getDescription() != null ? req.getDescription().trim() : null);
-        BigDecimal price = req.getPrice() != null ? req.getPrice() : BigDecimal.ZERO;
-        Boolean isGiveaway = Boolean.TRUE.equals(req.getIsGiveaway());
-        if (isGiveaway) {
-            price = BigDecimal.ZERO;
-        }
-        listing.setPrice(price);
-        listing.setIsGiveaway(isGiveaway);
-        listing.setItemCondition(req.getCondition() != null && !req.getCondition().isBlank()
-                ? req.getCondition().trim().toUpperCase() : DEFAULT_CONDITION);
-        listing.setPurpose(req.getPurpose() != null && !req.getPurpose().isBlank()
-                ? req.getPurpose().trim().toUpperCase() : DEFAULT_PURPOSE);
-        listing.setStatus("ACTIVE");
-        if (req.getCategoryId() != null) {
-            categoryRepository.findById(req.getCategoryId()).ifPresent(listing::setCategory);
-        }
-        listing.setPickupAddress(null);
-        listing.setExpirationDate(null);
-        listing.setCreatedAt(Instant.now());
-        listing.setUpdatedAt(Instant.now());
-        return listingRepository.save(listing);
-    }
-
-    public ListingResponse toResponse(Listing listing) {
-        ListingResponse res = new ListingResponse();
-        res.setId(listing.getId());
-        res.setTitle(listing.getTitle());
-        res.setDescription(listing.getDescription());
-        res.setPrice(listing.getPrice());
-        res.setIsGiveaway(listing.getIsGiveaway() != null && listing.getIsGiveaway());
-        res.setImages(getImageUrls(listing.getId()));
-        res.setSellerSummary(
-                listing.getSeller() != null ? listing.getSeller().getFullName() : null
-        );
-        res.setIsSaved(false);
-        res.setIsFollowed(false);
-        return res;
-    }
-
-    /**
-     * Upload ảnh cho listing: lưu file vào uploads/listings/{listingId}/, ghi bảng listing_images.
-     * Chỉ seller của listing mới được upload.
-     */
-    @Transactional
     public void uploadListingImages(Long listingId, User currentUser, List<MultipartFile> files) {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        // BR-30: Chỉ Seller mới có quyền quản lý bài đăng của mình
         if (listing.getSeller() == null || !listing.getSeller().getId().equals(currentUser.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        if (files == null || files.isEmpty()) {
-            return;
-        }
+
+        if (files == null || files.isEmpty()) return;
+
         Path dir = uploadBasePath.resolve("listings").resolve(listingId.toString());
         try {
             Files.createDirectories(dir);
         } catch (IOException e) {
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
+            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
         }
+
         int nextOrder = listingImageRepository.countByListing_Id(listingId) + 1;
         for (MultipartFile file : files) {
-            if (file == null || file.isEmpty()) continue;
-            if (file.getSize() > MAX_IMAGE_SIZE) continue;
+            if (file == null || file.isEmpty() || file.getSize() > MAX_IMAGE_SIZE) continue;
+
             String ext = getImageExtension(file.getOriginalFilename());
             String filename = System.currentTimeMillis() + "_" + nextOrder + ext;
             Path target = dir.resolve(filename).normalize();
+
             try (InputStream in = file.getInputStream()) {
                 Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                
+                String url = "/uploads/listings/" + listingId + "/" + filename;
+                ListingImage img = new ListingImage();
+                img.setListing(listing);
+                img.setImageUrl(url);
+                img.setDisplayOrder(nextOrder++);
+                img.setCreatedAt(Instant.now());
+                listingImageRepository.save(img);
             } catch (IOException e) {
-                throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
+                log.error("Failed to upload image for listing {}: {}", listingId, e.getMessage());
             }
-            String url = "/uploads/listings/" + listingId + "/" + filename;
-            ListingImage img = new ListingImage();
-            img.setListing(listing);
-            img.setImageUrl(url);
-            img.setDisplayOrder(nextOrder);
-            img.setCreatedAt(Instant.now());
-            listingImageRepository.save(img);
-            nextOrder++;
         }
     }
 

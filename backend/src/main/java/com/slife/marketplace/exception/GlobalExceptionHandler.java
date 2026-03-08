@@ -18,6 +18,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import com.slife.marketplace.util.Constants;
+
+import org.springframework.security.access.AccessDeniedException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -40,6 +44,15 @@ public class GlobalExceptionHandler {
         response.setCode(ErrorCode.INVALID_INPUT.getCode());
         response.setMessage("Thiếu file upload. Gửi với key 'file'.");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException e) {
+        log.warn("Access denied: {}", e.getMessage());
+        ApiErrorResponse response = new ApiErrorResponse();
+        response.setCode(ErrorCode.FORBIDDEN.getCode());
+        response.setMessage(Constants.MSG23);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(SlifeException.class)

@@ -7,11 +7,23 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.controller;
+
+import com.slife.marketplace.dto.response.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController public class NotificationController {
-// TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
-@GetMapping("/api/notifications") public ResponseEntity<?> m1(){return ResponseEntity.ok().build();}
-@PutMapping("/api/notifications/{id}/read") public ResponseEntity<?> m2(@PathVariable Long id){return ResponseEntity.ok().build();}
+import java.util.List;
+
+@RestController
+public class NotificationController {
+
+    @GetMapping("/api/notifications")
+    public ResponseEntity<ApiResponse<List<Object>>> getNotifications() {
+        return ResponseEntity.ok(ApiResponse.success(List.of()));
+    }
+
+    @PutMapping("/api/notifications/{id}/read")
+    public ResponseEntity<ApiResponse<Void>> markRead(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

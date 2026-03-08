@@ -17,6 +17,7 @@ import {
   SuspenseListingDetailPage,
   SuspenseCreateListingPage,
   SuspenseProfilePage,
+  SuspenseChatPage,
   SuspenseDealDetailPage,
   SuspenseDashboardPage,
   SuspenseReportManagementPage,
@@ -52,9 +53,16 @@ export default function AppRouter() {
             </RouteGuard>
           } />
           <Route path="/profile" element={<Navigate to="/profile/me" replace />} />
+          {/* /profile/listings không được match bởi /profile/:id (id Long) → redirect về me */}
+          <Route path="/profile/listings" element={<Navigate to="/profile/me" replace />} />
           <Route path="/profile/:id" element={
             <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
               <SuspenseProfilePage />
+            </RouteGuard>
+          } />
+          <Route path="/chat" element={
+            <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+              <SuspenseChatPage />
             </RouteGuard>
           } />
           <Route path="/deals/:id" element={

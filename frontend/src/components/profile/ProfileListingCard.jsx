@@ -3,6 +3,7 @@
  */
 import { Card, CardActionArea, CardMedia, Typography, Box } from '@mui/material';
 import ImageIcon from '@mui/icons-material/Image';
+import { fullImageUrl } from '../../utils/constants';
 
 function formatPrice(value) {
   if (value == null) return '—';
@@ -15,7 +16,8 @@ export default function ProfileListingCard({ listing, onClick }) {
   const title = listing?.title || 'Không có tên';
   const price = listing?.price ?? listing?.priceDisplay;
   const imgList = listing?.images;
-  const thumb = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : null;
+  const thumbPath = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : null;
+  const thumb = thumbPath ? fullImageUrl(thumbPath) : null;
 
   return (
     <Card
@@ -68,7 +70,7 @@ export default function ProfileListingCard({ listing, onClick }) {
             {title}
           </Typography>
           <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ mt: 0.5 }}>
-            {formatPrice(price)}
+            {listing?.isGiveaway ? 'Cho tặng' : formatPrice(price)}
           </Typography>
         </Box>
       </CardActionArea>
