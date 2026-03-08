@@ -57,18 +57,25 @@ public class ListingService {
 
     /**
      * Trả về danh sách listing (có kèm ảnh).
-     * Nếu categoryId != null thì filter theo category.
+     * Filter theo category và/hoặc location nếu truyền vào.
      */
-    public List<ListingResponse> getListings(Long categoryId) {
-        List<Listing> listings = categoryId != null
-                ? listingRepository.findByStatusAndCategory_IdOrderByCreatedAtDesc("ACTIVE", categoryId)
-                : listingRepository.findByStatusOrderByCreatedAtDesc("ACTIVE");
+    public List<ListingResponse> getListings(Long categoryId, String location) {
+        List<Listing> listings;
+        if (categoryId != null && location != null && !location.isBlank()) {
+            listings = listingRepository.findByStatusAndCategory_IdAndPickupAddress_LocationNameOrderByCreatedAtDesc("ACTIVE", categoryId, location);
+        } else if (categoryId != null) {
+            listings = listingRepository.findByStatusAndCategory_IdOrderByCreatedAtDesc("ACTIVE", categoryId);
+        } else if (location != null && !location.isBlank()) {
+            listings = listingRepository.findByStatusAndPickupAddress_LocationNameOrderByCreatedAtDesc("ACTIVE", location);
+        } else {
+            listings = listingRepository.findByStatusOrderByCreatedAtDesc("ACTIVE");
+        }
         return listings.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    /** @deprecated Dùng getListings(categoryId) */
+    /** @deprecated Dùng getListings(categoryId, location) */
     public List<ListingResponse> getAllListingsForTest() {
-        return getListings(null);
+        return getListings(null, null);
     }
 
     /**

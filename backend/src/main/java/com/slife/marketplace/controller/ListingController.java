@@ -47,8 +47,9 @@ public class ListingController {
 
     @GetMapping("/api/listings")
     public ResponseEntity<ApiResponse<List<ListingResponse>>> getListings(
-            @RequestParam(required = false) Long category) {
-        List<ListingResponse> listings = listingService.getListings(category);
+            @RequestParam(required = false) Long category,
+            @RequestParam(required = false) String location) {
+        List<ListingResponse> listings = listingService.getListings(category, location);
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
 
