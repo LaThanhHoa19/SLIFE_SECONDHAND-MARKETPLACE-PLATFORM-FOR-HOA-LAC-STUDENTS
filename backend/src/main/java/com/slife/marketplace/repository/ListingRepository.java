@@ -25,6 +25,10 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     List<Listing> findByStatusAndCategory_IdOrderByCreatedAtDesc(String status, Long categoryId);
 
+    List<Listing> findByStatusAndPickupAddress_LocationNameOrderByCreatedAtDesc(String status, String locationName);
+
+    List<Listing> findByStatusAndCategory_IdAndPickupAddress_LocationNameOrderByCreatedAtDesc(String status, Long categoryId, String locationName);
+
     @Query("SELECT DISTINCT l.pickupAddress.locationName FROM Listing l " +
             "WHERE l.pickupAddress IS NOT NULL AND l.status = 'ACTIVE' " +
             "ORDER BY l.pickupAddress.locationName")
