@@ -95,6 +95,15 @@ public class ListingService {
     }
 
     /**
+     * Lấy chi tiết một listing theo ID, kèm check quyền sở hữu.
+     */
+    public ListingResponse getListingById(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        return toResponse(listing, currentUser);
+    }
+
+    /**
      * UC-02: Tạo bài đăng mới. Tuân thủ BR-31 (Mặc định là DRAFT).
      */
     @Transactional
