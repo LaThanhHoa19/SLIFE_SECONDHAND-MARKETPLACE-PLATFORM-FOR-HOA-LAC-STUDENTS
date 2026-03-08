@@ -30,7 +30,8 @@ public class SecurityConfig {
                 "/api/auth/**",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
-                "/uploads/**")
+                "/uploads/**",
+                "/chat", "/chat/**")
             .permitAll()
             // Guest access
             .requestMatchers("/api/listings/**").permitAll()

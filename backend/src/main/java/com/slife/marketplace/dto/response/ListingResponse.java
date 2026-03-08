@@ -20,7 +20,10 @@ public class ListingResponse {
     private BigDecimal price;
     private Boolean isGiveaway;
     private List<String> images;
+    private Long sellerId;
     private Object sellerSummary;
+    /** True nếu user hiện tại là chủ tin (so sánh id hoặc email). */
+    private Boolean isOwnListing;
     private Boolean isSaved;
     private Boolean isFollowed;
 }
