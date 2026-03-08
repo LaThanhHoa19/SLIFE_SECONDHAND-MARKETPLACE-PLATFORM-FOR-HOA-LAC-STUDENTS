@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
+import com.slife.marketplace.dto.response.ListingPageResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
@@ -13,6 +14,10 @@ import com.slife.marketplace.repository.ListingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,10 +57,42 @@ public class ListingService {
 
     /**
      * Trả về danh sách listing (có kèm ảnh).
+     * Nếu categoryId != null thì filter theo category.
      */
-    public List<ListingResponse> getAllListingsForTest() {
-        List<Listing> listings = listingRepository.findAll();
+    public List<ListingResponse> getListings(Long categoryId) {
+        List<Listing> listings = categoryId != null
+                ? listingRepository.findByStatusAndCategory_IdOrderByCreatedAtDesc("ACTIVE", categoryId)
+                : listingRepository.findByStatusOrderByCreatedAtDesc("ACTIVE");
         return listings.stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    /** @deprecated Dùng getListings(categoryId) */
+    public List<ListingResponse> getAllListingsForTest() {
+        return getListings(null);
+    }
+
+    /**
+     * Filter listings theo category, location, keyword với pagination.
+     * Tối ưu query &lt;500ms với index.
+     */
+    public ListingPageResponse getFilteredListings(Long categoryId, String location, String q,
+                                                   String sort, int page, int size) {
+        Sort s = parseSort(sort);
+        Pageable pageable = PageRequest.of(page, size, s);
+        var pageResult = listingRepository.findByFilters(categoryId, location, q, pageable);
+        List<ListingResponse> content = pageResult.getContent().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+        return new ListingPageResponse(content, pageResult.getTotalPages(), pageResult.getTotalElements());
+    }
+
+    private static Sort parseSort(String sort) {
+        if (sort == null || sort.isBlank()) return Sort.by(Sort.Direction.DESC, "createdAt");
+        String[] parts = sort.split(",");
+        String prop = parts[0].trim();
+        boolean asc = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim());
+        if ("price".equalsIgnoreCase(prop)) return Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, "price");
+        return Sort.by(Sort.Direction.DESC, "createdAt");
     }
 
     /**
