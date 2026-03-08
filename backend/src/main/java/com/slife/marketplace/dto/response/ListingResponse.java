@@ -19,6 +19,7 @@ public class ListingResponse {
     private String description;
     private BigDecimal price;
     private Boolean isGiveaway;
+    private String status;
     private List<String> images;
     private Long sellerId;
     private Object sellerSummary;

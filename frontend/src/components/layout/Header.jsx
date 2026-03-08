@@ -32,6 +32,7 @@ import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import { AuthContext } from '../../context/AuthContext';
+import { fullImageUrl } from '../../utils/constants';
 
 const Search = styled('div')(({ theme }) => ({
     position: 'relative',
@@ -130,7 +131,7 @@ export default function Header({ onToggleSidebar }) {
     const handleLogout = () => { logout(); handleMenuClose(); navigate('/login'); };
 
     const displayName = user?.fullName || user?.name || user?.email?.split('@')[0] || 'Tài khoản';
-    const avatarSrc = user?.avatarUrl || user?.avatar || null;
+    const avatarSrc = fullImageUrl(user?.avatarUrl || user?.avatar_url || user?.avatar) || null;
 
     return (
         <AppBar
