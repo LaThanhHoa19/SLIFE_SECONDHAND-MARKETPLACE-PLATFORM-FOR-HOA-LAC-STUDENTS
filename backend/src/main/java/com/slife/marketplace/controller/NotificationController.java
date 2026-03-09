@@ -24,7 +24,8 @@ public class NotificationController {
     @GetMapping("/api/notifications")
     public ResponseEntity<ApiResponse<List<Notification>>> getNotifications() {
         User user = userService.getCurrentUser();
-        return ResponseEntity.ok(ApiResponse.success("OK", notificationService.getNotifications(user.getId())));
+        List<Notification> list = notificationService.getNotifications(user.getId());
+        return ResponseEntity.ok(ApiResponse.success("OK", list));
     }
 
     @GetMapping("/api/notifications/unread-count")

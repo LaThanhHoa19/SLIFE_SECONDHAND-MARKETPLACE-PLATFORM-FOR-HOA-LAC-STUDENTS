@@ -7,5 +7,5 @@ import lombok.Data;
 public class OfferResponseRequest {
 
     @NotNull(message = "action required: ACCEPTED or REJECTED")
-    private String action;
+    private String action; // "ACCEPTED" or "REJECTED"
 }

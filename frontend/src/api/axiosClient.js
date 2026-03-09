@@ -12,11 +12,21 @@ import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 
 const axiosClient = axios.create({ baseURL: API_BASE_URL, timeout: 15000 });
+
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('slife_access_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
+
+    const base = (config.baseURL || '').replace(/\/+$/, '');
+    const isApiBase = base.endsWith('/api');
+    if (isApiBase && typeof config.url === 'string' && config.url.startsWith('/api/')) {
+        config.url = config.url.replace(/^\/api/, '');
+    }
+
+
+    return config;
 });
+
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {

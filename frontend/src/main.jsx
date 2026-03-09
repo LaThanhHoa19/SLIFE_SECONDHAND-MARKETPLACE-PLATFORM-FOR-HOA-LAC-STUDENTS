@@ -18,7 +18,7 @@ import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
 import theme from './theme/theme';
 import './styles/global.css';
 
-// SockJS expects a Node-like `global` in some browser bundles.
+// `sockjs-client` expects a Node-like `global` in browser bundles.
 if (typeof globalThis !== 'undefined' && !globalThis.global) {
     globalThis.global = globalThis;
 }

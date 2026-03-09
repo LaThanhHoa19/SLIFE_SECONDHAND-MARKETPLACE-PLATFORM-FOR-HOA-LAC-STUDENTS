@@ -22,11 +22,17 @@ public final class Constants {
     /** Max chat image size in bytes (5 MB). */
     public static final long MAX_CHAT_IMAGE_BYTES = 5L * 1024 * 1024;
 
-    /** Folder name (under uploadBasePath) for chat images. */
-    public static final String CHAT_UPLOAD_DIR = "chats";
+    /** Allowed image content types for chat upload. */
+    public static final String[] ALLOWED_CHAT_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"};
 
-    /** System message sent after deal confirmation. */
+    /** System message sender display name. */
+    public static final String SYSTEM_SENDER = "Hệ thống";
+
+    /** Deal confirmed auto-message text. */
     public static final String DEAL_CONFIRMED_MSG = "✅ Deal Confirmed! Vui lòng hẹn gặp tại Hoa Lac Campus.";
+
+    /** Chat upload folder prefix (under uploadBasePath). */
+    public static final String CHAT_UPLOAD_DIR = "chats";
 
     private Constants() {}
 }

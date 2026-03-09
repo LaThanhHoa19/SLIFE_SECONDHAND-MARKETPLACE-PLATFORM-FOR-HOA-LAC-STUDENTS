@@ -14,32 +14,38 @@ import java.util.List;
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, Long> {
 
-    // UC-01, UC-12, UC-13: Xem danh sách bài đăng của chính Seller theo trạng thái
+    // --- Basic & Seller Management ---
+
+    // Retains Hoa's simplified pageable status lookup
+    Page<Listing> findByStatus(String status, Pageable pageable);
+
+    // UC-01, UC-12, UC-13: Seller dashboard filters
     List<Listing> findBySellerAndStatus(User seller, String status);
 
-    // Dành cho Seller Dashboard: Lấy tất cả bài đăng của một Seller
     List<Listing> findBySellerOrderByCreatedAtDesc(User seller);
 
-    // Lấy tất cả bài đăng của seller (dùng cho merge test user)
     List<Listing> findBySeller(User seller);
 
-    // UC-32: Filter theo location + category (derived queries)
+    // --- Public Feed & Derived Queries ---
+
+    // UC-32: Filter combinations for fast lookup
     List<Listing> findByStatusAndCategory_IdAndPickupAddress_LocationNameOrderByCreatedAtDesc(
             String status, Long categoryId, String locationName);
+            
     List<Listing> findByStatusAndCategory_IdOrderByCreatedAtDesc(String status, Long categoryId);
+    
     List<Listing> findByStatusAndPickupAddress_LocationNameOrderByCreatedAtDesc(String status, String locationName);
 
-    // UC-32: Xem các bài đăng đang hoạt động (Active) trên Feed chung
-    List<Listing> findByStatusOrderByCreatedAtDesc(String status);
-
-    // UC-35: Tìm kiếm các sản phẩm Giveaway (Giá = 0)
+    // UC-35: Giveaway items (Price = 0)
     @Query("SELECT l FROM Listing l WHERE l.status = 'ACTIVE' AND l.price = 0")
     Page<Listing> findGiveawayListings(Pageable pageable);
 
-    // UC-34: Tìm kiếm nâng cao với Filter (Category, Location, Keyword)
-    // NFR-P2: Hỗ trợ phân trang 10-20 item/page
-    // Note: Không dùng JOIN FETCH với Pageable (Hibernate 6 sẽ reject). Lazy-load được xử lý sau.
-    // MySQL LIKE với utf8mb4_general_ci là case-insensitive mặc định, không cần LOWER()
+    // --- Advanced Search (The "Engine" of the Marketplace) ---
+
+    /**
+     * UC-34: Search with Filters (Category, Location, Keyword)
+     * Supports pagination (NFR-P2: 10-20 items/page)
+     */
     @Query("SELECT l FROM Listing l " +
             "LEFT JOIN l.category c " +
             "LEFT JOIN l.pickupAddress a " +
@@ -53,7 +59,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                                 @Param("q") String q,
                                 Pageable pageable);
 
-    // Lấy danh sách địa điểm phục vụ Filter
+    // Helper for UI filter dropdowns
     @Query("SELECT DISTINCT a.locationName FROM Listing l " +
             "JOIN l.pickupAddress a " +
             "WHERE l.status = 'ACTIVE' " +

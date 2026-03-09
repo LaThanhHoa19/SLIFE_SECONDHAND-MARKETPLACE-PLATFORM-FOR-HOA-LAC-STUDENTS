@@ -22,11 +22,16 @@ public class ChatMessageResponse {
     private String content;
     private Instant timestamp;
     private Boolean isRead;
+    /** True when sender is the current user (by id or email). */
     private Boolean isFromCurrentUser;
 
+    /** Type of message: TEXT, IMAGE, OFFER_PROPOSAL, DEAL_CONFIRMATION */
     private MessageType messageType;
+
+    /** URL for IMAGE messages. */
     private String fileUrl;
 
+    /** Populated for OFFER_PROPOSAL messages. */
     private Long offerId;
     private BigDecimal offerAmount;
     private String offerStatus;
