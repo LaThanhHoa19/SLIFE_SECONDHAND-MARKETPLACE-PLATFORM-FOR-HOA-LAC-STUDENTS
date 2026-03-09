@@ -22,6 +22,7 @@ import {
   SuspenseReportManagementPage,
   SuspenseUserManagementPage,
   SuspenseBackendTestPage,
+  SuspenseGoogleCallbackPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -32,6 +33,9 @@ export default function AppRouter() {
           <Route path="/" element={<SuspenseListingsPage />} />
           <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
           <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
+
+          {/* Google OAuth2 redirect callback — no guard, no layout needed */}
+          <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
 
           {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
           <Route path="/login" element={
