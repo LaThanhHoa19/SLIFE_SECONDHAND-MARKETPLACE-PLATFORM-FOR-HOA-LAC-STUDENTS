@@ -41,9 +41,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     // Note: Không dùng JOIN FETCH với Pageable (Hibernate 6 sẽ reject). Lazy-load được xử lý sau.
     // MySQL LIKE với utf8mb4_general_ci là case-insensitive mặc định, không cần LOWER()
     @Query("SELECT l FROM Listing l " +
+            "LEFT JOIN l.category c " +
+            "LEFT JOIN l.pickupAddress a " +
             "WHERE l.status = 'ACTIVE' " +
-            "AND (:categoryId IS NULL OR l.category.id = :categoryId) " +
-            "AND (:location IS NULL OR :location = '' OR l.pickupAddress.locationName = :location) " +
+            "AND (:categoryId IS NULL OR c.id = :categoryId) " +
+            "AND (:location IS NULL OR :location = '' OR a.locationName = :location) " +
             "AND (:q IS NULL OR :q = '' OR l.title LIKE CONCAT('%', :q, '%') " +
             "     OR l.description LIKE CONCAT('%', :q, '%'))")
     Page<Listing> findByFilters(@Param("categoryId") Long categoryId,
@@ -52,8 +54,9 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                                 Pageable pageable);
 
     // Lấy danh sách địa điểm phục vụ Filter
-    @Query("SELECT DISTINCT l.pickupAddress.locationName FROM Listing l " +
-            "WHERE l.pickupAddress IS NOT NULL AND l.status = 'ACTIVE' " +
-            "ORDER BY l.pickupAddress.locationName")
+    @Query("SELECT DISTINCT a.locationName FROM Listing l " +
+            "JOIN l.pickupAddress a " +
+            "WHERE l.status = 'ACTIVE' " +
+            "ORDER BY a.locationName")
     List<String> findDistinctPickupLocationNames();
 }
