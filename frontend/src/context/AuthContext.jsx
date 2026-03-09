@@ -20,6 +20,14 @@ const REFRESH_TOKEN_KEY = 'slife_refresh_token';
 const USER_KEY = 'slife_user';
 const TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
 
+const unwrapApiData = (response) => {
+  const body = response?.data;
+  return body?.data ?? body ?? null;
+};
+
+const getAccessTokenFromPayload = (payload) =>
+  payload?.accessToken || payload?.token || null;
+
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -69,15 +77,19 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const { data } = await authApi.refreshToken({ refreshToken });
+      const payload = unwrapApiData(await authApi.refreshToken({ refreshToken }));
+      const nextAccessToken = getAccessTokenFromPayload(payload);
 
       // Update tokens
-      localStorage.setItem(TOKEN_KEY, data.accessToken);
-      setToken(data.accessToken);
+      if (!nextAccessToken) {
+        throw new Error('Missing access token');
+      }
+      localStorage.setItem(TOKEN_KEY, nextAccessToken);
+      setToken(nextAccessToken);
 
-      if (data.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
-        setRefreshToken(data.refreshToken);
+      if (payload?.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+        setRefreshToken(payload.refreshToken);
       }
 
       setAuthError(null);
@@ -133,28 +145,32 @@ export function AuthProvider({ children }) {
       setAuthLoading(true);
       setAuthError(null);
 
-      const { data } = await authApi.login(credentials);
+      const payload = unwrapApiData(await authApi.login(credentials));
+      const accessToken = getAccessTokenFromPayload(payload);
+      if (!accessToken || !payload?.user) {
+        throw new Error('Invalid auth response');
+      }
 
       // Store tokens and user
-      localStorage.setItem(TOKEN_KEY, data.accessToken);
-      if (data.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+      localStorage.setItem(TOKEN_KEY, accessToken);
+      if (payload.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
       }
-      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
 
-      setToken(data.accessToken);
-      setRefreshToken(data.refreshToken);
-      setUser(data.user);
+      setToken(accessToken);
+      setRefreshToken(payload.refreshToken ?? null);
+      setUser(payload.user);
 
       // Setup auto refresh
-      setupTokenRefresh(data.accessToken);
+      setupTokenRefresh(accessToken);
 
       // Success callback
       if (options.onSuccess) {
-        options.onSuccess(data);
+        options.onSuccess(payload);
       }
 
-      return { success: true, data };
+      return { success: true, data: payload };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
       setAuthError(errorMessage);
@@ -164,6 +180,47 @@ export function AuthProvider({ children }) {
         options.onError(error);
       }
 
+      return { success: false, error: errorMessage };
+    } finally {
+      setAuthLoading(false);
+    }
+  }, [setupTokenRefresh]);
+
+  const googleLogin = useCallback(async (credential, options = {}) => {
+    try {
+      setAuthLoading(true);
+      setAuthError(null);
+
+      const payload = unwrapApiData(await authApi.googleOAuth({ credential }));
+      const accessToken = getAccessTokenFromPayload(payload);
+      if (!accessToken || !payload?.user) {
+        throw new Error('Invalid Google auth response');
+      }
+
+      localStorage.setItem(TOKEN_KEY, accessToken);
+      if (payload.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+      } else {
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
+
+      setToken(accessToken);
+      setRefreshToken(payload.refreshToken ?? null);
+      setUser(payload.user);
+      setupTokenRefresh(accessToken);
+
+      if (options.onSuccess) {
+        options.onSuccess(payload);
+      }
+
+      return { success: true, data: payload };
+    } catch (error) {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Google login failed. Please try again.';
+      setAuthError(errorMessage);
+      if (options.onError) {
+        options.onError(error);
+      }
       return { success: false, error: errorMessage };
     } finally {
       setAuthLoading(false);
@@ -274,9 +331,9 @@ export function AuthProvider({ children }) {
         // Fetch latest user data if we have a valid token
         if (token && !isTokenExpired(token)) {
           try {
-            const { data } = await userApi.getUser();
-            setUser(data);
-            localStorage.setItem(USER_KEY, JSON.stringify(data));
+            const userData = unwrapApiData(await userApi.getUser());
+            setUser(userData);
+            localStorage.setItem(USER_KEY, JSON.stringify(userData));
 
             // Setup auto refresh
             setupTokenRefresh(token);
@@ -315,6 +372,7 @@ export function AuthProvider({ children }) {
 
     // Auth methods
     login,
+    googleLogin,
     logout,
     updateUser,
     clearAuthError,
@@ -334,6 +392,7 @@ export function AuthProvider({ children }) {
     isAuthLoading,
     authError,
     login,
+    googleLogin,
     logout,
     updateUser,
     clearAuthError,
