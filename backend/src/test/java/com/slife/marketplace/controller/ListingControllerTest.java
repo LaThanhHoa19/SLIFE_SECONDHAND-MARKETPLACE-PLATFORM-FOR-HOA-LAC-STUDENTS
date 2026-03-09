@@ -39,7 +39,7 @@ class ListingControllerTest {
         listing.setTitle("Sample listing");
 
         PagedResponse<ListingResponse> response = new PagedResponse<>();
-        response.setContent(List.of(listing));
+        response.setData(List.of(listing));
         response.setTotalElements(1L);
         response.setTotalPages(1);
         response.setPage(0);
@@ -52,8 +52,8 @@ class ListingControllerTest {
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(1))
-                .andExpect(jsonPath("$.content[0].title").value("Sample listing"));
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("Sample listing"));
     }
 
 
@@ -64,7 +64,7 @@ class ListingControllerTest {
         listing.setTitle("Sample listing");
 
         PagedResponse<ListingResponse> response = new PagedResponse<>();
-        response.setContent(List.of(listing));
+        response.setData(List.of(listing));
         response.setTotalElements(1L);
         response.setTotalPages(1);
         response.setPage(0);
@@ -77,8 +77,8 @@ class ListingControllerTest {
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(1))
-                .andExpect(jsonPath("$.content[0].title").value("Sample listing"));
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].title").value("Sample listing"));
     }
 
     @Test
