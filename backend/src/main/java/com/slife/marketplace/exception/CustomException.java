@@ -6,4 +6,15 @@
  * - Bổ sung validation, security, transaction boundaries và logging/audit.
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
-package com.slife.marketplace.exception; public class CustomException extends RuntimeException{ public CustomException(String m){super(m);} }
+package com.slife.marketplace.exception;
+
+/**
+ * Backwards-compatible alias around {@link SlifeException}.
+ * Prefer throwing {@link SlifeException} directly in new code.
+ */
+public class CustomException extends SlifeException {
+
+    public CustomException(String message) {
+        super(ErrorCode.INTERNAL_ERROR, message);
+    }
+}

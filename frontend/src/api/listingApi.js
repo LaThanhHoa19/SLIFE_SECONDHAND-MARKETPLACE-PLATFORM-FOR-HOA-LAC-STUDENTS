@@ -11,4 +11,5 @@ export const createListing = (payload) => axiosClient.post('/api/listings', payl
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
-export const uploadImages = (id, formData, onUploadProgress) => axiosClient.post(`/api/listings/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, onUploadProgress });
+export const uploadImages = (id, formData, onUploadProgress) =>
+  axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});

@@ -22,6 +22,7 @@ import {
     PostAdd as PostAddIcon,
     Favorite as FavoriteIcon,
     Notifications as NotificationsIcon,
+    Chat as ChatIcon,
     Settings as SettingsIcon,
     ExpandLess,
     ExpandMore,
@@ -247,6 +248,35 @@ export default function Sidebar({ open = true }) {
                                 </Box>
                             </StyledListItem>
                         ))}
+                    </List>
+                </Box>
+
+                <Divider sx={{ mx: 1.5, my: 1.5, borderColor: '#e2e8f0' }} />
+
+                {/* Tin nhắn - hiển thị cho mọi user đã đăng nhập */}
+                <Box sx={{ mb: 2 }}>
+                    <SectionTitle>
+                        <ChatIcon sx={{ fontSize: 14 }} />
+                        Cá nhân
+                    </SectionTitle>
+                    <List sx={{ px: 0.5 }}>
+                        <StyledListItem
+                            button
+                            active={location.pathname === '/chat'}
+                            onClick={() => navigate('/chat')}
+                            sx={{
+                                mb: 0.5,
+                                backgroundColor: location.pathname === '/chat' ? '#9D6EED' : 'transparent'
+                            }}
+                        >
+                            <ListItemIcon sx={{ minWidth: '28px' }}>
+                                <ChatIcon sx={{ fontSize: 18 }} />
+                            </ListItemIcon>
+                            <ListItemText
+                                primary="Tin nhắn"
+                                primaryTypographyProps={{ fontSize: '13px' }}
+                            />
+                        </StyledListItem>
                     </List>
                 </Box>
 

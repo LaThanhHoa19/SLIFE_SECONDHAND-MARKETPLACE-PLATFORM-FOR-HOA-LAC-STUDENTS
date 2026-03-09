@@ -7,5 +7,18 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.dto.request;
+
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-@Data public class AuthRequest { private String email; private String password; }
+
+@Data
+public class AuthRequest {
+
+    @NotBlank
+    @Email
+    private String email;
+
+    @NotBlank
+    private String password;
+}

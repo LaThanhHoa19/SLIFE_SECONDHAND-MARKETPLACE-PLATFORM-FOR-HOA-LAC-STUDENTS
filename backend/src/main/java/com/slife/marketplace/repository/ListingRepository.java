@@ -1,12 +1,62 @@
-/**
- * Mục đích: Repository ListingRepository
- * Endpoints liên quan: service
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.repository;
+
 import com.slife.marketplace.entity.Listing;
-import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface ListingRepository extends JpaRepository<Listing,Long> { }// TODO query methods. }
+import com.slife.marketplace.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface ListingRepository extends JpaRepository<Listing, Long> {
+
+    // UC-01, UC-12, UC-13: Xem danh sách bài đăng của chính Seller theo trạng thái
+    List<Listing> findBySellerAndStatus(User seller, String status);
+
+    // Dành cho Seller Dashboard: Lấy tất cả bài đăng của một Seller
+    List<Listing> findBySellerOrderByCreatedAtDesc(User seller);
+
+    // Lấy tất cả bài đăng của seller (dùng cho merge test user)
+    List<Listing> findBySeller(User seller);
+
+    // UC-32: Filter theo location + category (derived queries)
+    List<Listing> findByStatusAndCategory_IdAndPickupAddress_LocationNameOrderByCreatedAtDesc(
+            String status, Long categoryId, String locationName);
+    List<Listing> findByStatusAndCategory_IdOrderByCreatedAtDesc(String status, Long categoryId);
+    List<Listing> findByStatusAndPickupAddress_LocationNameOrderByCreatedAtDesc(String status, String locationName);
+
+    // UC-32: Xem các bài đăng đang hoạt động (Active) trên Feed chung
+    List<Listing> findByStatusOrderByCreatedAtDesc(String status);
+
+    // UC-35: Tìm kiếm các sản phẩm Giveaway (Giá = 0)
+    @Query("SELECT l FROM Listing l WHERE l.status = 'ACTIVE' AND l.price = 0")
+    Page<Listing> findGiveawayListings(Pageable pageable);
+
+    // UC-34: Tìm kiếm nâng cao với Filter (Category, Location, Keyword)
+    // NFR-P2: Hỗ trợ phân trang 10-20 item/page
+    // Note: Không dùng JOIN FETCH với Pageable (Hibernate 6 sẽ reject). Lazy-load được xử lý sau.
+    // MySQL LIKE với utf8mb4_general_ci là case-insensitive mặc định, không cần LOWER()
+    @Query("SELECT l FROM Listing l " +
+            "LEFT JOIN l.category c " +
+            "LEFT JOIN l.pickupAddress a " +
+            "WHERE l.status = 'ACTIVE' " +
+            "AND (:categoryId IS NULL OR c.id = :categoryId) " +
+            "AND (:location IS NULL OR :location = '' OR a.locationName = :location) " +
+            "AND (:q IS NULL OR :q = '' OR l.title LIKE CONCAT('%', :q, '%') " +
+            "     OR l.description LIKE CONCAT('%', :q, '%'))")
+    Page<Listing> findByFilters(@Param("categoryId") Long categoryId,
+                                @Param("location") String location,
+                                @Param("q") String q,
+                                Pageable pageable);
+
+    // Lấy danh sách địa điểm phục vụ Filter
+    @Query("SELECT DISTINCT a.locationName FROM Listing l " +
+            "JOIN l.pickupAddress a " +
+            "WHERE l.status = 'ACTIVE' " +
+            "ORDER BY a.locationName")
+    List<String> findDistinctPickupLocationNames();
+}
