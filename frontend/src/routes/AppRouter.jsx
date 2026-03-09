@@ -1,33 +1,99 @@
-/** Mục đích: Định nghĩa route public/protected/admin bằng React Router v6. */
-import { Routes, Route } from 'react-router-dom';
+/**
+ * AppRouter - Unified routing with lazy loading and guard middleware.
+ * Combines the clean structure of 'main' with the path aliases from 'Hoa'.
+ */
+import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
-import ProtectedRoute from './ProtectedRoute';
-import LoginPage from '../pages/auth/LoginPage';
-import RegisterPage from '../pages/auth/RegisterPage';
-import ListingsPage from '../pages/listing/ListingsPage';
-import ListingDetailPage from '../pages/listing/ListingDetailPage';
-import CreateListingPage from '../pages/listing/CreateListingPage';
-import ProfilePage from '../pages/profile/ProfilePage';
-import DealDetailPage from '../pages/deal/DealDetailPage';
-import DashboardPage from '../pages/admin/DashboardPage';
-import ReportManagementPage from '../pages/admin/ReportManagementPage';
-import UserManagementPage from '../pages/admin/UserManagementPage';
+import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
+
+// Lazy loaded components (Imports standardized from main)
+import {
+  SuspenseLoginPage,
+  SuspenseRegisterPage,
+  SuspenseListingsPage,
+  SuspenseListingDetailPage,
+  SuspenseCreateListingPage,
+  SuspenseProfilePage,
+  SuspenseChatPage,
+  SuspenseDealDetailPage,
+  SuspenseDashboardPage,
+  SuspenseReportManagementPage,
+  SuspenseUserManagementPage,
+  SuspenseBackendTestPage,
+} from './LazyRoutes';
 
 export default function AppRouter() {
   return (
     <Routes>
       <Route element={<MainLayout />}>
-        <Route path="/" element={<ListingsPage />} />
-        <Route path="/ListingsPage" element={<ListingsPage />} />
-        <Route path="/listings/:id" element={<ListingDetailPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/listings/new" element={<ProtectedRoute><CreateListingPage /></ProtectedRoute>} />
-        <Route path="/profile/:id" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/deals/:id" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><DashboardPage /></ProtectedRoute>} />
-        <Route path="/admin/reports" element={<ProtectedRoute roles={['ADMIN']}><ReportManagementPage /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute roles={['ADMIN']}><UserManagementPage /></ProtectedRoute>} />
+        
+        {/* ===== PUBLIC ROUTES ===== */}
+        <Route path="/" element={<SuspenseListingsPage />} />
+        {/* Retained alias from Hoa for backward compatibility */}
+        <Route path="/ListingsPage" element={<Navigate to="/" replace />} />
+        <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+        <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
+
+        {/* ===== AUTH ROUTES (Guest Only) ===== */}
+        <Route path="/login" element={
+          <RouteGuard guards={GUARD_PRESETS.GUEST_ONLY}>
+            <SuspenseLoginPage />
+          </RouteGuard>
+        } />
+        <Route path="/register" element={
+          <RouteGuard guards={GUARD_PRESETS.GUEST_ONLY}>
+            <SuspenseRegisterPage />
+          </RouteGuard>
+        } />
+
+        {/* ===== PROTECTED ROUTES (Auth Required) ===== */}
+        <Route path="/listings/new" element={
+          <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+            <SuspenseCreateListingPage />
+          </RouteGuard>
+        } />
+        
+        {/* Profile redirects to ensure 'me' context */}
+        <Route path="/profile" element={<Navigate to="/profile/me" replace />} />
+        <Route path="/profile/listings" element={<Navigate to="/profile/me" replace />} />
+        
+        <Route path="/profile/:id" element={
+          <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+            <SuspenseProfilePage />
+          </RouteGuard>
+        } />
+
+        <Route path="/chat" element={
+          <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+            <SuspenseChatPage />
+          </RouteGuard>
+        } />
+
+        <Route path="/deals/:id" element={
+          <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+            <SuspenseDealDetailPage />
+          </RouteGuard>
+        } />
+
+        {/* ===== ADMIN ROUTES (Role-Based Access) ===== */}
+        <Route path="/admin" element={
+          <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+            <SuspenseDashboardPage />
+          </RouteGuard>
+        } />
+        <Route path="/admin/reports" element={
+          <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+            <SuspenseReportManagementPage />
+          </RouteGuard>
+        } />
+        <Route path="/admin/users" element={
+          <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+            <SuspenseUserManagementPage />
+          </RouteGuard>
+        } />
+
+        {/* Catch-all redirect to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   );
