@@ -2,6 +2,8 @@ package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.Offer;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -13,4 +15,7 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
     List<Offer> findByConversation_IdOrderByCreatedAtDesc(Long conversationId);
 
     Optional<Offer> findByIdAndConversation_Id(Long offerId, Long conversationId);
+
+    @Query("SELECT COUNT(o) FROM Offer o WHERE o.buyer.id = :buyerId AND o.listing.id = :listingId")
+    long countByBuyerIdAndListingId(@Param("buyerId") Long buyerId, @Param("listingId") Long listingId);
 }
