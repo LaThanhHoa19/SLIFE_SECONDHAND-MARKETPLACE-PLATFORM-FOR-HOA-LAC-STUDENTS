@@ -55,4 +55,5 @@ public class Message {
 
     @Column(name = "file_url", length = 1000)
     private String fileUrl;
+
 }
