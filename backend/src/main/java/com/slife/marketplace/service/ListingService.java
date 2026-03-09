@@ -72,99 +72,15 @@ public class ListingService {
                                    pageResult.getTotalElements(), pageResult.getTotalPages());
     }
 
-    @Transactional
-    public Listing createListing(User seller, CreateListingRequest req) {
-        if (seller == null) throw new SlifeException(ErrorCode.UNAUTHORIZED);
-        if (req.getTitle() == null || req.getTitle().isBlank()) throw new SlifeException(ErrorCode.INVALID_INPUT);
-
-        Listing listing = new Listing();
-        listing.setSeller(seller);
-        listing.setTitle(req.getTitle().trim());
-        listing.setDescription(req.getDescription());
-
-        // BR-11: Giveaway logic (Price 0)
-        BigDecimal price = Boolean.TRUE.equals(req.getIsGiveaway()) ? BigDecimal.ZERO : (req.getPrice() != null ? req.getPrice() : BigDecimal.ZERO);
-        listing.setPrice(price);
-        listing.setIsGiveaway(Boolean.TRUE.equals(req.getIsGiveaway()));
-        
-        listing.setItemCondition(req.getCondition() != null ? req.getCondition().toUpperCase() : DEFAULT_CONDITION);
-        listing.setStatus("DRAFT"); // BR-31: Default state
-        
-        if (req.getCategoryId() != null) {
-            categoryRepository.findById(req.getCategoryId()).ifPresent(listing::setCategory);
-        }
-
-        listing.setCreatedAt(Instant.now());
-        return listingRepository.save(listing);
-    }
-
-    @Transactional
-    public void uploadListingImages(Long listingId, User currentUser, List<MultipartFile> files) {
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-
-        if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            throw new SlifeException(ErrorCode.FORBIDDEN);
-        }
-
-        Path dir = uploadBasePath.resolve("listings").resolve(listingId.toString());
-        try {
-            Files.createDirectories(dir);
-            int nextOrder = listingImageRepository.countByListing_Id(listingId) + 1;
-
-            for (MultipartFile file : files) {
-                if (file.isEmpty() || file.getSize() > MAX_IMAGE_SIZE) continue;
-
-                String filename = System.currentTimeMillis() + "_" + nextOrder + getImageExtension(file.getOriginalFilename());
-                Path target = dir.resolve(filename);
-
-                try (InputStream in = file.getInputStream()) {
-                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-                    saveImageRecord(listing, "/uploads/listings/" + listingId + "/" + filename, nextOrder++);
-                }
-            }
-        } catch (IOException e) {
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-    }
-
-    private void saveImageRecord(Listing listing, String url, int order) {
-        ListingImage img = new ListingImage();
-        img.setListing(listing);
-        img.setImageUrl(url);
-        img.setDisplayOrder(order);
-        img.setCreatedAt(Instant.now());
-        listingImageRepository.save(img);
-    }
-
-    public ListingResponse toResponse(Listing listing, User currentUser) {
-        ListingResponse res = new ListingResponse();
-        res.setId(listing.getId());
-        res.setTitle(listing.getTitle());
-        res.setDescription(listing.getDescription());
-        res.setPrice(listing.getPrice());
-        res.setIsGiveaway(Boolean.TRUE.equals(listing.getIsGiveaway()));
-        res.setCondition(listing.getItemCondition());
-        res.setStatus(listing.getStatus());
-        res.setCreatedAt(listing.getCreatedAt());
-        res.setImages(findImageUrls(listing.getId()));
-        
-        // Seller details and Context
-        if (listing.getSeller() != null) {
-            res.setSellerId(listing.getSeller().getId());
-            res.setSellerSummary(buildSellerSummary(listing.getSeller()));
-            res.setIsOwnListing(currentUser != null && currentUser.getId().equals(listing.getSeller().getId()));
-        }
-        
-        return res;
-    }
-
-    private Map<String, Object> buildSellerSummary(User seller) {
-        Map<String, Object> summary = new HashMap<>();
-        summary.put("fullName", seller.getFullName());
-        summary.put("avatarUrl", seller.getAvatarUrl());
-        summary.put("reputation", seller.getReputationScore());
-        return summary;
+    private ListingResponse toListingResponse(Listing listing) {
+        ListingResponse response = new ListingResponse();
+        response.setId(listing.getId());
+        response.setTitle(listing.getTitle());
+        response.setImages(findImageUrls(listing.getId()));
+        response.setSellerSummary(buildSellerSummary(listing));
+        response.setIsSaved(false);
+        response.setIsFollowed(false);
+        return response;
     }
 
     private List<String> findImageUrls(Long listingId) {
