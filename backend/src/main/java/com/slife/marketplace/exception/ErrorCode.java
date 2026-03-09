@@ -38,7 +38,11 @@ public enum ErrorCode {
     RATE_LIMIT_EXCEEDED("RATE_LIMIT_EXCEEDED", "Max 1 message per second", HttpStatus.TOO_MANY_REQUESTS),
     OFFER_PRICE_INVALID("OFFER_PRICE_INVALID", "Offer price must be positive and lower than listing price", HttpStatus.BAD_REQUEST),
     OFFER_NOT_FOUND("OFFER_NOT_FOUND", "Offer not found", HttpStatus.NOT_FOUND),
-    DEAL_NOT_FOUND("DEAL_NOT_FOUND", "Deal not found", HttpStatus.NOT_FOUND);
+    DEAL_NOT_FOUND("DEAL_NOT_FOUND", "Deal not found", HttpStatus.NOT_FOUND),
+    OFFER_SPAM_LIMIT("OFFER_SPAM_LIMIT", "You have reached the maximum offer limit (5) for this listing (BR-35)", HttpStatus.TOO_MANY_REQUESTS),
+    OFFER_NOT_PENDING("OFFER_NOT_PENDING", "Offer is no longer pending", HttpStatus.CONFLICT),
+    FILE_TOO_LARGE("FILE_TOO_LARGE", "File exceeds 5 MB limit", HttpStatus.PAYLOAD_TOO_LARGE),
+    INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     private final String code;
     private final String message;
