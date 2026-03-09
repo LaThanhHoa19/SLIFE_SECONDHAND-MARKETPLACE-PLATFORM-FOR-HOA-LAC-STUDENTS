@@ -14,7 +14,20 @@ export default function useNotifications() {
 
   useEffect(() => {
     let socket;
-    const fetchData = async () => setNotifications((await getNotifications()).data || []);
+    const fetchData = async () => {
+      if (!token) {
+        setNotifications([]);
+        return;
+      }
+
+      try {
+        const response = await getNotifications();
+        setNotifications(response.data || []);
+      } catch (error) {
+        console.error('Failed to load notifications:', error);
+      }
+    };
+
     fetchData();
 
     if (token) {
@@ -23,7 +36,7 @@ export default function useNotifications() {
       socket.on('notification:new', (payload) => setNotifications((prev) => [payload, ...prev]));
     }
 
-    const pollingId = setInterval(fetchData, 30000);
+    const pollingId = token ? setInterval(fetchData, 30000) : null;
     return () => { clearInterval(pollingId); socket?.disconnect(); };
   }, [token]);
 

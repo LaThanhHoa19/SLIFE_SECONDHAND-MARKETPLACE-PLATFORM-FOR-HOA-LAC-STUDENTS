@@ -121,6 +121,7 @@ export default function Header({ onToggleSidebar }) {
     const location = useLocation();
     const theme = useTheme();
     const [searchValue, setSearchValue] = useState('');
+    const userAvatar = user?.avatarUrl || user?.avatar || '';
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -130,11 +131,11 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleLogin = () => {
-        navigate('/auth/login');
+        navigate('/login');
     };
 
     const handleRegister = () => {
-        navigate('/auth/register');
+        navigate('/register');
     };
 
     const handleProfile = () => {
@@ -262,10 +263,10 @@ export default function Header({ onToggleSidebar }) {
                                 </PostButton>
                             </Box>
                             <IconButton onClick={handleProfile} sx={{ p: 0, ml: 1.5 }}>
-                                {user.avatar ? (
+                                {userAvatar ? (
                                     <Avatar
-                                        src={user.avatar}
-                                        alt={user.name}
+                                        src={userAvatar}
+                                        alt={user.fullName || user.email}
                                         sx={{ width: 28, height: 28 }}
                                     />
                                 ) : (
