@@ -1,12 +1,37 @@
-/**
- * Mục đích: Repository ListingRepository
- * Endpoints liên quan: service
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.repository;
+
 import com.slife.marketplace.entity.Listing;
-import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface ListingRepository extends JpaRepository<Listing,Long> { }// TODO query methods. }
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+/**
+ * SCRUM-43: Listing search repository.
+ */
+@Repository
+public interface ListingRepository extends JpaRepository<Listing, Long> {
+
+    /**
+     * Keyword search by title/description with optional category & location filters.
+     * Only returns listings with status = 'ACTIVE'.
+     */
+    @Query("""
+        SELECT l
+        FROM Listing l
+        WHERE l.status = 'ACTIVE'
+          AND (:categoryId IS NULL OR l.category.id = :categoryId)
+          AND (:location IS NULL OR l.pickupAddress.addressText LIKE CONCAT('%', :location, '%'))
+          AND (
+              :q IS NULL
+              OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR l.description LIKE CONCAT('%', :q, '%')
+          )
+        """)
+    Page<Listing> findByFilters(@Param("q") String q,
+                                @Param("categoryId") Long categoryId,
+                                @Param("location") String location,
+                                Pageable pageable);
+}
