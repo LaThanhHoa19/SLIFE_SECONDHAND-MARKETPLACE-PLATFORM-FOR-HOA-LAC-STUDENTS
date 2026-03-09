@@ -1,70 +1,103 @@
-/**
- * Mục đích: Controller Listing
- * Endpoints liên quan: api
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.controller;
 
+import com.slife.marketplace.dto.request.CreateListingRequest;
+import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.ListingService;
+import com.slife.marketplace.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/listings")
 public class ListingController {
-    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
 
     private final ListingService listingService;
+    private final UserService userService;
 
-    public ListingController(ListingService listingService) {
+    public ListingController(ListingService listingService, UserService userService) {
         this.listingService = listingService;
+        this.userService = userService;
     }
 
-//    @PostMapping("/api/listings")
-//    public ResponseEntity<?> m1(@RequestBody Object r) {/* Example */
-//        return ResponseEntity.ok().build();
-//    }
+    @PostMapping
+    public ResponseEntity<ApiResponse<ListingResponse>> createListing(@RequestBody CreateListingRequest request) {
+        User currentUser = userService.getCurrentUser();
+        Listing created = listingService.createListing(currentUser, request);
+        ListingResponse response = listingService.toResponse(created, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Tạo tin thành công", response));
+    }
 
     @GetMapping
-    public ResponseEntity<PagedResponse<ListingResponse>> getListings(
+    public ResponseEntity<ApiResponse<PagedResponse<ListingResponse>>> getListings(
+            @RequestParam(required = false) Long category,
+            @RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return ResponseEntity.ok(listingService.getListings(page, size));
+        // Combines Hoa's pagination with Main's filtering
+        PagedResponse<ListingResponse> listings = listingService.getListings(category, location, page, size);
+        return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
 
-    @GetMapping("/api/listings/{id}")
-    public ResponseEntity<?> m3(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<ListingResponse>> getListingDetail(@PathVariable Long id) {
+        User currentUser = userService.getCurrentUserOptional().orElse(null);
+        ListingResponse listing = listingService.getListingById(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", listing));
     }
 
-    @PutMapping("/api/listings/{id}")
-    public ResponseEntity<?> m4(@PathVariable Long id, @RequestBody Object r) {
-        return ResponseEntity.ok().build();
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<ListingResponse>> updateListing(@PathVariable Long id, @RequestBody CreateListingRequest request) {
+        User currentUser = userService.getCurrentUser();
+        Listing updated = listingService.updateListing(id, currentUser, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", listingService.toResponse(updated, currentUser)));
     }
 
-    @PutMapping("/api/listings/{id}/hide")
-    public ResponseEntity<?> m5(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    @PutMapping("/{id}/hide")
+    public ResponseEntity<ApiResponse<Void>> hideListing(@PathVariable Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.hideListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Đã ẩn tin", null));
     }
 
-    @PutMapping("/api/listings/{id}/sold")
-    public ResponseEntity<?> m6(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    @PutMapping("/{id}/sold")
+    public ResponseEntity<ApiResponse<Void>> markAsSold(@PathVariable Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.markAsSold(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Đã đánh dấu đã bán", null));
     }
 
-    @PostMapping("/api/listings/{id}/report")
-    public ResponseEntity<?> m7(@PathVariable Long id, @RequestBody Object r) {
-        return ResponseEntity.ok().build();
+    @PostMapping(value = "/{id}/images", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<Void>> uploadListingImages(
+            @PathVariable Long id,
+            HttpServletRequest request) {
+        User currentUser = userService.getCurrentUser();
+        List<MultipartFile> files = new ArrayList<>();
+        if (request instanceof MultipartHttpServletRequest multipartRequest) {
+            multipartRequest.getMultiFileMap().getOrDefault("images", Collections.emptyList()).forEach(files::add);
+        }
+        listingService.uploadListingImages(id, currentUser, files);
+        return ResponseEntity.ok(ApiResponse.success("Đã tải ảnh lên", null));
     }
 
-    @PostMapping("/api/listings/{id}/images")
-    public ResponseEntity<?> m8(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    @PostMapping("/{id}/report")
+    public ResponseEntity<ApiResponse<Void>> reportListing(
+            @PathVariable Long id,
+            @RequestBody Object reportRequest
+    ) {
+        User currentUser = userService.getCurrentUser();
+        listingService.reportListing(id, currentUser, reportRequest);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi báo cáo", null));
     }
 }

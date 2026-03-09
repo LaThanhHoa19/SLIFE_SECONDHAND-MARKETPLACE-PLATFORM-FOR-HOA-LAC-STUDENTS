@@ -1,11 +1,3 @@
-/**
- * Mục đích: Repository ListingImageRepository
- * Endpoints liên quan: service
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.ListingImage;
@@ -16,5 +8,15 @@ import java.util.List;
 
 @Repository
 public interface ListingImageRepository extends JpaRepository<ListingImage, Long> {
-    List<ListingImage> findByListingIdOrderByDisplayOrderAsc(Long listingId);
+
+    /**
+     * Counts the current number of images for a listing.
+     * Useful for enforcing upload limits.
+     */
+    int countByListing_Id(Long listingId);
+
+    /**
+     * Retrieves all images for a specific listing, sorted by their display sequence.
+     */
+    List<ListingImage> findByListing_IdOrderByDisplayOrderAsc(Long listingId);
 }

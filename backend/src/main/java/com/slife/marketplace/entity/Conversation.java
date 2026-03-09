@@ -9,16 +9,26 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "conversations")
 public class Conversation {
+
+    /** ChatSession status per spec: ACTIVE, CLOSED, SPAM */
+    public static final String STATUS_ACTIVE = "ACTIVE";
+    public static final String STATUS_CLOSED = "CLOSED";
+    public static final String STATUS_SPAM = "SPAM";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "conversation_id", nullable = false)
     private Long id;
+
+    @Column(name = "session_uuid", nullable = false, unique = true, length = 36)
+    private String sessionUuid;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -37,6 +47,10 @@ public class Conversation {
     @JoinColumn(name = "listing_id")
     private Listing listing;
 
+    @Column(name = "status", nullable = false, length = 20)
+    @ColumnDefault("'ACTIVE'")
+    private String status = STATUS_ACTIVE;
+
     @Column(name = "last_message_at")
     private Instant lastMessageAt;
 
@@ -45,5 +59,10 @@ public class Conversation {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-
+    @PrePersist
+    public void ensureSessionUuid() {
+        if (sessionUuid == null || sessionUuid.isBlank()) {
+            sessionUuid = UUID.randomUUID().toString();
+        }
+    }
 }
