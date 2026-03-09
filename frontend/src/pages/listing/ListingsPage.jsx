@@ -2,6 +2,7 @@
 import { Box, Stack } from '@mui/material';
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import ErrorState from '../../components/common/ErrorState';
 import Pagination from '../../components/common/Pagination';
 import Sidebar from '../../components/layout/Sidebar';
 import ListingsFeed from '../../components/listing/ListingsFeed';
@@ -16,7 +17,7 @@ export default function ListingsPage() {
     const category = searchParams.get('category') || '';
     const sort = searchParams.get('sort') || 'createdAt,desc';
 
-    const { data, isLoading, meta } = useListings({ q, category, sort, page, size });
+    const { data, isLoading, error, refetch, meta } = useListings({ q, category, sort, page, size });
 
     const handlePageChange = useCallback(
         (newPage) => {
@@ -46,16 +47,26 @@ export default function ListingsPage() {
         <Stack direction="row">
             <Sidebar />
             <Box flex={1} minWidth={0}>
-                <ListingsFeed listings={data} isLoading={isLoading} />
-                <Pagination
-                    page={page}
-                    totalPages={meta?.totalPages ?? 0}
-                    totalElements={meta?.totalElements}
-                    pageSize={size}
-                    onChange={handlePageChange}
-                    onPageSizeChange={handlePageSizeChange}
-                    disabled={isLoading}
-                />
+                {error ? (
+                    <ErrorState
+                        variant={error.variant}
+                        message={error.message}
+                        onRetry={refetch}
+                    />
+                ) : (
+                    <>
+                        <ListingsFeed listings={data} isLoading={isLoading} />
+                        <Pagination
+                            page={page}
+                            totalPages={meta?.totalPages ?? 0}
+                            totalElements={meta?.totalElements}
+                            pageSize={size}
+                            onChange={handlePageChange}
+                            onPageSizeChange={handlePageSizeChange}
+                            disabled={isLoading}
+                        />
+                    </>
+                )}
             </Box>
         </Stack>
     );
