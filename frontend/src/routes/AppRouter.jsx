@@ -47,7 +47,7 @@ export default function AppRouter() {
 
           {/* ===== PROTECTED ROUTES - Cần đăng nhập ===== */}
           <Route path="/listings/new" element={
-            <RouteGuard guards={GUARD_PRESETS.GUEST_ONLY}>
+            <RouteGuard guards={GUARD_PRESETS.VERIFIED_USER}>
               <SuspenseCreateListingPage />
             </RouteGuard>
           } />
