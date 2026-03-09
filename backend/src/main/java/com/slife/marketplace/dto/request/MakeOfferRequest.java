@@ -9,13 +9,8 @@ import java.math.BigDecimal;
 @Data
 public class MakeOfferRequest {
 
-    @NotNull
-    private String sessionId;
-
-    @NotNull
-    private Long listingId;
-
-    @NotNull
+    /** Offer amount in VND. */
+    @NotNull(message = "amount required")
     @DecimalMin(value = "0", inclusive = false, message = "Proposed price must be positive")
-    private BigDecimal proposedPrice;
+    private BigDecimal amount;
 }
