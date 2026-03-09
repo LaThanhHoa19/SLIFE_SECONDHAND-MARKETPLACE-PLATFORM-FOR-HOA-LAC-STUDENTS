@@ -7,13 +7,10 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ConversationRepository;
-import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
 import com.slife.marketplace.repository.DealRepository;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,25 +20,21 @@ import java.time.Instant;
 @Service
 public class OfferService {
 
-    private static final Logger log = LoggerFactory.getLogger(OfferService.class);
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_ACCEPTED = "ACCEPTED";
     public static final String STATUS_REJECTED = "REJECTED";
 
     private final OfferRepository offerRepository;
     private final ConversationRepository conversationRepository;
-    private final ListingRepository listingRepository;
     private final DealRepository dealRepository;
     private final UserService userService;
 
     public OfferService(OfferRepository offerRepository,
                         ConversationRepository conversationRepository,
-                        ListingRepository listingRepository,
                         DealRepository dealRepository,
                         UserService userService) {
         this.offerRepository = offerRepository;
         this.conversationRepository = conversationRepository;
-        this.listingRepository = listingRepository;
         this.dealRepository = dealRepository;
         this.userService = userService;
     }
@@ -51,18 +44,26 @@ public class OfferService {
      */
     @Transactional
     public Offer makeOffer(MakeOfferRequest request) {
+        throw new SlifeException(ErrorCode.INVALID_INPUT,
+                "Use ChatService.makeOffer(sessionId, amount, buyer) for chat offer flow");
+    }
+
+    /**
+     * Backward-compatible helper for older callers that still use OfferService directly.
+     */
+    @Transactional
+    public Offer makeOffer(String sessionId, BigDecimal amount) {
         User current = userService.getCurrentUser();
-        Conversation conv = conversationRepository.findBySessionUuid(request.getSessionId())
+        Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         if (!conv.getUserId1().getId().equals(current.getId()) && !conv.getUserId2().getId().equals(current.getId())) {
             throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT);
         }
-        Listing listing = listingRepository.findById(request.getListingId())
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-        if (!conv.getListing().getId().equals(listing.getId())) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT, "Listing does not belong to this chat session");
+        Listing listing = conv.getListing();
+        if (listing == null) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
         }
-        BigDecimal proposed = request.getProposedPrice();
+        BigDecimal proposed = amount;
         if (proposed == null || proposed.compareTo(BigDecimal.ZERO) <= 0) {
             throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
         }
