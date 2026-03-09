@@ -18,6 +18,11 @@ import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
 import theme from './theme/theme';
 import './styles/global.css';
 
+// `sockjs-client` expects a Node-like `global` in browser bundles.
+if (typeof globalThis !== 'undefined' && !globalThis.global) {
+    globalThis.global = globalThis;
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <ThemeProvider theme={theme}>
