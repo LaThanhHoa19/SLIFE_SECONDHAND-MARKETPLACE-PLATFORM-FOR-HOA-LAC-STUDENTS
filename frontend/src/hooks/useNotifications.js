@@ -14,18 +14,34 @@ export default function useNotifications() {
 
   useEffect(() => {
     let socket;
-    const fetchData = async () => setNotifications((await getNotifications()).data || []);
+    if (!token) {
+      setNotifications([]);
+      return undefined;
+        }
+
+    const fetchData = async () => {
+      try {
+        const response = await getNotifications();
+        setNotifications(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch notifications', error);
+      }
+    };
+
     fetchData();
 
-    if (token) {
-      // TODO: nếu BE chưa có socket gateway thì bỏ đoạn này và dùng polling.
-      socket = io(API_BASE_URL, { auth: { token } });
-      socket.on('notification:new', (payload) => setNotifications((prev) => [payload, ...prev]));
-    }
+    // TODO: nếu BE chưa có socket gateway thì bỏ đoạn này và dùng polling.
+    // socket = io(API_BASE_URL, { auth: { token } });
+    // socket.on('notification:new', (payload) => setNotifications((prev) => [payload, ...prev]));
 
-    const pollingId = setInterval(fetchData, 30000);
-    return () => { clearInterval(pollingId); socket?.disconnect(); };
-  }, [token]);
+    const pollingId = setInterval(() => {
+      fetchData();
+    }, 30000);
+
+    return () => {
+      clearInterval(pollingId);
+      socket?.disconnect();
+    };  }, [token]);
 
   const markRead = async (id) => { await markNotificationRead(id); setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))); };
   return { notifications, unreadCount: notifications.filter((n) => !n.isRead).length, markRead };
