@@ -5,4 +5,21 @@ import ListingsFeed from '../../components/listing/ListingsFeed';
 import Sidebar from '../../components/layout/Sidebar';
 import Pagination from '../../components/common/Pagination';
 import useListings from '../../hooks/useListings';
-export default function ListingsPage(){ const [searchParams] = useSearchParams(); const {data,isLoading,meta}=useListings({ q: searchParams.get('q')||'', category: searchParams.get('category')||'', sort: searchParams.get('sort')||'createdAt,desc', page:Number(searchParams.get('page')||0), size:Number(searchParams.get('size')||10)}); return <Box><Sidebar /><ListingsFeed listings={data} isLoading={isLoading} /><Pagination page={Number(searchParams.get('page')||0)} totalPages={meta.totalPages} /></Box>; }
+export default function ListingsPage() {
+    const [searchParams] = useSearchParams();
+    const { data, isLoading, meta } = useListings({
+        q: searchParams.get('q') || '',
+        category: searchParams.get('category') || '',
+        location: searchParams.get('location') || '',
+        sort: searchParams.get('sort') || 'createdAt,desc',
+        page: Number(searchParams.get('page') || 0),
+        size: Number(searchParams.get('size') || 10),
+    });
+    return (
+        <Box>
+            <Sidebar />
+            <ListingsFeed listings={data} isLoading={isLoading} />
+            <Pagination page={Number(searchParams.get('page') || 0)} totalPages={meta.totalPages} />
+        </Box>
+    );
+}
