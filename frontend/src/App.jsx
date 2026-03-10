@@ -10,6 +10,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import AppRouter from './routes/AppRouter';
+import { ToastProvider } from './context/ToastContext';
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
@@ -24,5 +25,11 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  return <ErrorBoundary><AppRouter /></ErrorBoundary>;
+  return (
+      <ErrorBoundary>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
+      </ErrorBoundary>
+  );
 }
