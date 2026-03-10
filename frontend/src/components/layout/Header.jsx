@@ -24,7 +24,6 @@ import {
     Menu as MenuIcon,
     Notifications as NotificationsIcon,
     Favorite as FavoriteIcon,
-    Chat as ChatIcon,
     Search as SearchIcon,
     Person as PersonIcon,
     ListAlt as ListAltIcon,
@@ -373,7 +372,7 @@ export default function Header({ onToggleSidebar }) {
                     {/* Chat */}
                     <Tooltip title="Tin nhắn" arrow>
                         <IconButton onClick={() => navigate('/chat')} sx={{ color: '#FFFFFF', p: 0.75 }}>
-                            <ChatIcon sx={{ fontSize: '20px' }} />
+                            <NotificationsIcon sx={{ fontSize: '20px' }} />
                         </IconButton>
                     </Tooltip>
 
@@ -486,7 +485,7 @@ export default function Header({ onToggleSidebar }) {
 
                                 <MenuItem onClick={() => { navigate('/chat'); handleMenuClose(); }} sx={{ py: 1.2, px: 2, gap: 1.5, borderRadius: '8px', mx: 0.5, my: 0.25 }}>
                                     <ListItemIcon sx={{ minWidth: 'auto' }}>
-                                        <ChatIcon fontSize="small" sx={{ color: '#9D6EED' }} />
+                                        <NotificationsIcon fontSize="small" sx={{ color: '#9D6EED' }} />
                                     </ListItemIcon>
                                     <ListItemText primary="Tin nhắn" primaryTypographyProps={{ fontSize: 14 }} />
                                 </MenuItem>
