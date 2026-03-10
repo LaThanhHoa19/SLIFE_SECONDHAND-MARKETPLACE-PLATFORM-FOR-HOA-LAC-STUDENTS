@@ -1,8 +1,8 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
-import com.slife.marketplace.dto.response.ListingPageResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
@@ -12,21 +12,22 @@ import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -53,184 +54,48 @@ public class ListingService {
     }
 
     /**
-     * UC-32: Trả về danh sách bài đăng Active.
+     * UC-32 & UC-34: Unified Paged & Filtered Search
      */
-    public List<ListingResponse> getListings(Long categoryId, String location) {
-        List<Listing> listings;
-        if (categoryId != null && location != null && !location.isBlank()) {
-            listings = listingRepository.findByStatusAndCategory_IdAndPickupAddress_LocationNameOrderByCreatedAtDesc("ACTIVE", categoryId, location);
-        } else if (categoryId != null) {
-            listings = listingRepository.findByStatusAndCategory_IdOrderByCreatedAtDesc("ACTIVE", categoryId);
-        } else if (location != null && !location.isBlank()) {
-            listings = listingRepository.findByStatusAndPickupAddress_LocationNameOrderByCreatedAtDesc("ACTIVE", location);
-        } else {
-            listings = listingRepository.findByStatusOrderByCreatedAtDesc("ACTIVE");
-        }
-        return listings.stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    /**
-     * UC-34: Filter listings nâng cao với Pagination (NFR-P2).
-     */
-    public ListingPageResponse getFilteredListings(Long categoryId, String location, String q,
-                                                   String sort, int page, int size) {
+    @Transactional(readOnly = true)
+    public PagedResponse<ListingResponse> getFilteredListings(Long categoryId, String location, String q,
+                                                              String sort, int page, int size, User currentUser) {
         Sort s = parseSort(sort);
-        Pageable pageable = PageRequest.of(page, size, s);
-        var pageResult = listingRepository.findByFilters(categoryId, location, q, pageable);
+        Pageable pageable = PageRequest.of(Math.max(page, 0), size > 0 ? Math.min(size, 20) : 10, s);
         
+        Page<Listing> pageResult = listingRepository.findByFilters(categoryId, location, q, pageable);
+
         List<ListingResponse> content = pageResult.getContent().stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-                
-        return new ListingPageResponse(content, pageResult.getTotalPages(), pageResult.getTotalElements());
+                .map(l -> toResponse(l, currentUser))
+                .toList();
+
+        return new PagedResponse<>(content, pageResult.getNumber(), pageResult.getSize(), 
+                                   pageResult.getTotalElements(), pageResult.getTotalPages());
     }
 
-    private static Sort parseSort(String sort) {
-        if (sort == null || sort.isBlank()) return Sort.by(Sort.Direction.DESC, "createdAt");
+    private ListingResponse toListingResponse(Listing listing) {
+        ListingResponse response = new ListingResponse();
+        response.setId(listing.getId());
+        response.setTitle(listing.getTitle());
+        response.setImages(findImageUrls(listing.getId()));
+        response.setSellerSummary(buildSellerSummary(listing));
+        response.setIsSaved(false);
+        response.setIsFollowed(false);
+        return response;
+    }
+
+    private List<String> findImageUrls(Long listingId) {
+        return listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId)
+                .stream().map(ListingImage::getImageUrl).toList();
+    }
+
+    private Sort parseSort(String sort) {
+        if (sort == null || !sort.contains(",")) return Sort.by(Sort.Direction.DESC, "createdAt");
         String[] parts = sort.split(",");
-        String prop = parts[0].trim();
-        boolean asc = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim());
-        if ("price".equalsIgnoreCase(prop)) return Sort.by(asc ? Sort.Direction.ASC : Sort.Direction.DESC, "price");
-        return Sort.by(Sort.Direction.DESC, "createdAt");
+        return Sort.by("asc".equalsIgnoreCase(parts[1]) ? Sort.Direction.ASC : Sort.Direction.DESC, parts[0]);
     }
 
-    /**
-     * Lấy chi tiết một listing theo ID, kèm check quyền sở hữu.
-     */
-    public ListingResponse getListingById(Long id, User currentUser) {
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-        return toResponse(listing, currentUser);
-    }
-
-    /**
-     * UC-02: Tạo bài đăng mới. Tuân thủ BR-31 (Mặc định là DRAFT).
-     */
-    @Transactional
-    public Listing createListing(User seller, CreateListingRequest req) {
-        if (seller == null) throw new SlifeException(ErrorCode.UNAUTHORIZED);
-        
-        // BR-03: Validate bắt buộc tên và giá
-        if (req == null || req.getTitle() == null || req.getTitle().isBlank()) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT);
-        }
-
-        Listing listing = new Listing();
-        listing.setSeller(seller);
-        listing.setTitle(req.getTitle().trim());
-        listing.setDescription(req.getDescription() != null ? req.getDescription().trim() : null);
-
-        // Xử lý logic Giveaway (BR-11)
-        BigDecimal price = req.getPrice() != null ? req.getPrice() : BigDecimal.ZERO;
-        boolean isGiveaway = Boolean.TRUE.equals(req.getIsGiveaway());
-        if (isGiveaway) price = BigDecimal.ZERO;
-
-        listing.setPrice(price);
-        listing.setIsGiveaway(isGiveaway);
-        listing.setItemCondition(req.getCondition() != null && !req.getCondition().isBlank()
-                ? req.getCondition().trim().toUpperCase() : DEFAULT_CONDITION);
-        listing.setPurpose(req.getPurpose() != null && !req.getPurpose().isBlank()
-                ? req.getPurpose().trim().toUpperCase() : DEFAULT_PURPOSE);
-
-        // BR-31: Mặc định là DRAFT để admin hoặc system kiểm duyệt sau
-        listing.setStatus("DRAFT");
-
-        if (req.getCategoryId() != null) {
-            categoryRepository.findById(req.getCategoryId()).ifPresent(listing::setCategory);
-        }
-
-        listing.setCreatedAt(Instant.now());
-        listing.setUpdatedAt(Instant.now());
-
-        log.info("New listing created by user {}: {}", seller.getId(), listing.getTitle());
-        return listingRepository.save(listing);
-    }
-
-    /**
-     * Chuyển đổi Entity sang DTO với check quyền sở hữu (BR-01).
-     */
-    public ListingResponse toResponse(Listing listing, User currentUser) {
-        ListingResponse res = new ListingResponse();
-        res.setId(listing.getId());
-        res.setTitle(listing.getTitle());
-        res.setDescription(listing.getDescription());
-        res.setPrice(listing.getPrice());
-        res.setIsGiveaway(listing.getIsGiveaway() != null && listing.getIsGiveaway());
-        res.setImages(getImageUrls(listing.getId()));
-        res.setStatus(listing.getStatus());
-
-        User seller = listing.getSeller();
-        res.setSellerId(seller != null ? seller.getId() : null);
-        res.setSellerSummary(seller != null ? seller.getFullName() : "Unknown");
-
-        // Check if current viewer is the owner
-        boolean isOwn = currentUser != null && seller != null && currentUser.getId().equals(seller.getId());
-        res.setIsOwnListing(isOwn);
-
-        return res;
-    }
-
-    public ListingResponse toResponse(Listing listing) {
-        return toResponse(listing, null);
-    }
-
-    private List<String> getImageUrls(Long listingId) {
-        return listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId).stream()
-                .map(ListingImage::getImageUrl)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional
-    public void uploadListingImages(Long listingId, User currentUser, List<MultipartFile> files) {
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-
-        // BR-30: Chỉ Seller mới có quyền quản lý bài đăng của mình
-        if (listing.getSeller() == null || !listing.getSeller().getId().equals(currentUser.getId())) {
-            throw new SlifeException(ErrorCode.FORBIDDEN);
-        }
-
-        if (files == null || files.isEmpty()) return;
-
-        Path dir = uploadBasePath.resolve("listings").resolve(listingId.toString());
-        try {
-            Files.createDirectories(dir);
-        } catch (IOException e) {
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-
-        int nextOrder = listingImageRepository.countByListing_Id(listingId) + 1;
-        for (MultipartFile file : files) {
-            if (file == null || file.isEmpty() || file.getSize() > MAX_IMAGE_SIZE) continue;
-
-            String ext = getImageExtension(file.getOriginalFilename());
-            String filename = System.currentTimeMillis() + "_" + nextOrder + ext;
-            Path target = dir.resolve(filename).normalize();
-
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                
-                String url = "/uploads/listings/" + listingId + "/" + filename;
-                ListingImage img = new ListingImage();
-                img.setListing(listing);
-                img.setImageUrl(url);
-                img.setDisplayOrder(nextOrder++);
-                img.setCreatedAt(Instant.now());
-                listingImageRepository.save(img);
-            } catch (IOException e) {
-                log.error("Failed to upload image for listing {}: {}", listingId, e.getMessage());
-            }
-        }
-    }
-
-    private static String getImageExtension(String filename) {
-        if (filename == null || filename.isBlank()) return ".jpg";
-        int i = filename.lastIndexOf('.');
-        if (i <= 0) return ".jpg";
-        String ext = filename.substring(i).toLowerCase();
-        for (String e : ALLOWED_EXT) {
-            if (ext.equals(e)) return ext;
-        }
-        return ".jpg";
+    private String getImageExtension(String filename) {
+        String ext = (filename != null && filename.contains(".")) ? filename.substring(filename.lastIndexOf(".")).toLowerCase() : ".jpg";
+        return Arrays.asList(ALLOWED_EXT).contains(ext) ? ext : ".jpg";
     }
 }
