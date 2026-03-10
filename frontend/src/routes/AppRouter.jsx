@@ -1,14 +1,9 @@
-/**
- * AppRouter - Unified routing with lazy loading and guard middleware.
- * Combines the clean structure of 'main' with the path aliases from 'Hoa'.
- */
-import {Routes, Route, Navigate} from 'react-router-dom';
-import MainLayout from '../components/layout/MainLayout';
-import RouteGuard, {GUARD_PRESETS} from './RouteGuard';
+import { Routes, Route, Navigate } from "react-router-dom";
+import MainLayout from "../components/layout/MainLayout";
+import RouteGuard, { GUARD_PRESETS } from "./RouteGuard";
 
-// Lazy loaded components (Imports standardized from main)
+// Lazy loaded components
 import {
-<<<<<<< HEAD
     SuspenseLoginPage,
     SuspenseRegisterPage,
     SuspenseListingsPage,
@@ -18,80 +13,41 @@ import {
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
     SuspenseBackendTestPage,
-} from './LazyRoutes';
+} from "./LazyRoutes";
 
 export default function AppRouter() {
     return (
         <Routes>
-            <Route element={<MainLayout/>}>
+            <Route element={<MainLayout />}>
                 {/* Public routes */}
-                <Route path="/" element={<SuspenseListingsPage/>}/>
-                <Route path="/home" element={<SuspenseListingsPage/>}/>
-=======
-  SuspenseLoginPage,
-  SuspenseRegisterPage,
-  SuspenseListingsPage,
-  SuspenseProfilePage,
-  SuspenseDealDetailPage,
-  SuspenseDashboardPage,
-  SuspenseReportManagementPage,
-  SuspenseUserManagementPage,
-  SuspenseBackendTestPage,
-} from './LazyRoutes';
+                <Route path="/" element={<SuspenseListingsPage />} />
+                <Route path="/home" element={<SuspenseListingsPage />} />
 
-export default function AppRouter() {
-  return (
-      <Routes>
-        <Route element={<MainLayout />}>
-          {/* Public routes */}
-          <Route path="/" element={<SuspenseListingsPage />} />
->>>>>>> origin/hoa_test
-
-                {/* Guest-only routes (redirect nếu đã đăng nhập) */}
+                {/* Guest-only routes */}
                 <Route
                     path="/login"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.GUEST_ONLY}>
-                            <SuspenseLoginPage/>
+                            <SuspenseLoginPage />
                         </RouteGuard>
                     }
                 />
+
                 <Route
                     path="/register"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.GUEST_ONLY}>
-                            <SuspenseRegisterPage/>
+                            <SuspenseRegisterPage />
                         </RouteGuard>
                     }
                 />
 
-<<<<<<< HEAD
-=======
-
-          <Route
-              path="/profile/:id"
-              element={
-                <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                  <SuspenseProfilePage />
-                </RouteGuard>
-              }
-          />
-
-          <Route
-              path="/deals/:id"
-              element={
-                <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                  <SuspenseDealDetailPage />
-                </RouteGuard>
-              }
-          />
->>>>>>> origin/hoa_test
-
+                {/* Authenticated routes */}
                 <Route
                     path="/profile/:id"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseProfilePage/>
+                            <SuspenseProfilePage />
                         </RouteGuard>
                     }
                 />
@@ -100,7 +56,7 @@ export default function AppRouter() {
                     path="/deals/:id"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseDealDetailPage/>
+                            <SuspenseDealDetailPage />
                         </RouteGuard>
                     }
                 />
@@ -110,32 +66,34 @@ export default function AppRouter() {
                     path="/admin"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseDashboardPage/>
+                            <SuspenseDashboardPage />
                         </RouteGuard>
                     }
                 />
+
                 <Route
                     path="/admin/reports"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseReportManagementPage/>
+                            <SuspenseReportManagementPage />
                         </RouteGuard>
                     }
                 />
+
                 <Route
                     path="/admin/users"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseUserManagementPage/>
+                            <SuspenseUserManagementPage />
                         </RouteGuard>
                     }
                 />
 
                 {/* Dev/test route */}
-                <Route path="/backend-test" element={<SuspenseBackendTestPage/>}/>
+                <Route path="/backend-test" element={<SuspenseBackendTestPage />} />
 
                 {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" replace/>}/>
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
         </Routes>
     );
