@@ -62,7 +62,9 @@ const SearchBar = styled('form')(({ theme }) => ({
     },
 }));
 
-const FilterButton = styled(Box)(({ theme, active }) => ({
+const FilterButton = styled(Box, {
+    shouldForwardProp: (prop) => prop !== 'active',
+})(({ active }) => ({
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
