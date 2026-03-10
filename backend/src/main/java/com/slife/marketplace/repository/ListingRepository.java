@@ -23,7 +23,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
         FROM Listing l
         WHERE l.status = 'ACTIVE'
           AND (:categoryId IS NULL OR l.category.id = :categoryId)
-          AND (:location IS NULL OR l.pickupAddress.addressText LIKE CONCAT('%', :location, '%'))
+          AND (:location IS NULL OR l.pickupAddress.locationName = :location)
           AND (
               :q IS NULL
               OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
