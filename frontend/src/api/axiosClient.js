@@ -27,14 +27,8 @@ axiosClient.interceptors.response.use(
       raw: error,
     };
     if (normalizedError.status === 401) {
-      const isAuthEndpoint = error?.config?.url?.includes('/api/auth/');
-      const isAlreadyOnLogin = window.location.pathname === '/login';
-      const hadToken = !!localStorage.getItem('slife_access_token');
       localStorage.removeItem('slife_access_token');
-      // Chỉ redirect khi: không phải auth endpoint, không đang ở trang login, và trước đó có token
-      if (!isAuthEndpoint && !isAlreadyOnLogin && hadToken) {
-        window.location.href = '/login';
-      }
+      window.location.href = '/login';
     }
     return Promise.reject(normalizedError);
   },

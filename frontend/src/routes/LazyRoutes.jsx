@@ -27,7 +27,6 @@ export const LazyListingsPage = lazy(() => import('../pages/listing/ListingsPage
 export const LazyListingDetailPage = lazy(() => import('../pages/listing/ListingDetailPage'));
 export const LazyCreateListingPage = lazy(() => import('../pages/listing/CreateListingPage'));
 export const LazyProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
-export const LazyChatPage = lazy(() => import('../pages/chat/ChatPage'));
 export const LazyDealDetailPage = lazy(() => import('../pages/deal/DealDetailPage'));
 export const LazyDashboardPage = lazy(() => import('../pages/admin/DashboardPage'));
 export const LazyReportManagementPage = lazy(() => import('../pages/admin/ReportManagementPage'));
@@ -48,7 +47,6 @@ export const SuspenseListingsPage = withSuspense(LazyListingsPage, "Đang tải 
 export const SuspenseListingDetailPage = withSuspense(LazyListingDetailPage, "Đang tải chi tiết tin...");
 export const SuspenseCreateListingPage = withSuspense(LazyCreateListingPage, "Đang tải trang đăng tin...");
 export const SuspenseProfilePage = withSuspense(LazyProfilePage, "Đang tải trang cá nhân...");
-export const SuspenseChatPage = withSuspense(LazyChatPage, "Đang tải tin nhắn...");
 export const SuspenseDealDetailPage = withSuspense(LazyDealDetailPage, "Đang tải chi tiết giao dịch...");
 export const SuspenseDashboardPage = withSuspense(LazyDashboardPage, "Đang tải dashboard...");
 export const SuspenseReportManagementPage = withSuspense(LazyReportManagementPage, "Đang tải quản lý báo cáo...");

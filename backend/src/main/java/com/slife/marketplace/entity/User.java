@@ -1,6 +1,5 @@
 package com.slife.marketplace.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,7 +8,7 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -26,7 +25,6 @@ public class User {
     @Column(name = "email", nullable = false)
     private String email;
 
-    @JsonIgnore
     @Size(max = 255)
     @Column(name = "password_hash")
     private String passwordHash;
@@ -43,10 +41,6 @@ public class User {
     @Size(max = 1000)
     @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;
-
-    @Size(max = 1000)
-    @Column(name = "cover_image_url", length = 1000)
-    private String coverImageUrl;
 
     @Lob
     @Column(name = "bio")
@@ -70,12 +64,14 @@ public class User {
     private BigDecimal reputationScore;
 
     @NotNull
-    @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
-    private LocalDateTime createdAt;
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "created_at", nullable = false)
+    private Instant createdAt;
 
     @NotNull
-    @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
-    private LocalDateTime updatedAt;
+    @ColumnDefault("CURRENT_TIMESTAMP")
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
 
 
 }

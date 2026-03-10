@@ -126,134 +126,49 @@ export function AuthProvider({ children }) {
   }, [getTokenExpiry, refreshAccessToken, token]);
 
   /**
-   * Fetch user data from /api/users/me and update state.
-   * Always call this after setting a new token to ensure correct user format.
+   * Enhanced login với error handling
    */
-  const fetchAndSetUser = useCallback(async () => {
-    try {
-      const res = await userApi.getUser();
-      const body = res?.data;
-      const userPayload = body?.data ?? body;
-      if (userPayload && typeof userPayload === 'object' && userPayload.id) {
-        setUser(userPayload);
-        localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-        return userPayload;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  /**
-   * Đăng nhập bằng Google SSO (id_token). Chỉ chấp nhận email @fpt.edu.vn.
-   */
-  const loginWithGoogle = useCallback(async (idToken, options = {}) => {
+  const login = useCallback(async (credentials, options = {}) => {
     try {
       setAuthLoading(true);
       setAuthError(null);
 
-      const res = await authApi.googleOAuth({ idToken });
-      const body = res.data;
-      const payload = body?.data ?? body;
+      const { data } = await authApi.login(credentials);
 
-      const accessToken =
-        payload?.accessToken ??
-        payload?.token ??
-        payload?.access_token ??
-        body?.accessToken ??
-        body?.token;
-      if (!accessToken) {
-        if (import.meta.env.DEV && body) {
-          console.warn('[Auth] Response from server:', body);
-          console.warn('[Auth] payload keys:', payload ? Object.keys(payload) : 'no payload');
-        }
-        setAuthError(
-          payload?.message || body?.message || 'Invalid response from server. Chỉ email @fpt.edu.vn được phép.'
-        );
-        return { success: false, error: 'Invalid response from server' };
+      // Store tokens and user
+      localStorage.setItem(TOKEN_KEY, data.accessToken);
+      if (data.refreshToken) {
+        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+      }
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+      setToken(data.accessToken);
+      setRefreshToken(data.refreshToken);
+      setUser(data.user);
+
+      // Setup auto refresh
+      setupTokenRefresh(data.accessToken);
+
+      // Success callback
+      if (options.onSuccess) {
+        options.onSuccess(data);
       }
 
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      if (payload?.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
-      }
-      setToken(accessToken);
-      setRefreshToken(payload?.refreshToken || null);
-
-      // Fetch user data from /api/users/me to ensure correct format
-      const userData = await fetchAndSetUser();
-      if (!userData) {
-        // Fallback to payload.user if fetch fails
-        const fallbackUser = payload?.user ?? null;
-        setUser(fallbackUser);
-        if (fallbackUser) localStorage.setItem(USER_KEY, JSON.stringify(fallbackUser));
-      }
-
-      setupTokenRefresh(accessToken);
-
-      if (options.onSuccess) options.onSuccess(payload);
-      return { success: true, data: payload };
+      return { success: true, data };
     } catch (error) {
-      const errorMessage =
-        error?.message ||
-        error?.response?.data?.message ||
-        'Đăng nhập thất bại. Chỉ email @fpt.edu.vn được phép.';
+      const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
       setAuthError(errorMessage);
-      if (options.onError) options.onError(error);
+
+      // Error callback
+      if (options.onError) {
+        options.onError(error);
+      }
+
       return { success: false, error: errorMessage };
     } finally {
       setAuthLoading(false);
     }
-  }, [setupTokenRefresh, fetchAndSetUser]);
-
-  /**
-   * Đăng nhập bằng tài khoản test (Alice / Bob) để test giao diện.
-   */
-  const loginWithTestAccount = useCallback(async (email, options = {}) => {
-    try {
-      setAuthLoading(true);
-      setAuthError(null);
-
-      const res = await authApi.testLogin(email);
-      const body = res.data;
-      const payload = body?.data ?? body;
-
-      const accessToken =
-        payload?.accessToken ?? payload?.token ?? payload?.access_token;
-      if (!accessToken) {
-        setAuthError(payload?.message || body?.message || 'Không lấy được token.');
-        return { success: false, error: 'Invalid response' };
-      }
-
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      setToken(accessToken);
-      setRefreshToken(payload?.refreshToken || null);
-
-      // Fetch user data from /api/users/me to ensure correct format
-      const userData = await fetchAndSetUser();
-      if (!userData) {
-        const fallbackUser = payload?.user ?? null;
-        setUser(fallbackUser);
-        if (fallbackUser) localStorage.setItem(USER_KEY, JSON.stringify(fallbackUser));
-      }
-
-      setupTokenRefresh(accessToken);
-
-      if (options.onSuccess) options.onSuccess(payload);
-      return { success: true, data: payload };
-    } catch (error) {
-      const msg =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Đăng nhập thử nghiệm thất bại.';
-      setAuthError(msg);
-      if (options.onError) options.onError(error);
-      return { success: false, error: msg };
-    } finally {
-      setAuthLoading(false);
-    }
-  }, [setupTokenRefresh, fetchAndSetUser]);
+  }, [setupTokenRefresh]);
 
   /**
    * Enhanced logout
@@ -327,70 +242,67 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Initialize auth state on app start.
-   * Đọc token trực tiếp từ localStorage để tránh stale closure với React StrictMode.
+   * Initialize auth state on app start
    */
   useEffect(() => {
-    let cancelled = false;
-
     const initializeAuth = async () => {
       try {
         setAuthLoading(true);
 
-        const storedToken = localStorage.getItem(TOKEN_KEY);
-
-        if (!storedToken || isTokenExpired(storedToken)) {
-          // Token không tồn tại hoặc hết hạn — clear state
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(REFRESH_TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
-          if (!cancelled) {
-            setToken(null);
-            setRefreshToken(null);
-            setUser(null);
-          }
-          return;
-        }
-
-        // Token hợp lệ — sync state với localStorage và fetch fresh user
-        if (!cancelled) setToken(storedToken);
-
-        try {
-          const res = await userApi.getUser();
-          const body = res?.data;
-          const userPayload = body?.data ?? body;
-          if (!cancelled && userPayload && typeof userPayload === 'object' && userPayload.id) {
-            setUser(userPayload);
-            localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-            setupTokenRefresh(storedToken);
-          }
-        } catch {
-          // Token không còn hợp lệ với backend — clear auth
-          if (!cancelled) {
+        // Check if token exists and is valid
+        if (!token || isTokenExpired(token)) {
+          // Try to refresh token
+          if (refreshToken && !isTokenExpired(refreshToken)) {
+            const refreshSuccess = await refreshAccessToken();
+            if (!refreshSuccess) {
+              setAuthLoading(false);
+              return;
+            }
+          } else {
+            // No valid tokens, clear everything
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             setToken(null);
             setRefreshToken(null);
             setUser(null);
+            setAuthLoading(false);
+            return;
+          }
+        }
+
+        // Fetch latest user data if we have a valid token
+        if (token && !isTokenExpired(token)) {
+          try {
+            const { data } = await userApi.getUser();
+            setUser(data);
+            localStorage.setItem(USER_KEY, JSON.stringify(data));
+
+            // Setup auto refresh
+            setupTokenRefresh(token);
+          } catch (error) {
+            // Invalid token, clear auth
+            console.error('Failed to fetch user:', error);
+            await logout();
           }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
+        setAuthError('Failed to initialize authentication');
       } finally {
-        if (!cancelled) setAuthLoading(false);
+        setAuthLoading(false);
       }
     };
 
     initializeAuth();
 
+    // Cleanup interval on unmount
     return () => {
-      cancelled = true;
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Context value
   const value = useMemo(() => ({
@@ -402,8 +314,7 @@ export function AuthProvider({ children }) {
     authError,
 
     // Auth methods
-    loginWithGoogle,
-    loginWithTestAccount,
+    login,
     logout,
     updateUser,
     clearAuthError,
@@ -422,8 +333,7 @@ export function AuthProvider({ children }) {
     user,
     isAuthLoading,
     authError,
-    loginWithGoogle,
-    loginWithTestAccount,
+    login,
     logout,
     updateUser,
     clearAuthError,

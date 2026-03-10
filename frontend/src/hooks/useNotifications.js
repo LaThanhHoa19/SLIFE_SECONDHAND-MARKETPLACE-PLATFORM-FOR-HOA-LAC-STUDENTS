@@ -1,6 +1,6 @@
 /**
- * Mục đích: Lấy thông báo qua REST API với fallback polling.
- * Lưu ý: Đã loại bỏ Socket.io vì BE dùng STOMP/WebSocket.
+ * Mục đích: Lấy thông báo và hỗ trợ realtime qua socket.io, fallback polling.
+ * API dùng: GET /api/notifications, PATCH read endpoints.
  */
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
