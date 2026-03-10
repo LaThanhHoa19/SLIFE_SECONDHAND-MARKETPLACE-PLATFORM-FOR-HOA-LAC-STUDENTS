@@ -53,7 +53,7 @@ export default function useListings(initialParams = {}) {
 
   useEffect(() => {
     fetchData(params, debouncedQuery);
-  }, [params.page, params.size, params.category, params.sort, debouncedQuery, fetchData]);
+  }, [params.page, params.size, params.category, params.location, params.sort, debouncedQuery, fetchData]);
 
   const refetch = useCallback(() => {
     fetchData(params, debouncedQuery);
