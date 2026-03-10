@@ -38,7 +38,7 @@ public class SearchController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String location,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "20") int size
     ) {
         SearchRequest request = new SearchRequest();
         request.setQ(q);

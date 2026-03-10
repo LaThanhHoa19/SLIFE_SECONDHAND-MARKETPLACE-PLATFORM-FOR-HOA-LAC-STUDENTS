@@ -11,6 +11,8 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -88,5 +90,7 @@ public class Listing {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-
+    @OneToMany(mappedBy = "listing", fetch = FetchType.LAZY)
+    @OrderBy("displayOrder ASC")
+    private List<ListingImage> images = new ArrayList<>();
 }
