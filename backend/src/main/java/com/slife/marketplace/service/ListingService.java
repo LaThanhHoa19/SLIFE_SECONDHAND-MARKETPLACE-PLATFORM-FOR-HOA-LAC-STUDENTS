@@ -68,6 +68,13 @@ public class ListingService {
         response.setId(listing.getId());
         response.setSellerId(listing.getSeller() != null ? listing.getSeller().getId() : null);
         response.setTitle(listing.getTitle());
+        response.setDescription(listing.getDescription());
+        response.setPrice(listing.getPrice());
+        response.setItemCondition(listing.getItemCondition());
+        response.setStatus(listing.getStatus());
+        response.setIsGiveaway(Boolean.TRUE.equals(listing.getIsGiveaway()));
+        response.setLocation(extractLocation(listing));
+        response.setCreatedAt(listing.getCreatedAt());
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
         response.setIsOwnListing(currentUser != null && listing.getSeller() != null
@@ -84,6 +91,12 @@ public class ListingService {
         seller.put("fullName", listing.getSeller().getFullName());
         seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
         return seller;
+    }
+
+    private String extractLocation(Listing listing) {
+        if (listing.getPickupAddress() == null) return null;
+        if (listing.getPickupAddress().getLocationName() != null) return listing.getPickupAddress().getLocationName();
+        return listing.getPickupAddress().getAddressText();
     }
 
 
