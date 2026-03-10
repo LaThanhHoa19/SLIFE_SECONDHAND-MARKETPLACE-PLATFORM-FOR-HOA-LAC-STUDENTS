@@ -13,7 +13,16 @@ public class ListingResponse {
     
     // Core Content
     private String title;
-    private java.util.List<String> images;
+    private String description;
+    private BigDecimal price;
+    private String itemCondition;
+    private String status;
+    private Boolean isGiveaway;
+    private String location;
+    private Instant createdAt;
+    private List<String> images;
+
+
     private Object sellerSummary;
     private Boolean isOwnListing; // From 'main' - Helps UI show "Edit/Delete" buttons
     private Boolean isSaved;      // From 'Hoa' - Wishlist status

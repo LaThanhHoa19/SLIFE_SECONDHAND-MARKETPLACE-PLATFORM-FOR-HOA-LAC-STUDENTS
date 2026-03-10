@@ -62,6 +62,16 @@ class ListingServiceTest {
         listing.setId(10L);
         listing.setTitle("iPhone 12");
         listing.setSeller(seller);
+        listing.setDescription("Máy còn dùng ổn");
+        listing.setPrice(new BigDecimal("5000000"));
+        listing.setItemCondition("USED_GOOD");
+        listing.setStatus("ACTIVE");
+        listing.setIsGiveaway(false);
+        listing.setCreatedAt(Instant.parse("2025-01-01T10:00:00Z"));
+
+        Address address = new Address();
+        address.setLocationName("Hòa Lạc");
+        listing.setPickupAddress(address);
 
         ListingImage image = new ListingImage();
         image.setImageUrl("https://example.com/iphone.jpg");
@@ -82,6 +92,13 @@ class ListingServiceTest {
         assertEquals(10L, listingResponse.getId());
         assertEquals("iPhone 12", listingResponse.getTitle());
         assertEquals(List.of("https://example.com/iphone.jpg"), listingResponse.getImages());
+        assertEquals("Máy còn dùng ổn", listingResponse.getDescription());
+        assertEquals(new BigDecimal("5000000"), listingResponse.getPrice());
+        assertEquals("USED_GOOD", listingResponse.getItemCondition());
+        assertEquals("ACTIVE", listingResponse.getStatus());
+        assertEquals(false, listingResponse.getIsGiveaway());
+        assertEquals("Hòa Lạc", listingResponse.getLocation());
+        assertEquals(Instant.parse("2025-01-01T10:00:00Z"), listingResponse.getCreatedAt());
 
         @SuppressWarnings("unchecked")
         Map<String, Object> sellerSummary = (Map<String, Object>) listingResponse.getSellerSummary();
