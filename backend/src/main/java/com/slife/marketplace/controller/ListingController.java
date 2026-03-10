@@ -42,11 +42,13 @@ public class ListingController {
     public ResponseEntity<ApiResponse<PagedResponse<ListingResponse>>> getListings(
             @RequestParam(required = false) Long category,
             @RequestParam(required = false) String location,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        // Combines Hoa's pagination with Main's filtering
-        PagedResponse<ListingResponse> listings = listingService.getListings(category, location, page, size);
+        User currentUser = userService.getCurrentUserOptional().orElse(null);
+        PagedResponse<ListingResponse> listings = listingService.getFilteredListings(category, location, q, sort, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
 
