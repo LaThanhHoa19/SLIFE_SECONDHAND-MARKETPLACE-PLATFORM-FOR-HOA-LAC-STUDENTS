@@ -6,11 +6,11 @@ import com.slife.marketplace.dto.response.ListingPageResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.service.SearchService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -33,21 +33,12 @@ public class SearchController {
      * Query params: q, categoryId, location, page, size.
      */
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<ListingPageResponse>> search(
-            @RequestParam(required = false) String q,
-            @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String location,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
-    ) {
-        SearchRequest request = new SearchRequest();
-        request.setQ(q);
-        request.setCategoryId(categoryId);
-        request.setLocation(location);
-        request.setPage(page);
-        request.setSize(size);
-
+    public ResponseEntity<ApiResponse<ListingPageResponse>> search(@Valid SearchRequest request) {
         Page<Listing> pageResult = searchService.search(request);
+
+        if (pageResult.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.error("MSG01", "No search results"));
+        }
 
         List<ListingResponse> content = pageResult.getContent().stream()
                 .map(this::toListingResponse)
