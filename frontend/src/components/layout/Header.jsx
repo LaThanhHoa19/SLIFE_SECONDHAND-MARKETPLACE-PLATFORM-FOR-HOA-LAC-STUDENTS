@@ -25,6 +25,7 @@ import {
     Notifications as NotificationsIcon,
     Favorite as FavoriteIcon,
     Chat as ChatIcon,
+    DoneAll as DoneAllIcon,
     Search as SearchIcon,
     Person as PersonIcon,
     ListAlt as ListAltIcon,
@@ -121,9 +122,19 @@ const ActionButton = styled(Button)(({ theme }) => ({
     }
 }));
 
+const formatNotificationTime = (createdAt) => {
+    if (!createdAt) return '';
+    const d = new Date(createdAt);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60) return 'Vừa xong';
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return d.toLocaleDateString('vi-VN');
+};
 
 export default function Header({ onToggleSidebar }) {
-    const { unreadCount } = useContext(NotificationContext);
+    const { notifications, unreadCount, markRead, markAllRead } = useContext(NotificationContext);
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const [searchValue, setSearchValue] = useState('');
@@ -132,9 +143,11 @@ export default function Header({ onToggleSidebar }) {
     const [categories, setCategories] = useState([]);
     const [locations, setLocations] = useState([]);
     const [anchorEl, setAnchorEl] = useState(null);
+    const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const [catAnchorEl, setCatAnchorEl] = useState(null);
     const [locAnchorEl, setLocAnchorEl] = useState(null);
     const menuOpen = Boolean(anchorEl);
+    const notifOpen = Boolean(notifAnchorEl);
     const catOpen = Boolean(catAnchorEl);
     const locOpen = Boolean(locAnchorEl);
 
@@ -363,12 +376,95 @@ export default function Header({ onToggleSidebar }) {
 
                     {/* Notifications */}
                     <Tooltip title="Thông báo" arrow>
-                        <IconButton onClick={() => navigate('/notifications')} sx={{ color: '#FFFFFF', p: 0.75 }}>
-                            <Badge badgeContent={unreadCount} color="error">
+                        <IconButton
+                            onClick={(e) => (user ? setNotifAnchorEl(e.currentTarget) : navigate('/login'))}
+                            sx={{ color: '#FFFFFF', p: 0.75 }}
+                            aria-label="Thông báo"
+                        >
+                            <Badge badgeContent={unreadCount > 0 ? unreadCount : 0} color="error">
                                 <NotificationsIcon sx={{ fontSize: '20px' }} />
                             </Badge>
                         </IconButton>
                     </Tooltip>
+                    {/* Notification Dropdown */}
+                    <Popover
+                        open={notifOpen}
+                        anchorEl={notifAnchorEl}
+                        onClose={() => setNotifAnchorEl(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        slotProps={{
+                            paper: {
+                                sx: {
+                                    mt: 1.5,
+                                    width: 380,
+                                    maxHeight: 420,
+                                    borderRadius: '16px',
+                                    boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+                                    border: '1px solid #ede9fe',
+                                },
+                            },
+                        }}
+                    >
+                        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#7C3AED' }}>
+                                Thông báo
+                            </Typography>
+                            {unreadCount > 0 && (
+                                <Button
+                                    size="small"
+                                    startIcon={<DoneAllIcon sx={{ fontSize: 16 }} />}
+                                    onClick={markAllRead}
+                                    sx={{ fontSize: '12px', color: '#9D6EED', textTransform: 'none' }}
+                                >
+                                    Đánh dấu tất cả đã đọc
+                                </Button>
+                            )}
+                        </Box>
+                        <List dense disablePadding sx={{ maxHeight: 320, overflowY: 'auto', py: 0.5 }}>
+                            {notifications.length === 0 ? (
+                                <Box sx={{ py: 4, textAlign: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Chưa có thông báo
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                notifications.map((n) => (
+                                    <ListItemButton
+                                        key={n.id}
+                                        onClick={() => { if (!n.isRead) markRead(n.id); }}
+                                        sx={{
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            py: 1.5,
+                                            px: 2,
+                                            bgcolor: n.isRead ? 'transparent' : '#faf5ff',
+                                            '&:hover': { bgcolor: n.isRead ? '#faf7ff' : '#f5f0ff' },
+                                        }}
+                                    >
+                                        <Typography sx={{ fontSize: '13px', fontWeight: n.isRead ? 400 : 600, color: '#333', width: '100%' }}>
+                                            {n.content}
+                                        </Typography>
+                                        <Typography sx={{ fontSize: '11px', color: '#9D6EED', mt: 0.5 }}>
+                                            {formatNotificationTime(n.createdAt)}
+                                        </Typography>
+                                    </ListItemButton>
+                                ))
+                            )}
+                        </List>
+                        {notifications.length > 0 && (
+                            <Box sx={{ px: 2, py: 1, borderTop: '1px solid #f5f3ff' }}>
+                                <Button
+                                    fullWidth
+                                    size="small"
+                                    onClick={() => { setNotifAnchorEl(null); navigate('/notifications'); }}
+                                    sx={{ fontSize: '12px', color: '#9D6EED', textTransform: 'none' }}
+                                >
+                                    Xem tất cả
+                                </Button>
+                            </Box>
+                        )}
+                    </Popover>
 
                     {/* Chat */}
                     <Tooltip title="Tin nhắn" arrow>
