@@ -18,8 +18,22 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      * Keyword search by title/description with optional category & location filters.
      * Only returns listings with status = 'ACTIVE'.
      */
-    @Query("""
-        SELECT l
+    @Query(value = """
+        SELECT DISTINCT l
+        FROM Listing l
+        LEFT JOIN FETCH l.category c
+        LEFT JOIN FETCH l.images imgs
+        WHERE l.status = 'ACTIVE'
+          AND (:categoryId IS NULL OR l.category.id = :categoryId)
+          AND (:location IS NULL OR l.pickupAddress.locationName = :location)
+          AND (
+              :q IS NULL
+              OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
+              OR l.description LIKE CONCAT('%', :q, '%')
+          )
+        """,
+        countQuery = """
+        SELECT COUNT(l)
         FROM Listing l
         WHERE l.status = 'ACTIVE'
           AND (:categoryId IS NULL OR l.category.id = :categoryId)
