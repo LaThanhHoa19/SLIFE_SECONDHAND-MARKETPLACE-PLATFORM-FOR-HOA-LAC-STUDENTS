@@ -5,20 +5,14 @@ import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingPageResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
-import com.slife.marketplace.entity.User;
-import com.slife.marketplace.repository.ListingRepository;
-import com.slife.marketplace.service.UserService;
+import com.slife.marketplace.service.SearchService;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -28,12 +22,10 @@ import java.util.List;
 @RequestMapping("/api")
 public class SearchController {
 
-    private final ListingRepository listingRepository;
-    private final UserService userService;
+    private final SearchService searchService;
 
-    public SearchController(ListingRepository listingRepository, UserService userService) {
-        this.listingRepository = listingRepository;
-        this.userService = userService;
+    public SearchController(SearchService searchService) {
+        this.searchService = searchService;
     }
 
     /**
@@ -55,23 +47,7 @@ public class SearchController {
         request.setPage(page);
         request.setSize(size);
 
-        int pageIndex = request.getPage() != null && request.getPage() >= 0 ? request.getPage() : 0;
-        int pageSize = request.getSize() != null && request.getSize() > 0 ? Math.min(request.getSize(), 50) : 10;
-
-        Pageable pageable = PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-
-        String keyword = request.getQ();
-        String normalizedQ = (keyword == null || keyword.isBlank()) ? null : keyword.trim().toLowerCase();
-        String normalizedLocation = (request.getLocation() == null || request.getLocation().isBlank())
-                ? null
-                : request.getLocation().trim();
-
-        Page<Listing> pageResult = listingRepository.findByFilters(
-                normalizedQ,
-                request.getCategoryId(),
-                normalizedLocation,
-                pageable
-        );
+        Page<Listing> pageResult = searchService.search(request);
 
         List<ListingResponse> content = pageResult.getContent().stream()
                 .map(this::toListingResponse)
