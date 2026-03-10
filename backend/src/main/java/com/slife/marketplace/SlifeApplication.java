@@ -7,5 +7,13 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace;
-import org.springframework.boot.SpringApplication;import org.springframework.boot.autoconfigure.SpringBootApplication;
-@SpringBootApplication public class SlifeApplication{public static void main(String[] args){SpringApplication.run(SlifeApplication.class,args);}}
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SlifeApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SlifeApplication.class, args);
+    }
+}

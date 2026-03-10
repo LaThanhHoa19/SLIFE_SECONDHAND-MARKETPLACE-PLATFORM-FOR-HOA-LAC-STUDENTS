@@ -7,6 +7,7 @@ import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ChatMessageResponse;
 import com.slife.marketplace.dto.response.ChatSessionResponse;
 import com.slife.marketplace.entity.User;
+import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.service.ChatService;
 import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.util.Constants;
@@ -54,10 +55,12 @@ public class ChatController {
 
     private final ChatService chatService;
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public ChatController(ChatService chatService, UserService userService) {
+    public ChatController(ChatService chatService, UserService userService, UserRepository userRepository) {
         this.chatService = chatService;
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     // ── REST: sessions ────────────────────────────────────────────────────────
@@ -167,8 +170,14 @@ public class ChatController {
     public void wsSendMessage(@Payload SendMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
         Principal principal = headerAccessor.getUser();
         if (principal == null) return;
+        String email = principal.getName();
+        if (email == null || email.isBlank()) return;
         try {
-            User sender = userService.getCurrentUser();
+            User sender = userRepository.findByEmail(email).orElse(null);
+            if (sender == null) {
+                log.warn("wsSendMessage failed: user not found for email={}", email);
+                return;
+            }
             chatService.sendMessage(
                     request.getSessionId(),
                     request.getContent(),
