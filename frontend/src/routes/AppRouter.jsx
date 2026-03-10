@@ -8,6 +8,7 @@ import RouteGuard, {GUARD_PRESETS} from './RouteGuard';
 
 // Lazy loaded components (Imports standardized from main)
 import {
+<<<<<<< HEAD
     SuspenseLoginPage,
     SuspenseRegisterPage,
     SuspenseListingsPage,
@@ -26,6 +27,25 @@ export default function AppRouter() {
                 {/* Public routes */}
                 <Route path="/" element={<SuspenseListingsPage/>}/>
                 <Route path="/home" element={<SuspenseListingsPage/>}/>
+=======
+  SuspenseLoginPage,
+  SuspenseRegisterPage,
+  SuspenseListingsPage,
+  SuspenseProfilePage,
+  SuspenseDealDetailPage,
+  SuspenseDashboardPage,
+  SuspenseReportManagementPage,
+  SuspenseUserManagementPage,
+  SuspenseBackendTestPage,
+} from './LazyRoutes';
+
+export default function AppRouter() {
+  return (
+      <Routes>
+        <Route element={<MainLayout />}>
+          {/* Public routes */}
+          <Route path="/" element={<SuspenseListingsPage />} />
+>>>>>>> origin/hoa_test
 
                 {/* Guest-only routes (redirect nếu đã đăng nhập) */}
                 <Route
@@ -45,6 +65,27 @@ export default function AppRouter() {
                     }
                 />
 
+<<<<<<< HEAD
+=======
+
+          <Route
+              path="/profile/:id"
+              element={
+                <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                  <SuspenseProfilePage />
+                </RouteGuard>
+              }
+          />
+
+          <Route
+              path="/deals/:id"
+              element={
+                <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                  <SuspenseDealDetailPage />
+                </RouteGuard>
+              }
+          />
+>>>>>>> origin/hoa_test
 
                 <Route
                     path="/profile/:id"
