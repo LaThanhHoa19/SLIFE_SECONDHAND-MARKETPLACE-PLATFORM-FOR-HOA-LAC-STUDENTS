@@ -5,7 +5,6 @@ import {
   Container,
   Paper,
   Stack,
-  TextField,
   Typography,
   Divider,
 } from '@mui/material';
@@ -15,9 +14,6 @@ import { API_BASE_URL } from '../utils/constants';
 export default function BackendTestPage() {
   const [healthResult, setHealthResult] = useState(null);
   const [listingsResult, setListingsResult] = useState(null);
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginResult, setLoginResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -49,27 +45,6 @@ export default function BackendTestPage() {
     }
   };
 
-  const handleLogin = async () => {
-    setLoading(true);
-    setError(null);
-    setLoginResult(null);
-    try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-        email: loginEmail,
-        password: loginPassword,
-      });
-      const { data } = res;
-      const token = data?.data?.token;
-      if (token) {
-        localStorage.setItem('slife_access_token', token);
-      }
-      setLoginResult(data);
-    } catch (err) {
-      setError(err.message || 'Lỗi khi gọi /api/auth/login');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const pretty = (value) =>
     value ? JSON.stringify(value, null, 2) : 'Chưa có dữ liệu.';
@@ -149,55 +124,14 @@ export default function BackendTestPage() {
 
         <Paper variant="outlined" sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>
-            3. Test login /api/auth/login
+            3. Đăng nhập (Google SSO)
           </Typography>
-          <Stack spacing={2} direction={{ xs: 'column', sm: 'row' }}>
-            <TextField
-              label="Email (@fpt.edu.vn)"
-              fullWidth
-              size="small"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-            />
-            <TextField
-              label="Mật khẩu"
-              type="password"
-              fullWidth
-              size="small"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-            />
-            <Button
-              variant="contained"
-              onClick={handleLogin}
-              disabled={loading}
-            >
-              Login
-            </Button>
-          </Stack>
-          <Typography variant="caption" color="text.secondary">
-            Nếu login thành công, token sẽ được lưu vào localStorage
-            (&quot;slife_access_token&quot;).
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Chỉ hỗ trợ đăng nhập bằng Google với email @fpt.edu.vn. Dùng trang /login.
           </Typography>
-
-          <Box mt={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Kết quả:
-            </Typography>
-            <Box
-              component="pre"
-              sx={{
-                p: 1.5,
-                bgcolor: 'grey.100',
-                borderRadius: 1,
-                fontSize: 12,
-                maxHeight: 200,
-                overflow: 'auto',
-              }}
-            >
-              {pretty(loginResult)}
-            </Box>
-          </Box>
+          <Button variant="outlined" href="/login">
+            Mở trang đăng nhập
+          </Button>
         </Paper>
 
         {error && (

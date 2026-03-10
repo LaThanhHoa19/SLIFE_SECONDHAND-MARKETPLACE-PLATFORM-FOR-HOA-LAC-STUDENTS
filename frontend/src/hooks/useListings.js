@@ -1,8 +1,9 @@
 /**
- * Mục đích: fetch listings + debounce keyword + infinite scroll skeleton.
+ * Mục đích: fetch listings + debounce keyword.
  * API dùng: GET /api/listings?q=&category=&sort=&page=&size=.
+ * Expose: data, meta, isLoading, error, refetch, params, setParams.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getListings } from '../api/listingApi';
 import useDebounce from './useDebounce';
 
@@ -11,20 +12,52 @@ export default function useListings(initialParams = {}) {
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ totalPages: 0, totalElements: 0 });
   const [isLoading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const debouncedQuery = useDebounce(params.q);
+  const abortRef = useRef(null);
+
+  const fetchData = useCallback(async (currentParams, query) => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: res } = await getListings(
+          { ...currentParams, q: query },
+          { signal: controller.signal },
+      );
+      if (controller.signal.aborted) return;
+      const list = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.content)
+              ? res.content
+              : [];
+      setData(list);
+      setMeta({
+        totalPages: res?.totalPages ?? res?.data?.totalPages ?? 1,
+        totalElements: res?.totalElements ?? res?.data?.totalElements ?? list.length,
+      });
+    } catch (err) {
+      if (err?.name === 'CanceledError' || controller.signal.aborted) return;
+      const isNetwork = !err?.status && !err?.response;
+      setError({
+        variant: isNetwork ? 'network' : 'generic',
+        message: err?.message || 'Tải danh sách thất bại.',
+      });
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const run = async () => {
-      setLoading(true);
-      try {
-        const { data: res } = await getListings({ ...params, q: debouncedQuery });
-        setData(params.page === 0 ? res.content : [...data, ...res.content]);
-        setMeta({ totalPages: res.totalPages, totalElements: res.totalElements });
-      } finally { setLoading(false); }
-    };
-    run();
-    // TODO: xử lý race-condition bằng AbortController.
-  }, [params.page, params.size, params.category, params.sort, debouncedQuery]);
+    fetchData(params, debouncedQuery);
+  }, [params.page, params.size, params.category, params.location, params.sort, debouncedQuery, fetchData]);
 
-  return { data, meta, isLoading, params, setParams };
+  const refetch = useCallback(() => {
+    fetchData(params, debouncedQuery);
+  }, [fetchData, params, debouncedQuery]);
+
+  return { data, meta, isLoading, error, refetch, params, setParams };
 }

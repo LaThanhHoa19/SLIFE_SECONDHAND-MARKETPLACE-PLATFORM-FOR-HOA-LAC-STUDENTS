@@ -22,9 +22,27 @@ public enum ErrorCode {
     EMAIL_ALREADY_IN_USE("EMAIL_ALREADY_IN_USE", "Email is already in use", HttpStatus.CONFLICT),
     INVALID_CREDENTIALS("INVALID_CREDENTIALS", "Invalid email or password", HttpStatus.UNAUTHORIZED),
     INVALID_STUDENT_EMAIL("INVALID_STUDENT_EMAIL", "Only @fpt.edu.vn email is allowed", HttpStatus.BAD_REQUEST),
+    INVALID_GOOGLE_TOKEN("INVALID_GOOGLE_TOKEN", "Invalid or expired Google sign-in token", HttpStatus.UNAUTHORIZED),
+    GOOGLE_DOMAIN_NOT_ALLOWED("GOOGLE_DOMAIN_NOT_ALLOWED", "Only @fpt.edu.vn email is allowed to sign in", HttpStatus.FORBIDDEN),
 
     // Listing related
-    LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND);
+    LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+
+    // Upload
+    FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // Chat & negotiation
+    CHAT_SESSION_NOT_FOUND("CHAT_SESSION_NOT_FOUND", "Chat session not found", HttpStatus.NOT_FOUND),
+    NOT_CHAT_PARTICIPANT("NOT_CHAT_PARTICIPANT", "You do not have permission", HttpStatus.FORBIDDEN),
+    USER_BANNED_OR_RESTRICTED("USER_BANNED_OR_RESTRICTED", "You cannot send messages", HttpStatus.FORBIDDEN),
+    RATE_LIMIT_EXCEEDED("RATE_LIMIT_EXCEEDED", "Max 1 message per second", HttpStatus.TOO_MANY_REQUESTS),
+    OFFER_PRICE_INVALID("OFFER_PRICE_INVALID", "Offer price must be positive and lower than listing price", HttpStatus.BAD_REQUEST),
+    OFFER_NOT_FOUND("OFFER_NOT_FOUND", "Offer not found", HttpStatus.NOT_FOUND),
+    DEAL_NOT_FOUND("DEAL_NOT_FOUND", "Deal not found", HttpStatus.NOT_FOUND),
+    OFFER_SPAM_LIMIT("OFFER_SPAM_LIMIT", "You have reached the maximum offer limit (5) for this listing (BR-35)", HttpStatus.TOO_MANY_REQUESTS),
+    OFFER_NOT_PENDING("OFFER_NOT_PENDING", "Offer is no longer pending", HttpStatus.CONFLICT),
+    FILE_TOO_LARGE("FILE_TOO_LARGE", "File exceeds 5 MB limit", HttpStatus.PAYLOAD_TOO_LARGE),
+    INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     private final String code;
     private final String message;
