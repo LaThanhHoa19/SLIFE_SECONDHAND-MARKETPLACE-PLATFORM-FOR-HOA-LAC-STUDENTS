@@ -33,24 +33,15 @@ import java.util.*;
 @Slf4j
 public class ListingService {
 
-    private static final String DEFAULT_CONDITION = "USED_GOOD";
-    private static final String DEFAULT_PURPOSE = "SALE";
-    private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-    private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
-
     private final ListingRepository listingRepository;
-    private final CategoryRepository categoryRepository;
     private final ListingImageRepository listingImageRepository;
-    private final Path uploadBasePath;
 
     public ListingService(ListingRepository listingRepository,
-                          CategoryRepository categoryRepository,
+                          com.slife.marketplace.repository.CategoryRepository categoryRepository,
                           ListingImageRepository listingImageRepository,
                           Path uploadBasePath) {
         this.listingRepository = listingRepository;
-        this.categoryRepository = categoryRepository;
         this.listingImageRepository = listingImageRepository;
-        this.uploadBasePath = uploadBasePath;
     }
 
     /**
@@ -61,27 +52,40 @@ public class ListingService {
                                                               String sort, int page, int size, User currentUser) {
         Sort s = parseSort(sort);
         Pageable pageable = PageRequest.of(Math.max(page, 0), size > 0 ? Math.min(size, 20) : 10, s);
-        
+
         Page<Listing> pageResult = listingRepository.findByFilters(categoryId, location, q, pageable);
 
         List<ListingResponse> content = pageResult.getContent().stream()
                 .map(l -> toResponse(l, currentUser))
                 .toList();
 
-        return new PagedResponse<>(content, pageResult.getNumber(), pageResult.getSize(), 
-                                   pageResult.getTotalElements(), pageResult.getTotalPages());
+        return new PagedResponse<>(content, pageResult.getNumber(), pageResult.getSize(),
+                pageResult.getTotalElements(), pageResult.getTotalPages());
     }
 
-    private ListingResponse toListingResponse(Listing listing) {
+    public ListingResponse toResponse(Listing listing, User currentUser) {
         ListingResponse response = new ListingResponse();
         response.setId(listing.getId());
+        response.setSellerId(listing.getSeller() != null ? listing.getSeller().getId() : null);
         response.setTitle(listing.getTitle());
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
+        response.setIsOwnListing(currentUser != null && listing.getSeller() != null
+                && Objects.equals(currentUser.getId(), listing.getSeller().getId()));
         response.setIsSaved(false);
         response.setIsFollowed(false);
         return response;
     }
+
+    private Object buildSellerSummary(Listing listing) {
+        if (listing.getSeller() == null) return null;
+        Map<String, Object> seller = new HashMap<>();
+        seller.put("userId", listing.getSeller().getId());
+        seller.put("fullName", listing.getSeller().getFullName());
+        seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
+        return seller;
+    }
+
 
     private List<String> findImageUrls(Long listingId) {
         return listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId)
@@ -94,8 +98,4 @@ public class ListingService {
         return Sort.by("asc".equalsIgnoreCase(parts[1]) ? Sort.Direction.ASC : Sort.Direction.DESC, parts[0]);
     }
 
-    private String getImageExtension(String filename) {
-        String ext = (filename != null && filename.contains(".")) ? filename.substring(filename.lastIndexOf(".")).toLowerCase() : ".jpg";
-        return Arrays.asList(ALLOWED_EXT).contains(ext) ? ext : ".jpg";
-    }
 }

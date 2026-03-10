@@ -5,7 +5,7 @@
  * Response list mẫu: { content:[{listingId,title,price,isGiveaway,seller,images}], page,size,totalElements,totalPages }.
  */
 import axiosClient from './axiosClient';
-export const getListings = (params) => axiosClient.get('/api/listings', { params });
+export const getListings = (params, config = {}) => axiosClient.get('/api/listings', { params, ...config });
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
