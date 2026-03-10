@@ -36,7 +36,17 @@ public class SearchService {
     @Transactional(readOnly = true)
     public Page<Listing> search(SearchRequest request) {
         int pageIndex = request.getPage() != null && request.getPage() >= 0 ? request.getPage() : 0;
-        int pageSize = request.getSize() != null && request.getSize() > 0 ? Math.min(request.getSize(), 50) : 10;
+        Integer requestedSize = request.getSize();
+        int pageSize;
+        if (requestedSize == null) {
+            pageSize = 20; // default
+        } else if (requestedSize < 10) {
+            pageSize = 10; // tối thiểu 10
+        } else if (requestedSize > 20) {
+            pageSize = 20; // tối đa 20
+        } else {
+            pageSize = requestedSize;
+        }
 
         Pageable pageable = PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
 
