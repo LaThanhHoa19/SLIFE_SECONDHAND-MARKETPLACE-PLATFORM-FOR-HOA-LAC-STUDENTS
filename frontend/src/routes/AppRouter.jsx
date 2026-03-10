@@ -11,10 +11,7 @@ import {
   SuspenseLoginPage,
   SuspenseRegisterPage,
   SuspenseListingsPage,
-  SuspenseListingDetailPage,
-  SuspenseCreateListingPage,
   SuspenseProfilePage,
-  SuspenseChatPage,
   SuspenseDealDetailPage,
   SuspenseDashboardPage,
   SuspenseReportManagementPage,
@@ -28,7 +25,6 @@ export default function AppRouter() {
         <Route element={<MainLayout />}>
           {/* Public routes */}
           <Route path="/" element={<SuspenseListingsPage />} />
-          <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
 
           {/* Guest-only routes (redirect nếu đã đăng nhập) */}
           <Route
@@ -48,15 +44,7 @@ export default function AppRouter() {
               }
           />
 
-          {/* Authenticated routes */}
-          <Route
-              path="/listings/new"
-              element={
-                <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                  <SuspenseCreateListingPage />
-                </RouteGuard>
-              }
-          />
+
           <Route
               path="/profile/:id"
               element={
@@ -65,14 +53,7 @@ export default function AppRouter() {
                 </RouteGuard>
               }
           />
-          <Route
-              path="/chat"
-              element={
-                <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                  <SuspenseChatPage />
-                </RouteGuard>
-              }
-          />
+
           <Route
               path="/deals/:id"
               element={
