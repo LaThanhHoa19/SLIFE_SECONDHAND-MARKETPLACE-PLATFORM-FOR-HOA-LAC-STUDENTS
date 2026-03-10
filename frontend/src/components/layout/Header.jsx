@@ -24,7 +24,6 @@ import {
     Menu as MenuIcon,
     Notifications as NotificationsIcon,
     Favorite as FavoriteIcon,
-    Chat as ChatIcon,
     Search as SearchIcon,
     Person as PersonIcon,
     ListAlt as ListAltIcon,
