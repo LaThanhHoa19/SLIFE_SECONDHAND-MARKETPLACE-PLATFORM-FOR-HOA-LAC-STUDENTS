@@ -29,15 +29,19 @@ export default function useListings(initialParams = {}) {
           { signal: controller.signal },
       );
       if (controller.signal.aborted) return;
-      const list = Array.isArray(res?.data)
-          ? res.data
-          : Array.isArray(res?.content)
-              ? res.content
+
+      // Backend current contract: { code, message, data: { content, totalPages, totalElements, ... } }
+      // Fallback to legacy payloads for compatibility.
+      const payload = res?.data ?? res;
+      const list = Array.isArray(payload?.content)
+          ? payload.content
+          : Array.isArray(payload)
+              ? payload
               : [];
       setData(list);
       setMeta({
-        totalPages: res?.totalPages ?? res?.data?.totalPages ?? 1,
-        totalElements: res?.totalElements ?? res?.data?.totalElements ?? list.length,
+        totalPages: payload?.totalPages ?? 1,
+        totalElements: payload?.totalElements ?? list.length,
       });
     } catch (err) {
       if (err?.name === 'CanceledError' || controller.signal.aborted) return;
