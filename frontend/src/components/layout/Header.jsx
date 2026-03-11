@@ -19,26 +19,22 @@ import {
     List,
     ListItemButton,
 } from '@mui/material';
+
 import { styled } from '@mui/material/styles';
 import {
     Menu as MenuIcon,
     Notifications as NotificationsIcon,
-    Favorite as FavoriteIcon,
     Chat as ChatIcon,
+    DoneAll as DoneAllIcon,
     Search as SearchIcon,
     Person as PersonIcon,
     ListAlt as ListAltIcon,
     Logout as LogoutIcon,
-    Login as LoginIcon,
-    KeyboardArrowDown as ArrowDownIcon,
-    GridView as GridViewIcon,
-    LocationOn as LocationOnIcon,
     Close as CloseIcon,
+    ChatBubbleOutline as CommentIcon,
 } from '@mui/icons-material';
-import { useContext, useState, useEffect } from 'react';
+import { useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCategories } from '../../api/categoryApi';
-import { getLocations } from '../../api/locationApi';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import { AuthContext } from '../../context/AuthContext';
 import { fullImageUrl } from '../../utils/constants';
@@ -50,34 +46,20 @@ const SearchBar = styled('form')(({ theme }) => ({
     minWidth: '420px',
     maxWidth: '700px',
     height: '40px',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#2A2733',
     borderRadius: '24px',
     overflow: 'hidden',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-    border: '2px solid transparent',
+    border: '1px solid rgba(255,255,255,0.1)',
     transition: 'border-color 0.2s, box-shadow 0.2s',
     '&:focus-within': {
         borderColor: '#9D6EED',
-        boxShadow: '0 2px 12px rgba(157,110,237,0.25)',
+        boxShadow: '0 0 0 2px rgba(157,110,237,0.2)',
     },
 }));
 
-const FilterButton = styled(Box)(({ theme, active }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    height: '100%',
-    padding: '0 12px',
-    cursor: 'pointer',
-    userSelect: 'none',
-    backgroundColor: active ? '#f3eeff' : '#fafafa',
-    transition: 'background 0.15s',
-    flexShrink: 0,
-    '&:hover': { backgroundColor: '#f3eeff' },
-}));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
-    color: '#333333',
+    color: '#FFFFFF',
     width: '100%',
     height: '40px',
     '& .MuiInputBase-input': {
@@ -86,87 +68,53 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
         height: '40px',
         boxSizing: 'border-box',
         '&::placeholder': {
-            color: '#aaaaaa',
+            color: 'rgba(255,255,255,0.35)',
             opacity: 1,
         }
-    }
-}));
-
-const NavButton = styled(Button)(({ theme }) => ({
-    color: '#FFFFFF',
-    backgroundColor: 'transparent',
-    textTransform: 'none',
-    fontSize: '13px',
-    fontWeight: 400,
-    padding: theme.spacing(0.5, 1.5),
-    minWidth: 'auto',
-    '&:hover': {
-        backgroundColor: 'transparent',
-        color: '#9D6EED',
     }
 }));
 
 const ActionButton = styled(Button)(({ theme }) => ({
     color: '#FFFFFF',
     textTransform: 'none',
-    fontSize: '11px',
-    fontWeight: 500,
-    padding: theme.spacing(0.4, 1.5),
-    borderRadius: '12px',
+    fontSize: '13px',
+    fontWeight: 600,
+    padding: theme.spacing(0.5, 2),
+    borderRadius: '20px',
     backgroundColor: '#9D6EED',
     border: 'none',
-    minHeight: '24px',
+    minHeight: '32px',
+    whiteSpace: 'nowrap',
     '&:hover': {
         backgroundColor: '#8A5BD6',
     }
 }));
 
+const formatNotificationTime = (createdAt) => {
+    if (!createdAt) return '';
+    const d = new Date(createdAt);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60) return 'Vừa xong';
+    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+    return d.toLocaleDateString('vi-VN');
+};
 
 export default function Header({ onToggleSidebar }) {
-    const { unreadCount } = useContext(NotificationContext);
+    const { notifications, unreadCount, markRead, markAllRead } = useContext(NotificationContext);
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
     const [searchValue, setSearchValue] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('');
-    const [selectedLocation, setSelectedLocation] = useState('');
-    const [categories, setCategories] = useState([]);
-    const [locations, setLocations] = useState([]);
     const [anchorEl, setAnchorEl] = useState(null);
-    const [catAnchorEl, setCatAnchorEl] = useState(null);
-    const [locAnchorEl, setLocAnchorEl] = useState(null);
+    const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const menuOpen = Boolean(anchorEl);
-    const catOpen = Boolean(catAnchorEl);
-    const locOpen = Boolean(locAnchorEl);
-
-    const selectedCatLabel = selectedCategory
-        ? (categories.find(c => String(c.id) === selectedCategory)?.name ?? 'Tất cả')
-        : 'Tất cả';
-    const selectedLocLabel = selectedLocation || 'Tất cả xã';
-
-    useEffect(() => {
-        getCategories()
-            .then(({ data: res }) => {
-                const list = res?.data ?? res ?? [];
-                setCategories(Array.isArray(list) ? list : []);
-            })
-            .catch(() => setCategories([]));
-    }, []);
-
-    useEffect(() => {
-        getLocations()
-            .then(({ data: res }) => {
-                const list = res?.data ?? res ?? [];
-                setLocations(Array.isArray(list) ? list : []);
-            })
-            .catch(() => setLocations([]));
-    }, []);
+    const notifOpen = Boolean(notifAnchorEl);
 
     const handleSearch = (e) => {
         e.preventDefault();
         const params = new URLSearchParams();
         if (searchValue.trim()) params.set('q', searchValue.trim());
-        if (selectedCategory) params.set('category', selectedCategory);
-        if (selectedLocation) params.set('location', selectedLocation);
         navigate(`/?${params.toString()}`);
     };
 
@@ -199,73 +147,39 @@ export default function Header({ onToggleSidebar }) {
                             color="inherit"
                             edge="start"
                             onClick={onToggleSidebar}
-                            sx={{ color: '#FFFFFF', mr: 1 }}
+                            sx={{ color: '#FFFFFF', mr: 0.5 }}
                         >
                             <MenuIcon />
                         </IconButton>
                     ) : (
                         <Box sx={{ width: 40, height: 40 }} />
                     )}
-                    <Typography
-                        variant="h6"
-                        sx={{ fontWeight: 'bold', fontSize: '24px', color: '#FFFFFF', cursor: 'pointer' }}
-                        onClick={() => navigate('/')}
-                    >
-                        SLIFE
-                    </Typography>
-                </Box>
-
-                {/* Navigation Buttons */}
-                <Box sx={{ display: 'flex', gap: 2, ml: 2, flexShrink: 0 }}>
-                    <NavButton onClick={handleCreatePost}>ĐĂNG TIN</NavButton>
-                    <NavButton onClick={() => navigate('/giveaway')}>TRAO TẶNG</NavButton>
-                    <NavButton onClick={() => navigate('/community')}>CỘNG ĐỒNG</NavButton>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={() => navigate('/')}>
+                        <Typography
+                            variant="h6"
+                            sx={{ fontWeight: 'bold', fontSize: '22px', color: '#FFFFFF', lineHeight: 1 }}
+                        >
+                            SLIFE
+                        </Typography>
+                        <Box sx={{
+                            bgcolor: '#9D6EED',
+                            color: '#FFFFFF',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            px: 1.5,
+                            py: 0.4,
+                            borderRadius: '8px',
+                            lineHeight: 1.4,
+                            ml: 1,
+                        }}>
+                            Feed
+                        </Box>
+                    </Box>
                 </Box>
 
                 {/* Search Bar */}
                 <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', mx: 2 }}>
                     <SearchBar onSubmit={handleSearch}>
-
-                        {/* ── Category Filter ── */}
-                        <FilterButton active={catOpen || !!selectedCategory} onClick={(e) => setCatAnchorEl(e.currentTarget)}
-                                      sx={{ borderRight: '1px solid #efefef', minWidth: 120, maxWidth: 140, pl: 1.5, pr: 1 }}>
-                            <GridViewIcon sx={{ fontSize: 14, color: selectedCategory ? '#7C3AED' : '#aaa', flexShrink: 0 }} />
-                            <Typography sx={{ fontSize: '12px', fontWeight: 500, color: selectedCategory ? '#7C3AED' : '#666',
-                                flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', mx: 0.5 }}>
-                                {selectedCatLabel}
-                            </Typography>
-                            <ArrowDownIcon sx={{ fontSize: 14, color: '#bbb', flexShrink: 0,
-                                transform: catOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                        </FilterButton>
-
-                        {/* Category Popover */}
-                        <Popover open={catOpen} anchorEl={catAnchorEl} onClose={() => setCatAnchorEl(null)}
-                                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                                 transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                                 slotProps={{ paper: { sx: { mt: 1, minWidth: 220, maxHeight: 340, overflowY: 'auto',
-                                             borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.14)',
-                                             border: '1px solid #ede9fe' } } }}>
-                            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f5f3ff' }}>
-                                <Typography sx={{ fontSize: '11px', fontWeight: 700, color: '#9D6EED', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-                                    Danh mục
-                                </Typography>
-                            </Box>
-                            <List dense disablePadding sx={{ py: 0.5 }}>
-                                <ListItemButton selected={selectedCategory === ''} onClick={() => { setSelectedCategory(''); setCatAnchorEl(null); }}
-                                                sx={{ px: 2, py: 1, '&.Mui-selected': { bgcolor: '#f5f0ff' }, '&:hover': { bgcolor: '#faf7ff' } }}>
-                                    <Typography sx={{ fontSize: '13px', fontWeight: selectedCategory === '' ? 600 : 400,
-                                        color: selectedCategory === '' ? '#7C3AED' : '#444' }}>Tất cả danh mục</Typography>
-                                </ListItemButton>
-                                {categories.map((c) => (
-                                    <ListItemButton key={c.id} selected={selectedCategory === String(c.id)}
-                                                    onClick={() => { setSelectedCategory(String(c.id)); setCatAnchorEl(null); }}
-                                                    sx={{ px: 2, py: 1, '&.Mui-selected': { bgcolor: '#f5f0ff' }, '&:hover': { bgcolor: '#faf7ff' } }}>
-                                        <Typography sx={{ fontSize: '13px', fontWeight: selectedCategory === String(c.id) ? 600 : 400,
-                                            color: selectedCategory === String(c.id) ? '#7C3AED' : '#444' }}>{c.name}</Typography>
-                                    </ListItemButton>
-                                ))}
-                            </List>
-                        </Popover>
 
                         {/* ── Search Input ── */}
                         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative', height: '100%' }}>
@@ -277,66 +191,11 @@ export default function Header({ onToggleSidebar }) {
                             />
                             {searchValue && (
                                 <IconButton size="small" onClick={() => setSearchValue('')}
-                                            sx={{ color: '#ccc', p: 0.5, mr: 0.5, '&:hover': { color: '#999' } }}>
+                                            sx={{ color: 'rgba(255,255,255,0.4)', p: 0.5, mr: 0.5, '&:hover': { color: 'rgba(255,255,255,0.7)' } }}>
                                     <CloseIcon sx={{ fontSize: 14 }} />
                                 </IconButton>
                             )}
                         </Box>
-
-                        {/* ── Location Filter ── */}
-                        <FilterButton active={locOpen || !!selectedLocation} onClick={(e) => setLocAnchorEl(e.currentTarget)}
-                                      sx={{ borderLeft: '1px solid #efefef', minWidth: 130, maxWidth: 160, pl: 1, pr: 0.5 }}>
-                            <LocationOnIcon sx={{ fontSize: 14, color: '#7C3AED', flexShrink: 0 }} />
-                            <Box sx={{ flex: 1, mx: 0.5, overflow: 'hidden' }}>
-                                <Typography sx={{ fontSize: '10px', color: '#9D6EED', fontWeight: 600, lineHeight: 1.2 }}>
-                                    Hòa Lạc
-                                </Typography>
-                                <Typography sx={{ fontSize: '12px', fontWeight: 500, color: selectedLocation ? '#7C3AED' : '#666',
-                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
-                                    {selectedLocLabel}
-                                </Typography>
-                            </Box>
-                            <ArrowDownIcon sx={{ fontSize: 14, color: '#bbb', flexShrink: 0,
-                                transform: locOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                        </FilterButton>
-
-                        {/* Location Popover */}
-                        <Popover open={locOpen} anchorEl={locAnchorEl} onClose={() => setLocAnchorEl(null)}
-                                 anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                 transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                 slotProps={{ paper: { sx: { mt: 1, minWidth: 210, borderRadius: '16px',
-                                             boxShadow: '0 12px 32px rgba(0,0,0,0.14)', border: '1px solid #ede9fe' } } }}>
-                            {/* Header: Hòa Lạc cố định */}
-                            <Box sx={{ px: 2, py: 1.5, background: 'linear-gradient(135deg, #f5f0ff, #ede9fe)',
-                                borderBottom: '1px solid #e9d8fd', display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <LocationOnIcon sx={{ fontSize: 16, color: '#7C3AED' }} />
-                                <Box>
-                                    <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#7C3AED' }}>Hòa Lạc</Typography>
-                                    <Typography sx={{ fontSize: '11px', color: '#9D6EED' }}>Thạch Thất, Hà Nội</Typography>
-                                </Box>
-                            </Box>
-                            {/* Chọn xã */}
-                            <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                                <Typography sx={{ fontSize: '11px', fontWeight: 700, color: '#9D6EED',
-                                    textTransform: 'uppercase', letterSpacing: '0.8px' }}>Chọn xã</Typography>
-                            </Box>
-                            <List dense disablePadding sx={{ pb: 0.5 }}>
-                                <ListItemButton selected={selectedLocation === ''} onClick={() => { setSelectedLocation(''); setLocAnchorEl(null); }}
-                                                sx={{ px: 2, py: 1, '&.Mui-selected': { bgcolor: '#f5f0ff' }, '&:hover': { bgcolor: '#faf7ff' } }}>
-                                    <Typography sx={{ fontSize: '13px', fontWeight: selectedLocation === '' ? 600 : 400,
-                                        color: selectedLocation === '' ? '#7C3AED' : '#444' }}>Tất cả xã</Typography>
-                                </ListItemButton>
-                                <Divider sx={{ mx: 2, my: 0.5 }} />
-                                {locations.map((loc) => (
-                                    <ListItemButton key={loc} selected={selectedLocation === loc}
-                                                    onClick={() => { setSelectedLocation(loc); setLocAnchorEl(null); }}
-                                                    sx={{ px: 2, py: 1, '&.Mui-selected': { bgcolor: '#f5f0ff' }, '&:hover': { bgcolor: '#faf7ff' } }}>
-                                        <Typography sx={{ fontSize: '13px', fontWeight: selectedLocation === loc ? 600 : 400,
-                                            color: selectedLocation === loc ? '#7C3AED' : '#444' }}>{loc}</Typography>
-                                    </ListItemButton>
-                                ))}
-                            </List>
-                        </Popover>
 
                         {/* ── Search Button ── */}
                         <Box component="button" type="submit"
@@ -354,21 +213,104 @@ export default function Header({ onToggleSidebar }) {
 
                 {/* Right Section */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
-                    {/* Wishlist */}
-                    <Tooltip title="Yêu thích" arrow>
-                        <IconButton onClick={() => navigate('/wishlist')} sx={{ color: '#FFFFFF', p: 0.75 }}>
-                            <FavoriteIcon sx={{ fontSize: '20px' }} />
+                    {/* Comment / Feed reactions */}
+                    <Tooltip title="Bình luận" arrow>
+                        <IconButton onClick={() => navigate('/')} sx={{ color: '#FFFFFF', p: 0.75 }}>
+                            <CommentIcon sx={{ fontSize: '20px' }} />
                         </IconButton>
                     </Tooltip>
 
                     {/* Notifications */}
                     <Tooltip title="Thông báo" arrow>
-                        <IconButton onClick={() => navigate('/notifications')} sx={{ color: '#FFFFFF', p: 0.75 }}>
-                            <Badge badgeContent={unreadCount} color="error">
+                        <IconButton
+                            onClick={(e) => (user ? setNotifAnchorEl(e.currentTarget) : navigate('/login'))}
+                            sx={{ color: '#FFFFFF', p: 0.75 }}
+                            aria-label="Thông báo"
+                        >
+                            <Badge badgeContent={unreadCount > 0 ? unreadCount : 0} color="error">
                                 <NotificationsIcon sx={{ fontSize: '20px' }} />
                             </Badge>
                         </IconButton>
                     </Tooltip>
+                    {/* Notification Dropdown */}
+                    <Popover
+                        open={notifOpen}
+                        anchorEl={notifAnchorEl}
+                        onClose={() => setNotifAnchorEl(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        slotProps={{
+                            paper: {
+                                sx: {
+                                    mt: 1.5,
+                                    width: 380,
+                                    maxHeight: 420,
+                                    borderRadius: '16px',
+                                    boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+                                    border: '1px solid #ede9fe',
+                                },
+                            },
+                        }}
+                    >
+                        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#7C3AED' }}>
+                                Thông báo
+                            </Typography>
+                            {unreadCount > 0 && (
+                                <Button
+                                    size="small"
+                                    startIcon={<DoneAllIcon sx={{ fontSize: 16 }} />}
+                                    onClick={markAllRead}
+                                    sx={{ fontSize: '12px', color: '#9D6EED', textTransform: 'none' }}
+                                >
+                                    Đánh dấu tất cả đã đọc
+                                </Button>
+                            )}
+                        </Box>
+                        <List dense disablePadding sx={{ maxHeight: 320, overflowY: 'auto', py: 0.5 }}>
+                            {notifications.length === 0 ? (
+                                <Box sx={{ py: 4, textAlign: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Chưa có thông báo
+                                    </Typography>
+                                </Box>
+                            ) : (
+                                notifications.map((n) => (
+                                    <ListItemButton
+                                        key={n.id}
+                                        onClick={() => { if (!n.isRead) markRead(n.id); }}
+                                        sx={{
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            py: 1.5,
+                                            px: 2,
+                                            bgcolor: n.isRead ? 'transparent' : '#faf5ff',
+                                            '&:hover': { bgcolor: n.isRead ? '#faf7ff' : '#f5f0ff' },
+                                        }}
+                                    >
+                                        <Typography sx={{ fontSize: '13px', fontWeight: n.isRead ? 400 : 600, color: '#333', width: '100%' }}>
+                                            {n.content}
+                                        </Typography>
+                                        <Typography sx={{ fontSize: '11px', color: '#9D6EED', mt: 0.5 }}>
+                                            {formatNotificationTime(n.createdAt)}
+                                        </Typography>
+                                    </ListItemButton>
+                                ))
+                            )}
+                        </List>
+                        {notifications.length > 0 && (
+                            <Box sx={{ px: 2, py: 1, borderTop: '1px solid #f5f3ff' }}>
+                                <Button
+                                    fullWidth
+                                    size="small"
+                                    onClick={() => { setNotifAnchorEl(null); navigate('/notifications'); }}
+                                    sx={{ fontSize: '12px', color: '#9D6EED', textTransform: 'none' }}
+                                >
+                                    Xem tất cả
+                                </Button>
+                            </Box>
+                        )}
+                    </Popover>
 
                     {/* Chat */}
                     <Tooltip title="Tin nhắn" arrow>
@@ -381,10 +323,10 @@ export default function Header({ onToggleSidebar }) {
                     <Box sx={{ width: 1, height: 24, bgcolor: 'rgba(255,255,255,0.15)', mx: 1 }} />
 
                     {user ? (
-                        /* ─── LOGGED IN: Đăng tin + Avatar dropdown ─── */
+                        /* ─── LOGGED IN: Tên user + Avatar dropdown ─── */
                         <>
-                            <ActionButton onClick={handleCreatePost} startIcon={null}>
-                                + Đăng tin
+                            <ActionButton onClick={handleAvatarClick}>
+                                {displayName}
                             </ActionButton>
 
                             <Tooltip title={displayName} arrow>
