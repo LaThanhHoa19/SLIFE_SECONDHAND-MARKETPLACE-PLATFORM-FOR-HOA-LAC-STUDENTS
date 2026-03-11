@@ -145,115 +145,6 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  /**
-   * Đăng nhập bằng Google SSO (id_token). Chỉ chấp nhận email @fpt.edu.vn.
-   */
-  const loginWithGoogle = useCallback(async (idToken, options = {}) => {
-    try {
-      setAuthLoading(true);
-      setAuthError(null);
-
-      const res = await authApi.googleOAuth({ idToken });
-      const body = res.data;
-      const payload = body?.data ?? body;
-
-      const accessToken =
-        payload?.accessToken ??
-        payload?.token ??
-        payload?.access_token ??
-        body?.accessToken ??
-        body?.token;
-      if (!accessToken) {
-        if (import.meta.env.DEV && body) {
-          console.warn('[Auth] Response from server:', body);
-          console.warn('[Auth] payload keys:', payload ? Object.keys(payload) : 'no payload');
-        }
-        setAuthError(
-          payload?.message || body?.message || 'Invalid response from server. Chỉ email @fpt.edu.vn được phép.'
-        );
-        return { success: false, error: 'Invalid response from server' };
-      }
-
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      if (payload?.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
-      }
-      setToken(accessToken);
-      setRefreshToken(payload?.refreshToken || null);
-
-      // Fetch user data from /api/users/me to ensure correct format
-      const userData = await fetchAndSetUser();
-      if (!userData) {
-        // Fallback to payload.user if fetch fails
-        const fallbackUser = payload?.user ?? null;
-        setUser(fallbackUser);
-        if (fallbackUser) localStorage.setItem(USER_KEY, JSON.stringify(fallbackUser));
-      }
-
-      setupTokenRefresh(accessToken);
-
-      if (options.onSuccess) options.onSuccess(payload);
-      return { success: true, data: payload };
-    } catch (error) {
-      const errorMessage =
-        error?.message ||
-        error?.response?.data?.message ||
-        'Đăng nhập thất bại. Chỉ email @fpt.edu.vn được phép.';
-      setAuthError(errorMessage);
-      if (options.onError) options.onError(error);
-      return { success: false, error: errorMessage };
-    } finally {
-      setAuthLoading(false);
-    }
-  }, [setupTokenRefresh, fetchAndSetUser]);
-
-  /**
-   * Đăng nhập bằng tài khoản test (Alice / Bob) để test giao diện.
-   */
-  const loginWithTestAccount = useCallback(async (email, options = {}) => {
-    try {
-      setAuthLoading(true);
-      setAuthError(null);
-
-      const res = await authApi.testLogin(email);
-      const body = res.data;
-      const payload = body?.data ?? body;
-
-      const accessToken =
-        payload?.accessToken ?? payload?.token ?? payload?.access_token;
-      if (!accessToken) {
-        setAuthError(payload?.message || body?.message || 'Không lấy được token.');
-        return { success: false, error: 'Invalid response' };
-      }
-
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      setToken(accessToken);
-      setRefreshToken(payload?.refreshToken || null);
-
-      // Fetch user data from /api/users/me to ensure correct format
-      const userData = await fetchAndSetUser();
-      if (!userData) {
-        const fallbackUser = payload?.user ?? null;
-        setUser(fallbackUser);
-        if (fallbackUser) localStorage.setItem(USER_KEY, JSON.stringify(fallbackUser));
-      }
-
-      setupTokenRefresh(accessToken);
-
-      if (options.onSuccess) options.onSuccess(payload);
-      return { success: true, data: payload };
-    } catch (error) {
-      const msg =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Đăng nhập thử nghiệm thất bại.';
-      setAuthError(msg);
-      if (options.onError) options.onError(error);
-      return { success: false, error: msg };
-    } finally {
-      setAuthLoading(false);
-    }
-  }, [setupTokenRefresh, fetchAndSetUser]);
 
   /**
    * Enhanced logout
@@ -402,8 +293,6 @@ export function AuthProvider({ children }) {
     authError,
 
     // Auth methods
-    loginWithGoogle,
-    loginWithTestAccount,
     logout,
     updateUser,
     clearAuthError,
@@ -422,8 +311,6 @@ export function AuthProvider({ children }) {
     user,
     isAuthLoading,
     authError,
-    loginWithGoogle,
-    loginWithTestAccount,
     logout,
     updateUser,
     clearAuthError,
