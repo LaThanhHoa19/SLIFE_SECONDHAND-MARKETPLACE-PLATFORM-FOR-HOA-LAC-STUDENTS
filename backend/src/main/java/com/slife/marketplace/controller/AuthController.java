@@ -31,6 +31,16 @@ public class AuthController {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * DEV ONLY: quick login by email to get JWT for local testing.
+     * Example: POST /api/auth/dev-login?email=an.do@example.com
+     */
+    @PostMapping("/api/auth/dev-login")
+    public ResponseEntity<ApiResponse<AuthResponse>> devLogin(@RequestParam String email) {
+        AuthResponse authResponse = authService.devLogin(email);
+        return ResponseEntity.ok(ApiResponse.success("Dev login successful", authResponse));
+    }
+
     @PostMapping("/api/auth/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest request) {
         AuthResponse authResponse = authService.login(request);
