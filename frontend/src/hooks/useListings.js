@@ -6,6 +6,59 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getListings } from '../api/listingApi';
 import useDebounce from './useDebounce';
+const toBoolean = (value) => value === true || value === 1 || value === '1';
+
+const normalizeSeller = (item) => {
+  const sellerSummary = item?.sellerSummary ?? item?.seller_summary;
+  if (sellerSummary && typeof sellerSummary === 'object') return sellerSummary;
+
+  const seller = item?.seller;
+  if (seller && typeof seller === 'object') return seller;
+
+  const fallbackName = sellerSummary || item?.sellerName || item?.seller_name;
+  return fallbackName ? { fullName: fallbackName } : {};
+};
+
+const normalizeImages = (item) => {
+  const raw = item?.images ?? item?.imageUrls ?? item?.image_urls ?? item?.listingImages ?? item?.listing_images;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+      .map((img) => {
+        if (typeof img === 'string') return img;
+        if (img && typeof img === 'object') return img.imageUrl || img.image_url || '';
+        return '';
+      })
+      .filter(Boolean);
+};
+
+const normalizeListing = (item) => {
+  const pickupAddress = item?.pickupAddress ?? item?.pickup_address;
+  const locationFromAddress = typeof pickupAddress === 'object'
+      ? pickupAddress?.locationName || pickupAddress?.location_name || pickupAddress?.addressText || pickupAddress?.address_text
+      : pickupAddress;
+  const purpose = item?.purpose ?? item?.listingType ?? item?.listing_type;
+  const isGiveaway = toBoolean(item?.isGiveaway ?? item?.is_giveaway) || purpose === 'GIVEAWAY';
+
+  return {
+    ...item,
+    id: item?.id ?? item?.listingId ?? item?.listing_id,
+    sellerId: item?.sellerId ?? item?.seller_id,
+    title: item?.title ?? item?.name ?? '',
+    description: item?.description ?? item?.content ?? '',
+    price: item?.price ?? item?.amount ?? 0,
+    itemCondition: item?.itemCondition ?? item?.item_condition ?? item?.condition ?? '',
+    status: item?.status ?? '',
+    isGiveaway,
+    purpose,
+    location: item?.location ?? item?.locationName ?? item?.location_name ?? locationFromAddress ?? '',
+    createdAt: item?.createdAt ?? item?.created_at,
+    images: normalizeImages(item),
+    sellerSummary: normalizeSeller(item),
+  };
+};
+
+
 
 export default function useListings(initialParams = {}) {
   const [params, setParams] = useState({ page: 0, size: 10, ...initialParams });
@@ -38,7 +91,7 @@ export default function useListings(initialParams = {}) {
           : Array.isArray(payload)
               ? payload
               : [];
-      setData(list);
+      setData(list.map(normalizeListing));
       setMeta({
         totalPages: payload?.totalPages ?? 1,
         totalElements: payload?.totalElements ?? list.length,
