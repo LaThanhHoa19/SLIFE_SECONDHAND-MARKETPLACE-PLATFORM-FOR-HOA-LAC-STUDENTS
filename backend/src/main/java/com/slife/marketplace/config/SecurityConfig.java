@@ -40,7 +40,7 @@ public class SecurityConfig {
                 
                 // Auth and Public API access
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/listings/**", "/api/listing/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/listings/**", "/api/listing/**", "/api/categories/**", "/api/locations/**").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
                 // Chat and WebSockets
