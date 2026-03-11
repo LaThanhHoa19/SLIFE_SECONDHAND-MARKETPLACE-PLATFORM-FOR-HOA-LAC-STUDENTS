@@ -3,6 +3,7 @@ package com.slife.marketplace.exception;
 import com.slife.marketplace.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -54,6 +55,28 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Object> body = ApiResponse.error(code, message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(SlifeException.class)
+    public ResponseEntity<ApiResponse<Object>> handleSlifeException(SlifeException ex) {
+        ErrorCode errorCode = ex.getErrorCode();
+        ApiResponse<Object> body = ApiResponse.error(errorCode.getCode(), ex.getMessage());
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(body);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        ApiResponse<Object> body = ApiResponse.error(ErrorCode.FORBIDDEN.getCode(), "Forbidden");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
+        ApiResponse<Object> body = ApiResponse.error(
+                ErrorCode.INTERNAL_ERROR.getCode(),
+                ErrorCode.INTERNAL_ERROR.getMessage()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
 

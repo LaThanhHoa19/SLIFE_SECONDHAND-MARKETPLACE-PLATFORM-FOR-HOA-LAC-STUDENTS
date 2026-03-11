@@ -84,6 +84,22 @@ public class AuthService {
         return buildAuthResponse(token, user);
     }
 
+    /**
+     * DEV ONLY: generate JWT for an existing user without Google flow.
+     * Intended for local testing (e.g. Comment API) when running with dev profile.
+     */
+    public AuthResponse devLogin(String email) {
+        if (email == null || email.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Email is required");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
+
+        String token = jwtTokenProvider.generateToken(email, buildClaims(user));
+        return buildAuthResponse(token, user);
+    }
+
     /** Popup-based flow: verify credential JWT directly from GIS */
     public AuthResponse googleLogin(GoogleLoginRequest request) {
         if (request == null || request.getCredential() == null || request.getCredential().isBlank()) {
