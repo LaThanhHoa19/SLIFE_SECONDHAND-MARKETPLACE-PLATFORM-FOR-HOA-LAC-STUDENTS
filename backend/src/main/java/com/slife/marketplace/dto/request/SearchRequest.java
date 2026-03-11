@@ -2,6 +2,7 @@ package com.slife.marketplace.dto.request;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
@@ -13,6 +14,7 @@ public class SearchRequest {
     /**
      * Keyword to search in title and description (optional).
      */
+    @Size(max = 100, message = "Keyword must not exceed 100 characters")
     private String q;
 
     /**
