@@ -8,15 +8,22 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @Slf4j
 public class ListingService {
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
@@ -27,9 +34,7 @@ public class ListingService {
         this.listingImageRepository = listingImageRepository;
     }
 
-    /**
-     * UC-32 & UC-34: Unified Paged & Filtered Search
-     */
+
     @Transactional(readOnly = true)
     public PagedResponse<ListingResponse> getFilteredListings(
             Long categoryId,
@@ -40,20 +45,21 @@ public class ListingService {
             int size,
             User currentUser) {
 
-        Sort s = parseSort(sort);
 
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 10,
-                s
+                parseSort(sort)
         );
 
-        Page<Listing> pageResult =
-                listingRepository.findByFilters(categoryId, location, q, pageable);
+        Page<Listing> pageResult = listingRepository.findByFilters(
+                categoryId,
+                normalizeParam(location),
+                normalizeParam(q),
+                pageable
+        );
 
-        List<ListingResponse> content = pageResult
-                .getContent()
-                .stream()
+        List<ListingResponse> content = pageResult.getContent().stream()
                 .map(listing -> toListingResponse(listing, currentUser))
                 .toList();
 
@@ -66,11 +72,8 @@ public class ListingService {
         );
     }
 
-    /**
-     * Convert Entity -> Response DTO
-     */
-    private ListingResponse toListingResponse(Listing listing, User currentUser) {
 
+    private ListingResponse toListingResponse(Listing listing, User currentUser) {
         ListingResponse response = new ListingResponse();
 
         response.setId(listing.getId());
@@ -83,7 +86,6 @@ public class ListingService {
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
 
-        // TODO: sau này connect bảng saved + follow
         response.setIsSaved(false);
         response.setIsFollowed(false);
 
@@ -91,11 +93,9 @@ public class ListingService {
     }
 
     private Object buildSellerSummary(Listing listing) {
-
         if (listing.getSeller() == null) return null;
 
         Map<String, Object> seller = new HashMap<>();
-
         seller.put("userId", listing.getSeller().getId());
         seller.put("fullName", listing.getSeller().getFullName());
         seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
@@ -117,7 +117,6 @@ public class ListingService {
     }
 
     private List<String> findImageUrls(Long listingId) {
-
         return listingImageRepository
                 .findByListing_IdOrderByDisplayOrderAsc(listingId)
                 .stream()
@@ -126,18 +125,30 @@ public class ListingService {
     }
 
     private Sort parseSort(String sort) {
-
-        if (sort == null || !sort.contains(",")) {
+        if (sort == null || sort.isBlank()) {
             return Sort.by(Sort.Direction.DESC, "createdAt");
         }
 
         String[] parts = sort.split(",");
+        String field = parts[0].trim();
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            field = "createdAt";
+        }
 
-        return Sort.by(
-                "asc".equalsIgnoreCase(parts[1])
-                        ? Sort.Direction.ASC
-                        : Sort.Direction.DESC,
-                parts[0]
-        );
+        Sort.Direction direction = Sort.Direction.DESC;
+        if (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())) {
+            direction = Sort.Direction.ASC;
+        }
+
+        return Sort.by(direction, field);
+    }
+
+    private String normalizeParam(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }
