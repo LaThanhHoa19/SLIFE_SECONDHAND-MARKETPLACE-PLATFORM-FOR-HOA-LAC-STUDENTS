@@ -25,7 +25,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -173,8 +173,8 @@ public class AuthService {
         user.setRole("USER");
         user.setStatus("ACTIVE");
         user.setReputationScore(BigDecimal.valueOf(5.00));
-        user.setCreatedAt(Instant.now());
-        user.setUpdatedAt(Instant.now());
+        user.setCreatedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);
     }
 
@@ -196,7 +196,7 @@ public class AuthService {
             return user;
         }
 
-        user.setUpdatedAt(Instant.now());
+        user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);
     }
 
