@@ -24,7 +24,6 @@ import {
     Menu as MenuIcon,
     Notifications as NotificationsIcon,
     Favorite as FavoriteIcon,
-    Chat as ChatIcon,
     Search as SearchIcon,
     Person as PersonIcon,
     ListAlt as ListAltIcon,
@@ -34,6 +33,7 @@ import {
     GridView as GridViewIcon,
     LocationOn as LocationOnIcon,
     Close as CloseIcon,
+    Chat as ChatIcon,
 } from '@mui/icons-material';
 import { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -62,7 +62,9 @@ const SearchBar = styled('form')(({ theme }) => ({
     },
 }));
 
-const FilterButton = styled(Box)(({ theme, active }) => ({
+const FilterButton = styled(Box, {
+    shouldForwardProp: (prop) => prop !== 'active',
+})(({ active }) => ({
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
