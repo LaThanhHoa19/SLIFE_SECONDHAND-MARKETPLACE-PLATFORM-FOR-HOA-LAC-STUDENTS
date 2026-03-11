@@ -1,19 +1,27 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import MainLayout from "../components/layout/MainLayout";
-import RouteGuard, { GUARD_PRESETS } from "./RouteGuard";
+/**
+ * AppRouter - Unified routing with lazy loading and guard middleware.
+ * Combines the clean structure of 'main' with the path aliases from 'Hoa'.
+ */
+import { Routes, Route, Navigate } from 'react-router-dom';
+import MainLayout from '../components/layout/MainLayout';
+import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
 
-// Lazy loaded components
+// Lazy loaded components (Imports standardized from main)
 import {
     SuspenseLoginPage,
     SuspenseRegisterPage,
     SuspenseListingsPage,
+    SuspenseListingDetailPage,
+    SuspenseCreateListingPage,
     SuspenseProfilePage,
+    SuspenseChatPage,
     SuspenseDealDetailPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
     SuspenseBackendTestPage,
-} from "./LazyRoutes";
+    SuspenseNotificationsPage,
+} from './LazyRoutes';
 
 export default function AppRouter() {
     return (
@@ -21,10 +29,9 @@ export default function AppRouter() {
             <Route element={<MainLayout />}>
                 {/* Public routes */}
                 <Route path="/" element={<SuspenseListingsPage />} />
-                <Route path="/home" element={<SuspenseListingsPage />} />
-                <Route path="/ListingsPage" element={<SuspenseListingsPage />} />
+                <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
 
-                {/* Guest-only routes */}
+                {/* Guest-only routes (redirect nếu đã đăng nhập) */}
                 <Route
                     path="/login"
                     element={
@@ -33,7 +40,6 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-
                 <Route
                     path="/register"
                     element={
@@ -45,6 +51,14 @@ export default function AppRouter() {
 
                 {/* Authenticated routes */}
                 <Route
+                    path="/listings/new"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCreateListingPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
                     path="/profile/:id"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
@@ -52,12 +66,27 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-
+                <Route
+                    path="/chat"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseChatPage />
+                        </RouteGuard>
+                    }
+                />
                 <Route
                     path="/deals/:id"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseDealDetailPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/notifications"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseNotificationsPage />
                         </RouteGuard>
                     }
                 />
@@ -71,7 +100,6 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-
                 <Route
                     path="/admin/reports"
                     element={
@@ -80,7 +108,6 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-
                 <Route
                     path="/admin/users"
                     element={
