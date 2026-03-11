@@ -22,6 +22,8 @@ public class NotificationService {
     public static final String TYPE_MESSAGE  = "MESSAGE";
     public static final String TYPE_DEAL     = "DEAL";
     public static final String TYPE_OFFER    = "OFFER";
+    public static final String TYPE_REPORT   = "REPORT";
+    public static final String TYPE_COMMENT  = "COMMENT";
     public static final String TYPE_SYSTEM   = "SYSTEM";
 
     private final NotificationRepository notificationRepository;
@@ -77,6 +79,34 @@ public class NotificationService {
             }
         } catch (Exception ex) {
             log.error("notifyDealConfirmed failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify listing owner when their listing is reported. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyListingReported(User listingOwner, User reporter, Long listingId, String listingTitle) {
+        try {
+            Notification n = buildNotification(listingOwner, TYPE_REPORT,
+                    "LISTING", listingId,
+                    "Tin đăng \"" + truncate(listingTitle, 40) + "\" của bạn đã bị báo cáo bởi " + reporter.getFullName());
+            notificationRepository.save(n);
+            pushNotificationCount(listingOwner);
+        } catch (Exception ex) {
+            log.error("notifyListingReported failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify listing owner when a new comment is posted on their listing. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyListingCommented(User listingOwner, User commenter, Long listingId, String listingTitle) {
+        try {
+            Notification n = buildNotification(listingOwner, TYPE_COMMENT,
+                    "LISTING", listingId,
+                    commenter.getFullName() + " đã bình luận trên tin \"" + truncate(listingTitle, 40) + "\"");
+            notificationRepository.save(n);
+            pushNotificationCount(listingOwner);
+        } catch (Exception ex) {
+            log.error("notifyListingCommented failed listingId={}", listingId, ex);
         }
     }
 

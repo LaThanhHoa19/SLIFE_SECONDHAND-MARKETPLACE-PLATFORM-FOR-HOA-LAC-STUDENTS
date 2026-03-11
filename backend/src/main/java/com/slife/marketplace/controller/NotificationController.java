@@ -1,7 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.response.ApiResponse;
-import com.slife.marketplace.entity.Notification;
+import com.slife.marketplace.dto.response.NotificationResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.NotificationService;
 import com.slife.marketplace.service.UserService;
@@ -22,9 +22,10 @@ public class NotificationController {
     }
 
     @GetMapping("/api/notifications")
-    public ResponseEntity<ApiResponse<List<Notification>>> getNotifications() {
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications() {
         User user = userService.getCurrentUser();
-        List<Notification> list = notificationService.getNotifications(user.getId());
+        List<NotificationResponse> list = notificationService.getNotifications(user.getId())
+                .stream().map(NotificationResponse::from).toList();
         return ResponseEntity.ok(ApiResponse.success("OK", list));
     }
 
@@ -34,13 +35,13 @@ public class NotificationController {
         return ResponseEntity.ok(ApiResponse.success("OK", notificationService.getUnreadCount(user.getId())));
     }
 
-    @PutMapping("/api/notifications/{id}/read")
+    @PatchMapping("/api/notifications/{id}/read")
     public ResponseEntity<ApiResponse<Void>> markRead(@PathVariable Long id) {
         notificationService.markRead(id);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
-    @PutMapping("/api/notifications/read-all")
+    @PatchMapping("/api/notifications/read-all")
     public ResponseEntity<ApiResponse<Void>> markAllRead() {
         User user = userService.getCurrentUser();
         notificationService.markAllRead(user.getId());
