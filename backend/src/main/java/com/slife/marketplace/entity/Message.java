@@ -47,5 +47,13 @@ public class Message {
     @Column(name = "is_read", nullable = false)
     private Boolean isRead;
 
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @ColumnDefault("'TEXT'")
+    @Column(name = "message_type", nullable = false, length = 30)
+    private MessageType messageType = MessageType.TEXT;
+
+    @Column(name = "file_url", length = 1000)
+    private String fileUrl;
 
 }
