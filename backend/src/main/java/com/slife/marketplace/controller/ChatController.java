@@ -44,7 +44,7 @@ public class ChatController {
     private final UserService userService;
     private final UserRepository userRepository;
 
-    public ChatController(ChatService chatService, UserService userService) {
+    public ChatController(ChatService chatService, UserService userService, UserRepository userRepository) {
         this.chatService = chatService;
         this.userService = userService;
         this.userRepository = userRepository;
@@ -72,12 +72,18 @@ public class ChatController {
 
     /**
      * Send a message in a session (REST fallback; real-time dùng WebSocket /app/chat.send).
+     * Uses enhanced ChatService with messageType/fileUrl support.
      */
     @PostMapping("/chats/send")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendMessage(
             @Valid @RequestBody SendMessageRequest request) {
         User user = userService.getCurrentUser();
-        ChatMessageResponse msg = chatService.sendMessage(request.getSessionId(), request.getContent(), user);
+        ChatMessageResponse msg = chatService.sendMessage(
+                request.getSessionId(),
+                request.getContent(),
+                request.getMessageType(),
+                request.getFileUrl(),
+                user);
         return ResponseEntity.ok(ApiResponse.success(Constants.MSG10, msg));
     }
 
@@ -87,11 +93,60 @@ public class ChatController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size) {
         int safeSize = Math.min(20, Math.max(10, size));
-        return ResponseEntity.ok(ApiResponse.success("OK", chatService.getHistory(sessionId, page, safeSize)));
+        Page<ChatMessageResponse> data = chatService.getHistory(sessionId, page, safeSize);
+        return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
     @GetMapping("/chats/quick-replies")
     public ResponseEntity<ApiResponse<List<String>>> quickReplies() {
         return ResponseEntity.ok(ApiResponse.success("OK", QuickReplyUtil.getQuickReplies()));
+    }
+
+    /**
+     * Real-time send via WebSocket.
+     * Client sends to /app/chat.send with payload:
+     * { sessionId, content, messageType?, fileUrl? }
+     */
+    @MessageMapping("/chat.send")
+    public void wsSendMessage(@Payload SendMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        Principal principal = headerAccessor.getUser();
+        if (principal == null) return;
+        String email = principal.getName();
+        if (email == null || email.isBlank()) return;
+        try {
+            User sender = userRepository.findByEmail(email).orElse(null);
+            if (sender == null) {
+                log.warn("wsSendMessage failed: user not found for email={}", email);
+                return;
+            }
+            chatService.sendMessage(
+                    request.getSessionId(),
+                    request.getContent(),
+                    request.getMessageType(),
+                    request.getFileUrl(),
+                    sender);
+        } catch (Exception ex) {
+            log.warn("wsSendMessage failed principal={}: {}", principal.getName(), ex.getMessage());
+        }
+    }
+
+    /**
+     * Typing indicator.
+     * Client sends to /app/chat.typing with payload:
+     * { sessionId, isTyping }
+     */
+    @MessageMapping("/chat.typing")
+    public void wsTyping(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) {
+        Principal principal = headerAccessor.getUser();
+        if (principal == null) return;
+        try {
+            String sessionId = (String) payload.get("sessionId");
+            Boolean isTyping = Boolean.TRUE.equals(payload.get("isTyping"));
+            if (sessionId != null) {
+                chatService.broadcastTyping(sessionId, principal.getName(), isTyping);
+            }
+        } catch (Exception ex) {
+            log.warn("wsTyping failed: {}", ex.getMessage());
+        }
     }
 }

@@ -19,27 +19,15 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      * Only returns listings with status = 'ACTIVE'.
      */
     @Query(value = """
-        SELECT DISTINCT l
+        SELECT l
         FROM Listing l
-        LEFT JOIN FETCH l.category c
-        LEFT JOIN FETCH l.images imgs
+        LEFT JOIN l.category c
+        LEFT JOIN l.pickupAddress a
         WHERE l.status = 'ACTIVE'
-          AND (:categoryId IS NULL OR l.category.id = :categoryId)
-          AND (:location IS NULL OR l.pickupAddress.locationName = :location)
+          AND (:categoryId IS NULL OR c.id = :categoryId)
+          AND (:location IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
           AND (
-              :q IS NULL
-              OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
-              OR l.description LIKE CONCAT('%', :q, '%')
-          )
-        """,
-        countQuery = """
-        SELECT COUNT(l)
-        FROM Listing l
-        WHERE l.status = 'ACTIVE'
-          AND (:categoryId IS NULL OR l.category.id = :categoryId)
-          AND (:location IS NULL OR l.pickupAddress.locationName = :location)
-          AND (
-              :q IS NULL
+              :q IS NULL OR :q = ''
               OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
               OR l.description LIKE CONCAT('%', :q, '%')
           )
@@ -48,4 +36,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                                 @Param("categoryId") Long categoryId,
                                 @Param("location") String location,
                                 Pageable pageable);
+
+    /**
+     * Distinct pickup locations for filter dropdown.
+     */
+    @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
+           "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
+    java.util.List<String> findDistinctPickupLocationNames();
 }
