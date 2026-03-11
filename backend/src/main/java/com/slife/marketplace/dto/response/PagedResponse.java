@@ -7,5 +7,24 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.dto.response;
+
 import lombok.Data;
-@Data public class PagedResponse<T> { private java.util.List<T> data; private Long totalElements; private Integer totalPages; private Integer page; private Integer size; }
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+public class PagedResponse<T> {
+    private java.util.List<T> content;
+    private Long totalElements;
+    private Integer totalPages;
+    private Integer page;
+    private Integer size;
+
+    public PagedResponse(java.util.List<T> content, Integer page, Integer size, Long totalElements, Integer totalPages) {
+        this.content = content;
+        this.page = page;
+        this.size = size;
+        this.totalElements = totalElements;
+        this.totalPages = totalPages;
+    }
+}

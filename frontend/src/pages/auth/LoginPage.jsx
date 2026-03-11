@@ -1,26 +1,30 @@
 /**
- * Mục đích: Trang đăng nhập.
- * API: POST /api/auth/login.
- * Request: { email, password }.
- * Response: { accessToken, refreshToken, user }.
- * Validation (react-hook-form): email bắt buộc + pattern; password >= 8.
- * Accessibility: label đầy đủ, aria-invalid khi lỗi, Enter submit.
- * Tests: render input, validate lỗi, gọi login thành công/thất bại.
+ * Trang đăng nhập – Google SSO (@fpt.edu.vn) và đăng nhập test (Alice, Bob).
  */
-import { Box, Button, TextField, Typography } from '@mui/material';
-import { useForm } from 'react-hook-form';
-import { useAuth } from '../../hooks/useAuth';
 
+import { Box, Typography } from '@mui/material';
 export default function LoginPage() {
-  const { register, handleSubmit, formState: { errors } } = useForm();
-  const { login } = useAuth();
-  const onSubmit = async (values) => { await login(values); };
+
   return (
-    <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-      <Typography variant="h5">Login</Typography>
-      <TextField label="Email" {...register('email', { required: 'Email bắt buộc' })} error={!!errors.email} />
-      <TextField label="Password" type="password" {...register('password', { required: 'Mật khẩu bắt buộc', minLength: 8 })} error={!!errors.password} />
-      <Button type="submit">Đăng nhập</Button>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '70vh',
+        px: 2,
+        textAlign: 'center',
+      }}
+    >
+      <Typography variant="h5" gutterBottom>
+               Chỉ tài khoản Google đuôi <strong>@fpt.edu.vn</strong> được phép đăng nhập.
+        Đăng nhập đang tạm tắt
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Phạm vi hiện tại tập trung test giao diện feed (`ListingsPage`), header, footer và layout.
+      </Typography>
+
     </Box>
   );
 }

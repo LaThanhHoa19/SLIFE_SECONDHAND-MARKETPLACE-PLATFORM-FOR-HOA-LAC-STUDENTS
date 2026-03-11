@@ -46,7 +46,9 @@ const StyledSidebar = styled(Box)(({ theme }) => ({
 }));
 
 
-const StyledListItem = styled(ListItem)(({ theme, active }) => ({
+const StyledListItem = styled(ListItem, {
+    shouldForwardProp: (prop) => prop !== 'active'
+})(({ theme, active }) => ({
     borderRadius: '8px',
     margin: '1px 6px',
     padding: '8px 10px',

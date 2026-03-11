@@ -126,49 +126,25 @@ export function AuthProvider({ children }) {
   }, [getTokenExpiry, refreshAccessToken, token]);
 
   /**
-   * Enhanced login với error handling
+   * Fetch user data from /api/users/me and update state.
+   * Always call this after setting a new token to ensure correct user format.
    */
-  const login = useCallback(async (credentials, options = {}) => {
+  const fetchAndSetUser = useCallback(async () => {
     try {
-      setAuthLoading(true);
-      setAuthError(null);
-
-      const { data } = await authApi.login(credentials);
-
-      // Store tokens and user
-      localStorage.setItem(TOKEN_KEY, data.accessToken);
-      if (data.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+      const res = await userApi.getUser();
+      const body = res?.data;
+      const userPayload = body?.data ?? body;
+      if (userPayload && typeof userPayload === 'object' && userPayload.id) {
+        setUser(userPayload);
+        localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
+        return userPayload;
       }
-      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-
-      setToken(data.accessToken);
-      setRefreshToken(data.refreshToken);
-      setUser(data.user);
-
-      // Setup auto refresh
-      setupTokenRefresh(data.accessToken);
-
-      // Success callback
-      if (options.onSuccess) {
-        options.onSuccess(data);
-      }
-
-      return { success: true, data };
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
-      setAuthError(errorMessage);
-
-      // Error callback
-      if (options.onError) {
-        options.onError(error);
-      }
-
-      return { success: false, error: errorMessage };
-    } finally {
-      setAuthLoading(false);
+      return null;
+    } catch {
+      return null;
     }
-  }, [setupTokenRefresh]);
+  }, []);
+
 
   /**
    * Enhanced logout
@@ -242,67 +218,70 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Initialize auth state on app start
+   * Initialize auth state on app start.
+   * Đọc token trực tiếp từ localStorage để tránh stale closure với React StrictMode.
    */
   useEffect(() => {
+    let cancelled = false;
+
     const initializeAuth = async () => {
       try {
         setAuthLoading(true);
 
-        // Check if token exists and is valid
-        if (!token || isTokenExpired(token)) {
-          // Try to refresh token
-          if (refreshToken && !isTokenExpired(refreshToken)) {
-            const refreshSuccess = await refreshAccessToken();
-            if (!refreshSuccess) {
-              setAuthLoading(false);
-              return;
-            }
-          } else {
-            // No valid tokens, clear everything
+        const storedToken = localStorage.getItem(TOKEN_KEY);
+
+        if (!storedToken || isTokenExpired(storedToken)) {
+          // Token không tồn tại hoặc hết hạn — clear state
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(REFRESH_TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          if (!cancelled) {
+            setToken(null);
+            setRefreshToken(null);
+            setUser(null);
+          }
+          return;
+        }
+
+        // Token hợp lệ — sync state với localStorage và fetch fresh user
+        if (!cancelled) setToken(storedToken);
+
+        try {
+          const res = await userApi.getUser();
+          const body = res?.data;
+          const userPayload = body?.data ?? body;
+          if (!cancelled && userPayload && typeof userPayload === 'object' && userPayload.id) {
+            setUser(userPayload);
+            localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
+            setupTokenRefresh(storedToken);
+          }
+        } catch {
+          // Token không còn hợp lệ với backend — clear auth
+          if (!cancelled) {
             localStorage.removeItem(TOKEN_KEY);
             localStorage.removeItem(REFRESH_TOKEN_KEY);
             localStorage.removeItem(USER_KEY);
             setToken(null);
             setRefreshToken(null);
             setUser(null);
-            setAuthLoading(false);
-            return;
-          }
-        }
-
-        // Fetch latest user data if we have a valid token
-        if (token && !isTokenExpired(token)) {
-          try {
-            const { data } = await userApi.getUser();
-            setUser(data);
-            localStorage.setItem(USER_KEY, JSON.stringify(data));
-
-            // Setup auto refresh
-            setupTokenRefresh(token);
-          } catch (error) {
-            // Invalid token, clear auth
-            console.error('Failed to fetch user:', error);
-            await logout();
           }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        setAuthError('Failed to initialize authentication');
       } finally {
-        setAuthLoading(false);
+        if (!cancelled) setAuthLoading(false);
       }
     };
 
     initializeAuth();
 
-    // Cleanup interval on unmount
     return () => {
+      cancelled = true;
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Context value
   const value = useMemo(() => ({
@@ -314,7 +293,6 @@ export function AuthProvider({ children }) {
     authError,
 
     // Auth methods
-    login,
     logout,
     updateUser,
     clearAuthError,
@@ -333,7 +311,6 @@ export function AuthProvider({ children }) {
     user,
     isAuthLoading,
     authError,
-    login,
     logout,
     updateUser,
     clearAuthError,
