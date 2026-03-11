@@ -28,6 +28,7 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     image: slife/backend:latest
+    pull_policy: build
     container_name: slife-backend
     env_file:
       - .env
@@ -56,6 +57,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     image: slife/frontend:latest
+    pull_policy: build
     container_name: slife-frontend
     restart: unless-stopped
     networks:
