@@ -11,6 +11,7 @@ project-root/
 │   ├── Dockerfile
 │   └── nginx/default.conf
 └── deploy/
+    ├── docker-compose.dev.yml
     ├── docker-compose.prod.yml
     ├── .env.example
     ├── mysql/conf.d/
@@ -19,10 +20,27 @@ project-root/
         ├── certs/
         │   ├── fullchain.pem
         │   └── privkey.pem
-        └── conf.d/default.conf
+        └── conf.d/
+            ├── default.conf
+            └── default.dev.conf
 ```
 
-## Triển khai
+## Dev mode (localhost không cần port + live reload)
+
+> Dùng mode này khi code UI để luôn nhận bản mới nhất mà không cần rebuild frontend image sau mỗi lần sửa.
+
+```bash
+cd deploy
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Sau khi chạy:
+- App: `http://localhost`
+- API qua Nginx: `http://localhost/api/*`
+- Frontend chạy Vite trong container và mount source `../frontend`, nên sửa code sẽ hot reload ngay.
+
+## Production mode (build image mới khi chạy)
+
 
 1. Copy biến môi trường:
 
@@ -42,6 +60,7 @@ nano .env
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 ```
+`docker-compose.prod.yml` đã bật `pull_policy: build` cho backend/frontend, nên khi bấm run lại compose sẽ ưu tiên build image local mới từ source hiện tại.
 
 4. Kiểm tra health:
 
