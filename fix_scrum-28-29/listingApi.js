@@ -5,17 +5,10 @@
  * Response list mẫu: { content:[{listingId,title,price,isGiveaway,seller,images}], page,size,totalElements,totalPages }.
  */
 import axiosClient from './axiosClient';
-
-const sanitizeQueryParams = (params = {}) => Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== '' && value !== null && value !== undefined)
-);
-
-export const getListings = (params, config = {}) =>
-    axiosClient.get('/api/listings', { params: sanitizeQueryParams(params), ...config });
+export const getListings = (params) => axiosClient.get('/api/listings', { params });
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
-export const uploadImages = (id, formData, onUploadProgress) =>
-  axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
+export const uploadImages = (id, formData, onUploadProgress) => axiosClient.post(`/api/listings/${id}/images`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, onUploadProgress });
