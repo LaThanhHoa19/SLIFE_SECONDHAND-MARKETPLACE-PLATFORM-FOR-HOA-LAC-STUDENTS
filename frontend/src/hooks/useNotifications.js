@@ -1,61 +1,83 @@
 /**
- * Mục đích: Lấy thông báo qua REST API với fallback polling.
- * Lưu ý: Đã loại bỏ Socket.io vì BE dùng STOMP/WebSocket.
+ * SCRUM-172: Thông báo real-time qua STOMP WebSocket + REST API.
+ * BE push count qua /user/queue/notifications → refetch ngay.
+ * Fallback: polling 60s khi WS disconnect.
  */
-import { useEffect, useState, useCallback } from 'react';
-import { getNotifications, markNotificationRead } from '../api/notificationApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { getNotifications, markAllRead as apiMarkAllRead, markNotificationRead } from '../api/notificationApi';
+import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from './useAuth';
+
+const WS_BASE = API_BASE_URL.replace(/\/$/, '');
 
 export default function useNotifications() {
   const [notifications, setNotifications] = useState([]);
   const { token } = useAuth();
+  const clientRef = useRef(null);
 
-  // Sử dụng useCallback để fetchData ổn định hơn trong useEffect
   const fetchData = useCallback(async () => {
-    if (!token) return;
-    try {
-      const res = await getNotifications();
-      // Xử lý linh hoạt format data từ cả 2 nhánh (res.data.data hoặc res.data)
-      const data = res?.data?.data ?? res?.data ?? [];
-      setNotifications(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-      // Giữ lại data cũ thay vì xóa sạch nếu lỗi mạng đột ngột
-    }
-  }, [token]);
-
-  useEffect(() => {
     if (!token) {
       setNotifications([]);
       return;
     }
+    try {
+      const { data: res } = await getNotifications();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setNotifications(list);
+    } catch {
+      setNotifications([]);
+    }
+  }, [token]);
 
-    // Lấy dữ liệu lần đầu
+  useEffect(() => {
     fetchData();
 
-    // Thiết lập Polling mỗi 30 giây (Fallback cho đến khi tích hợp STOMP)
-    const pollingId = setInterval(fetchData, 30000);
+    if (!token) return;
+
+    const client = new Client({
+      webSocketFactory: () => new SockJS(`${WS_BASE}/chat?token=${token}`),
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: () => {
+        client.subscribe('/user/queue/notifications', () => {
+          fetchData();
+        });
+      },
+    });
+
+    client.activate();
+    clientRef.current = client;
+
+    const pollingId = setInterval(fetchData, 60000);
 
     return () => {
       clearInterval(pollingId);
+      client.deactivate();
+      clientRef.current = null;
     };
   }, [token, fetchData]);
 
-  const markRead = async (id) => {
+  const markRead = useCallback(async (id) => {
     try {
       await markNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-      );
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    } catch {
+      // ignore
     }
-  };
+  }, []);
 
-  return {
-    notifications,
-    unreadCount: notifications.filter((n) => !n.isRead).length,
-    markRead,
-    refresh: fetchData // Cho phép component chủ động refresh
-  };
+  const markAllRead = useCallback(async () => {
+    try {
+      await apiMarkAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  return { notifications, unreadCount, markRead, markAllRead, refetch: fetchData };
 }

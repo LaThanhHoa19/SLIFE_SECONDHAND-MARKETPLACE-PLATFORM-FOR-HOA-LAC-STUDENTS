@@ -5,10 +5,17 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.slife.marketplace.dto.response.AuthResponse;
-import com.slife.marketplace.entity.*;
+import com.slife.marketplace.entity.Conversation;
+import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.Message;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
-import com.slife.marketplace.repository.*;
+import com.slife.marketplace.repository.CategoryRepository;
+import com.slife.marketplace.repository.ConversationRepository;
+import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.MessageRepository;
+import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.security.JwtTokenProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,11 +24,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.time.LocalDateTime;
 
 @Service
 public class AuthService {
@@ -32,7 +39,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
-    
+
     // Repositories for test environment setup
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
@@ -58,7 +65,7 @@ public class AuthService {
         if (googleClientId == null || googleClientId.isBlank() || "replace-client-id".equals(googleClientId)) {
             throw new IllegalStateException("Google Client ID is not configured. Set GOOGLE_CLIENT_ID in properties.");
         }
-        
+
         this.googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(googleClientId))
                 .build();
@@ -136,9 +143,9 @@ public class AuthService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("role", user.getRole());
-        
+
         String token = jwtTokenProvider.generateToken(user.getEmail(), claims);
-        
+
         AuthResponse response = new AuthResponse();
         response.setAccessToken(token);
         response.setUser(user);
@@ -182,6 +189,7 @@ public class AuthService {
         User bob = userRepository.findByEmail(TEST_BOB).orElseGet(() -> createTestUser(TEST_BOB));
 
         // Logic to merge seed data and create mock conversations...
+        // Use listingRepository, categoryRepository, conversationRepository, messageRepository as needed.
         // (Implementation continues as per 'main' logic provided)
         return new HashMap<>(); // Placeholder for brevity
     }
