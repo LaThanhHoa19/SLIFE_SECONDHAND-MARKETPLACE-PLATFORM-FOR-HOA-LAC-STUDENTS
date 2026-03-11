@@ -51,7 +51,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             "LEFT JOIN l.pickupAddress a " +
             "WHERE l.status = 'ACTIVE' " +
             "AND (:categoryId IS NULL OR c.id = :categoryId) " +
-            "AND (:location IS NULL OR :location = '' OR a.locationName = :location) " +
+            "AND (:location IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%'))) " +
             "AND (:q IS NULL OR :q = '' OR l.title LIKE CONCAT('%', :q, '%') " +
             "     OR l.description LIKE CONCAT('%', :q, '%'))")
     Page<Listing> findByFilters(@Param("categoryId") Long categoryId,
