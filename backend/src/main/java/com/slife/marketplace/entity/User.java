@@ -9,7 +9,7 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -44,6 +44,10 @@ public class User {
     @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;
 
+    @Size(max = 1000)
+    @Column(name = "cover_image_url", length = 1000)
+    private String coverImageUrl;
+
     @Lob
     @Column(name = "bio")
     private String bio;
@@ -66,14 +70,12 @@ public class User {
     private BigDecimal reputationScore;
 
     @NotNull
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
+    private LocalDateTime createdAt;
 
     @NotNull
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
+    private LocalDateTime updatedAt;
 
 
 }

@@ -7,5 +7,17 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.config;
-import jakarta.servlet.*;import jakarta.servlet.http.*;import org.springframework.web.filter.OncePerRequestFilter;import java.io.IOException;
-public class AuthFilter extends OncePerRequestFilter{ @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain) throws ServletException, IOException { chain.doFilter(req,res);} }
+
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+
+public class AuthFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
+        chain.doFilter(req, res);
+    }
+}
