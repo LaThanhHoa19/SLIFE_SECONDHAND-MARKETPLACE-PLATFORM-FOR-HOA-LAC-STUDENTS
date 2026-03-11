@@ -5,7 +5,13 @@
  * Response list mẫu: { content:[{listingId,title,price,isGiveaway,seller,images}], page,size,totalElements,totalPages }.
  */
 import axiosClient from './axiosClient';
-export const getListings = (params, config = {}) => axiosClient.get('/api/listings', { params, ...config });
+
+const sanitizeQueryParams = (params = {}) => Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== '' && value !== null && value !== undefined)
+);
+
+export const getListings = (params, config = {}) =>
+    axiosClient.get('/api/listings', { params: sanitizeQueryParams(params), ...config });
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);

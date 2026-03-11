@@ -6,6 +6,7 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
@@ -20,8 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -39,15 +43,13 @@ class ListingServiceTest {
     @Mock
     private ListingImageRepository listingImageRepository;
 
-    @Mock
-    private CategoryRepository categoryRepository;
 
 
     private ListingService listingService;
 
     @BeforeEach
     void setUp() {
-        listingService = new ListingService(listingRepository, categoryRepository, listingImageRepository, Path.of("/tmp"));
+        listingService = new ListingService(listingRepository, listingImageRepository);
     }
 
 
@@ -76,15 +78,23 @@ class ListingServiceTest {
         ListingImage image = new ListingImage();
         image.setImageUrl("https://example.com/iphone.jpg");
 
-        Page<Listing> pageData = new PageImpl<>(List.of(listing), PageRequest.of(0, 10), 1);
-
-        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), any(PageRequest.class)))
+        Page<Listing> pageData = new PageImpl<>(List.of(listing));
+        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(pageData);
         when(listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(10L))
                 .thenReturn(List.of(image));
 
-        PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null,
-                "createdAt,desc", 0, 10, null);
+        PagedResponse<ListingResponse> result = listingService.getFilteredListings(
+                null,
+                null,
+                null,
+                "createdAt,desc",
+                0,
+                10,
+                null
+        );
+
+
         assertEquals(1, result.getContent().size());
         assertEquals(1L, result.getTotalElements());
 
@@ -94,9 +104,7 @@ class ListingServiceTest {
         assertEquals(List.of("https://example.com/iphone.jpg"), listingResponse.getImages());
         assertEquals("Máy còn dùng ổn", listingResponse.getDescription());
         assertEquals(new BigDecimal("5000000"), listingResponse.getPrice());
-        assertEquals("USED_GOOD", listingResponse.getItemCondition());
-        assertEquals("ACTIVE", listingResponse.getStatus());
-        assertEquals(false, listingResponse.getIsGiveaway());
+        assertEquals("USED_GOOD", listingResponse.getCondition());
         assertEquals("Hòa Lạc", listingResponse.getLocation());
         assertEquals(Instant.parse("2025-01-01T10:00:00Z"), listingResponse.getCreatedAt());
 

@@ -22,6 +22,7 @@ export default function AppRouter() {
                 {/* Public routes */}
                 <Route path="/" element={<SuspenseListingsPage />} />
                 <Route path="/home" element={<SuspenseListingsPage />} />
+                <Route path="/ListingsPage" element={<SuspenseListingsPage />} />
 
                 {/* Guest-only routes */}
                 <Route
