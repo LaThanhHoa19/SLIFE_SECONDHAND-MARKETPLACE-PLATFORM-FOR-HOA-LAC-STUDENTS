@@ -1,48 +1,83 @@
 /**
- * Mục đích: Lấy thông báo qua REST API với fallback polling.
- * Lưu ý: Đã loại bỏ Socket.io vì BE dùng STOMP/WebSocket.
+ * SCRUM-172: Thông báo real-time qua STOMP WebSocket + REST API.
+ * BE push count qua /user/queue/notifications → refetch ngay.
+ * Fallback: polling 60s khi WS disconnect.
  */
-import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
-import { getNotifications, markNotificationRead } from '../api/notificationApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { getNotifications, markAllRead as apiMarkAllRead, markNotificationRead } from '../api/notificationApi';
 import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from './useAuth';
+
+const WS_BASE = API_BASE_URL.replace(/\/$/, '');
 
 export default function useNotifications() {
   const [notifications, setNotifications] = useState([]);
   const { token } = useAuth();
+  const clientRef = useRef(null);
 
-  useEffect(() => {
-    let socket;
+  const fetchData = useCallback(async () => {
     if (!token) {
       setNotifications([]);
-      return undefined;
-        }
+      return;
+    }
+    try {
+      const { data: res } = await getNotifications();
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setNotifications(list);
+    } catch {
+      setNotifications([]);
+    }
+  }, [token]);
 
-    const fetchData = async () => {
-      try {
-        const response = await getNotifications();
-        setNotifications(response.data || []);
-      } catch (error) {
-        console.error('Failed to fetch notifications', error);
-      }
-    };
-
+  useEffect(() => {
     fetchData();
 
-    // TODO: nếu BE chưa có socket gateway thì bỏ đoạn này và dùng polling.
-    // socket = io(API_BASE_URL, { auth: { token } });
-    // socket.on('notification:new', (payload) => setNotifications((prev) => [payload, ...prev]));
+    if (!token) return;
 
-    const pollingId = setInterval(() => {
-      fetchData();
-    }, 30000);
+    const client = new Client({
+      webSocketFactory: () => new SockJS(`${WS_BASE}/chat?token=${token}`),
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: () => {
+        client.subscribe('/user/queue/notifications', () => {
+          fetchData();
+        });
+      },
+    });
+
+    client.activate();
+    clientRef.current = client;
+
+    const pollingId = setInterval(fetchData, 60000);
 
     return () => {
       clearInterval(pollingId);
-      socket?.disconnect();
-    };  }, [token]);
+      client.deactivate();
+      clientRef.current = null;
+    };
+  }, [token, fetchData]);
 
-  const markRead = async (id) => { await markNotificationRead(id); setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))); };
-  return { notifications, unreadCount: notifications.filter((n) => !n.isRead).length, markRead };
+  const markRead = useCallback(async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const markAllRead = useCallback(async () => {
+    try {
+      await apiMarkAllRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  return { notifications, unreadCount, markRead, markAllRead, refetch: fetchData };
 }
