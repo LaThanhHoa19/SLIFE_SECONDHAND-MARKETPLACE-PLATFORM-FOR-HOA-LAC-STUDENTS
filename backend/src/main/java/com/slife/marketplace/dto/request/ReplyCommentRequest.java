@@ -4,7 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class GoogleLoginRequest {
+public class ReplyCommentRequest {
+
     @NotBlank
-    private String credential;
+    private String content;
 }
+
