@@ -338,7 +338,26 @@ export default function StitchLandingPage() {
         </main>
         {/* Footer */}
       </div>
-
+      <section className="py-16 bg-white dark:bg-slate-900/50">
+  <div className="max-w-7xl mx-auto px-6">
+    <h2 className="text-2xl md:text-3xl font-bold mb-6 text-center">
+      Địa điểm Lục Chí Huynh Anh
+    </h2>
+    <div className="flex justify-center">
+      <div className="w-full max-w-3xl rounded-2xl overflow-hidden shadow-xl">
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3721.3891287711067!2d105.84466497630403!3d21.136906980539617!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x313500e75a6953eb%3A0x9fa31ec5cfa739fb!2zTOG6qXUg4bq-Y2ggSHV54buBbiBBbmg!5e0!3m2!1svi!2s!4v1773336717137!5m2!1svi!2s"
+          width="100%"
+          height="400"
+          style={{ border: 0 }}
+          allowFullScreen=""
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      </div>
+    </div>
+  </div>
+</section>
     </>
   );
 }
