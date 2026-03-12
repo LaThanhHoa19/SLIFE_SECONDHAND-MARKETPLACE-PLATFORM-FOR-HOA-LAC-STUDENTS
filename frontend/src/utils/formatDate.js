@@ -13,8 +13,6 @@ export const formatDate = (value, fmt) => {
 
     if (fmt) return format(date, fmt);
 
-    return formatDistanceToNow(date, {
-        addSuffix: true,
-        locale: vi,
-    });
+    // Use date-fns for robust relative time calculation
+    return formatDistanceToNow(date, { addSuffix: true, locale: vi });
 };
