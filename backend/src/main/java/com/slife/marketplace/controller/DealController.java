@@ -18,7 +18,9 @@ public class DealController {
         this.dealService = dealService;
     }
 
-    /** v1: Finalize the transaction. */
+    /**
+     * v1: Finalize the transaction.
+     */
     @PostMapping("/api/v1/deals/confirm")
     public ResponseEntity<ApiResponse<Deal>> confirmDeal(@Valid @RequestBody ConfirmDealRequest request) {
         Deal deal = dealService.confirm(request);

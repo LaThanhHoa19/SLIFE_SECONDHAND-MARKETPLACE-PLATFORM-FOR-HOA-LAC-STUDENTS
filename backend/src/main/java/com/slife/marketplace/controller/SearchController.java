@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * SCRUM-43: Basic keyword search endpoint.
@@ -59,8 +62,8 @@ public class SearchController {
         res.setId(listing.getId());
         res.setTitle(listing.getTitle());
 
-        // Optional richer mapping – safe defaults
-        java.util.Map<String, Object> sellerSummary = new java.util.HashMap<>();
+        // Richer mapping for the seller
+        Map<String, Object> sellerSummary = new HashMap<>();
         if (listing.getSeller() != null) {
             sellerSummary.put("fullName", listing.getSeller().getFullName());
             sellerSummary.put("avatarUrl", listing.getSeller().getAvatarUrl());
@@ -68,8 +71,8 @@ public class SearchController {
         }
         res.setSellerSummary(sellerSummary);
 
-        res.setImages(java.util.List.of()); // Images not part of SCRUM-43 scope
-
+        // Standard placeholders for scope-deferred items
+        res.setImages(new ArrayList<>()); 
         res.setIsSaved(false);
         res.setIsFollowed(false);
 

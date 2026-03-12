@@ -7,13 +7,30 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.controller;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController public class ConversationController {
-// TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
-@GetMapping("/api/conversations") public ResponseEntity<?> m1(){return ResponseEntity.ok().build();}
-@PostMapping("/api/conversations") public ResponseEntity<?> m2(@RequestBody Object r){return ResponseEntity.ok().build();}
-@GetMapping("/api/conversations/{id}/messages") public ResponseEntity<?> m3(@PathVariable Long id){return ResponseEntity.ok().build();}
-@PostMapping("/api/conversations/{id}/messages") public ResponseEntity<?> m4(@PathVariable Long id,@RequestBody Object r){return ResponseEntity.ok().build();}
+@RestController
+public class ConversationController {
+    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
+    @GetMapping("/api/conversations")
+    public ResponseEntity<?> m1() {
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/conversations")
+    public ResponseEntity<?> m2(@RequestBody Object r) {
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/api/conversations/{id}/messages")
+    public ResponseEntity<?> m3(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/conversations/{id}/messages")
+    public ResponseEntity<?> m4(@PathVariable Long id, @RequestBody Object r) {
+        return ResponseEntity.ok().build();
+    }
 }
