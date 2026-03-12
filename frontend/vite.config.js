@@ -7,8 +7,8 @@
  * Accessibility: N/A.
  * Tests cần viết: kiểm tra build/dev server chạy được với env file.
  */
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
@@ -16,6 +16,15 @@ export default defineConfig({
     global: {},
   },
   server: {
+    host: true,
     port: 5173,
-  },
+    watch: {
+      usePolling: true,
+      interval: 100
+    },
+    hmr: {
+      host: "localhost",
+      protocol: "ws"
+    }
+  }
 });
