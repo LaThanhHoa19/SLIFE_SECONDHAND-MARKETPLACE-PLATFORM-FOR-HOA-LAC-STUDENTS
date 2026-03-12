@@ -91,29 +91,23 @@ export default function AppRouter() {
                     }
                 />
 
-                {/* Admin-only routes */}
+                {/* Admin routes (tạm thời không cần login để test UI) */}
                 <Route
                     path="/admin"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseDashboardPage />
-                        </RouteGuard>
+                        <SuspenseDashboardPage />
                     }
                 />
                 <Route
                     path="/admin/reports"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseReportManagementPage />
-                        </RouteGuard>
+                        <SuspenseReportManagementPage />
                     }
                 />
                 <Route
                     path="/admin/users"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseUserManagementPage />
-                        </RouteGuard>
+                        <SuspenseUserManagementPage />
                     }
                 />
 
