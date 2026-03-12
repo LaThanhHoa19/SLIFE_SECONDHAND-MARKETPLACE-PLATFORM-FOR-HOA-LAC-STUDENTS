@@ -14,6 +14,7 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ../SLife_Database_MySQL:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER:-root} -p${MYSQL_PASSWORD:-123456} --silent"]
       interval: 15s
