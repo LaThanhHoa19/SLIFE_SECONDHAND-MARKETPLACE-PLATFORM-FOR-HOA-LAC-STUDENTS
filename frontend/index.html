@@ -9,6 +9,12 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Polyfill for Node-like 'global' expected by libraries like sockjs-client
+      if (typeof global === 'undefined') {
+        window.global = window;
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
