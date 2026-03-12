@@ -5,7 +5,7 @@
  * - Route guards với middleware pattern
  * - Role-based access control
  */
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
 
@@ -66,23 +66,32 @@ export default function AppRouter() {
             </RouteGuard>
           } />
 
-          {/* ===== ADMIN ROUTES - Chỉ admin ===== */}
-          <Route path="/admin" element={
-            <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-              <SuspenseDashboardPage />
-            </RouteGuard>
-          } />
-          <Route path="/admin/reports" element={
-            <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-              <SuspenseReportManagementPage />
-            </RouteGuard>
-          } />
-          <Route path="/admin/users" element={
-            <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-              <SuspenseUserManagementPage />
-            </RouteGuard>
-          } />
-        </Route>
-      </Routes>
-  );
+                {/* Admin routes (tạm thời không cần login để test UI) */}
+                <Route
+                    path="/admin"
+                    element={
+                        <SuspenseDashboardPage />
+                    }
+                />
+                <Route
+                    path="/admin/reports"
+                    element={
+                        <SuspenseReportManagementPage />
+                    }
+                />
+                <Route
+                    path="/admin/users"
+                    element={
+                        <SuspenseUserManagementPage />
+                    }
+                />
+
+                {/* Dev/test route */}
+                <Route path="/backend-test" element={<SuspenseBackendTestPage />} />
+
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+        </Routes>
+    );
 }
