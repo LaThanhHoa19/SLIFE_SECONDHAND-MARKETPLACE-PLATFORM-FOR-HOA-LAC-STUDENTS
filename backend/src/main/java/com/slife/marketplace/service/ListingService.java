@@ -53,9 +53,9 @@ public class ListingService {
         );
 
         Page<Listing> pageResult = listingRepository.findByFilters(
+                normalizeParam(q),
                 categoryId,
                 normalizeParam(location),
-                normalizeParam(q),
                 pageable
         );
 
