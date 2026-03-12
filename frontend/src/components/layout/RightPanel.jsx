@@ -117,6 +117,11 @@ export default function RightPanel() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 1.5,
+                position: 'sticky',
+                top: '76px', // Header + padding
+                height: 'calc(100vh - 76px)',
+                overflowY: 'auto',
+                '&::-webkit-scrollbar': { display: 'none' },
             }}
         >
             {/* Location selector + refresh */}
