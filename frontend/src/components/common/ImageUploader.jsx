@@ -63,71 +63,91 @@ export default function ImageUploader({ onFilesChange }) {
         onChange={handleAddImages}
       />
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-        {/* NÚT THÊM ẢNH (Hiển thị dạng khung lớn nếu chưa có ảnh, hoặc ô nhỏ nếu đã có ảnh) */}
-        {files.length < MAX_FILES && (
-          <label htmlFor="upload-image-input">
-            <Box
-              sx={{
-                width: files.length === 0 ? "100%" : 110,
-                height: files.length === 0 ? 150 : 110,
-                borderRadius: "12px",
-                background: "#f5f3ff",
-                border: "2px dashed #9D6EED",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "0.3s",
-                "&:hover": { background: "#ede7f6" }
-              }}
-            >
-              <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 32, color: "#9D6EED" }} />
-              {files.length === 0 && (
-                <Typography variant="body2" sx={{ mt: 1, color: "#9D6EED", fontWeight: 600 }}>
-                  Thêm hình ảnh
-                </Typography>
-              )}
-            </Box>
-          </label>
-        )}
-
-        {/* DANH SÁCH PREVIEW */}
-        {previews.map((url, index) => (
+      {/* KHUNG UPLOAD LỚN – chỉ hiện khi chưa có ảnh */}
+      {files.length === 0 && (
+        <label htmlFor="upload-image-input" style={{ display: "block" }}>
           <Box
-            key={url}
             sx={{
-              width: 110,
-              height: 110,
-              borderRadius: "12px",
-              overflow: "hidden",
-              position: "relative",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+              height: 200,
+              borderRadius: "14px",
+              background: "#EDE7F6",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              gap: 1,
+              "&:hover": { background: "#e0d4f7" }
             }}
           >
-            <img
-              src={url}
-              alt={`preview-${index}`}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-            <IconButton
-              size="small"
-              onClick={() => removeImage(index)}
+            <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 50, color: "#9D6EED" }} />
+            <Typography fontWeight={600} fontSize={18}>
+              Thêm ảnh
+            </Typography>
+          </Box>
+        </label>
+      )}
+
+      {/* GRID PREVIEW – hiện khi đã có ảnh */}
+      {files.length > 0 && (
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+
+          {/* NÚT THÊM NHỎ */}
+          {files.length < MAX_FILES && (
+            <label htmlFor="upload-image-input">
+              <Box
+                sx={{
+                  width: 110,
+                  height: 110,
+                  borderRadius: "10px",
+                  background: "#EDE7F6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  "&:hover": { background: "#e0d4f7" }
+                }}
+              >
+                <AddPhotoAlternateOutlinedIcon sx={{ color: "#9D6EED", fontSize: 35 }} />
+              </Box>
+            </label>
+          )}
+
+          {/* DANH SÁCH PREVIEW */}
+          {previews.map((url, index) => (
+            <Box
+              key={url}
               sx={{
-                position: "absolute",
-                top: 4,
-                right: 4,
-                background: "rgba(0,0,0,0.5)",
-                color: "#fff",
-                "&:hover": { background: "rgba(0,0,0,0.7)" }
+                width: 110,
+                height: 110,
+                borderRadius: "10px",
+                overflow: "hidden",
+                position: "relative"
               }}
             >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Box>
-        ))}
-      </Box>
+              <img
+                src={url}
+                alt={`preview-${index}`}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+              <IconButton
+                size="small"
+                onClick={() => removeImage(index)}
+                sx={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  "&:hover": { background: "rgba(0,0,0,0.7)" }
+                }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ))}
+        </Box>
+      )}
     </Box>
   );
 }
