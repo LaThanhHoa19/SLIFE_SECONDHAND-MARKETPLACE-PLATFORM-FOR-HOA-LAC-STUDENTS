@@ -18,6 +18,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @RestController
+@RequestMapping("/api/auth") // Added base path to clean up individual mappings
 public class AuthController {
 
     private final AuthService authService;
@@ -35,38 +36,38 @@ public class AuthController {
      * DEV ONLY: quick login by email to get JWT for local testing.
      * Example: POST /api/auth/dev-login?email=an.do@example.com
      */
-    @PostMapping("/api/auth/dev-login")
+    @PostMapping("/dev-login")
     public ResponseEntity<ApiResponse<AuthResponse>> devLogin(@RequestParam String email) {
         AuthResponse authResponse = authService.devLogin(email);
         return ResponseEntity.ok(ApiResponse.success("Dev login successful", authResponse));
     }
 
-    @PostMapping("/api/auth/login")
+    @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest request) {
         AuthResponse authResponse = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", authResponse));
     }
 
-    @PostMapping("/api/auth/logout")
+    @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
     }
 
     /** Popup/credential flow (Google Identity Services) */
-    @PostMapping("/api/auth/google")
+    @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> google(@Valid @RequestBody GoogleLoginRequest request) {
         AuthResponse authResponse = authService.googleLogin(request);
         return ResponseEntity.ok(ApiResponse.success("Google login successful", authResponse));
     }
 
     /** Step 1: Redirect browser to Google's OAuth2 consent page */
-    @GetMapping("/api/auth/google/init")
+    @GetMapping("/google/init")
     public void googleInit(HttpServletResponse response) throws IOException {
         response.sendRedirect(authService.getGoogleAuthorizationUrl());
     }
 
     /** Step 2: Google redirects back here with an authorization code */
-    @GetMapping("/api/auth/google/callback")
+    @GetMapping("/google/callback")
     public void googleCallbackRedirect(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
@@ -84,6 +85,7 @@ public class AuthController {
             String tokenParam = URLEncoder.encode(authResponse.getAccessToken(), StandardCharsets.UTF_8);
             String userParam = URLEncoder.encode(
                     objectMapper.writeValueAsString(authResponse.getUser()), StandardCharsets.UTF_8);
+            
             response.sendRedirect(frontendUrl + "/auth/google/callback"
                     + "?access_token=" + tokenParam
                     + "&user=" + userParam);
