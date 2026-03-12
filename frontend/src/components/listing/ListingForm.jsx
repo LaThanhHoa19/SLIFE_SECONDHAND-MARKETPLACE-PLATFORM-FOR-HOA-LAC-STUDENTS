@@ -16,20 +16,22 @@ import LaptopMacOutlined from "@mui/icons-material/LaptopMacOutlined";
 
 import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
+import { getLocations } from '../../api/locationApi';
 
 export default function ListingForm({ defaultValues = {}, onSubmit, submitting = false, mode = 'create' }) {
     // Logic quản lý State & Form
     const [imageFiles, setImageFiles] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [locations, setLocations] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
     
-    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+    const { register, handleSubmit, watch, setValue, clearErrors, formState: { errors } } = useForm({
         defaultValues: {
             title: '',
             description: '',
             price: '',
             condition: 'USED',
-            location: 'tanxa',
+            location: '',
             isGiveaway: false,
             categoryId: '',
             categoryName: '', // Hiển thị trên UI
@@ -51,10 +53,29 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
             .catch(() => setCategories([]));
     }, []);
 
-    // Xử lý logic giá khi check "Cho tặng"
+    // Fetch khu vực giao dịch từ API
     useEffect(() => {
-        if (isGiveaway) setValue('price', '0');
-    }, [isGiveaway, setValue]);
+        getLocations()
+            .then((res) => {
+                const data = res?.data?.data ?? res?.data;
+                const list = Array.isArray(data) ? data : [];
+                setLocations(list);
+                if (list.length > 0 && !defaultValues.location) {
+                    setValue('location', list[0]);
+                }
+            })
+            .catch(() => setLocations([]));
+    }, []);
+
+    // Xử lý logic giá khi check/uncheck "Cho tặng"
+    useEffect(() => {
+        if (isGiveaway) {
+            setValue('price', '0');
+            clearErrors('price');
+        } else {
+            setValue('price', '');
+        }
+    }, [isGiveaway, setValue, clearErrors]);
 
     const formatPrice = (value) => {
         if (!value || value === "0") return value;
@@ -75,12 +96,12 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
             component="form"
             onSubmit={handleSubmit(handleFormSubmit)}
             sx={{
-                maxWidth: "1000px",
-                width: "95%",
+                maxWidth: "1200px",
+                width: "90%",
                 mx: "auto",
-                mt: 4,
+                mt: 6,
                 mb: 8,
-                p: { xs: 3, md: 6 },
+                p: 6,
                 border: "3px solid #201D26",
                 borderRadius: "14px",
                 backgroundColor: "#FFFFFF"
@@ -101,12 +122,21 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
             <TextField
                 fullWidth
                 multiline
-                rows={4}
+                rows={5}
                 placeholder="Ví dụ: Máy còn mới 95%, đầy đủ phụ kiện, bảo hành 3 tháng..."
-                {...register("description", { required: "Vui lòng nhập mô tả" })}
+                {...register("description", {
+                    required: "Vui lòng nhập mô tả",
+                    validate: (v) =>
+                        v.trim().split(/\s+/).filter(Boolean).length >= 10 || "Mô tả tối thiểu 10 từ"
+                })}
                 error={!!errors.description}
                 helperText={errors.description?.message}
-                sx={{ mb: 4 }}
+                sx={{
+                    mb: 4,
+                    "& .MuiInputBase-input": {
+                        fontSize: "20px"
+                    }
+                }}
             />
 
             {/* 3. TIÊU ĐỀ & DANH MỤC */}
@@ -120,10 +150,15 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         placeholder="Tên sản phẩm của bạn"
                         {...register("title", { 
                             required: "Nhập tiêu đề",
-                            minLength: { value: 10, message: "Tối thiểu 10 ký tự" }
+                            minLength: { value: 2, message: "Tối thiểu 2 ký tự" }
                         })}
                         error={!!errors.title}
                         helperText={errors.title?.message}
+                        sx={{
+                            "& .MuiInputBase-input": {
+                                fontSize: "20px"
+                            }
+                        }}
                     />
                 </Grid>
 
@@ -138,7 +173,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                             borderRadius: "10px",
                             px: 2, py: 1.5,
                             cursor: "pointer",
-                            fontSize: "16px",
+                            fontSize: "20px",
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -160,21 +195,43 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
             <Grid container spacing={3} mt={1}>
                 <Grid item xs={12} md={6}>
                     <Typography fontWeight={600} fontSize={20} mb={1.5}>
-                        Giá bán
+                        Giá bán <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <TextField
                         fullWidth
+                        {...register("price", {
+                            validate: (v) => {
+                                if (isGiveaway) return true;
+                                const num = Number(String(v || "").replace(/\D/g, ""));
+                                if (!num) return "Vui lòng nhập giá";
+                                if (num < 1000) return "Giá tối thiểu 1.000đ";
+                                return true;
+                            }
+                        })}
                         value={formatPrice(watch('price'))}
                         disabled={isGiveaway}
-                        onChange={(e) => setValue('price', e.target.value.replace(/\D/g, ""))}
+                        onChange={(e) => setValue('price', e.target.value.replace(/\D/g, ""), { shouldValidate: true })}
+                        error={!!errors.price}
+                        helperText={errors.price?.message}
                         InputProps={{
-                            endAdornment: <InputAdornment position="end">đ</InputAdornment>
+                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 20, fontWeight: 700, ml: 0.5 }}>đ</Box></InputAdornment>
+                        }}
+                        sx={{
+                            "& .MuiInputBase-input": {
+                                fontSize: "20px"
+                            }
                         }}
                     />
                     <FormControlLabel
                         control={<Checkbox {...register('isGiveaway')} />}
-                        label="Trao tặng miễn phí"
-                        sx={{ mt: 1 }}
+                        label="Tôi muốn trao tặng miễn phí"
+                        sx={{
+                            mt: 1,
+                            "& .MuiFormControlLabel-label": {
+                                fontSize: "18px",
+                                fontWeight: 500
+                            }
+                        }}
                     />
                 </Grid>
 
@@ -186,11 +243,23 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         select
                         fullWidth
                         {...register("location")}
+                        SelectProps={{ displayEmpty: true }}
+                        sx={{
+                            "& .MuiInputBase-input": {
+                                fontSize: "20px"
+                            }
+                        }}
                     >
-                        <MenuItem value="tanxa">Tân Xã (Gần FPT)</MenuItem>
-                        <MenuItem value="thachhoa">Thạch Hòa</MenuItem>
-                        <MenuItem value="binhyen">Bình Yên</MenuItem>
+                        {locations.map((loc) => (
+                            <MenuItem key={loc} value={loc} sx={{ fontSize: "20px" }}>
+                                {loc}
+                            </MenuItem>
+                        ))}
                     </TextField>
+
+                    <Typography fontSize={16} mt={1} color="error">
+                        Chỉ hỗ trợ giao dịch trong khu vực Hoà Lạc
+                    </Typography>
                 </Grid>
             </Grid>
 
@@ -205,8 +274,47 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         value={currentCondition}
                         onChange={(_, val) => val && setValue('condition', val)}
                     >
-                        <ToggleButton value="USED" sx={{ px: 3, borderRadius: "10px" }}>ĐÃ SỬ DỤNG</ToggleButton>
-                        <ToggleButton value="NEW" sx={{ px: 3, borderRadius: "10px" }}>MỚI</ToggleButton>
+                        <ToggleButton
+                            value="USED"
+                            sx={{
+                                px: 4,
+                                py: 1.2,
+                                borderRadius: "12px",
+                                backgroundColor: "#E0E0E0",
+                                color: "#201D26",
+                                border: "none",
+                                "&.Mui-selected": {
+                                    backgroundColor: "#9D6EED",
+                                    color: "#fff",
+                                    "&:hover": {
+                                        backgroundColor: "#B794F6"
+                                    }
+                                }
+                            }}
+                        >
+                            ĐÃ SỬ DỤNG
+                        </ToggleButton>
+
+                        <ToggleButton
+                            value="NEW"
+                            sx={{
+                                px: 4,
+                                py: 1.2,
+                                borderRadius: "12px",
+                                backgroundColor: "#E0E0E0",
+                                color: "#201D26",
+                                border: "none",
+                                "&.Mui-selected": {
+                                    backgroundColor: "#9D6EED",
+                                    color: "#fff",
+                                    "&:hover": {
+                                        backgroundColor: "#B794F6"
+                                    }
+                                }
+                            }}
+                        >
+                            MỚI
+                        </ToggleButton>
                     </ToggleButtonGroup>
                 </Grid>
 
@@ -215,7 +323,15 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         <Button
                             variant="outlined"
                             fullWidth
-                            sx={{ py: 1.5, fontWeight: 700, borderRadius: "12px", border: '2px solid' }}
+                            sx={{
+                                borderColor: "#201D26",
+                                color: "#201D26",
+                                py: 1.6,
+                                fontSize: "18px",
+                                fontWeight: 600,
+                                borderRadius: "12px",
+                                border: "3px solid"
+                            }}
                         >
                             LƯU NHÁP
                         </Button>
@@ -224,9 +340,15 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                             variant="contained"
                             fullWidth
                             disabled={submitting}
-                            sx={{ py: 1.5, fontWeight: 700, borderRadius: "12px", backgroundColor: "#201D26" }}
+                            sx={{
+                                backgroundColor: "#201D26",
+                                py: 1.6,
+                                fontSize: "18px",
+                                fontWeight: 600,
+                                borderRadius: "12px"
+                            }}
                         >
-                            {submitting ? 'ĐANG XỬ LÝ...' : mode === 'create' ? 'ĐĂNG TIN NGAY' : 'CẬP NHẬT'}
+                            {submitting ? 'ĐANG XỬ LÝ...' : mode === 'create' ? 'ĐĂNG TIN' : 'CẬP NHẬT'}
                         </Button>
                     </Stack>
                 </Grid>
@@ -234,8 +356,21 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
 
             {/* DIALOG CHỌN DANH MỤC */}
             <Dialog open={openCategory} onClose={() => setOpenCategory(false)} fullWidth maxWidth="xs">
-                <DialogTitle sx={{ bgcolor: "#201D26", color: "#fff" }}>Chọn danh mục</DialogTitle>
-                <List sx={{ p: 0 }}>
+                <DialogTitle
+                    sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#201D26",
+                        color: "#fff"
+                    }}
+                >
+                    Chọn danh mục
+                    <IconButton onClick={() => setOpenCategory(false)} sx={{ color: "#fff" }}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <List sx={{ background: "#201D26", color: "#fff", p: 0 }}>
                     {categories.map((c) => (
                         <ListItemButton 
                             key={c.id || c.categoryId} 
@@ -244,10 +379,16 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                                 setValue('categoryName', c.name);
                                 setOpenCategory(false);
                             }}
-                            sx={{ borderBottom: "1px solid #eee", py: 2 }}
+                            sx={{
+                                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                                py: 2,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 2
+                            }}
                         >
                             <ListItemText primary={c.name} />
-                            <ChevronRightIcon fontSize="small" color="disabled" />
+                            <ChevronRightIcon />
                         </ListItemButton>
                     ))}
                 </List>
