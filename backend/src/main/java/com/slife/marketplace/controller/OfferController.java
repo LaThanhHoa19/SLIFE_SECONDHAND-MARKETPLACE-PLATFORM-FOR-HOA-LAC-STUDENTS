@@ -18,7 +18,9 @@ public class OfferController {
         this.offerService = offerService;
     }
 
-    /** v1: Propose a price negotiation (UC-30). */
+    /**
+     * v1: Propose a price negotiation (UC-30).
+     */
     @PostMapping("/api/v1/offers/make")
     public ResponseEntity<ApiResponse<Offer>> makeOffer(@Valid @RequestBody MakeOfferRequest request) {
         Offer offer = offerService.makeOffer(request);
