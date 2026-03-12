@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AuthController {
 
-        @PostMapping("/api/auth/logout")
+    @PostMapping("/api/auth/logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
     }
