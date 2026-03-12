@@ -21,20 +21,20 @@ export default function MainLayout() {
             </Box>
 
             {/* Phần thân — bắt đầu sau header */}
-            <Box sx={{ display: 'flex', flex: 1, mt: `${HEADER_HEIGHT}px` }}>
+            <Box sx={{ display: 'flex', flex: 1, mt: `${HEADER_HEIGHT}px`, maxWidth: '1200px', mx: 'auto', width: '100%' }}>
                 <Sidebar open={sidebarOpen} />
                 <Box
                     component="main"
                     sx={{
                         flex: 1,
-                        ml,
                         transition: 'margin-left 0.3s',
                         minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
                         display: 'flex',
                         flexDirection: 'column',
+                        minWidth: 0,
                     }}
                 >
-                    <Box sx={{ flex: 1, px: 16, py: 2.5 }}>
+                    <Box sx={{ flex: 1, px: 2, py: 2.5 }}>
                         <Outlet />
                     </Box>
                     <Footer />
