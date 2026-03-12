@@ -7,11 +7,20 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.controller;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController public class FollowController {
-// TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
-@PostMapping("/api/users/{id}/follow") public ResponseEntity<?> m1(@PathVariable Long id){return ResponseEntity.ok().build();}
-@DeleteMapping("/api/users/{id}/follow") public ResponseEntity<?> m2(@PathVariable Long id){return ResponseEntity.ok().build();}
+@RestController
+public class FollowController {
+    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
+    @PostMapping("/api/users/{id}/follow")
+    public ResponseEntity<?> m1(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/api/users/{id}/follow")
+    public ResponseEntity<?> m2(@PathVariable Long id) {
+        return ResponseEntity.ok().build();
+    }
 }
