@@ -7,10 +7,15 @@
  * - Viết unit/integration tests cho happy path + edge cases + error cases.
  */
 package com.slife.marketplace.controller;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController public class SearchController {
-// TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
-@GetMapping("/api/search") public ResponseEntity<?> m1(){return ResponseEntity.ok().build();}
+@RestController
+public class SearchController {
+    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
+    @GetMapping("/api/search")
+    public ResponseEntity<?> m1() {
+        return ResponseEntity.ok().build();
+    }
 }

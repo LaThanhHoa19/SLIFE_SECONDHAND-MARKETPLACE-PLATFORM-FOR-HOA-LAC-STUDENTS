@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
+
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
@@ -31,21 +32,21 @@ import java.util.Map;
 
 /**
  * REST API + WebSocket handlers for the chat system (FE-05).
- *
+ * <p>
  * REST endpoints:
- *   GET  /api/v1/chats                         – list sessions
- *   POST /api/v1/chats/session                 – get-or-create session
- *   POST /api/v1/chats/send                    – send message (REST fallback)
- *   GET  /api/v1/chats/{sessionId}/history     – paginated history
- *   GET  /api/v1/chats/quick-replies           – quick reply phrases
- *   POST /api/v1/chats/upload                  – upload chat image
- *   POST /api/v1/chats/{sessionId}/offer       – make offer (UC-30)
- *   POST /api/v1/chats/offers/{offerId}/respond – accept/reject offer
- *   POST /api/v1/chats/{sessionId}/read        – mark messages read (UC-26)
- *
+ * GET  /api/v1/chats                         – list sessions
+ * POST /api/v1/chats/session                 – get-or-create session
+ * POST /api/v1/chats/send                    – send message (REST fallback)
+ * GET  /api/v1/chats/{sessionId}/history     – paginated history
+ * GET  /api/v1/chats/quick-replies           – quick reply phrases
+ * POST /api/v1/chats/upload                  – upload chat image
+ * POST /api/v1/chats/{sessionId}/offer       – make offer (UC-30)
+ * POST /api/v1/chats/offers/{offerId}/respond – accept/reject offer
+ * POST /api/v1/chats/{sessionId}/read        – mark messages read (UC-26)
+ * <p>
  * WebSocket destinations (prefix /app):
- *   /app/chat.send    – send a message in real-time
- *   /app/chat.typing  – broadcast typing indicator
+ * /app/chat.send    – send a message in real-time
+ * /app/chat.typing  – broadcast typing indicator
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -83,7 +84,9 @@ public class ChatController {
 
     // ── REST: messaging ───────────────────────────────────────────────────────
 
-    /** REST fallback send — also pushes via WebSocket internally. */
+    /**
+     * REST fallback send — also pushes via WebSocket internally.
+     */
     @PostMapping("/chats/send")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendMessage(
             @Valid @RequestBody SendMessageRequest request) {
@@ -128,7 +131,9 @@ public class ChatController {
 
     // ── REST: negotiation ─────────────────────────────────────────────────────
 
-    /** Make an offer (UC-30). BR-35: max 5 offers per buyer per listing. */
+    /**
+     * Make an offer (UC-30). BR-35: max 5 offers per buyer per listing.
+     */
     @PostMapping("/chats/{sessionId}/offer")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> makeOffer(
             @PathVariable String sessionId,
@@ -139,7 +144,9 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", msg));
     }
 
-    /** Seller accepts or rejects an offer (UC-28). */
+    /**
+     * Seller accepts or rejects an offer (UC-28).
+     */
     @PostMapping("/chats/offers/{offerId}/respond")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> respondToOffer(
             @PathVariable Long offerId,
@@ -151,7 +158,9 @@ public class ChatController {
 
     // ── REST: read receipts ───────────────────────────────────────────────────
 
-    /** Mark all unread messages in session as read (UC-26). */
+    /**
+     * Mark all unread messages in session as read (UC-26).
+     */
     @PostMapping("/chats/{sessionId}/read")
     public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable String sessionId) {
         User user = userService.getCurrentUser();
