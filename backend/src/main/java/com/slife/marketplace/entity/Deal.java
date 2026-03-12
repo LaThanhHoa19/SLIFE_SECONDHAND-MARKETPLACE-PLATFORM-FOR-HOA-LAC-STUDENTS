@@ -21,11 +21,6 @@ public class Deal {
     @Column(name = "deal_id", nullable = false)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "offer_id")
-    private Offer offer;
-
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
@@ -59,13 +54,11 @@ public class Deal {
     @Column(name = "status", nullable = false)
     private String status;
 
+    @Column(name = "confirmed_at")
+    private Instant confirmedAt;
+
     @Column(name = "pickup_time")
     private Instant pickupTime;
-
-    @NotNull
-    @ColumnDefault("0")
-    @Column(name = "reminder_sent", nullable = false)
-    private Boolean reminderSent;
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
@@ -77,5 +70,7 @@ public class Deal {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
 }
