@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
 
@@ -60,6 +61,7 @@ const getCategoryIcon = (name = '') => {
 export default function RightPanel() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { isAuthenticated } = useAuth();
     const [locations, setLocations] = useState([]);
     const [categories, setCategories] = useState([]);
     const [catLoading, setCatLoading] = useState(true);
@@ -223,7 +225,13 @@ export default function RightPanel() {
                     Tham gia cộng đồng mua bán cùng SLIFE!
                 </Typography>
                 <Button
-                    onClick={() => navigate('/listings/new')}
+                    onClick={() => {
+                        if (!isAuthenticated) {
+                            navigate('/login', { state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' } });
+                            return;
+                        }
+                        navigate('/listings/new');
+                    }}
                     sx={{
                         bgcolor: '#FFFFFF',
                         color: '#7C3AED',
