@@ -1,55 +1,158 @@
-/** Card hiển thị listing (ảnh, tiêu đề, giá). */
-import { Card, CardActionArea, CardContent, Typography, CardMedia } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { fullImageUrl } from '../../utils/constants';
+/** Card hiển thị listing theo layout feed (header + content + media + actions). */
+import {
+    Avatar,
+    Box,
+    Card,
+    CardContent,
+    IconButton,
+    Stack,
+    Typography,
+} from '@mui/material';
+import {
+    ChatBubbleOutline as CommentIcon,
+    FavoriteBorder as FavoriteIcon,
+    MoreHoriz as MoreIcon,
+    Send as SendIcon,
+    Share as ShareIcon,
+} from '@mui/icons-material';
+import {useNavigate} from 'react-router-dom';
+import {fullImageUrl} from '../../utils/constants';
+import {formatDate} from '../../utils/formatDate';
 
-export default function ListingCard({ listing, onClick, showPrice = true, showStatus = false }) {
+const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
+
+const getSeller = (listing) => {
+    const sellerSummary = listing?.sellerSummary;
+    const seller = listing?.seller;
+
+    if (sellerSummary && typeof sellerSummary === 'object') return sellerSummary;
+    if (seller && typeof seller === 'object') return seller;
+
+    return {
+        fullName: typeof sellerSummary === 'string' ? sellerSummary : undefined,
+    };
+};
+
+const getLocationText = (listing) => {
+    const location = listing?.location;
+    if (typeof location === 'string' && location.trim()) return location;
+
+    const pickupAddress = listing?.pickupAddress;
+    if (typeof pickupAddress === 'string' && pickupAddress.trim()) return pickupAddress;
+    if (pickupAddress && typeof pickupAddress === 'object') {
+        return pickupAddress.locationName || pickupAddress.addressText || '';
+    }
+
+    return '';
+};
+
+const getConditionText = (listing) =>
+    listing?.itemCondition || listing?.condition || listing?.status || '';
+
+
+export default function ListingCard({listing, onClick}) {
     const navigate = useNavigate();
     const id = listing?.id ?? listing?.listingId;
-    const images = listing?.images ?? [];
-    const firstImage = images[0] ? fullImageUrl(images[0]) : null;
-    const price = listing?.price;
-    const isGiveaway = listing?.isGiveaway;
+    const images = Array.isArray(listing?.images) ? listing.images : [];
+    const seller = getSeller(listing);
+    const contentInsetLeft = '62px';
 
     const handleClick = () => {
         if (onClick) onClick(listing);
         else if (id) navigate(`/listings/${id}`);
     };
 
+    const conditionText = getConditionText(listing);
+    const locationText = getLocationText(listing);
+
     return (
-        <Card sx={{
-            overflow: 'hidden',
-            bgcolor: '#2A2733',
-            color: '#FFFFFF',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '12px',
-            boxShadow: 'none',
-            mb: 1.5,
-        }}>
-            <CardActionArea onClick={handleClick} sx={{ '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
-                {firstImage && (
-                    <CardMedia
-                        component="img"
-                        height="160"
-                        image={firstImage}
-                        alt={listing?.title || ''}
-                        sx={{ objectFit: 'cover' }}
-                    />
+        <Card sx={{ maxWidth: 640, mx: 'auto', width: '100%', bgcolor: '#201D26', borderRadius: '16px', mb: 3, border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+            {/* Header */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Avatar src={fullImageUrl(seller?.avatarUrl)} alt={seller?.fullName || 'seller'} sx={{ width: 40, height: 40 }} />
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                        <Typography fontSize={14.5} fontWeight={600} color="#FFF">
+                            {seller?.fullName || 'Người bán'}
+                        </Typography>
+                        <Typography fontSize={13} color="rgba(255,255,255,0.5)">
+                            • {formatDate(listing?.createdAt) || 'Vừa đăng'}
+                        </Typography>
+                    </Box>
+                </Stack>
+                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                    <MoreIcon />
+                </IconButton>
+            </Box>
+
+            <Box
+                onClick={handleClick}
+                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick()}
+                role="button"
+                tabIndex={0}
+                sx={{ cursor: 'pointer', outline: 'none' }}
+            >
+                {/* Images */}
+                {!!images.length && (
+                    <Box sx={{ width: '100%', position: 'relative' }}>
+                        <Box
+                            component="img"
+                            src={fullImageUrl(images[0])}
+                            alt={listing?.title}
+                            sx={{
+                                width: '100%',
+                                maxHeight: 500,
+                                objectFit: 'cover',
+                                display: 'block'
+                            }}
+                        />
+                        {/* Overlay Price badge if desired, but we place it inline below */}
+                    </Box>
                 )}
-                <CardContent>
-                    <Typography variant="subtitle1" fontWeight={600} noWrap sx={{ color: '#FFFFFF' }}>
-                        {listing?.title || '—'}
+
+                {/* Content */}
+                <CardContent sx={{ pt: 2, pb: 1, px: 2 }}>
+                    <Typography fontSize={16} fontWeight={600} color="rgba(255,255,255,0.95)" sx={{ lineHeight: 1.4, mb: 0.5 }}>
+                        {listing?.title || 'Không có tiêu đề'}
                     </Typography>
-                    {showPrice && (
-                        <Typography variant="body2" fontWeight={600} sx={{ color: '#E879A0' }}>
-                            {isGiveaway ? 'Cho tặng' : price != null ? `${Number(price).toLocaleString('vi-VN')} ₫` : '—'}
+
+                    <Typography fontSize={18} fontWeight={700} color="#FF4757" sx={{ mb: 1 }}>
+                        {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
+                    </Typography>
+
+                    {!!listing?.description && (
+                        <Typography fontSize={14} color="rgba(255,255,255,0.7)" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 1.5 }}>
+                            {listing?.description || listing?.content || ''}
                         </Typography>
                     )}
-                    {showStatus && listing?.status && (
-                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>{listing.status}</Typography>
-                    )}
+
+                    {/* Tags */}
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                        {!!conditionText && (
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
+                                <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
+                                    🏷 {conditionText}
+                                </Typography>
+                            </Box>
+                        )}
+                        {!!locationText && (
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
+                                <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
+                                    📍 {locationText}
+                                </Typography>
+                            </Box>
+                        )}
+                    </Box>
                 </CardContent>
-            </CardActionArea>
+            </Box>
+
+            {/* Actions */}
+            <Box sx={{ px: 2, py: 1.5, display: 'flex', gap: 2.5, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#FF4757', bgcolor: 'rgba(255,71,87,0.1)' } }}><FavoriteIcon fontSize="small" /></IconButton>
+                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><CommentIcon fontSize="small" /></IconButton>
+                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><SendIcon fontSize="small" /></IconButton>
+                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', ml: 'auto', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><ShareIcon fontSize="small" /></IconButton>
+            </Box>
         </Card>
     );
 }

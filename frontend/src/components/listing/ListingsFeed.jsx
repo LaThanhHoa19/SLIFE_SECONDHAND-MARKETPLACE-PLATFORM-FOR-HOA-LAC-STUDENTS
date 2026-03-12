@@ -16,8 +16,8 @@ export default function ListingsFeed({ listings = [], isLoading = false }) {
 
     if (!listings.length) {
         return (
-            <Box sx={{ p: 4, borderRadius: 2, textAlign: 'center', bgcolor: 'background.paper' }}>
-                <Typography variant="body1" color="text.secondary">Chưa có tin đăng phù hợp.</Typography>
+            <Box sx={{ p: 4, borderRadius: 2, textAlign: 'center', bgcolor: '#201D26' }}>
+                <Typography variant="body1" color="rgba(255,255,255,0.7)">Chưa có tin đăng phù hợp.</Typography>
             </Box>
         );
     }
