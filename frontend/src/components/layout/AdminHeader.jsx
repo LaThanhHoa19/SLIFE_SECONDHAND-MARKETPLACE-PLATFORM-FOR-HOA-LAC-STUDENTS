@@ -22,35 +22,7 @@ export default function AdminHeader() {
                 gap: 2,
             }}
         >
-            <Stack direction="row" spacing={1.5} alignItems="center">
-                <Box
-                    sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 1.2,
-                        bgcolor: '#2563eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        fontSize: 16,
-                    }}
-                >
-                    S
-                </Box>
-                <Box>
-                    <Typography
-                        variant="subtitle1"
-                        sx={{ fontWeight: 700, color: '#111827', fontSize: 16, lineHeight: 1.2 }}
-                    >
-                        Bảng điều khiển
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                        Tổng quan hoạt động hệ thống
-                    </Typography>
-                </Box>
-            </Stack>
+            <Box />
 
             <Box
                 sx={{
