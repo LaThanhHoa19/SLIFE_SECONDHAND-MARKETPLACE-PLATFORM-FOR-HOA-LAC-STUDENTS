@@ -84,10 +84,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
     };
 
     const handleFormSubmit = (values) => {
-        if (imageFiles.length === 0) {
-            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
-            return;
-        }
+        // if (imageFiles.length === 0) {
+        //     setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+        //     return;
+        // }
         const finalValues = {
             ...values,
             price: Number(values.price.toString().replace(/\D/g, ""))
@@ -109,7 +109,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
     return (
         <Box
             component="form"
-            onSubmit={handleSubmit(handleFormSubmit)}
+            onSubmit={onFormSubmit}
             sx={{
                 maxWidth: "1200px",
                 width: "90%",
@@ -119,7 +119,17 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                 p: 6,
                 border: "3px solid #201D26",
                 borderRadius: "14px",
-                backgroundColor: "#FFFFFF"
+                backgroundColor: "#201D26",
+                color: "#FFFFFF",
+
+                "& .MuiInputBase-root": {
+                    backgroundColor: "#312F37",
+                    color: "#fff"
+                },
+
+                "& .MuiInputBase-input": {
+                    color: "#fff"
+                }
             }}
         >
             {/* 1. HÌNH ẢNH */}
@@ -131,6 +141,12 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                     onFilesChange={handleFilesChange}
                     error={imageError}
                 />
+
+                {imageError && (
+                    <Typography color="error" sx={{ mt: 1 }}>
+                        {imageError}
+                    </Typography>
+                )}
             </Box>
 
             {/* 2. MÔ TẢ */}
@@ -191,7 +207,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                     <Box
                         onClick={() => setOpenCategory(true)}
                         sx={{
-                            border: `1px solid ${errors.categoryId ? '#d32f2f' : '#ccc'}`,
+                            border: `1px solid ${errors.categoryId ? '#d32f2f' : 'transparent'}`,
                             borderRadius: "10px",
                             px: 2, py: 1.5,
                             cursor: "pointer",
@@ -199,7 +215,16 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            "&:hover": { borderColor: "#201D26" }
+                            backgroundColor: "#312F37",
+                            color: "#fff",
+
+                            "&:hover": {
+                                borderColor: "#9D6EED"
+                            },
+
+                            "&:focus-within": {
+                                borderColor: "#9D6EED"
+                            }
                         }}
                     >
                         {selectedCategoryName || "Chọn danh mục sản phẩm"}
@@ -236,11 +261,14 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         error={!!errors.price}
                         helperText={errors.price?.message}
                         InputProps={{
-                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 20, fontWeight: 700, ml: 0.5 }}>đ</Box></InputAdornment>
+                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 20, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
                         }}
                         sx={{
                             "& .MuiInputBase-input": {
                                 fontSize: "20px"
+                            },
+                            "& .Mui-disabled": {
+                                WebkitTextFillColor: "#fff"
                             }
                         }}
                     />
@@ -306,6 +334,11 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
                                 border: "none",
+
+                                "&:hover": {
+                                    backgroundColor: "#d5d5d5"
+                                },
+
                                 "&.Mui-selected": {
                                     backgroundColor: "#9D6EED",
                                     color: "#fff",
@@ -327,6 +360,11 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
                                 border: "none",
+
+                                "&:hover": {
+                                    backgroundColor: "#d5d5d5"
+                                },
+
                                 "&.Mui-selected": {
                                     backgroundColor: "#9D6EED",
                                     color: "#fff",
@@ -347,13 +385,17 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                             variant="outlined"
                             fullWidth
                             sx={{
-                                borderColor: "#201D26",
+                                backgroundColor: "#E0E0E0",
                                 color: "#201D26",
                                 py: 1.6,
                                 fontSize: "18px",
                                 fontWeight: 600,
                                 borderRadius: "12px",
-                                border: "3px solid"
+                                border: "none",
+
+                                "&:hover": {
+                                    backgroundColor: "#d5d5d5"
+                                }
                             }}
                         >
                             LƯU NHÁP
@@ -364,11 +406,15 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                             fullWidth
                             disabled={submitting}
                             sx={{
-                                backgroundColor: "#201D26",
+                                backgroundColor: "#9D6EED",
                                 py: 1.6,
                                 fontSize: "18px",
                                 fontWeight: 600,
-                                borderRadius: "12px"
+                                borderRadius: "12px",
+
+                                "&:hover": {
+                                    backgroundColor: "#B794F6"
+                                }
                             }}
                         >
                             {submitting ? 'ĐANG XỬ LÝ...' : mode === 'create' ? 'ĐĂNG TIN' : 'CẬP NHẬT'}
