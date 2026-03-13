@@ -43,7 +43,16 @@ export default function AdminLayout({ title, subtitle, children, rightSlot }) {
                     >
                         <Box>
                             {title && (
-                                <Typography variant="h5" fontWeight={700} sx={{ color: '#111827', mb: 0.5 }}>
+                                <Typography
+                                    variant="h4"
+                                    fontWeight={800}
+                                    sx={{
+                                        color: '#111827',
+                                        mb: 0.5,
+                                        letterSpacing: -0.3,
+                                        fontSize: { xs: 22, md: 26 },
+                                    }}
+                                >
                                     {title}
                                 </Typography>
                             )}
