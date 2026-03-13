@@ -79,7 +79,7 @@ class ListingServiceTest {
         image.setImageUrl("https://example.com/iphone.jpg");
 
         Page<Listing> pageData = new PageImpl<>(List.of(listing));
-        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(pageData);
         when(listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(10L))
                 .thenReturn(List.of(image));

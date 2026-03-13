@@ -56,6 +56,10 @@ public class ListingService {
                 normalizeParam(q),
                 categoryId,
                 normalizeParam(location),
+                null,   // purpose: khong filter tren trang listing chinh
+                null,   // itemCond: khong filter tren trang listing chinh
+                null,   // priceMin
+                null,   // priceMax
                 pageable
         );
 
