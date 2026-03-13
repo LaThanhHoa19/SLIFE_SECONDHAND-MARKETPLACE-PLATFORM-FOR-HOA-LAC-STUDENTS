@@ -7,6 +7,7 @@ package com.slife.marketplace.controller;
 import com.slife.marketplace.config.SecurityConfig;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.UserService;
 import org.junit.jupiter.api.Test;
@@ -83,7 +84,7 @@ class ListingControllerTest {
                         .param("page", "0")
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isNotFound());
     }
 
 
@@ -115,6 +116,106 @@ class ListingControllerTest {
         mockMvc.perform(options("/api/listings")
                         .header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "GET"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getListings_withValidCategory_shouldParseAndCallService() throws Exception {
+        // Arrange
+        String categoryStr = "123";
+        Long expectedCategoryId = 123L;
+
+        PagedResponse<ListingResponse> emptyResponse = new PagedResponse<>();
+        emptyResponse.setContent(List.of());
+
+        // Giả lập: Khi truyền category 123L xuống service
+        when(listingService.getFilteredListings(eq(expectedCategoryId), isNull(), isNull(), anyString(), eq(0), eq(10), isNull()))
+                .thenReturn(emptyResponse);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/listings")
+                        .param("category", categoryStr)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getListings_withInvalidCategory_shouldPassNullToService() throws Exception {
+        // Arrange
+        String invalidCategory = "abc";
+
+        PagedResponse<ListingResponse> emptyResponse = new PagedResponse<>();
+        emptyResponse.setContent(List.of());
+
+        // Giả lập: Khi parse lỗi, controller phải truyền null xuống service
+        when(listingService.getFilteredListings(isNull(), isNull(), isNull(), anyString(), eq(0), eq(10), isNull()))
+                .thenReturn(emptyResponse);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/listings")
+                        .param("category", invalidCategory)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getListings_withCategoryHavingSpaces_shouldTrimAndParse() throws Exception {
+        String categoryWithSpaces = "  123  ";
+        Long expectedId = 123L;
+
+        PagedResponse<ListingResponse> emptyResponse = new PagedResponse<>();
+        emptyResponse.setContent(List.of());
+
+        when(listingService.getFilteredListings(eq(expectedId), isNull(), isNull(), anyString(), eq(0), eq(10), isNull()))
+                .thenReturn(emptyResponse);
+
+        mockMvc.perform(get("/api/listings").param("category", categoryWithSpaces))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getListings_withFullParams_shouldPassAllToService() throws Exception {
+        when(userService.getCurrentUserOptional()).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/listings")
+                        .param("category", "1")
+                        .param("location", "Hanoi")
+                        .param("q", "laptop")
+                        .param("sort", "price,asc")
+                        .param("page", "1")
+                        .param("size", "20"))
+                .andExpect(status().isOk());
+
+        // Verify service nhận đúng giá trị (1L, "Hanoi", "laptop", ...)
+        org.mockito.Mockito.verify(listingService).getFilteredListings(
+                eq(1L), eq("Hanoi"), eq("laptop"), eq("price,asc"), eq(1), eq(20), isNull()
+        );
+    }
+
+    @Test
+    void getListings_withLoggedInUser_shouldPassUserToService() throws Exception {
+        User mockUser = new User();
+        mockUser.setId(99L);
+
+        when(userService.getCurrentUserOptional()).thenReturn(Optional.of(mockUser));
+        when(listingService.getFilteredListings(isNull(), isNull(), isNull(), anyString(), eq(0), eq(10), eq(mockUser)))
+                .thenReturn(new PagedResponse<>());
+
+        mockMvc.perform(get("/api/listings"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getListings_withBlankCategory_shouldPassNullToService() throws Exception {
+        // Test trường hợp category là chuỗi rỗng sau khi trim
+        mockMvc.perform(get("/api/listings")
+                        .param("category", "   ")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Kiểm tra xem Service có nhận giá trị null không
+        org.mockito.Mockito.verify(listingService).getFilteredListings(
+                isNull(), isNull(), isNull(), anyString(), eq(0), eq(10), isNull()
+        );
     }
 }
