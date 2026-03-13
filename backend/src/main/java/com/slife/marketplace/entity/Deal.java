@@ -41,6 +41,11 @@ public class Deal {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "offer_id")
+    private Offer offer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
     @JoinColumn(name = "address_id")
     private Address address;
 
@@ -59,6 +64,11 @@ public class Deal {
 
     @Column(name = "pickup_time")
     private Instant pickupTime;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "reminder_sent", nullable = false)
+    private Boolean reminderSent;
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
