@@ -70,6 +70,11 @@ public class User {
     private BigDecimal reputationScore;
 
     @NotNull
+    @ColumnDefault("0")
+    @Column(name = "violation_count", nullable = false)
+    private Integer violationCount;
+
+    @NotNull
     @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime createdAt;
 
@@ -77,5 +82,7 @@ public class User {
     @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime updatedAt;
 
+    @Column(name = "deleted_at", columnDefinition = "DATETIME")
+    private LocalDateTime deletedAt;
 
 }

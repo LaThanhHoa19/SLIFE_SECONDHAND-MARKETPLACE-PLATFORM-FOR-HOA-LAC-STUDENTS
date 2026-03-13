@@ -139,7 +139,6 @@ public class ReportService {
         report.setTargetType(targetType);
         report.setTargetId(request.getTargetId());
         report.setReason(request.getReason());
-        report.setEvidenceImage(request.getEvidenceImage());
         report.setStatus("PENDING");
         report.setCreatedAt(Instant.now());
         report.setUpdatedAt(Instant.now());
