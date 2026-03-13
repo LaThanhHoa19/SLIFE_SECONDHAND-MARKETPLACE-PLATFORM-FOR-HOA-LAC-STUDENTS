@@ -14,40 +14,24 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "notifications")
-public class Notification {
+@Table(name = "message_images")
+public class MessageImage {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "notification_id", nullable = false)
+    @Column(name = "image_id", nullable = false)
     private Long id;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "message_id", nullable = false)
+    private Message message;
 
     @NotNull
-    @Lob
-    @Column(name = "type", nullable = false)
-    private String type;
-
-    @Size(max = 50)
-    @Column(name = "ref_type", length = 50)
-    private String refType;
-
-    @Column(name = "ref_id")
-    private Long refId;
-
-    @NotNull
-    @Lob
-    @Column(name = "content", nullable = false)
-    private String content;
-
-    @NotNull
-    @ColumnDefault("0")
-    @Column(name = "is_read", nullable = false)
-    private Boolean isRead;
+    @Size(max = 2000)
+    @Column(name = "image_url", nullable = false, length = 2000)
+    private String imageUrl;
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
@@ -59,5 +43,5 @@ public class Notification {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
-
 }
+
