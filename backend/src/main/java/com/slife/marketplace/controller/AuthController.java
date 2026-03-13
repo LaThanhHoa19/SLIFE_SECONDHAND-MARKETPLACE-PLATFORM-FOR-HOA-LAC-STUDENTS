@@ -6,11 +6,15 @@ import com.slife.marketplace.dto.request.GoogleLoginRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.AuthResponse;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.security.TokenBlacklistService;
 import com.slife.marketplace.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -18,55 +22,59 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
 @RestController
-@RequestMapping("/api/auth") // Added base path to clean up individual mappings
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
     private final ObjectMapper objectMapper;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    public AuthController(AuthService authService, ObjectMapper objectMapper) {
+    public AuthController(AuthService authService,
+                          ObjectMapper objectMapper,
+                          TokenBlacklistService tokenBlacklistService) {
         this.authService = authService;
         this.objectMapper = objectMapper;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
-    /**
-     * DEV ONLY: quick login by email to get JWT for local testing.
-     * Example: POST /api/auth/dev-login?email=an.do@example.com
-     */
+    /** DEV ONLY */
     @PostMapping("/dev-login")
-    public ResponseEntity<ApiResponse<AuthResponse>> devLogin(@RequestParam String email) {
-        AuthResponse authResponse = authService.devLogin(email);
-        return ResponseEntity.ok(ApiResponse.success("Dev login successful", authResponse));
+    public ResponseEntity<ApiResponse<AuthResponse>> devLogin(@RequestParam("email") String email) {
+        return ResponseEntity.ok(ApiResponse.success("Dev login successful", authService.devLogin(email)));
     }
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest request) {
-        AuthResponse authResponse = authService.login(request);
-        return ResponseEntity.ok(ApiResponse.success("Login successful", authResponse));
+        return ResponseEntity.ok(ApiResponse.success("Login successful", authService.login(request)));
     }
 
+    /**
+     * POST /api/auth/logout
+     * Blacklist access token hien tai de thu hoi quyen truy cap ngay lap tuc.
+     * Client gui: Authorization: Bearer <token>
+     */
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
+        String bearer = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
+            tokenBlacklistService.blacklist(bearer.substring(7));
+        }
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
     }
 
-    /** Popup/credential flow (Google Identity Services) */
     @PostMapping("/google")
     public ResponseEntity<ApiResponse<AuthResponse>> google(@Valid @RequestBody GoogleLoginRequest request) {
-        AuthResponse authResponse = authService.googleLogin(request);
-        return ResponseEntity.ok(ApiResponse.success("Google login successful", authResponse));
+        return ResponseEntity.ok(ApiResponse.success("Google login successful", authService.googleLogin(request)));
     }
 
-    /** Step 1: Redirect browser to Google's OAuth2 consent page */
     @GetMapping("/google/init")
     public void googleInit(HttpServletResponse response) throws IOException {
         response.sendRedirect(authService.getGoogleAuthorizationUrl());
     }
 
-    /** Step 2: Google redirects back here with an authorization code */
     @GetMapping("/google/callback")
     public void googleCallbackRedirect(
             @RequestParam(required = false) String code,
@@ -79,16 +87,13 @@ public class AuthController {
                     + URLEncoder.encode(msg, StandardCharsets.UTF_8));
             return;
         }
-
         try {
             AuthResponse authResponse = authService.googleCallback(code);
             String tokenParam = URLEncoder.encode(authResponse.getAccessToken(), StandardCharsets.UTF_8);
-            String userParam = URLEncoder.encode(
+            String userParam  = URLEncoder.encode(
                     objectMapper.writeValueAsString(authResponse.getUser()), StandardCharsets.UTF_8);
-            
             response.sendRedirect(frontendUrl + "/auth/google/callback"
-                    + "?access_token=" + tokenParam
-                    + "&user=" + userParam);
+                    + "?access_token=" + tokenParam + "&user=" + userParam);
         } catch (SlifeException e) {
             response.sendRedirect(frontendUrl + "/login?google_error="
                     + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
