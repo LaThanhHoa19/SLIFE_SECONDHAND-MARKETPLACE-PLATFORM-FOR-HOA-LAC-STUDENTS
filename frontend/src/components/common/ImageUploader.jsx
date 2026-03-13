@@ -70,14 +70,14 @@ export default function ImageUploader({ onFilesChange }) {
             sx={{
               height: 200,
               borderRadius: "14px",
-              background: "#EDE7F6",
+              background: "#392D4D",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               gap: 1,
-              "&:hover": { background: "#e0d4f7" }
+              "&:hover": { background: "#46365E" }
             }}
           >
             <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 50, color: "#9D6EED" }} />
