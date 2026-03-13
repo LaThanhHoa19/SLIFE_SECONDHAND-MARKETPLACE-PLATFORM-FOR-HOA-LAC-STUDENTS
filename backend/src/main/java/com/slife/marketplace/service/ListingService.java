@@ -53,9 +53,13 @@ public class ListingService {
         );
 
         Page<Listing> pageResult = listingRepository.findByFilters(
+                normalizeParam(q),
                 categoryId,
                 normalizeParam(location),
-                normalizeParam(q),
+                null,   // purpose: khong filter tren trang listing chinh
+                null,   // itemCond: khong filter tren trang listing chinh
+                null,   // priceMin
+                null,   // priceMax
                 pageable
         );
 
