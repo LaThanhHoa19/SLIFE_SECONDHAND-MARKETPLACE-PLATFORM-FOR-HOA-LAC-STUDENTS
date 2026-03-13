@@ -1,3 +1,11 @@
-/** Mục đích: Skeleton đăng ký (tùy chọn). API dự kiến POST /api/auth/register. */
-import { Box, Typography } from '@mui/material';
-export default function RegisterPage(){ return <Box><Typography>TODO: Register form skeleton.</Typography></Box>; }
+/** Tạm thời: test FilterPanel tại /register */
+import { Box } from '@mui/material';
+import FilterPanel from '../../components/layout/FilterPanel';
+
+export default function RegisterPage() {
+    return (
+        <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', bgcolor: '#1A1625', minHeight: '100vh' }}>
+            <FilterPanel />
+        </Box>
+    );
+}
