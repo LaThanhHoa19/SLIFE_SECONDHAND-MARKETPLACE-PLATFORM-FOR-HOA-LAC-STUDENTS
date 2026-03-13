@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import {
     Box, Button, TextField, Typography, Grid, MenuItem, Checkbox, 
@@ -21,6 +21,7 @@ import { getLocations } from '../../api/locationApi';
 export default function ListingForm({ defaultValues = {}, onSubmit, submitting = false, mode = 'create' }) {
     // Logic quản lý State & Form
     const [imageFiles, setImageFiles] = useState([]);
+    const [imageError, setImageError] = useState('');
     const [categories, setCategories] = useState([]);
     const [locations, setLocations] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
@@ -83,12 +84,26 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
     };
 
     const handleFormSubmit = (values) => {
-        // Chuyển giá về số trước khi gửi
+        if (imageFiles.length === 0) {
+            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+            return;
+        }
         const finalValues = {
             ...values,
             price: Number(values.price.toString().replace(/\D/g, ""))
         };
         onSubmit?.(finalValues, imageFiles);
+    };
+
+    const handleFilesChange = useCallback((files) => {
+        setImageFiles(files);
+        if (files.length > 0) setImageError('');
+    }, []);
+
+    const onFormSubmit = (e) => {
+        e.preventDefault();
+        if (imageFiles.length === 0) setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+        handleSubmit(handleFormSubmit)(e);
     };
 
     return (
@@ -112,7 +127,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                 Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
             <Box mb={4}>
-                <ImageUploader onFilesChange={setImageFiles} />
+                <ImageUploader
+                    onFilesChange={handleFilesChange}
+                    error={imageError}
+                />
             </Box>
 
             {/* 2. MÔ TẢ */}
@@ -166,6 +184,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                     <Typography fontWeight={600} fontSize={20} mb={1.5}>
                         Danh mục <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
+                    <input
+                        type="hidden"
+                        {...register('categoryId', { required: 'Vui lòng chọn danh mục' })}
+                    />
                     <Box
                         onClick={() => setOpenCategory(true)}
                         sx={{
@@ -243,7 +265,8 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         select
                         fullWidth
                         {...register("location")}
-                        SelectProps={{ displayEmpty: true }}
+                        value={watch('location')}
+                        onChange={(e) => setValue('location', e.target.value)}
                         sx={{
                             "& .MuiInputBase-input": {
                                 fontSize: "20px"
@@ -372,11 +395,12 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                 </DialogTitle>
                 <List sx={{ background: "#201D26", color: "#fff", p: 0 }}>
                     {categories.map((c) => (
-                        <ListItemButton 
-                            key={c.id || c.categoryId} 
+                        <ListItemButton
+                            key={c.id || c.categoryId}
                             onClick={() => {
                                 setValue('categoryId', c.id || c.categoryId);
                                 setValue('categoryName', c.name);
+                                clearErrors('categoryId');
                                 setOpenCategory(false);
                             }}
                             sx={{
