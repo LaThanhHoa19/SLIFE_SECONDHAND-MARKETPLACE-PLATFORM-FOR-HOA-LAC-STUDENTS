@@ -44,6 +44,10 @@ public enum ErrorCode {
     FILE_TOO_LARGE("FILE_TOO_LARGE", "File exceeds 5 MB limit", HttpStatus.PAYLOAD_TOO_LARGE),
     INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
 
+    // Comment related
+    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "Comment not found", HttpStatus.NOT_FOUND),
+    COMMENT_DELETE_FORBIDDEN("COMMENT_DELETE_FORBIDDEN", "Only the comment author, listing owner or admin can delete this comment", HttpStatus.FORBIDDEN),
+
     // Report related
     REPORT_NOT_FOUND("REPORT_NOT_FOUND", "Report not found", HttpStatus.NOT_FOUND),
     REPORT_DUPLICATE("REPORT_DUPLICATE", "You have already reported this item", HttpStatus.CONFLICT),

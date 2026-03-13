@@ -1,7 +1,6 @@
 package com.slife.marketplace.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
@@ -22,12 +21,11 @@ public class Comment {
     @Column(name = "comment_id", nullable = false)
     private Long id;
 
+    /** Nullable: comment co the chi co anh, khong can text */
     @Lob
-    @NotNull
-    @Column(name = "content", nullable = false)
+    @Column(name = "content")
     private String content;
 
-    @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -55,5 +53,8 @@ public class Comment {
     @OneToMany(mappedBy = "parentComment", fetch = FetchType.LAZY)
     @OrderBy("createdAt ASC")
     private List<Comment> replies = new ArrayList<>();
-}
 
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("createdAt ASC")
+    private List<CommentImage> images = new ArrayList<>();
+}
