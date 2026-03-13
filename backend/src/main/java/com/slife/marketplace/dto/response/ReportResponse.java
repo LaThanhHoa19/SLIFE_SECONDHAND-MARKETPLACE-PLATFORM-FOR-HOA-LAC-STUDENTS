@@ -14,7 +14,6 @@ public class ReportResponse {
     private String targetType;
     private Long targetId;
     private String reason;
-    private String evidenceImage;
     private String status;
     private String adminNote;
     private Long handledById;
@@ -28,7 +27,6 @@ public class ReportResponse {
         dto.setTargetType(r.getTargetType());
         dto.setTargetId(r.getTargetId());
         dto.setReason(r.getReason());
-        dto.setEvidenceImage(r.getEvidenceImage());
         dto.setStatus(r.getStatus());
         dto.setAdminNote(r.getAdminNote());
         dto.setCreatedAt(r.getCreatedAt());
