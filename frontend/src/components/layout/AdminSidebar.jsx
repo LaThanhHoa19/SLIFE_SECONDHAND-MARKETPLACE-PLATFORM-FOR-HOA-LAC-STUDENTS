@@ -5,18 +5,35 @@ import {
     Flag as FlagIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 const SIDEBAR_WIDTH = 260;
 
 const ADMIN_ITEMS = [
-    { label: 'Tổng quan', icon: DashboardIcon, path: '/admin' },
-    { label: 'Báo cáo', icon: FlagIcon, path: '/admin/reports' },
-    { label: 'Người dùng', icon: PeopleIcon, path: '/admin/users' },
+    {
+        label: 'Tổng quan',
+        icon: DashboardIcon,
+        path: '/admin',
+        allowedRoles: ['ADMIN', 'MODERATOR'],
+    },
+    {
+        label: 'Báo cáo',
+        icon: FlagIcon,
+        path: '/admin/reports',
+        allowedRoles: ['ADMIN', 'MODERATOR'],
+    },
+    {
+        label: 'Người dùng',
+        icon: PeopleIcon,
+        path: '/admin/users',
+        allowedRoles: ['ADMIN'],
+    },
 ];
 
 export default function AdminSidebar() {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAuth() || {};
 
     const isActive = (path) => {
         if (path === '/admin') {
@@ -24,6 +41,15 @@ export default function AdminSidebar() {
         }
         return location.pathname.startsWith(path);
     };
+
+    const visibleItems = ADMIN_ITEMS.filter(({ allowedRoles }) => {
+        if (!allowedRoles || allowedRoles.length === 0) return true;
+        const role = user?.role;
+        // Nếu chưa có user/role (chưa login hoặc đang test UI) thì cho hiện tất cả,
+        // role-based filter chỉ áp dụng khi đã có role rõ ràng.
+        if (!role) return true;
+        return allowedRoles.includes(role);
+    });
 
     return (
         <Box
@@ -81,7 +107,7 @@ export default function AdminSidebar() {
             </Box>
 
             <List dense disablePadding sx={{ mt: 1 }}>
-                {ADMIN_ITEMS.map(({ label, icon: Icon, path }) => {
+                {visibleItems.map(({ label, icon: Icon, path }) => {
                     const active = isActive(path);
                     return (
                         <ListItemButton
