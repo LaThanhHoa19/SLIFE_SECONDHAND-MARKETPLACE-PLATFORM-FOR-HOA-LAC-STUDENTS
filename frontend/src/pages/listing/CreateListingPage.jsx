@@ -29,7 +29,8 @@ export default function CreateListingPage() {
         categoryId: values.categoryId ? Number(values.categoryId) : null,
         condition: values.condition || 'USED_GOOD',
         isGiveaway: !!values.isGiveaway,
-        purpose: values.purpose || 'SALE',
+        purpose: values.isGiveaway ? 'GIVEAWAY' : (values.purpose || 'SALE'),
+        pickupLocationName: values.location || null,
       };
       const res = await createListing(payload);
       const created = getPayload(res);
