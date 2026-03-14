@@ -6,6 +6,7 @@ import {
     CampaignOutlined as CampaignIcon,
     PeopleAlt as PeopleIcon,
     Add as AddIcon,
+    ListAlt as ListAltIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -14,6 +15,7 @@ const SIDEBAR_WIDTH = 148;
 const NAV_ITEMS = [
     { label: 'Feed', icon: HomeIcon, path: '/' },
     { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
+    { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
     { label: 'Đăng tin', icon: CampaignIcon, path: '/listings/new' },
 ];
 
