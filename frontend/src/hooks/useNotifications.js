@@ -22,9 +22,11 @@ export default function useNotifications() {
 
       try {
         const response = await getNotifications();
-        setNotifications(response.data || []);
+        const raw = response?.data?.data ?? response?.data;
+        setNotifications(Array.isArray(raw) ? raw : []);
       } catch (error) {
         console.error('Failed to load notifications:', error);
+        setNotifications([]);
       }
     };
 
@@ -40,6 +42,7 @@ export default function useNotifications() {
     return () => { clearInterval(pollingId); socket?.disconnect(); };
   }, [token]);
 
-  const markRead = async (id) => { await markNotificationRead(id); setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))); };
-  return { notifications, unreadCount: notifications.filter((n) => !n.isRead).length, markRead };
+  const markRead = async (id) => { await markNotificationRead(id); setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => (n.id === id ? { ...n, isRead: true } : n))); };
+  const list = Array.isArray(notifications) ? notifications : [];
+  return { notifications: list, unreadCount: list.filter((n) => !n.isRead).length, markRead };
 }
