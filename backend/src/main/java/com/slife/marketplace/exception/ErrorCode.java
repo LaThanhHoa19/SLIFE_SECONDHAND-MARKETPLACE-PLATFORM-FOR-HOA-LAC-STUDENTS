@@ -27,6 +27,8 @@ public enum ErrorCode {
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+    SAVED_LISTING_ALREADY("SAVED_LISTING_ALREADY", "Listing already saved", HttpStatus.CONFLICT),
+    SAVED_LISTING_NOT_SAVED("SAVED_LISTING_NOT_SAVED", "Listing was not saved", HttpStatus.NOT_FOUND),
 
     // Upload
     FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Upload failed", HttpStatus.INTERNAL_SERVER_ERROR),

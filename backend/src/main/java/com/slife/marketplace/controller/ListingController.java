@@ -9,6 +9,7 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.service.ListingService;
+import com.slife.marketplace.service.SavedListingService;
 import com.slife.marketplace.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -24,16 +25,19 @@ public class ListingController {
     private final ListingService listingService;
     private final UserService userService;
     private final ListingRepository listingRepository;
+    private final SavedListingService savedListingService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     public ListingController(ListingService listingService,
                              UserService userService,
-                             ListingRepository listingRepository) {
+                             ListingRepository listingRepository,
+                             SavedListingService savedListingService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
+        this.savedListingService = savedListingService;
     }
 
     @GetMapping
@@ -89,10 +93,31 @@ public class ListingController {
         data.put("images", listing.getImages().stream()
                 .map(img -> img.getImageUrl()).toList());
 
-        data.put("isSaved",    false);
+        boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
+        data.put("isSaved",    isSaved);
         data.put("isFollowed", false);
 
         return ResponseEntity.ok(ApiResponse.success("OK", data));
+    }
+
+    /**
+     * POST /api/listings/{id}/save — luu listing vao danh sach yeu thich (auth required).
+     */
+    @PostMapping("/{id}/save")
+    public ResponseEntity<ApiResponse<Void>> saveListing(@PathVariable("id") Long id) {
+        User user = userService.getCurrentUser();
+        savedListingService.save(user, id);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * DELETE /api/listings/{id}/save — bo luu listing (auth required).
+     */
+    @DeleteMapping("/{id}/save")
+    public ResponseEntity<ApiResponse<Void>> unsaveListing(@PathVariable("id") Long id) {
+        User user = userService.getCurrentUser();
+        savedListingService.unsave(user, id);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
     /**
