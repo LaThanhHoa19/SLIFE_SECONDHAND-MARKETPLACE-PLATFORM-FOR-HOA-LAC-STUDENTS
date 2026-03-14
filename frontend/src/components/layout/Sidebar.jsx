@@ -14,7 +14,7 @@ import { SIDEBAR_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new'];
 
 const NAV_ITEMS = [
-    { label: 'Feed', icon: HomeIcon, path: '/' },
+    { label: 'Feed', icon: HomeIcon, path: '/feed' },
     { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
     { label: 'Đăng tin', icon: CampaignIcon, path: '/listings/new' },
 ];
@@ -35,7 +35,7 @@ export default function Sidebar({ open = true }) {
     };
 
     const isActive = (path) => {
-        if (path === '/') return location.pathname === '/';
+        if (path === '/feed') return location.pathname === '/feed';
         return location.pathname.startsWith(path);
     };
 
