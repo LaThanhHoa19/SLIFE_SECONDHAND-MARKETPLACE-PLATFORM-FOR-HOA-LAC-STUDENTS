@@ -1,23 +1,16 @@
 package com.slife.marketplace.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
-/**
- * SCRUM-43: Paged search result for listings.
- */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ListingPageResponse {
-
     private List<ListingResponse> content;
-
-    private long totalElements;
-
     private int totalPages;
-
-    private int page;
-
-    private int size;
+    private long totalElements;
 }
-

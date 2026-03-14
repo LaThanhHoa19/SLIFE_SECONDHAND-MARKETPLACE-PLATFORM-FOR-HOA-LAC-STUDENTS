@@ -42,14 +42,7 @@ public enum ErrorCode {
     OFFER_SPAM_LIMIT("OFFER_SPAM_LIMIT", "You have reached the maximum offer limit (5) for this listing (BR-35)", HttpStatus.TOO_MANY_REQUESTS),
     OFFER_NOT_PENDING("OFFER_NOT_PENDING", "Offer is no longer pending", HttpStatus.CONFLICT),
     FILE_TOO_LARGE("FILE_TOO_LARGE", "File exceeds 5 MB limit", HttpStatus.PAYLOAD_TOO_LARGE),
-    INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
-
-    // Report related
-    REPORT_NOT_FOUND("REPORT_NOT_FOUND", "Report not found", HttpStatus.NOT_FOUND),
-    REPORT_DUPLICATE("REPORT_DUPLICATE", "You have already reported this item", HttpStatus.CONFLICT),
-    REPORT_SELF("REPORT_SELF", "You cannot report your own content", HttpStatus.BAD_REQUEST),
-    REPORT_INVALID_TARGET("REPORT_INVALID_TARGET", "Invalid report target type (must be LISTING or USER)", HttpStatus.BAD_REQUEST),
-    REPORT_INVALID_STATUS("REPORT_INVALID_STATUS", "Invalid resolve status (must be RESOLVED or DISMISSED)", HttpStatus.BAD_REQUEST);
+    INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
 
     private final String code;
     private final String message;

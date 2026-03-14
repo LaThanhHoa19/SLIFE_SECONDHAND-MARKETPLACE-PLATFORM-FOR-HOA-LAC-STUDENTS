@@ -4,58 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-    <!-- Added for Stitch Landing Page -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#9D6EED",
-                        "primary-light": "#B084F0",
-                        "primary-dark": "#8A5BD6",
-                        "background-light": "#f8f6f5",
-                        "background-dark": "#221710",
-                    },
-                    fontFamily: {
-                        "display": ["Plus", "Jakarta Sans", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-    <style>
-      .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-      @keyframes pulse-purple { 0% { box-shadow: 0 0 0 0 rgba(157, 110, 237, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(157, 110, 237, 0); } 100% { box-shadow: 0 0 0 0 rgba(157, 110, 237, 0); } }
-      .animate-pulse-custom { animation: pulse-purple 2s infinite; }
-      @keyframes sparkle { 0% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 0px rgba(176, 132, 240, 0)); } 50% { transform: scale(1.02); filter: brightness(1.2) drop-shadow(0 0 12px rgba(176, 132, 240, 0.8)); } 100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 0px rgba(176, 132, 240, 0)); } }
-      .animate-sparkle { animation: sparkle 2.5s ease-in-out infinite; }
-      @keyframes gradient-shift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-      .animate-gradient-shift { background: linear-gradient(-45deg, #9D6EED, #B084F0, #8A5BD6, #9D6EED); background-size: 400% 400%; animation: gradient-shift 3s ease infinite; }
-      @keyframes draw-line { from { width: 0; } to { width: 100%; } }
-      .animate-draw-line { animation: draw-line 2s ease-out forwards; }
-      @keyframes snap-scroll { 0%, 15% { transform: translateX(0); } 20%, 35% { transform: translateX(calc(-288px - 1.5rem)); } 40%, 55% { transform: translateX(calc((-288px - 1.5rem) * 2)); } 60%, 75% { transform: translateX(calc((-288px - 1.5rem) * 3)); } 80%, 95% { transform: translateX(calc((-288px - 1.5rem) * 4)); } 100% { transform: translateX(0); } }
-      .animate-auto-scroll { display: flex; width: max-content; animation: snap-scroll 25s cubic-bezier(0.85, 0, 0.15, 1) infinite; }
-      .animate-auto-scroll:hover { animation-play-state: paused; }
-      @keyframes fade-in-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-      .animate-fade-in-up { animation: fade-in-up 1s ease forwards; }
-      .scroll-fade-target, .stat-counter { opacity: 0; }
-      .scroll-fade-target.visible, .stat-counter.visible { animation: fade-in-up 1s ease forwards; }
-    </style>
-    <!-- End Stitch Landing Page -->
+    <title>SLIFE Marketplace</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Polyfill for Node-like 'global' expected by libraries like sockjs-client
+      if (typeof global === 'undefined') {
+        window.global = window;
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

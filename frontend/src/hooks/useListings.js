@@ -72,8 +72,6 @@ const normalizeParams = (params = {}, query = '') => ({
 });
 
 
-const MIN_LOADING_MS = 320;
-
 export default function useListings(initialParams = {}) {
     const [params, setParams] = useState({page: 0, size: 10, ...initialParams});
     const [data, setData] = useState([]);
@@ -83,31 +81,11 @@ export default function useListings(initialParams = {}) {
     const debouncedQuery = useDebounce(params.q);
     const abortRef = useRef(null);
 
-    // Đồng bộ params từ URL khi user đổi category/location/search
-    useEffect(() => {
-        setParams((prev) => {
-            const next = {
-                ...prev,
-                page: Number.isFinite(Number(initialParams?.page)) ? Number(initialParams.page) : prev.page,
-                size: Number.isFinite(Number(initialParams?.size)) ? Number(initialParams.size) : prev.size,
-                category: initialParams?.category ?? prev.category,
-                location: initialParams?.location ?? prev.location,
-                sort: initialParams?.sort ?? prev.sort,
-                q: initialParams?.q ?? prev.q,
-            };
-            const same =
-                next.page === prev.page && next.size === prev.size && next.category === prev.category &&
-                next.location === prev.location && next.sort === prev.sort && next.q === prev.q;
-            return same ? prev : next;
-        });
-    }, [initialParams?.category, initialParams?.location, initialParams?.sort, initialParams?.page, initialParams?.size, initialParams?.q]);
-
     const fetchData = useCallback(async (currentParams, query) => {
         if (abortRef.current) abortRef.current.abort();
         const controller = new AbortController();
         abortRef.current = controller;
 
-        const loadingStarted = Date.now();
         setLoading(true);
         setError(null);
         try {
@@ -138,13 +116,7 @@ export default function useListings(initialParams = {}) {
                 message: err?.message || 'Tải danh sách thất bại.',
             });
         } finally {
-            if (controller.signal.aborted) return;
-            const elapsed = Date.now() - loadingStarted;
-            const delay = Math.max(0, MIN_LOADING_MS - elapsed);
-            if (delay > 0) {
-                await new Promise((r) => setTimeout(r, delay));
-            }
-            setLoading(false);
+            if (!controller.signal.aborted) setLoading(false);
         }
     }, []);
 

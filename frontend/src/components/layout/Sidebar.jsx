@@ -8,11 +8,8 @@ import {
     Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
 
 const SIDEBAR_WIDTH = 148;
-
-const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new'];
 
 const NAV_ITEMS = [
     { label: 'Feed', icon: HomeIcon, path: '/' },
@@ -23,17 +20,8 @@ const NAV_ITEMS = [
 export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { isAuthenticated } = useAuth();
 
     if (!open) return null;
-
-    const handleNavClick = (path) => {
-        if (AUTH_REQUIRED_PATHS.includes(path) && !isAuthenticated) {
-            navigate('/login', { state: { from: path, message: 'Bạn cần đăng nhập để truy cập' } });
-            return;
-        }
-        navigate(path);
-    };
 
     const isActive = (path) => {
         if (path === '/') return location.pathname === '/';
@@ -51,9 +39,8 @@ export default function Sidebar({ open = true }) {
                 borderRight: '1px solid rgba(255,255,255,0.07)',
                 display: 'flex',
                 flexDirection: 'column',
-                position: 'fixed',
+                position: 'sticky',
                 top: '56px',
-                left: 0,
                 zIndex: 1200,
                 pt: 1.5,
                 pb: 2,
@@ -68,7 +55,7 @@ export default function Sidebar({ open = true }) {
                 return (
                     <Box
                         key={path}
-                        onClick={() => handleNavClick(path)}
+                        onClick={() => navigate(path)}
                         sx={{
                             display: 'flex',
                             alignItems: 'center',

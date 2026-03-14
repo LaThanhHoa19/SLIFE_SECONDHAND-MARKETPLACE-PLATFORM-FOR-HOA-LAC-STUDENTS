@@ -1,0 +1,3 @@
+-- V3 intentionally left as NO-OP.
+-- pickup_time and reminder_sent were merged into V1__init.sql deals table definition.
+-- Keep this file so Flyway validation does not fail on environments that already recorded V3.

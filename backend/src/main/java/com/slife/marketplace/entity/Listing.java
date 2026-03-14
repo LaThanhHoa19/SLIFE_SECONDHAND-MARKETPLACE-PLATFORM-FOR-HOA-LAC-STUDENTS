@@ -11,8 +11,6 @@ import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 
 @Getter
 @Setter
@@ -81,11 +79,6 @@ public class Listing {
     private Instant expirationDate;
 
     @NotNull
-    @ColumnDefault("0")
-    @Column(name = "view_count", nullable = false)
-    private Long viewCount;
-
-    @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -95,10 +88,5 @@ public class Listing {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
 
-    @OneToMany(mappedBy = "listing", fetch = FetchType.LAZY)
-    @OrderBy("displayOrder ASC")
-    private List<ListingImage> images = new ArrayList<>();
 }

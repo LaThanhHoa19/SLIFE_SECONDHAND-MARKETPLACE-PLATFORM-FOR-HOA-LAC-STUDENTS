@@ -32,17 +32,19 @@ import java.util.Map;
 
 /**
  * REST API + WebSocket handlers for the chat system (FE-05).
- * * REST endpoints:
- * GET  /api/v1/chats                          – list sessions
- * POST /api/v1/chats/session                  – get-or-create session
- * POST /api/v1/chats/send                     – send message (REST fallback)
- * GET  /api/v1/chats/{sessionId}/history      – paginated history
- * GET  /api/v1/chats/quick-replies            – quick reply phrases
- * POST /api/v1/chats/upload                   – upload chat image
- * POST /api/v1/chats/{sessionId}/offer        – make offer (UC-30)
+ * <p>
+ * REST endpoints:
+ * GET  /api/v1/chats                         – list sessions
+ * POST /api/v1/chats/session                 – get-or-create session
+ * POST /api/v1/chats/send                    – send message (REST fallback)
+ * GET  /api/v1/chats/{sessionId}/history     – paginated history
+ * GET  /api/v1/chats/quick-replies           – quick reply phrases
+ * POST /api/v1/chats/upload                  – upload chat image
+ * POST /api/v1/chats/{sessionId}/offer       – make offer (UC-30)
  * POST /api/v1/chats/offers/{offerId}/respond – accept/reject offer
- * POST /api/v1/chats/{sessionId}/read         – mark messages read (UC-26)
- * * WebSocket destinations (prefix /app):
+ * POST /api/v1/chats/{sessionId}/read        – mark messages read (UC-26)
+ * <p>
+ * WebSocket destinations (prefix /app):
  * /app/chat.send    – send a message in real-time
  * /app/chat.typing  – broadcast typing indicator
  */
@@ -62,7 +64,7 @@ public class ChatController {
         this.userRepository = userRepository;
     }
 
-    // ── SESSION MANAGEMENT ────────────────────────────────────────────────────
+    // ── REST: sessions ────────────────────────────────────────────────────────
 
     @GetMapping("/chats")
     public ResponseEntity<ApiResponse<List<ChatSessionResponse>>> listChats(
@@ -80,8 +82,11 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", conv.getSessionUuid()));
     }
 
-    // ── MESSAGING (REST) ──────────────────────────────────────────────────────
+    // ── REST: messaging ───────────────────────────────────────────────────────
 
+    /**
+     * REST fallback send — also pushes via WebSocket internally.
+     */
     @PostMapping("/chats/send")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> sendMessage(
             @Valid @RequestBody SendMessageRequest request) {
@@ -92,7 +97,7 @@ public class ChatController {
                 request.getMessageType(),
                 request.getFileUrl(),
                 user);
-        return ResponseEntity.ok(ApiResponse.success(Constants.MSG10, msg));
+        return ResponseEntity.ok(ApiResponse.success("OK", msg));
     }
 
     @GetMapping("/chats/{sessionId}/history")
@@ -110,8 +115,12 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", QuickReplyUtil.getQuickReplies()));
     }
 
-    // ── IMAGE UPLOAD ─────────────────────────────────────────────────────────
+    // ── REST: image upload ────────────────────────────────────────────────────
 
+    /**
+     * Upload a chat image (max 5 MB, JPG/PNG/WebP).
+     * Returns the public URL; client then sends a WebSocket/REST message with messageType=IMAGE and the URL.
+     */
     @PostMapping(value = "/chats/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadChatImage(
             @RequestParam String sessionId,
@@ -120,8 +129,11 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", url));
     }
 
-    // ── NEGOTIATION & OFFERS ──────────────────────────────────────────────────
+    // ── REST: negotiation ─────────────────────────────────────────────────────
 
+    /**
+     * Make an offer (UC-30). BR-35: max 5 offers per buyer per listing.
+     */
     @PostMapping("/chats/{sessionId}/offer")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> makeOffer(
             @PathVariable String sessionId,
@@ -132,6 +144,9 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", msg));
     }
 
+    /**
+     * Seller accepts or rejects an offer (UC-28).
+     */
     @PostMapping("/chats/offers/{offerId}/respond")
     public ResponseEntity<ApiResponse<ChatMessageResponse>> respondToOffer(
             @PathVariable Long offerId,
@@ -141,8 +156,11 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", msg));
     }
 
-    // ── READ RECEIPTS ─────────────────────────────────────────────────────────
+    // ── REST: read receipts ───────────────────────────────────────────────────
 
+    /**
+     * Mark all unread messages in session as read (UC-26).
+     */
     @PostMapping("/chats/{sessionId}/read")
     public ResponseEntity<ApiResponse<Void>> markAsRead(@PathVariable String sessionId) {
         User user = userService.getCurrentUser();
@@ -150,16 +168,19 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
-    // ── WEBSOCKET HANDLERS ────────────────────────────────────────────────────
+    // ── WebSocket handlers ────────────────────────────────────────────────────
 
+    /**
+     * Real-time send via WebSocket.
+     * Client sends to /app/chat.send with payload:
+     * { sessionId, content, messageType?, fileUrl? }
+     */
     @MessageMapping("/chat.send")
     public void wsSendMessage(@Payload SendMessageRequest request, SimpMessageHeaderAccessor headerAccessor) {
         Principal principal = headerAccessor.getUser();
         if (principal == null) return;
-        
         String email = principal.getName();
         if (email == null || email.isBlank()) return;
-
         try {
             User sender = userRepository.findByEmail(email).orElse(null);
             if (sender == null) {
@@ -177,11 +198,15 @@ public class ChatController {
         }
     }
 
+    /**
+     * Typing indicator.
+     * Client sends to /app/chat.typing with payload:
+     * { sessionId, isTyping }
+     */
     @MessageMapping("/chat.typing")
     public void wsTyping(@Payload Map<String, Object> payload, SimpMessageHeaderAccessor headerAccessor) {
         Principal principal = headerAccessor.getUser();
         if (principal == null) return;
-        
         try {
             String sessionId = (String) payload.get("sessionId");
             Boolean isTyping = Boolean.TRUE.equals(payload.get("isTyping"));
