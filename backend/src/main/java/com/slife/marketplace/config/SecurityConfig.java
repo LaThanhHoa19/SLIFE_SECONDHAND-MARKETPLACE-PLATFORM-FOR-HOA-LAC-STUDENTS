@@ -3,6 +3,7 @@ package com.slife.marketplace.config;
 import com.slife.marketplace.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
@@ -32,6 +33,10 @@ public class SecurityConfig {
                 "/swagger-ui/**",
                 "/v3/api-docs/**")
             .permitAll()
+            // Save listing: auth required
+            .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
+            .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
+            .requestMatchers("/api/me/**").authenticated()
             // Guest access
             .requestMatchers("/api/listings/**").permitAll()
             // Admin-only
