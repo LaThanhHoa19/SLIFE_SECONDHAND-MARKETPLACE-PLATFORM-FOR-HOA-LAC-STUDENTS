@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
-import { getNotifications, markNotificationRead } from '../api/notificationApi';
+import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
 import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from './useAuth';
 
@@ -40,6 +40,33 @@ export default function useNotifications() {
     return () => { clearInterval(pollingId); socket?.disconnect(); };
   }, [token]);
 
-  const markRead = async (id) => { await markNotificationRead(id); setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))); };
-  return { notifications, unreadCount: notifications.filter((n) => !n.isRead).length, markRead };
+  const markRead = async (id) => {
+    await markNotificationRead(id);
+    setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+  };
+
+  const markAllRead = async () => {
+    await apiMarkAllRead();
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const refetch = async () => {
+    if (!token) return;
+    try {
+      const response = await getNotifications();
+      setNotifications(response.data || []);
+    } catch (error) {
+      console.error('Failed to reload notifications:', error);
+    }
+  };
+
+  return {
+    notifications,
+    unreadCount: notifications.filter((n) => !n.isRead).length,
+    markRead,
+    markAllRead,
+    refetch,
+  };
 }
