@@ -21,25 +21,26 @@ public class SecurityConfig {
   @Bean
   SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-        .cors(Customizer.withDefaults())
-        .csrf(c -> c.disable())
-        .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(a -> a
-            .requestMatchers("/actuator/health").permitAll()
-            .requestMatchers(
-                "/api/auth/**",
-                "/api/search",
-                "/swagger-ui/**",
-                "/v3/api-docs/**")
-            .permitAll()
-            // Guest access
-            .requestMatchers("/api/listings/**").permitAll()
-            // Admin-only
-            .requestMatchers("/api/admin/**").hasRole("ADMIN")
-            // Everything else requires authentication
-            .anyRequest()
-            .authenticated())
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .cors(Customizer.withDefaults())
+            .csrf(c -> c.disable())
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(a -> a
+                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers(
+                            "/api/auth/**",
+                            "/api/search",
+                            "/api/categories",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**")
+                    .permitAll()
+                    // Guest access
+                    .requestMatchers("/api/listings/**").permitAll()
+                    // Admin-only
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    // Everything else requires authentication
+                    .anyRequest()
+                    .authenticated())
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
