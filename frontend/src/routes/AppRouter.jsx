@@ -1,12 +1,17 @@
 /**
- * AppRouter - Unified routing with lazy loading and guard middleware.
- * Combines the clean structure of 'main' with the path aliases from 'Hoa'.
+ * AppRouter - Advanced routing với lazy loading và guards (không có error pages)
+ * Features:
+ * - Lazy loading cho performance
+ * - Route guards với middleware pattern
+ * - Role-based access control
  */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
+import LandingLayout from '../components/layout/LandingLayout';
+import AdminLayout from '../components/layout/AdminLayout';
 import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
 
-// Lazy loaded components (Imports standardized from main)
+// Lazy loaded components
 import {
     SuspenseLoginPage,
     SuspenseRegisterPage,
@@ -14,12 +19,13 @@ import {
     SuspenseListingDetailPage,
     SuspenseCreateListingPage,
     SuspenseProfilePage,
-    SuspenseChatPage,
     SuspenseDealDetailPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
     SuspenseBackendTestPage,
+    SuspenseGoogleCallbackPage,
+    SuspenseStitchLandingPage,
     SuspenseNotificationsPage,
     SuspenseMyListingsPage,
 } from './LazyRoutes';
@@ -27,12 +33,20 @@ import {
 export default function AppRouter() {
     return (
         <Routes>
+            <Route element={<LandingLayout />}>
+                <Route path="/landing" element={<SuspenseStitchLandingPage />} />
+            </Route>
+
             <Route element={<MainLayout />}>
-                {/* Public routes */}
+                {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/" element={<SuspenseListingsPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+                <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
-                {/* Guest-only routes (redirect nếu đã đăng nhập) */}
+                {/* Google OAuth2 redirect callback — no guard, no layout needed */}
+                <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
+
+                {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
                 <Route
                     path="/login"
                     element={
@@ -50,11 +64,11 @@ export default function AppRouter() {
                     }
                 />
 
-                {/* Authenticated routes */}
+                {/* ===== PROTECTED ROUTES - Cần đăng nhập ===== */}
                 <Route
                     path="/listings/new"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                        <RouteGuard guards={GUARD_PRESETS.VERIFIED_USER}>
                             <SuspenseCreateListingPage />
                         </RouteGuard>
                     }
@@ -64,14 +78,6 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseProfilePage />
-                        </RouteGuard>
-                    }
-                />
-                <Route
-                    path="/chat"
-                    element={
-                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseChatPage />
                         </RouteGuard>
                     }
                 />
@@ -100,29 +106,23 @@ export default function AppRouter() {
                     }
                 />
 
-                {/* Admin-only routes */}
+                {/* Admin routes (tạm thời không cần login để test UI) */}
                 <Route
                     path="/admin"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseDashboardPage />
-                        </RouteGuard>
+                        <SuspenseDashboardPage />
                     }
                 />
                 <Route
                     path="/admin/reports"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseReportManagementPage />
-                        </RouteGuard>
+                        <SuspenseReportManagementPage />
                     }
                 />
                 <Route
                     path="/admin/users"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseUserManagementPage />
-                        </RouteGuard>
+                        <SuspenseUserManagementPage />
                     }
                 />
 
@@ -135,3 +135,4 @@ export default function AppRouter() {
         </Routes>
     );
 }
+
