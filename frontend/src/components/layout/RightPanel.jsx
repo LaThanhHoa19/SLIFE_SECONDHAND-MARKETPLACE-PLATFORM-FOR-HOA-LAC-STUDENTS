@@ -165,12 +165,15 @@ export default function RightPanel() {
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 1.5,
+                gap: 2,
                 position: 'sticky',
-                top: '76px', // Header + padding
+                top: '76px',
                 height: 'calc(100vh - 76px)',
                 overflowY: 'auto',
-                '&::-webkit-scrollbar': { display: 'none' },
+                py: 0.5,
+                '&::-webkit-scrollbar': { width: 6 },
+                '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
+                '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 3 },
             }}
         >
             {/* Location selector + refresh */}
@@ -180,45 +183,50 @@ export default function RightPanel() {
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 0.5,
-                        bgcolor: '#2A2733',
-                        border: `1px solid ${locOpen || selectedLocation ? '#9D6EED' : 'rgba(255,255,255,0.1)'}`,
-                        borderRadius: '8px',
-                        px: 1.5,
-                        py: 0.75,
-                        cursor: 'pointer',
+                        gap: 1.25,
                         flex: 1,
-                        overflow: 'hidden',
-                        '&:hover': { borderColor: '#9D6EED' },
+                        minWidth: 0,
+                        bgcolor: 'rgba(30,27,36,0.9)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: '12px',
+                        px: 2,
+                        py: 1.25,
+                        cursor: 'pointer',
+                        transition: 'border-color 0.2s, background-color 0.2s',
+                        '&:hover': { bgcolor: 'rgba(40,37,48,0.95)', borderColor: 'rgba(157,110,237,0.25)' },
+                        ...((locOpen || selectedLocation) && { borderColor: 'rgba(157,110,237,0.4)', bgcolor: 'rgba(40,37,48,0.98)' }),
                     }}
                 >
-                    <LocationOnIcon sx={{ fontSize: 14, color: '#9D6EED', flexShrink: 0 }} />
-                    <Box sx={{ flex: 1, mx: 0.5, overflow: 'hidden' }}>
-                        <Typography sx={{ fontSize: '10px', color: '#9D6EED', fontWeight: 600, lineHeight: 1.2 }}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: '10px', bgcolor: 'rgba(157,110,237,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <LocationOnIcon sx={{ fontSize: 18, color: '#9D6EED' }} />
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', fontWeight: 500, lineHeight: 1.2 }}>
                             Hòa Lạc
                         </Typography>
-                        <Typography sx={{ fontSize: '12px', fontWeight: 500, lineHeight: 1.3,
-                            color: selectedLocation ? '#9D6EED' : 'rgba(255,255,255,0.75)',
+                        <Typography sx={{ fontSize: '14px', fontWeight: 600, color: selectedLocation ? '#B794F6' : 'rgba(255,255,255,0.9)',
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {locationLabel}
                         </Typography>
                     </Box>
-                    <ArrowDownIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', flexShrink: 0,
-                        transform: locOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                    <ArrowDownIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.35)', flexShrink: 0,
+                        transform: locOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s ease' }} />
                 </Box>
                 <IconButton
-                    size="small"
                     onClick={handleReset}
                     sx={{
-                        bgcolor: '#2A2733',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px',
-                        p: 0.75,
-                        color: 'rgba(255,255,255,0.6)',
-                        '&:hover': { borderColor: '#9D6EED', color: '#9D6EED' },
+                        width: 40,
+                        height: 40,
+                        flexShrink: 0,
+                        bgcolor: 'rgba(30,27,36,0.9)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        borderRadius: '10px',
+                        color: 'rgba(255,255,255,0.5)',
+                        transition: 'all 0.2s',
+                        '&:hover': { borderColor: 'rgba(157,110,237,0.3)', color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.08)' },
                     }}
                 >
-                    <RefreshIcon sx={{ fontSize: 16 }} />
+                    <RefreshIcon sx={{ fontSize: 18 }} />
                 </IconButton>
             </Box>
 
@@ -229,35 +237,64 @@ export default function RightPanel() {
                 onClose={() => setLocAnchorEl(null)}
                 anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
                 transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-                slotProps={{ paper: { sx: { mt: 1, minWidth: 210, maxHeight: 300, overflowY: 'auto',
-                            borderRadius: '16px', boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
-                            bgcolor: '#2A2733', border: '1px solid rgba(255,255,255,0.1)' } } }}
+                slotProps={{
+                    paper: {
+                        sx: {
+                            mt: 1.5,
+                            minWidth: 260,
+                            maxWidth: 320,
+                            maxHeight: 320,
+                            overflow: 'hidden',
+                            borderRadius: '16px',
+                            boxShadow: '0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)',
+                            bgcolor: 'rgba(28,26,34,0.98)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        },
+                    },
+                }}
             >
-                <Box sx={{ px: 2, py: 1.5, background: 'rgba(157,110,237,0.15)',
-                    borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <LocationOnIcon sx={{ fontSize: 16, color: '#9D6EED' }} />
-                    <Box>
-                        <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#9D6EED' }}>Hòa Lạc</Typography>
-                        <Typography sx={{ fontSize: '11px', color: 'rgba(157,110,237,0.8)' }}>Thạch Thất, Hà Nội</Typography>
-                    </Box>
+                <Box sx={{ px: 2, py: 1.75, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 500, mb: 0.25 }}>
+                        Chọn xã hiển thị tin (khu vực Hòa Lạc)
+                    </Typography>
+                    <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+                        Hòa Lạc · Thạch Thất, Hà Nội
+                    </Typography>
                 </Box>
-                <Box sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-                    <Typography sx={{ fontSize: '11px', fontWeight: 700, color: '#9D6EED',
-                        textTransform: 'uppercase', letterSpacing: '0.8px' }}>Chọn xã</Typography>
-                </Box>
-                <List dense disablePadding sx={{ pb: 0.5 }}>
-                    <ListItemButton selected={!selectedLocation} onClick={() => handleSelectLocation('')}
-                                    sx={{ px: 2, py: 1, '&.Mui-selected': { bgcolor: 'rgba(157,110,237,0.2)' }, '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' } }}>
-                        <Typography sx={{ fontSize: '13px', fontWeight: !selectedLocation ? 600 : 400,
-                            color: !selectedLocation ? '#9D6EED' : 'rgba(255,255,255,0.75)' }}>Tất cả xã</Typography>
+                <List disablePadding sx={{ py: 1, maxHeight: 240, overflowY: 'auto' }}>
+                    <ListItemButton
+                        selected={!selectedLocation}
+                        onClick={() => handleSelectLocation('')}
+                        sx={{
+                            mx: 1,
+                            borderRadius: '10px',
+                            py: 1.25,
+                            px: 2,
+                            '&.Mui-selected': { bgcolor: 'rgba(157,110,237,0.15)', '&:hover': { bgcolor: 'rgba(157,110,237,0.2)' } },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                        }}
+                    >
+                        <Typography sx={{ fontSize: '14px', fontWeight: !selectedLocation ? 600 : 400, color: !selectedLocation ? '#B794F6' : 'rgba(255,255,255,0.85)' }}>
+                            Tất cả xã
+                        </Typography>
                     </ListItemButton>
-                    <Divider sx={{ mx: 2, my: 0.5, borderColor: 'rgba(255,255,255,0.08)' }} />
                     {locations.map((loc) => (
-                        <ListItemButton key={loc} selected={selectedLocation === loc}
-                                        onClick={() => handleSelectLocation(loc)}
-                                        sx={{ px: 2, py: 1, '&.Mui-selected': { bgcolor: 'rgba(157,110,237,0.2)' }, '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' } }}>
-                            <Typography sx={{ fontSize: '13px', fontWeight: selectedLocation === loc ? 600 : 400,
-                                color: selectedLocation === loc ? '#9D6EED' : 'rgba(255,255,255,0.75)' }}>{loc}</Typography>
+                        <ListItemButton
+                            key={loc}
+                            selected={selectedLocation === loc}
+                            onClick={() => handleSelectLocation(loc)}
+                            sx={{
+                                mx: 1,
+                                borderRadius: '10px',
+                                py: 1.25,
+                                px: 2,
+                                '&.Mui-selected': { bgcolor: 'rgba(157,110,237,0.15)', '&:hover': { bgcolor: 'rgba(157,110,237,0.2)' } },
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                            }}
+                        >
+                            <Typography sx={{ fontSize: '14px', fontWeight: selectedLocation === loc ? 600 : 400, color: selectedLocation === loc ? '#B794F6' : 'rgba(255,255,255,0.85)' }}>
+                                {loc}
+                            </Typography>
                         </ListItemButton>
                     ))}
                 </List>
@@ -266,14 +303,15 @@ export default function RightPanel() {
             {/* Banner cộng đồng */}
             <Box
                 sx={{
-                    background: 'linear-gradient(135deg, #7C3AED 0%, #9D6EED 100%)',
-                    borderRadius: '12px',
-                    p: 2,
+                    background: 'linear-gradient(145deg, #6D28D9 0%, #8B5CF6 50%, #A78BFA 100%)',
+                    borderRadius: '16px',
+                    p: 2.5,
                     position: 'relative',
                     overflow: 'hidden',
+                    boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
                 }}
             >
-                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.4, mb: 1.5 }}>
+                <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#FFF', lineHeight: 1.45, mb: 1.5, pr: 4 }}>
                     Tham gia cộng đồng mua bán cùng SLIFE!
                 </Typography>
                 <Button
@@ -285,55 +323,45 @@ export default function RightPanel() {
                         navigate('/listings/new');
                     }}
                     sx={{
-                        bgcolor: '#FFFFFF',
-                        color: '#7C3AED',
-                        fontSize: '11px',
+                        bgcolor: '#FFF',
+                        color: '#6D28D9',
+                        fontSize: '12px',
                         fontWeight: 700,
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: '6px',
+                        px: 2,
+                        py: 0.75,
+                        borderRadius: '10px',
                         textTransform: 'none',
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        transition: 'transform 0.15s, box-shadow 0.15s',
+                        '&:hover': { bgcolor: '#FFF', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' },
                     }}
                 >
-                    ĐĂNG TIN NGAY!!
+                    Đăng tin ngay
                 </Button>
-                {/* Decorative megaphone emoji */}
-                <Typography
-                    sx={{
-                        position: 'absolute',
-                        right: 8,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        fontSize: '32px',
-                        opacity: 0.5,
-                        pointerEvents: 'none',
-                    }}
-                >
+                <Typography sx={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 36, opacity: 0.4, pointerEvents: 'none' }}>
                     📢
                 </Typography>
             </Box>
 
-            {/* Danh mục cha-con: chỉ hiện danh mục GỐC (cha); bấm mũi tên để xem danh mục con */}
-            <Box sx={{ bgcolor: '#2A2733', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
+            {/* Danh mục hàng đầu */}
+            <Box sx={{ bgcolor: 'rgba(42,39,51,0.6)', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <Box sx={{ px: 2, py: 1.75, borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <DefaultCategoryIcon sx={{ fontSize: 20, color: '#9D6EED', opacity: 0.9 }} />
+                    <Typography sx={{ fontSize: '14px', fontWeight: 700, color: 'rgba(255,255,255,0.95)', letterSpacing: '0.02em' }}>
                         Danh mục hàng đầu
-                    </Typography>
-                    <Typography sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', mt: 0.25 }}>
-                        Bấm mũi tên để mở danh mục con
                     </Typography>
                 </Box>
                 {catLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                        <Box key={i} sx={{ px: 2, py: 1.2 }}>
-                            <Skeleton variant="text" sx={{ bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
-                        </Box>
-                    ))
+                    <Box sx={{ px: 2, py: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <Skeleton key={i} variant="rounded" height={40} sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: '10px' }} />
+                        ))}
+                    </Box>
                 ) : categoryTree.length === 0 ? (
-                    <Box sx={{ px: 2, py: 2 }}>
-                        <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-                            Không có danh mục
+                    <Box sx={{ px: 2, py: 3, textAlign: 'center' }}>
+                        <DefaultCategoryIcon sx={{ fontSize: 40, color: 'rgba(255,255,255,0.15)', mb: 1 }} />
+                        <Typography sx={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>
+                            Chưa có danh mục
                         </Typography>
                     </Box>
                 ) : (
@@ -353,21 +381,24 @@ export default function RightPanel() {
                             const count = cat.listingCount ?? cat.count ?? null;
                             return (
                                 <Box key={catId ?? cat.name}>
-                                    {/* Hàng danh mục CHA: icon thư mục + mũi tên mở/đóng */}
+                                    {/* Hàng danh mục cha */}
                                     <Box
                                         sx={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             px: 2,
-                                            py: 1,
-                                            gap: 1,
+                                            py: 1.25,
+                                            gap: 1.25,
                                             cursor: 'pointer',
+                                            mx: 0.75,
+                                            borderRadius: '10px',
                                             bgcolor: hasChildren ? 'rgba(255,255,255,0.02)' : 'transparent',
-                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
+                                            transition: 'background-color 0.2s',
+                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.12)' },
                                         }}
                                     >
                                         <Box
-                                            sx={{ width: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            sx={{ width: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 if (hasChildren) toggleCategoryExpand(catId);
@@ -375,36 +406,36 @@ export default function RightPanel() {
                                         >
                                             {hasChildren ? (
                                                 <IconButton size="small" sx={{ p: 0, color: '#9D6EED' }} aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng'}>
-                                                    {isExpanded ? <ExpandMoreIcon sx={{ fontSize: 18 }} /> : <ArrowRightIcon sx={{ fontSize: 18 }} />}
+                                                    {isExpanded ? <ExpandMoreIcon sx={{ fontSize: 20 }} /> : <ArrowRightIcon sx={{ fontSize: 20 }} />}
                                                 </IconButton>
                                             ) : (
-                                                <Box sx={{ width: 18, height: 18 }} />
+                                                <Box sx={{ width: 20, height: 20 }} />
                                             )}
                                         </Box>
                                         <Box
                                             onClick={() => navigate(`/?category=${catId ?? encodeURIComponent(cat.name)}`)}
-                                            sx={{ display: 'flex', alignItems: 'center', flex: 1, gap: 1, minWidth: 0 }}
+                                            sx={{ display: 'flex', alignItems: 'center', flex: 1, gap: 1.25, minWidth: 0 }}
                                         >
                                             {hasChildren ? (
-                                                isExpanded ? <FolderOpenIcon sx={{ fontSize: 18, color: '#9D6EED', flexShrink: 0 }} /> : <FolderIcon sx={{ fontSize: 18, color: '#9D6EED', flexShrink: 0 }} />
+                                                isExpanded ? <FolderOpenIcon sx={{ fontSize: 20, color: '#9D6EED', flexShrink: 0 }} /> : <FolderIcon sx={{ fontSize: 20, color: '#9D6EED', flexShrink: 0 }} />
                                             ) : (
-                                                <Icon sx={{ fontSize: 16, color: '#9D6EED', flexShrink: 0 }} />
+                                                <Icon sx={{ fontSize: 18, color: '#9D6EED', flexShrink: 0 }} />
                                             )}
-                                            <Typography sx={{ fontSize: '12px', fontWeight: hasChildren ? 600 : 400, color: 'rgba(255,255,255,0.85)', flex: 1,
+                                            <Typography sx={{ fontSize: '13px', fontWeight: hasChildren ? 600 : 500, color: 'rgba(255,255,255,0.9)', flex: 1,
                                                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {cat.name}
                                             </Typography>
                                             {count != null && (
-                                                <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', mr: 0.5, flexShrink: 0 }}>
+                                                <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', mr: 0.5, flexShrink: 0 }}>
                                                     {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
                                                 </Typography>
                                             )}
-                                            <ChevronRightIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                                            <ChevronRightIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
                                         </Box>
                                     </Box>
-                                    {/* Danh mục CON: chỉ hiện khi mở rộng cha, thụt vào + gạch nối */}
+                                    {/* Danh mục con */}
                                     {hasChildren && isExpanded && (
-                                        <Box sx={{ pl: 3, borderLeft: '2px solid rgba(157,110,237,0.35)', ml: 2, mr: 0, py: 0.5 }}>
+                                        <Box sx={{ pl: 2.5, borderLeft: '2px solid rgba(157,110,237,0.3)', ml: 2.5, mr: 1, py: 0.5, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                                             {cat.children.map((child) => {
                                                 const childId = child.id ?? child.categoryId;
                                                 const ChildIcon = getCategoryIcon(child.name);
@@ -417,32 +448,32 @@ export default function RightPanel() {
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             px: 1.5,
-                                                            py: 0.75,
-                                                            gap: 1,
+                                                            py: 0.875,
+                                                            gap: 1.25,
                                                             cursor: 'pointer',
-                                                            borderLeft: '2px solid transparent',
-                                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.08)' },
+                                                            borderRadius: '8px',
+                                                            transition: 'background-color 0.2s',
+                                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
                                                         }}
                                                     >
-                                                        <Typography component="span" sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>└</Typography>
-                                                        <ChildIcon sx={{ fontSize: 14, color: 'rgba(157,110,237,0.9)', flexShrink: 0 }} />
-                                                        <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', flex: 1,
+                                                        <ChildIcon sx={{ fontSize: 16, color: 'rgba(157,110,237,0.85)', flexShrink: 0 }} />
+                                                        <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', flex: 1,
                                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                             {child.name}
                                                         </Typography>
                                                         {childCount != null && (
-                                                            <Typography sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
+                                                            <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }}>
                                                                 {childCount >= 1000 ? `${(childCount / 1000).toFixed(1)}k` : childCount}
                                                             </Typography>
                                                         )}
-                                                        <ChevronRightIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                                                        <ChevronRightIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                                                     </Box>
                                                 );
                                             })}
                                         </Box>
                                     )}
                                     {idx < categoryTree.length - 1 && (
-                                        <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.07)' }} />
+                                        <Divider sx={{ mx: 1.5, borderColor: 'rgba(255,255,255,0.05)' }} />
                                     )}
                                 </Box>
                             );
