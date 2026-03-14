@@ -34,6 +34,7 @@ export const LazyReportManagementPage = lazy(() => import('../pages/admin/Report
 export const LazyUserManagementPage = lazy(() => import('../pages/admin/UserManagementPage'));
 export const LazyBackendTestPage = lazy(() => import('../pages/BackendTestPage'));
 export const LazyNotificationsPage = lazy(() => import('../pages/notification/NotificationsPage'));
+export const LazyMyListingsPage = lazy(() => import('../pages/listing/MyListingsPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -56,3 +57,4 @@ export const SuspenseReportManagementPage = withSuspense(LazyReportManagementPag
 export const SuspenseUserManagementPage = withSuspense(LazyUserManagementPage, "Đang tải quản lý người dùng...");
 export const SuspenseBackendTestPage = withSuspense(LazyBackendTestPage, "Đang tải trang backend test...");
 export const SuspenseNotificationsPage = withSuspense(LazyNotificationsPage, "Đang tải thông báo...");
+export const SuspenseMyListingsPage = withSuspense(LazyMyListingsPage, "Đang tải tin đăng của bạn...");
