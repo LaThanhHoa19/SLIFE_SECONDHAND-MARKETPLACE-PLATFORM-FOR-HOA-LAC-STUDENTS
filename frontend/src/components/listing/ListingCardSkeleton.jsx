@@ -7,13 +7,24 @@ import { Card, CardContent, Skeleton } from '@mui/material';
 export default function ListingCardSkeleton() {
     return (
         <Card sx={{ overflow: 'hidden' }}>
-            {/* Image area — height 160 khớp với CardMedia trong ListingCard */}
-            <Skeleton variant="rectangular" width="100%" height={160} />
+            <Skeleton
+                variant="rectangular"
+                width="100%"
+                height={160}
+                animation="wave"
+                sx={{ bgcolor: 'rgba(255,255,255,0.07)' }}
+            />
             <CardContent>
-                {/* Title */}
-                <Skeleton variant="text" sx={{ fontSize: '1rem' }} width="80%" />
-                {/* Price */}
-                <Skeleton variant="text" sx={{ fontSize: '0.875rem' }} width="50%" />
+                <Skeleton
+                    variant="text"
+                    sx={{ fontSize: '1rem', maxWidth: '85%', bgcolor: 'rgba(255,255,255,0.07)' }}
+                    animation="wave"
+                />
+                <Skeleton
+                    variant="text"
+                    sx={{ fontSize: '0.875rem', maxWidth: '50%', mt: 0.5, bgcolor: 'rgba(255,255,255,0.06)' }}
+                    animation="wave"
+                />
             </CardContent>
         </Card>
     );
