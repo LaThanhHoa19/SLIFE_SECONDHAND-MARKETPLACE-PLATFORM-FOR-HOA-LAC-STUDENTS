@@ -65,4 +65,23 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             "WHERE l.status = 'ACTIVE' " +
             "ORDER BY a.locationName")
     List<String> findDistinctPickupLocationNames();
+
+    // --- My Listings Management (pageable versions) ---
+
+    Page<Listing> findBySellerOrderByCreatedAtDesc(User seller, Pageable pageable);
+
+    Page<Listing> findBySellerAndStatus(User seller, String status, Pageable pageable);
+
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
+            "ORDER BY l.expirationDate DESC")
+    Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND EXISTS (SELECT r FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = l.id) " +
+            "ORDER BY l.createdAt DESC")
+    Page<Listing> findReportedListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    @Query("SELECT COUNT(r) FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = :listingId")
+    long countReportsByListingId(@Param("listingId") Long listingId);
 }

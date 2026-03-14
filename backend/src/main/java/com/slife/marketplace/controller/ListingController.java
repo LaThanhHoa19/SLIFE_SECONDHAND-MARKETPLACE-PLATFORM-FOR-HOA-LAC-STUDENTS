@@ -2,6 +2,7 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.ListingService;
@@ -46,6 +47,22 @@ public class ListingController {
                 size,
                 currentUser
         );
+        return ResponseEntity.ok(ApiResponse.success("OK", listings));
+    }
+
+    /**
+     * GET /api/listings/my — Lấy danh sách tin đăng của user hiện tại.
+     * ?status=ACTIVE|DRAFT|HIDDEN|SOLD|GIVEN_AWAY|BANNED|EXPIRED|REPORTED
+     * Không truyền status → trả về tất cả.
+     */
+    @GetMapping("/my")
+    public ResponseEntity<ApiResponse<PagedResponse<MyListingResponse>>> getMyListings(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        User currentUser = userService.getCurrentUser();
+        PagedResponse<MyListingResponse> listings = listingService.getMyListings(status, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
 
