@@ -13,8 +13,12 @@ import {
 import {
     LocationOn as LocationOnIcon,
     KeyboardArrowDown as ArrowDownIcon,
+    KeyboardArrowRight as ArrowRightIcon,
     Refresh as RefreshIcon,
     ChevronRight as ChevronRightIcon,
+    ExpandMore as ExpandMoreIcon,
+    Folder as FolderIcon,
+    FolderOpen as FolderOpenIcon,
     PhoneAndroid as PhoneIcon,
     Computer as ComputerIcon,
     Tv as TvIcon,
@@ -58,6 +62,30 @@ const getCategoryIcon = (name = '') => {
     return DefaultCategoryIcon;
 };
 
+/** Chuyển danh sách category phẳng (có parentId) thành cây cha-con. Chỉ danh mục gốc (parentId null) mới là "cha". */
+function buildCategoryTree(flatList) {
+    if (!Array.isArray(flatList) || flatList.length === 0) return [];
+    const byId = new Map();
+    flatList.forEach((c) => {
+        const id = c.id ?? c.categoryId;
+        byId.set(id, { ...c, id, children: [] });
+    });
+    const roots = [];
+    flatList.forEach((c) => {
+        const node = byId.get(c.id ?? c.categoryId);
+        if (!node) return;
+        const parentId = c.parentId ?? c.parent_id ?? null;
+        if (parentId == null) {
+            roots.push(node);
+        } else {
+            const parent = byId.get(parentId);
+            if (parent) parent.children.push(node);
+            else roots.push(node);
+        }
+    });
+    return roots;
+}
+
 export default function RightPanel() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -65,8 +93,20 @@ export default function RightPanel() {
     const [locations, setLocations] = useState([]);
     const [categories, setCategories] = useState([]);
     const [catLoading, setCatLoading] = useState(true);
+    const [expandedParents, setExpandedParents] = useState(new Set());
     const [locAnchorEl, setLocAnchorEl] = useState(null);
     const locOpen = Boolean(locAnchorEl);
+
+    const categoryTree = buildCategoryTree(categories);
+
+    const toggleCategoryExpand = (id) => {
+        setExpandedParents((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     const selectedLocation = searchParams.get('location') || '';
     const locationLabel = selectedLocation || 'Tất cả xã';
@@ -85,7 +125,14 @@ export default function RightPanel() {
         getCategories()
             .then(({ data: res }) => {
                 const list = res?.data ?? res ?? [];
-                setCategories(Array.isArray(list) ? list : []);
+                const arr = Array.isArray(list) ? list : [];
+                setCategories(arr);
+                // Khi API trả cây cha-con: mở sẵn danh mục cha đầu tiên có con để dễ thấy cấu trúc
+                const tree = buildCategoryTree(arr);
+                const firstWithChildren = tree.find((n) => n.children?.length > 0);
+                if (firstWithChildren?.id != null) {
+                    setExpandedParents((prev) => (prev.size ? prev : new Set([firstWithChildren.id])));
+                }
             })
             .catch(() => setCategories([]))
             .finally(() => setCatLoading(false));
@@ -267,11 +314,14 @@ export default function RightPanel() {
                 </Typography>
             </Box>
 
-            {/* Danh mục hàng đầu */}
+            {/* Danh mục cha-con: chỉ hiện danh mục GỐC (cha); bấm mũi tên để xem danh mục con */}
             <Box sx={{ bgcolor: '#2A2733', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)' }}>
                 <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
                         Danh mục hàng đầu
+                    </Typography>
+                    <Typography sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', mt: 0.25 }}>
+                        Bấm mũi tên để mở danh mục con
                     </Typography>
                 </Box>
                 {catLoading ? (
@@ -280,48 +330,124 @@ export default function RightPanel() {
                             <Skeleton variant="text" sx={{ bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
                         </Box>
                     ))
-                ) : categories.length === 0 ? (
+                ) : categoryTree.length === 0 ? (
                     <Box sx={{ px: 2, py: 2 }}>
                         <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
                             Không có danh mục
                         </Typography>
                     </Box>
                 ) : (
-                    categories.map((cat, idx) => {
-                        const Icon = getCategoryIcon(cat.name);
-                        const count = cat.listingCount ?? cat.count ?? null;
-                        return (
-                            <Box key={cat.id ?? cat.name}>
-                                <Box
-                                    onClick={() => navigate(`/?category=${cat.id ?? encodeURIComponent(cat.name)}`)}
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        px: 2,
-                                        py: 1,
-                                        cursor: 'pointer',
-                                        gap: 1.5,
-                                        '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
-                                    }}
-                                >
-                                    <Icon sx={{ fontSize: 16, color: '#9D6EED', flexShrink: 0 }} />
-                                    <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.75)', flex: 1,
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                        {cat.name}
-                                    </Typography>
-                                    {count != null && (
-                                        <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', mr: 0.5, flexShrink: 0 }}>
-                                            {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
-                                        </Typography>
-                                    )}
-                                    <ChevronRightIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-                                </Box>
-                                {idx < categories.length - 1 && (
-                                    <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.07)' }} />
-                                )}
+                    <>
+                        {categoryTree.length === categories.length && categories.length > 1 && (
+                            <Box sx={{ px: 2, py: 0.75, bgcolor: 'rgba(157,110,237,0.08)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                <Typography sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>
+                                    API chưa trả parentId, đang hiển thị phẳng. Cấu hình parent_id trong DB và trả parentId từ backend để xem cây cha-con.
+                                </Typography>
                             </Box>
-                        );
-                    })
+                        )}
+                        {categoryTree.map((cat, idx) => {
+                            const catId = cat.id ?? cat.categoryId;
+                            const hasChildren = Array.isArray(cat.children) && cat.children.length > 0;
+                            const isExpanded = expandedParents.has(catId);
+                            const Icon = getCategoryIcon(cat.name);
+                            const count = cat.listingCount ?? cat.count ?? null;
+                            return (
+                                <Box key={catId ?? cat.name}>
+                                    {/* Hàng danh mục CHA: icon thư mục + mũi tên mở/đóng */}
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            px: 2,
+                                            py: 1,
+                                            gap: 1,
+                                            cursor: 'pointer',
+                                            bgcolor: hasChildren ? 'rgba(255,255,255,0.02)' : 'transparent',
+                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{ width: 20, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (hasChildren) toggleCategoryExpand(catId);
+                                            }}
+                                        >
+                                            {hasChildren ? (
+                                                <IconButton size="small" sx={{ p: 0, color: '#9D6EED' }} aria-label={isExpanded ? 'Thu gọn' : 'Mở rộng'}>
+                                                    {isExpanded ? <ExpandMoreIcon sx={{ fontSize: 18 }} /> : <ArrowRightIcon sx={{ fontSize: 18 }} />}
+                                                </IconButton>
+                                            ) : (
+                                                <Box sx={{ width: 18, height: 18 }} />
+                                            )}
+                                        </Box>
+                                        <Box
+                                            onClick={() => navigate(`/?category=${catId ?? encodeURIComponent(cat.name)}`)}
+                                            sx={{ display: 'flex', alignItems: 'center', flex: 1, gap: 1, minWidth: 0 }}
+                                        >
+                                            {hasChildren ? (
+                                                isExpanded ? <FolderOpenIcon sx={{ fontSize: 18, color: '#9D6EED', flexShrink: 0 }} /> : <FolderIcon sx={{ fontSize: 18, color: '#9D6EED', flexShrink: 0 }} />
+                                            ) : (
+                                                <Icon sx={{ fontSize: 16, color: '#9D6EED', flexShrink: 0 }} />
+                                            )}
+                                            <Typography sx={{ fontSize: '12px', fontWeight: hasChildren ? 600 : 400, color: 'rgba(255,255,255,0.85)', flex: 1,
+                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {cat.name}
+                                            </Typography>
+                                            {count != null && (
+                                                <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', mr: 0.5, flexShrink: 0 }}>
+                                                    {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
+                                                </Typography>
+                                            )}
+                                            <ChevronRightIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                                        </Box>
+                                    </Box>
+                                    {/* Danh mục CON: chỉ hiện khi mở rộng cha, thụt vào + gạch nối */}
+                                    {hasChildren && isExpanded && (
+                                        <Box sx={{ pl: 3, borderLeft: '2px solid rgba(157,110,237,0.35)', ml: 2, mr: 0, py: 0.5 }}>
+                                            {cat.children.map((child) => {
+                                                const childId = child.id ?? child.categoryId;
+                                                const ChildIcon = getCategoryIcon(child.name);
+                                                const childCount = child.listingCount ?? child.count ?? null;
+                                                return (
+                                                    <Box
+                                                        key={childId ?? child.name}
+                                                        onClick={() => navigate(`/?category=${childId ?? encodeURIComponent(child.name)}`)}
+                                                        sx={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            px: 1.5,
+                                                            py: 0.75,
+                                                            gap: 1,
+                                                            cursor: 'pointer',
+                                                            borderLeft: '2px solid transparent',
+                                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.08)' },
+                                                        }}
+                                                    >
+                                                        <Typography component="span" sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}>└</Typography>
+                                                        <ChildIcon sx={{ fontSize: 14, color: 'rgba(157,110,237,0.9)', flexShrink: 0 }} />
+                                                        <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', flex: 1,
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {child.name}
+                                                        </Typography>
+                                                        {childCount != null && (
+                                                            <Typography sx={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
+                                                                {childCount >= 1000 ? `${(childCount / 1000).toFixed(1)}k` : childCount}
+                                                            </Typography>
+                                                        )}
+                                                        <ChevronRightIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                                                    </Box>
+                                                );
+                                            })}
+                                        </Box>
+                                    )}
+                                    {idx < categoryTree.length - 1 && (
+                                        <Divider sx={{ mx: 2, borderColor: 'rgba(255,255,255,0.07)' }} />
+                                    )}
+                                </Box>
+                            );
+                        })}
+                    </>
                 )}
             </Box>
 
