@@ -22,9 +22,11 @@ export default function useNotifications() {
 
       try {
         const response = await getNotifications();
-        setNotifications(response.data || []);
+        const data = response.data;
+        setNotifications(Array.isArray(data) ? data : (data?.content ?? []));
       } catch (error) {
         console.error('Failed to load notifications:', error);
+        setNotifications([]);
       }
     };
 
@@ -56,15 +58,17 @@ export default function useNotifications() {
     if (!token) return;
     try {
       const response = await getNotifications();
-      setNotifications(response.data || []);
+      const data = response.data;
+      setNotifications(Array.isArray(data) ? data : (data?.content ?? []));
     } catch (error) {
       console.error('Failed to reload notifications:', error);
     }
   };
 
+  const list = Array.isArray(notifications) ? notifications : [];
   return {
-    notifications,
-    unreadCount: notifications.filter((n) => !n.isRead).length,
+    notifications: list,
+    unreadCount: list.filter((n) => !n.isRead).length,
     markRead,
     markAllRead,
     refetch,
