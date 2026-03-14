@@ -5,9 +5,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-
-const HEADER_HEIGHT = 56;
-const SIDEBAR_WIDTH = 148;
+import { HEADER_HEIGHT, SIDEBAR_WIDTH, CONTENT_MAX_WIDTH, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
 
 export default function MainLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -30,7 +28,7 @@ export default function MainLayout() {
                     flex: 1,
                     mt: isAdminRoute ? 0 : `${HEADER_HEIGHT}px`,
                     width: '100%',
-                    maxWidth: isAdminRoute ? '100%' : '1200px',
+                    maxWidth: isAdminRoute ? '100%' : CONTENT_MAX_WIDTH,
                     mx: isAdminRoute ? 0 : 'auto',
                 }}
             >
@@ -46,7 +44,7 @@ export default function MainLayout() {
                         minWidth: 0,
                     }}
                 >
-                    <Box sx={{ flex: 1, px: isAdminRoute ? 0 : 2, py: isAdminRoute ? 0 : 2.5 }}>
+                    <Box sx={{ flex: 1, px: isAdminRoute ? 0 : PAGE_PADDING_X, py: isAdminRoute ? 0 : PAGE_PADDING_Y }}>
                         <Outlet />
                     </Box>
                     {!isAdminRoute && <Footer />}

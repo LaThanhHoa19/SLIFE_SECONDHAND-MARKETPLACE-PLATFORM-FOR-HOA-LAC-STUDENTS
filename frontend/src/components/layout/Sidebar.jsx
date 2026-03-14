@@ -9,8 +9,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-
-const SIDEBAR_WIDTH = 148;
+import { SIDEBAR_WIDTH } from '../../utils/layoutConstants';
 
 const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new'];
 
