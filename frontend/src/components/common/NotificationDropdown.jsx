@@ -85,8 +85,9 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                     width: 340,
                     maxHeight: 420,
                     borderRadius: 3,
-                    boxShadow: '0 18px 45px rgba(15,23,42,0.25)',
-                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 18px 45px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    bgcolor: '#201D26',
                     overflow: 'hidden',
                 },
             }}
@@ -95,13 +96,14 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                 sx={{
                     px: 2,
                     py: 1.5,
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    bgcolor: '#201D26',
                 }}
             >
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#111827' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#FFFFFF' }}>
                     Thông báo
                 </Typography>
                 {unreadCount > 0 && (
@@ -115,9 +117,9 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                             borderRadius: 999,
                             px: 1.5,
                             py: 0.2,
-                            bgcolor: '#f5f3ff',
-                            color: '#7c3aed',
-                            '&:hover': { bgcolor: '#ede9fe' },
+                            bgcolor: 'rgba(157,110,237,0.2)',
+                            color: '#9D6EED',
+                            '&:hover': { bgcolor: 'rgba(157,110,237,0.3)' },
                         }}
                     >
                         Đọc hết
@@ -134,19 +136,20 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: 1,
+                        bgcolor: '#201D26',
                     }}
                 >
                     <Avatar
                         sx={{
                             width: 40,
                             height: 40,
-                            bgcolor: '#f3f4f6',
-                            color: '#9ca3af',
+                            bgcolor: 'rgba(255,255,255,0.08)',
+                            color: 'rgba(255,255,255,0.5)',
                         }}
                     >
                         <NotificationsIcon />
                     </Avatar>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
                         Chưa có thông báo mới
                     </Typography>
                 </Box>
@@ -157,9 +160,10 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                     sx={{
                         maxHeight: 320,
                         overflowY: 'auto',
+                        bgcolor: '#201D26',
                         '&::-webkit-scrollbar': { width: 4 },
                         '&::-webkit-scrollbar-thumb': {
-                            bgcolor: '#e5e7eb',
+                            bgcolor: 'rgba(255,255,255,0.15)',
                             borderRadius: 999,
                         },
                     }}
@@ -172,9 +176,9 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                                 px: 2,
                                 py: 1.25,
                                 cursor: 'pointer',
-                                bgcolor: n.isRead ? 'transparent' : '#f5f3ff',
+                                bgcolor: n.isRead ? 'transparent' : 'rgba(157,110,237,0.12)',
                                 '&:hover': {
-                                    bgcolor: n.isRead ? '#f9fafb' : '#ede9fe',
+                                    bgcolor: n.isRead ? 'rgba(255,255,255,0.06)' : 'rgba(157,110,237,0.18)',
                                 },
                             }}
                         >
@@ -183,8 +187,8 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                                     sx={{
                                         width: 30,
                                         height: 30,
-                                        bgcolor: n.isRead ? '#f3f4f6' : '#eef2ff',
-                                        color: '#4b5563',
+                                        bgcolor: n.isRead ? 'rgba(255,255,255,0.08)' : 'rgba(157,110,237,0.25)',
+                                        color: n.isRead ? 'rgba(255,255,255,0.6)' : '#9D6EED',
                                     }}
                                 >
                                     {getIconForType(n.type)}
@@ -196,7 +200,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                                         sx={{
                                             fontSize: 13,
                                             fontWeight: n.isRead ? 400 : 600,
-                                            color: '#111827',
+                                            color: 'rgba(255,255,255,0.9)',
                                         }}
                                     >
                                         {n.content}
@@ -206,7 +210,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                                     <Typography
                                         sx={{
                                             fontSize: 11,
-                                            color: '#9ca3af',
+                                            color: 'rgba(255,255,255,0.5)',
                                             mt: 0.25,
                                         }}
                                     >
@@ -223,9 +227,10 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                 sx={{
                     px: 2,
                     py: 1,
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     justifyContent: 'center',
+                    bgcolor: '#201D26',
                 }}
             >
                 <Button
@@ -233,8 +238,14 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                     onClick={handleViewAll}
                     sx={{
                         textTransform: 'none',
-                        fontSize: 12,
-                        color: '#4b5563',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: '#FFFFFF',
+                        bgcolor: 'rgba(157,110,237,0.25)',
+                        '&:hover': {
+                            bgcolor: 'rgba(157,110,237,0.4)',
+                            color: '#FFFFFF',
+                        },
                     }}
                 >
                     Xem tất cả thông báo
