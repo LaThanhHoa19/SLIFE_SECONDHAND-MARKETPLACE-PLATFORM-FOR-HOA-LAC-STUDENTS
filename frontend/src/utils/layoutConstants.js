@@ -1,8 +1,11 @@
 /**
- * Layout constants for consistent spacing and max-width across pages.
+ * SCRUM-93: Layout constants for consistent spacing and max-width across pages.
  * Use these in MainLayout, PageContainer, and page components.
  */
-export const HEADER_HEIGHT = 56;
+export const HEADER_HEIGHT = 64;
+/** Khoảng cách giữa header và sidebar / content để không bị sát */
+export const HEADER_GAP = 12;
+export const SIDEBAR_TOP_OFFSET = HEADER_HEIGHT + HEADER_GAP;
 export const SIDEBAR_WIDTH = 148;
 
 /** Max width of main content area (feed, listing grid, etc.) */
