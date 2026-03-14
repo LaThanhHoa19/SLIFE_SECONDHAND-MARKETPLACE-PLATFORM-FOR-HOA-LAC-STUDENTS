@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
@@ -150,5 +151,61 @@ public class ListingService {
 
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    // ----------------------------------------------------------------
+    // My Listings Management
+    // ----------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public PagedResponse<MyListingResponse> getMyListings(String status, int page, int size, User currentUser) {
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                size > 0 ? Math.min(size, 20) : 10,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Page<Listing> pageResult;
+        if ("REPORTED".equalsIgnoreCase(status)) {
+            pageResult = listingRepository.findReportedListingsBySeller(currentUser, pageable);
+        } else if ("EXPIRED".equalsIgnoreCase(status)) {
+            pageResult = listingRepository.findExpiredListingsBySeller(currentUser, pageable);
+        } else if (status != null && !status.isBlank()) {
+            pageResult = listingRepository.findBySellerAndStatus(currentUser, status.toUpperCase(), pageable);
+        } else {
+            pageResult = listingRepository.findBySellerOrderByCreatedAtDesc(currentUser, pageable);
+        }
+
+        List<MyListingResponse> content = pageResult.getContent().stream()
+                .map(this::toMyListingResponse)
+                .toList();
+
+        return new PagedResponse<>(
+                content,
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages()
+        );
+    }
+
+    private MyListingResponse toMyListingResponse(Listing listing) {
+        MyListingResponse response = new MyListingResponse();
+        response.setId(listing.getId());
+        response.setTitle(listing.getTitle());
+        response.setDescription(listing.getDescription());
+        response.setPrice(listing.getPrice());
+        response.setCondition(listing.getItemCondition());
+        response.setLocation(resolveLocation(listing));
+        response.setCreatedAt(listing.getCreatedAt());
+        response.setUpdatedAt(listing.getUpdatedAt());
+        response.setImages(findImageUrls(listing.getId()));
+        response.setStatus(listing.getStatus());
+        response.setPurpose(listing.getPurpose());
+        response.setIsGiveaway(listing.getIsGiveaway());
+        response.setExpirationDate(listing.getExpirationDate());
+        response.setCategoryName(listing.getCategory() != null ? listing.getCategory().getName() : null);
+        response.setReportCount(listingRepository.countReportsByListingId(listing.getId()));
+        return response;
     }
 }
