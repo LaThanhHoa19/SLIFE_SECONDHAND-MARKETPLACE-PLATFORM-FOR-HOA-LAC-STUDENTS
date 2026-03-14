@@ -10,9 +10,9 @@ import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
-import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.SavedListingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,13 +43,14 @@ class ListingServiceTest {
     @Mock
     private ListingImageRepository listingImageRepository;
 
-
+    @Mock
+    private SavedListingRepository savedListingRepository;
 
     private ListingService listingService;
 
     @BeforeEach
     void setUp() {
-        listingService = new ListingService(listingRepository, listingImageRepository);
+        listingService = new ListingService(listingRepository, listingImageRepository, savedListingRepository);
     }
 
 
