@@ -9,7 +9,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { SIDEBAR_WIDTH } from '../../utils/layoutConstants';
+import { SIDEBAR_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
 const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new'];
 
@@ -45,13 +45,13 @@ export default function Sidebar({ open = true }) {
             sx={{
                 width: SIDEBAR_WIDTH,
                 minWidth: SIDEBAR_WIDTH,
-                height: 'calc(100vh - 56px)',
+                height: `calc(100vh - ${SIDEBAR_TOP_OFFSET}px)`,
                 backgroundColor: '#201D26',
                 borderRight: '1px solid rgba(255,255,255,0.07)',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'fixed',
-                top: '56px',
+                top: `${SIDEBAR_TOP_OFFSET}px`,
                 left: 0,
                 zIndex: 1200,
                 pt: 1.5,
