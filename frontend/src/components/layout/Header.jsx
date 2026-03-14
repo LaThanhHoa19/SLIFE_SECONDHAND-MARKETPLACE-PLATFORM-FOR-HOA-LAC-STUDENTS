@@ -25,6 +25,7 @@ import {
 import { useContext, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
+import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
 
 const Search = styled('div')(({ theme }) => ({
@@ -121,6 +122,7 @@ export default function Header({ onToggleSidebar }) {
     const location = useLocation();
     const theme = useTheme();
     const [searchValue, setSearchValue] = useState('');
+    const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const userAvatar = user?.avatarUrl || user?.avatar || '';
 
     const handleSearch = (e) => {
@@ -235,7 +237,7 @@ export default function Header({ onToggleSidebar }) {
                     {/* Notifications */}
                     <IconButton
                         color="inherit"
-                        onClick={() => navigate('/notifications')}
+                        onClick={(e) => setNotifAnchorEl(e.currentTarget)}
                         sx={{ color: '#FFFFFF', p: 0.5 }}
                     >
                         <Badge badgeContent={unreadCount} color="error">
@@ -286,6 +288,11 @@ export default function Header({ onToggleSidebar }) {
                     )}
                 </Box>
             </Toolbar>
+            <NotificationDropdown
+                anchorEl={notifAnchorEl}
+                open={Boolean(notifAnchorEl)}
+                onClose={() => setNotifAnchorEl(null)}
+            />
         </AppBar>
     );
 }
