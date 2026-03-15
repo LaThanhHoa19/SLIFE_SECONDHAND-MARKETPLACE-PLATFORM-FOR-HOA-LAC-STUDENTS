@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info: {title: SLIFE Marketplace API Skeleton, version: 1.0.0}
+paths: { /api/auth/login: {post: {summary: Login}}, /api/listings: {get: {summary: List listings}, post: {summary: Create listing}}, /api/search: {get: {summary: Search}} }
+components:
+  securitySchemes:
+    BearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    GoogleOAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes: {}
