@@ -28,6 +28,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject(subject)
                 .claims(claims)
+                .id(java.util.UUID.randomUUID().toString())   // jti: moi token unique kể cả cùng giây
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(getSigningKey())

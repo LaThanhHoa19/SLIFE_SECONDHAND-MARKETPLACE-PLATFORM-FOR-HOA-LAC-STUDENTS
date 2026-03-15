@@ -15,7 +15,9 @@ import java.time.Instant;
 @Getter
 @Setter
 @Entity
-@Table(name = "addresses")
+@Table(name = "addresses", indexes = {
+        @Index(name = "idx_addresses_location_name", columnList = "location_name")
+})
 public class Address {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
