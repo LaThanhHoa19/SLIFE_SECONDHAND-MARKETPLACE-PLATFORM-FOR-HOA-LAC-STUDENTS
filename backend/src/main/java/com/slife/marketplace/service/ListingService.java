@@ -8,6 +8,7 @@ import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.SavedListingRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,11 +29,14 @@ public class ListingService {
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
+    private final SavedListingRepository savedListingRepository;
 
     public ListingService(ListingRepository listingRepository,
-                          ListingImageRepository listingImageRepository) {
+                          ListingImageRepository listingImageRepository,
+                          SavedListingRepository savedListingRepository) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
+        this.savedListingRepository = savedListingRepository;
     }
 
 
@@ -57,11 +61,19 @@ public class ListingService {
                 normalizeParam(q),
                 categoryId,
                 normalizeParam(location),
+                null,   // purpose: khong filter tren trang listing chinh
+                null,   // itemCond: khong filter tren trang listing chinh
+                null,   // priceMin
+                null,   // priceMax
                 pageable
         );
 
+        Set<Long> savedIds = currentUser != null
+                ? new java.util.HashSet<>(savedListingRepository.findListingIdsByUserId(currentUser.getId()))
+                : Set.of();
+
         List<ListingResponse> content = pageResult.getContent().stream()
-                .map(listing -> toListingResponse(listing, currentUser))
+                .map(listing -> toListingResponse(listing, currentUser, savedIds.contains(listing.getId())))
                 .toList();
 
         return new PagedResponse<>(
@@ -74,7 +86,12 @@ public class ListingService {
     }
 
 
-    private ListingResponse toListingResponse(Listing listing, User currentUser) {
+    /** Public for use by SavedListingService when building saved list. */
+    public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
+        return toListingResponse(listing, currentUser, isSaved);
+    }
+
+    private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved) {
         ListingResponse response = new ListingResponse();
 
         response.setId(listing.getId());
@@ -87,7 +104,7 @@ public class ListingService {
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
 
-        response.setIsSaved(false);
+        response.setIsSaved(isSaved);
         response.setIsFollowed(false);
 
         return response;
