@@ -28,6 +28,7 @@ public class CategoryService {
         res.setId(c.getId());
         res.setName(c.getName());
         res.setDescription(c.getDescription());
+        res.setParentId(c.getParent() != null ? c.getParent().getId() : null);
         return res;
     }
 }

@@ -40,10 +40,6 @@ public class Report {
     @Column(name = "reason")
     private String reason;
 
-    @Size(max = 2000)
-    @Column(name = "evidence_image", length = 2000)
-    private String evidenceImage;
-
     @NotNull
     @ColumnDefault("'PENDING'")
     @Lob
@@ -69,5 +65,7 @@ public class Report {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
 }

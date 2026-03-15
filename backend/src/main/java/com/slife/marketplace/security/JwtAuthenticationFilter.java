@@ -25,50 +25,42 @@ import java.util.Optional;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
+
     private final JwtTokenProvider tokenProvider;
     private final UserRepository userRepository;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider, UserRepository userRepository) {
+    public JwtAuthenticationFilter(JwtTokenProvider tokenProvider,
+                                   UserRepository userRepository,
+                                   TokenBlacklistService tokenBlacklistService) {
         this.tokenProvider = tokenProvider;
         this.userRepository = userRepository;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
 
         String jwt = resolveToken(request);
-        String path = request.getRequestURI();
-        if (path != null && path.startsWith("/api/users")) {
-            log.debug("JwtAuthFilter {} - hasToken={}, valid={}", path, jwt != null, jwt != null && tokenProvider.isTokenValid(jwt));
-        }
-        if (jwt != null && tokenProvider.isTokenValid(jwt)) {
+
+        if (jwt != null && tokenProvider.isTokenValid(jwt) && !tokenBlacklistService.isBlacklisted(jwt)) {
             try {
                 Claims claims = tokenProvider.parseToken(jwt);
                 String email = claims.getSubject();
-                log.debug("JwtAuthFilter - token subject (email): {}", email);
 
                 Optional<User> userOpt = userRepository.findByEmail(email);
                 if (userOpt.isPresent()) {
                     User user = userOpt.get();
-                    String role = user.getRole();
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
-                    UsernamePasswordAuthenticationToken authentication =
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole());
+                    UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(email, null, List.of(authority));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    if (path != null && path.startsWith("/api/users")) {
-                        log.debug("JwtAuthFilter - auth set for email={}, userId={}", email, user.getId());
-                    }
-                } else {
-                    if (path != null && path.startsWith("/api/users")) {
-                        log.warn("JwtAuthFilter - token valid but user not in DB: email={}", email);
-                    }
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                    log.debug("JwtAuthFilter - authenticated: email={}, path={}", email, request.getRequestURI());
                 }
             } catch (Exception e) {
-                log.error("JwtAuthFilter - error parsing/setting auth: {}", e.getMessage(), e);
+                log.error("JwtAuthFilter - error: {}", e.getMessage(), e);
             }
         }
 
@@ -83,4 +75,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 }
-
