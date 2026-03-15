@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.ArrayList;
 
 /**
  * SCRUM-43: Basic keyword search endpoint.
@@ -61,8 +60,16 @@ public class SearchController {
         ListingResponse res = new ListingResponse();
         res.setId(listing.getId());
         res.setTitle(listing.getTitle());
+        res.setDescription(listing.getDescription());
+        res.setPrice(listing.getPrice());
+        res.setCondition(listing.getItemCondition());
+        res.setPurpose(listing.getPurpose());
+        res.setCreatedAt(listing.getCreatedAt());
 
-        // Richer mapping for the seller
+        if (listing.getPickupAddress() != null) {
+            res.setLocation(listing.getPickupAddress().getLocationName());
+        }
+
         Map<String, Object> sellerSummary = new HashMap<>();
         if (listing.getSeller() != null) {
             sellerSummary.put("fullName", listing.getSeller().getFullName());
@@ -71,8 +78,9 @@ public class SearchController {
         }
         res.setSellerSummary(sellerSummary);
 
-        // Standard placeholders for scope-deferred items
-        res.setImages(new ArrayList<>()); 
+        res.setImages(listing.getImages().stream()
+                .map(img -> img.getImageUrl())
+                .toList());
         res.setIsSaved(false);
         res.setIsFollowed(false);
 
