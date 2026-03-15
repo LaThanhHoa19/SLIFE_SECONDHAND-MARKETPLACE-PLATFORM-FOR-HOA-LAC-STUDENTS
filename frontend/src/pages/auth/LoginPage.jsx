@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../../hooks/useAuth';
 
 const GOOGLE_CLIENT_ID_FALLBACK =
-  '318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com';
+    '318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   const { login, googleLogin, authError } = useAuth();
   const GOOGLE_CLIENT_ID =
-    import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
+      import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
   // Read ?google_error= from URL (set by backend on OAuth failure)
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function LoginPage() {
   const onSubmit = async (values) => {
     setUrlError('');
     const result = await login(values, {
-      onSuccess: () => navigate('/'),
+      onSuccess: () => navigate('/feed'),
     });
     if (!result.success) {
       // authError is set inside login(), displayed via displayError
@@ -72,7 +72,7 @@ export default function LoginPage() {
           client_id: GOOGLE_CLIENT_ID,
           callback: async (response) => {
             const result = await googleLogin(response.credential, {
-              onSuccess: () => navigate('/'),
+              onSuccess: () => navigate('/feed'),
             });
             if (!result.success && !cancelled) {
               setGoogleError(result.error || 'Đăng nhập Google thất bại.');
@@ -99,8 +99,8 @@ export default function LoginPage() {
           }
           setGoogleReady(false);
           setGoogleError(
-            `Google Sign-In chưa được cấu hình cho ${window.location.origin}. ` +
-            'Hãy thêm origin này vào Authorized JavaScript origins trong Google Cloud Console.',
+              `Google Sign-In chưa được cấu hình cho ${window.location.origin}. ` +
+              'Hãy thêm origin này vào Authorized JavaScript origins trong Google Cloud Console.',
           );
         }, 1200);
       } catch (error) {
@@ -146,72 +146,72 @@ export default function LoginPage() {
   }, [GOOGLE_CLIENT_ID, googleLogin, navigate]);
 
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 120px)', display: 'grid', placeItems: 'center', p: 2 }}>
-      <Paper elevation={3} sx={{ width: '100%', maxWidth: 420, p: 4, borderRadius: 3 }}>
-        <Stack spacing={2.5}>
-          <Box>
-            <Typography variant="h4" fontWeight={700}>Đăng nhập</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Đăng nhập bằng email hoặc Google SSO (@fpt.edu.vn).
-            </Typography>
-          </Box>
-
-          {displayError && (
-            <Alert severity="error" onClose={() => setUrlError('')}>
-              {displayError}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit(onSubmit)}>
-            <Stack spacing={2}>
-              <TextField
-                fullWidth
-                label="Email"
-                autoComplete="email"
-                {...register('email', {
-                  required: 'Email bắt buộc',
-                  pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: 'Email không hợp lệ',
-                  },
-                })}
-                error={!!errors.email}
-                helperText={errors.email?.message}
-              />
-              <TextField
-                fullWidth
-                label="Password"
-                type="password"
-                autoComplete="current-password"
-                {...register('password', {
-                  required: 'Mật khẩu bắt buộc',
-                  minLength: { value: 6, message: 'Mật khẩu tối thiểu 6 ký tự' },
-                })}
-                error={!!errors.password}
-                helperText={errors.password?.message}
-              />
-              <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
-                {isSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Đăng nhập'}
-              </Button>
-            </Stack>
-          </Box>
-
-          <Divider>hoặc</Divider>
-
-          <Stack spacing={1} alignItems="center">
-            <Box ref={googleBtnRef} sx={{ minHeight: 44 }} />
-            {!googleReady && !googleError && (
-              <Typography variant="caption" color="text.secondary">
-                Đang tải Google Sign-In...
+      <Box sx={{ minHeight: 'calc(100vh - 120px)', display: 'grid', placeItems: 'center', p: 2 }}>
+        <Paper elevation={3} sx={{ width: '100%', maxWidth: 420, p: 4, borderRadius: 3 }}>
+          <Stack spacing={2.5}>
+            <Box>
+              <Typography variant="h4" fontWeight={700}>Đăng nhập</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Đăng nhập bằng email hoặc Google SSO (@fpt.edu.vn).
               </Typography>
-            )}
-          </Stack>
+            </Box>
 
-          <Typography variant="caption" color="text.secondary" textAlign="center">
-            Chỉ chấp nhận tài khoản @fpt.edu.vn
-          </Typography>
-        </Stack>
-      </Paper>
-    </Box>
+            {displayError && (
+                <Alert severity="error" onClose={() => setUrlError('')}>
+                  {displayError}
+                </Alert>
+            )}
+
+            <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+              <Stack spacing={2}>
+                <TextField
+                    fullWidth
+                    label="Email"
+                    autoComplete="email"
+                    {...register('email', {
+                      required: 'Email bắt buộc',
+                      pattern: {
+                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                        message: 'Email không hợp lệ',
+                      },
+                    })}
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                />
+                <TextField
+                    fullWidth
+                    label="Password"
+                    type="password"
+                    autoComplete="current-password"
+                    {...register('password', {
+                      required: 'Mật khẩu bắt buộc',
+                      minLength: { value: 6, message: 'Mật khẩu tối thiểu 6 ký tự' },
+                    })}
+                    error={!!errors.password}
+                    helperText={errors.password?.message}
+                />
+                <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
+                  {isSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Đăng nhập'}
+                </Button>
+              </Stack>
+            </Box>
+
+            <Divider>hoặc</Divider>
+
+            <Stack spacing={1} alignItems="center">
+              <Box ref={googleBtnRef} sx={{ minHeight: 44 }} />
+              {!googleReady && !googleError && (
+                  <Typography variant="caption" color="text.secondary">
+                    Đang tải Google Sign-In...
+                  </Typography>
+              )}
+            </Stack>
+
+            <Typography variant="caption" color="text.secondary" textAlign="center">
+              Chỉ chấp nhận tài khoản @fpt.edu.vn
+            </Typography>
+          </Stack>
+        </Paper>
+      </Box>
   );
 }
