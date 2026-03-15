@@ -1,6 +1,5 @@
 package com.slife.marketplace.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slife.marketplace.dto.request.AuthRequest;
 import com.slife.marketplace.dto.request.GoogleLoginRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
@@ -26,17 +25,14 @@ import java.nio.charset.StandardCharsets;
 public class AuthController {
 
     private final AuthService authService;
-    private final ObjectMapper objectMapper;
     private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     public AuthController(AuthService authService,
-                          ObjectMapper objectMapper,
                           TokenBlacklistService tokenBlacklistService) {
         this.authService = authService;
-        this.objectMapper = objectMapper;
         this.tokenBlacklistService = tokenBlacklistService;
     }
 
@@ -90,10 +86,9 @@ public class AuthController {
         try {
             AuthResponse authResponse = authService.googleCallback(code);
             String tokenParam = URLEncoder.encode(authResponse.getAccessToken(), StandardCharsets.UTF_8);
-            String userParam  = URLEncoder.encode(
-                    objectMapper.writeValueAsString(authResponse.getUser()), StandardCharsets.UTF_8);
-            response.sendRedirect(frontendUrl + "/auth/google/callback"
-                    + "?access_token=" + tokenParam + "&user=" + userParam);
+            // Chỉ gửi token trong URL để tránh URL quá dài (user object có thể bị truncate -> lỗi xác thực trên FE).
+            // FE sẽ gọi GET /api/users/me sau khi redirect để lấy user.
+            response.sendRedirect(frontendUrl + "/auth/google/callback?access_token=" + tokenParam);
         } catch (SlifeException e) {
             response.sendRedirect(frontendUrl + "/login?google_error="
                     + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
