@@ -1,11 +1,25 @@
-/**
- * Mục đích: DTO response DealResponse
- * Endpoints liên quan: controller
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.dto.response;
-import lombok.Data;
-@Data public class DealResponse { private Long id; private String status; private java.time.LocalDateTime pickupTime; }
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class DealResponse {
+    private Long dealId;
+    private Long listingId;
+    private Long buyerId;
+    private Long sellerId;
+    private BigDecimal price;
+    private String status;
+    private LocalDateTime createdAt;
+}
