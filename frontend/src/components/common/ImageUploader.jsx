@@ -1,12 +1,20 @@
+/**
+ * ImageUploader — chọn và preview nhiều ảnh, trả về File[] qua onFilesChange.
+ * Props:
+ *   onFilesChange  – (files: File[]) => void
+ *   maxFiles       – tối đa số ảnh (default 10)
+ *   maxSizeMB      – dung lượng tối đa mỗi ảnh MB (default 5)
+ */
 import { useState, useEffect } from 'react';
-import { Box, Typography, IconButton, ImageList, ImageListItem } from '@mui/material';
-import AddPhotoAlternateOutlinedIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
-import CloseIcon from "@mui/icons-material/Close";
+import { Box, Typography, IconButton } from '@mui/material';
+import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
+import CloseIcon from '@mui/icons-material/Close';
+import PropTypes from 'prop-types';
 
 const MAX_FILES = 10;
 const MAX_SIZE_MB = 5;
 
-export default function ImageUploader({ onFilesChange }) {
+export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, maxSizeMB = MAX_SIZE_MB }) {
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
 
@@ -20,7 +28,7 @@ export default function ImageUploader({ onFilesChange }) {
 
     const urls = files.map((file) => URL.createObjectURL(file));
     setPreviews(urls);
-    
+
     if (onFilesChange) onFilesChange(files);
 
     // Cleanup function
@@ -29,16 +37,16 @@ export default function ImageUploader({ onFilesChange }) {
 
   const handleAddImages = (e) => {
     const selected = Array.from(e.target.files || []);
-    
+
     // Lọc file đúng định dạng và kích thước
     const validFiles = selected.filter(file =>
-      file.type.startsWith("image/") &&
-      file.size <= MAX_SIZE_MB * 1024 * 1024
+        file.type.startsWith("image/") &&
+        file.size <= maxSizeMB * 1024 * 1024
     );
 
     // Hợp nhất với danh sách cũ và giới hạn số lượng
-    setFiles(prev => [...prev, ...validFiles].slice(0, MAX_FILES));
-    
+    setFiles(prev => [...prev, ...validFiles].slice(0, maxFiles));
+
     // Reset value để có thể chọn lại cùng 1 file nếu cần
     e.target.value = '';
   };
@@ -48,20 +56,20 @@ export default function ImageUploader({ onFilesChange }) {
   };
 
   return (
-    <Box>
-      <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-        Ảnh sản phẩm (Tối đa {MAX_FILES} ảnh, mỗi ảnh ≤ {MAX_SIZE_MB}MB)
-      </Typography>
+      <Box>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Ảnh sản phẩm (Tối đa {maxFiles} ảnh, mỗi ảnh ≤ {maxSizeMB}MB)
+        </Typography>
 
-      {/* INPUT HIDDEN */}
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        id="upload-image-input"
-        hidden
-        onChange={handleAddImages}
-      />
+        {/* INPUT HIDDEN */}
+        <input
+            type="file"
+            accept="image/*"
+            multiple
+            id="upload-image-input"
+            hidden
+            onChange={handleAddImages}
+        />
 
       {/* KHUNG UPLOAD LỚN – chỉ hiện khi chưa có ảnh */}
       {files.length === 0 && (
@@ -151,3 +159,9 @@ export default function ImageUploader({ onFilesChange }) {
     </Box>
   );
 }
+
+ImageUploader.propTypes = {
+  onFilesChange: PropTypes.func,
+  maxFiles: PropTypes.number,
+  maxSizeMB: PropTypes.number,
+};
