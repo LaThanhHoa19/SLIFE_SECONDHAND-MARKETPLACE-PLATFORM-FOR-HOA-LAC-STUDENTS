@@ -9,16 +9,16 @@ import {
     TableRow,
     Typography,
 } from '@mui/material';
+import PropTypes from 'prop-types';
 
 /**
- * AdminDataTable - Reusable bảng dùng cho các trang admin
- *
+ * AdminDataTable — bảng dùng chung cho trang admin .
  * Props:
- * - columns: { id, label, width?, align?, render? }
- * - rows: array data
- * - getRowId: (row) => unique key
- * - isLoading: boolean
- * - emptyMessage: string
+ *   columns      – [{ id, label, width?, align?, render?(row) }]
+ *   rows         – mảng dữ liệu
+ *   getRowId     – (row, index) => key (default: row.id ?? index)
+ *   isLoading    – boolean
+ *   emptyMessage – chuỗi khi không có dữ liệu
  */
 export default function AdminDataTable({
                                            columns,
@@ -125,4 +125,20 @@ export default function AdminDataTable({
         </Paper>
     );
 }
+
+AdminDataTable.propTypes = {
+    columns: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.string.isRequired,
+            label: PropTypes.node.isRequired,
+            width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+            align: PropTypes.oneOf(['left', 'right', 'center']),
+            render: PropTypes.func,
+        })
+    ).isRequired,
+    rows: PropTypes.array,
+    getRowId: PropTypes.func,
+    isLoading: PropTypes.bool,
+    emptyMessage: PropTypes.string,
+};
 

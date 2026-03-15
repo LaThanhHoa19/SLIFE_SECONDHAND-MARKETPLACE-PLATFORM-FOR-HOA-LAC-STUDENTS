@@ -22,9 +22,11 @@ export default function useNotifications() {
 
       try {
         const response = await getNotifications();
-        setNotifications(response.data || []);
+        const raw = response?.data?.data ?? response?.data;
+        setNotifications(Array.isArray(raw) ? raw : []);
       } catch (error) {
         console.error('Failed to load notifications:', error);
+        setNotifications([]);
       }
     };
 
@@ -42,29 +44,29 @@ export default function useNotifications() {
 
   const markRead = async (id) => {
     await markNotificationRead(id);
-    setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-    );
+    setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   };
 
   const markAllRead = async () => {
     await apiMarkAllRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => ({ ...n, isRead: true })));
   };
 
   const refetch = async () => {
     if (!token) return;
     try {
       const response = await getNotifications();
-      setNotifications(response.data || []);
+      const raw = response?.data?.data ?? response?.data;
+      setNotifications(Array.isArray(raw) ? raw : []);
     } catch (error) {
       console.error('Failed to reload notifications:', error);
     }
   };
 
+  const list = Array.isArray(notifications) ? notifications : [];
   return {
-    notifications,
-    unreadCount: notifications.filter((n) => !n.isRead).length,
+    notifications: list,
+    unreadCount: list.filter((n) => !n.isRead).length,
     markRead,
     markAllRead,
     refetch,

@@ -17,7 +17,12 @@ import java.util.List;
 @Getter
 @Setter
 @Entity
-@Table(name = "listings")
+@Table(name = "listings", indexes = {
+        @Index(name = "idx_listings_status", columnList = "status"),
+        @Index(name = "idx_listings_category_id", columnList = "category_id"),
+        @Index(name = "idx_listings_pickup_address_id", columnList = "pickup_address_id"),
+        @Index(name = "idx_listings_status_category", columnList = "status, category_id")
+})
 public class Listing {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
