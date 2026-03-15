@@ -4,5 +4,6 @@
     <file url="file://$PROJECT_DIR$/SLife_Database_MySQL/01_create_schema.sql" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/SLife_Database_MySQL/02_seed_data.sql" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/backend/migration/V4__.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/resources/db/migration/V1__newdb.sql" dialect="GenericSQL" />
   </component>
 </project>
