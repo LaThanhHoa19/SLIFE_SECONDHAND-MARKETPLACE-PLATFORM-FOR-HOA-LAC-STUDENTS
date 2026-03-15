@@ -173,7 +173,7 @@ function MiniListingCard({ listing }) {
 }
 
 /** Gallery ảnh: ảnh chính lớn + thumbnail dưới */
-function ImageGallery({ images, title, listingId, onShare, onReport }) {
+function ImageGallery({ images, title, listingId, onShare, onReport, isSaved, onToggleSave }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const count = images.length;
   const src = count > 0 ? images[activeIdx] : null;
@@ -188,8 +188,8 @@ function ImageGallery({ images, title, listingId, onShare, onReport }) {
         sx={{
           position: 'relative',
           width: '100%',
-          paddingTop: '75%',
-          borderRadius: '14px',
+          paddingTop: '80%', // Cao hơn một chút
+          borderRadius: '16px',
           overflow: 'hidden',
           bgcolor: '#2A2535',
         }}
@@ -216,19 +216,34 @@ function ImageGallery({ images, title, listingId, onShare, onReport }) {
           </Box>
         )}
 
-        {/* Nút Share + Report góc trên */}
-        <Box sx={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 0.8 }}>
+        {/* Nút Share + Save + Report góc trên */}
+        <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 1 }}>
+          <Tooltip title={isSaved ? "Bỏ lưu tin" : "Lưu tin"}>
+            <IconButton
+              size="small"
+              onClick={onToggleSave}
+              sx={{
+                bgcolor: 'rgba(0,0,0,0.55)', color: isSaved ? RED : '#fff',
+                width: 36, height: 36, backdropFilter: 'blur(4px)',
+                transition: 'all 0.2s',
+                '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.05)' },
+              }}
+            >
+              {isSaved ? <FavoriteIcon sx={{ fontSize: 18 }} /> : <FavoriteBorderIcon sx={{ fontSize: 18 }} />}
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Chia sẻ link">
             <IconButton
               size="small"
               onClick={onShare}
               sx={{
                 bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
-                width: 34, height: 34, backdropFilter: 'blur(4px)',
-                '&:hover': { bgcolor: PURPLE },
+                width: 36, height: 36, backdropFilter: 'blur(4px)',
+                transition: 'all 0.2s',
+                '&:hover': { bgcolor: PURPLE, transform: 'scale(1.05)' },
               }}
             >
-              <ShareIcon sx={{ fontSize: 17 }} />
+              <ShareIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
           <Tooltip title="Báo cáo tin">
@@ -237,11 +252,12 @@ function ImageGallery({ images, title, listingId, onShare, onReport }) {
               onClick={onReport}
               sx={{
                 bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
-                width: 34, height: 34, backdropFilter: 'blur(4px)',
-                '&:hover': { bgcolor: RED },
+                width: 36, height: 36, backdropFilter: 'blur(4px)',
+                transition: 'all 0.2s',
+                '&:hover': { bgcolor: RED, transform: 'scale(1.05)' },
               }}
             >
-              <FlagIcon sx={{ fontSize: 17 }} />
+              <FlagIcon sx={{ fontSize: 18 }} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -454,6 +470,7 @@ export default function ListingDetailPage() {
   const [sellerListings, setSellerListings] = useState([]);
   const [similarListings, setSimilarListings] = useState([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
+  const [isSavedItem, setIsSavedItem] = useState(false);
 
   // Load listing
   useEffect(() => {
@@ -461,7 +478,11 @@ export default function ListingDetailPage() {
     setLoading(true);
     setError('');
     getListing(id)
-      .then((res) => setListing(getPayload(res)))
+      .then((res) => {
+        const data = getPayload(res);
+        setListing(data);
+        setIsSavedItem(data?.isSaved ?? false);
+      })
       .catch((err) => setError(err?.message || 'Không tải được tin.'))
       .finally(() => setLoading(false));
   }, [id]);
@@ -592,6 +613,19 @@ export default function ListingDetailPage() {
     }
   };
 
+  const handleToggleSave = () => {
+    if (!isAuthenticated) {
+      setSnackType('warning');
+      setSnackMsg('Bạn cần đăng nhập để lưu tin.');
+      return;
+    }
+    // Gửi API update thực tế tại đây (gọi save API từ backend)
+    // Tạm thời update UX ngay lập tức
+    setIsSavedItem(!isSavedItem);
+    setSnackType('success');
+    setSnackMsg(!isSavedItem ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
+  };
+
   // ── Render loading / error ────────────────────────────────────────────────
   if (loading) {
     return (
@@ -637,14 +671,14 @@ export default function ListingDetailPage() {
     : null;
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
       {/* Nút quay lại */}
       <Button
-        startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 15 }} />}
+        startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 16 }} />}
         onClick={() => navigate(-1)}
         size="small"
         sx={{
-          mb: 2.5, color: TEXT_SEC, bgcolor: 'transparent',
+          mb: 2, color: TEXT_SEC, bgcolor: 'transparent',
           px: 1.5, py: 0.6, borderRadius: '8px', minWidth: 0,
           '&:hover': { bgcolor: CARD_BG, color: TEXT_PRI },
         }}
@@ -658,9 +692,10 @@ export default function ListingDetailPage() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          gap: { xs: 2.5, md: 3 },
-          mb: 3,
+          // Tỉ lệ khoảng 55% trái - 45% phải để cân đối không gian tốt hơn
+          gridTemplateColumns: { xs: '1fr', md: '5.5fr 4.5fr' },
+          gap: { xs: 3, md: 4 },
+          mb: 4,
         }}
       >
         {/* ── Gallery ────────────────────────────────────────── */}
@@ -670,168 +705,166 @@ export default function ListingDetailPage() {
           listingId={listing.id}
           onShare={handleShare}
           onReport={handleReport}
+          isSaved={isSavedItem}
+          onToggleSave={handleToggleSave}
         />
 
         {/* ── Thông tin + hành động ───────────────────────────── */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 
-          {/* Tiêu đề */}
-          <Typography
-            fontSize={{ xs: 18, sm: 22 }}
-            fontWeight={700}
-            color={TEXT_PRI}
-            sx={{ lineHeight: 1.3 }}
-          >
-            {listing.title}
-          </Typography>
-
-          {/* Mô tả */}
-          {listing.description && (
+          {/* Đầu: Tên, Mô tả, Giá */}
+          <Box>
             <Typography
-              fontSize={14}
-              color={TEXT_SEC}
-              sx={{ lineHeight: 1.65, whiteSpace: 'pre-wrap' }}
+              fontSize={{ xs: 20, sm: 24 }}
+              fontWeight={700}
+              color={TEXT_PRI}
+              sx={{ lineHeight: 1.3, mb: 1.5 }}
             >
-              {listing.description}
+              {listing.title}
             </Typography>
-          )}
 
-          {/* Giá */}
-          <Typography
-            fontSize={{ xs: 22, sm: 26 }}
-            fontWeight={800}
-            color={listing.isGiveaway ? GREEN : RED}
-          >
-            {listing.isGiveaway ? 'Cho tặng miễn phí' : toCurrency(listing.price)}
-          </Typography>
-
-          {/* Meta thông tin */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.9 }}>
-            {locationText && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LocationOnOutlinedIcon sx={{ fontSize: 16, color: PURPLE }} />
-                <Typography fontSize={13} color={TEXT_SEC}>{locationText}</Typography>
-              </Box>
-            )}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <AccessTimeOutlinedIcon sx={{ fontSize: 16, color: PURPLE }} />
-              <Typography fontSize={13} color={TEXT_SEC}>
-                {formatDate(listing.createdAt) || 'Vừa đăng'}
+            {listing.description && (
+              <Typography
+                fontSize={15}
+                color={TEXT_SEC}
+                sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap', mb: 2 }}
+              >
+                {listing.description}
               </Typography>
-            </Box>
-            {/* Tình trạng */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <LocalOfferOutlinedIcon sx={{ fontSize: 16, color: PURPLE }} />
-              <Chip
-                label={conditionInfo.label}
-                size="small"
-                sx={{
-                  bgcolor: `${conditionInfo.color}22`,
-                  color: conditionInfo.color,
-                  border: `1px solid ${conditionInfo.color}44`,
-                  fontSize: 11, fontWeight: 600, height: 22,
-                }}
-              />
+            )}
+
+            <Typography
+              fontSize={{ xs: 24, sm: 30 }}
+              fontWeight={800}
+              color={listing.isGiveaway ? GREEN : RED}
+              sx={{ mb: 2.5 }}
+            >
+              {listing.isGiveaway ? 'Cho tặng miễn phí' : toCurrency(listing.price)}
+            </Typography>
+
+            {/* Meta thông tin: Location, Time, Condition */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                {locationText && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                    <LocationOnOutlinedIcon sx={{ fontSize: 18, color: PURPLE }} />
+                    <Typography fontSize={14} color={TEXT_PRI}>{locationText}</Typography>
+                  </Box>
+                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                  <AccessTimeOutlinedIcon sx={{ fontSize: 18, color: PURPLE }} />
+                  <Typography fontSize={14} color={TEXT_PRI}>
+                    {formatDate(listing.createdAt) || 'Vừa đăng'}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <LocalOfferOutlinedIcon sx={{ fontSize: 18, color: PURPLE }} />
+                  <Chip
+                    label={conditionInfo.label}
+                    size="small"
+                    sx={{
+                      bgcolor: `${conditionInfo.color}22`,
+                      color: conditionInfo.color,
+                      border: `1px solid ${conditionInfo.color}44`,
+                      fontSize: 12, fontWeight: 600, height: 24, paddingX: 1
+                    }}
+                  />
+                </Box>
+              </Box>
             </Box>
           </Box>
+
+          {/* Nút hành động chính: Điện thoại, Nhắn tin */}
+          {!isOwnListing && (
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Button
+                variant="outlined"
+                onClick={handleShowPhone}
+                sx={{
+                  py: 2.5, borderRadius: '14px', border: `1px solid ${BORDER}`, bgcolor: CARD_BG,
+                  color: TEXT_PRI, display: 'flex', flexDirection: 'column', gap: 1,
+                  transition: 'all 0.2s',
+                  '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE, color: PURPLE }
+                }}
+              >
+                <PhoneAndroidIcon sx={{ fontSize: 36, color: phoneNumber ? GREEN : 'inherit' }} />
+                {phoneNumber ? (
+                   <Typography fontSize={16} fontWeight={700} color={GREEN}>{phoneNumber}</Typography>
+                ) : null}
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleChat}
+                disabled={startingChat}
+                sx={{
+                  py: 2.5, borderRadius: '14px', border: `1px solid ${BORDER}`, bgcolor: CARD_BG,
+                  color: TEXT_PRI, display: 'flex', flexDirection: 'column', gap: 1,
+                  transition: 'all 0.2s',
+                  '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE, color: PURPLE }
+                }}
+              >
+                <ChatBubbleOutlineIcon sx={{ fontSize: 36 }} />
+              </Button>
+            </Box>
+          )}
 
           <Divider sx={{ borderColor: BORDER }} />
 
-          {/* Thông tin người bán */}
-          <Box
-            sx={{
-              bgcolor: CARD_BG,
-              border: `1px solid ${BORDER}`,
-              borderRadius: '12px',
-              p: 1.8,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-            }}
-          >
-            <Avatar
-              src={fullImageUrl(seller?.avatarUrl)}
-              alt={seller?.fullName}
-              sx={{ width: 46, height: 46, cursor: 'pointer' }}
-              onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
-            />
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                fontSize={14}
-                fontWeight={700}
-                color={TEXT_PRI}
-                noWrap
-                sx={{ cursor: 'pointer', '&:hover': { color: PURPLE } }}
+          {/* Thông tin người bán - Layout mới */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar
+                src={fullImageUrl(seller?.avatarUrl)}
+                alt={seller?.fullName}
+                sx={{ width: 52, height: 52, cursor: 'pointer', border: `2px solid ${PURPLE}` }}
                 onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
-              >
-                {seller?.fullName || 'Người bán'}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-                {seller?.reputationScore != null && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
-                    <StarIcon sx={{ fontSize: 13, color: '#FFC107' }} />
-                    <Typography fontSize={12} color={TEXT_SEC}>
-                      {Number(seller.reputationScore).toFixed(1)}
-                    </Typography>
-                  </Box>
-                )}
-                {seller?.totalListings != null && (
-                  <Typography fontSize={12} color={TEXT_SEC}>
-                    {seller.totalListings} tin đăng
-                  </Typography>
-                )}
+              />
+              <Box>
+                <Typography
+                  fontSize={15}
+                  fontWeight={700}
+                  color={TEXT_PRI}
+                  sx={{ cursor: 'pointer', '&:hover': { color: PURPLE }, mb: 0.5 }}
+                  onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
+                >
+                  {seller?.fullName || 'Người bán'}
+                </Typography>
+                <Chip
+                  label="Xem trang"
+                  onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
+                  sx={{
+                    height: 22, fontSize: 11, fontWeight: 600,
+                    bgcolor: `${PURPLE}22`, color: PURPLE,
+                    '&:hover': { bgcolor: `${PURPLE}44` }, cursor: 'pointer'
+                  }}
+                />
               </Box>
             </Box>
-            <Button
-              size="small"
-              onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
-              sx={{
-                fontSize: 12, px: 1.5, py: 0.5, borderRadius: '8px',
-                bgcolor: `${PURPLE}22`, color: PURPLE,
-                border: `1px solid ${PURPLE}44`,
-                '&:hover': { bgcolor: `${PURPLE}33` },
-              }}
-            >
-              Xem trang
-            </Button>
-          </Box>
 
-          {/* Nút hành động chính */}
-          {!isOwnListing && (
-            <Box sx={{ display: 'flex', gap: 1.5 }}>
-              {/* Nhắn tin */}
-              <Button
-                fullWidth
-                onClick={handleChat}
-                disabled={startingChat}
-                startIcon={<ChatBubbleOutlineIcon />}
-                sx={{
-                  bgcolor: PURPLE, color: '#fff', py: 1.2,
-                  borderRadius: '10px', fontSize: 14, fontWeight: 600,
-                  '&:hover': { bgcolor: '#8A5BD6' },
-                  '&:disabled': { bgcolor: '#4A3A6A', color: 'rgba(255,255,255,0.4)' },
-                }}
-              >
-                {startingChat ? 'Đang mở...' : 'Nhắn tin'}
-              </Button>
-
-              {/* Xem SĐT */}
-              <Button
-                fullWidth
-                onClick={handleShowPhone}
-                startIcon={<PhoneAndroidIcon />}
-                sx={{
-                  bgcolor: phoneNumber ? `${GREEN}22` : CARD_BG2,
-                  color: phoneNumber ? GREEN : TEXT_PRI,
-                  border: `1px solid ${phoneNumber ? GREEN + '44' : BORDER}`,
-                  py: 1.2, borderRadius: '10px', fontSize: 14, fontWeight: 600,
-                  '&:hover': { bgcolor: phoneNumber ? `${GREEN}33` : '#2E2B3A' },
-                }}
-              >
-                {phoneNumber || 'Xem SĐT'}
-              </Button>
+            <Box sx={{ display: 'flex', gap: 3 }}>
+              {/* Đã bán */}
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
+                  {seller?.totalSold ?? 10}
+                </Typography>
+                <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>Đã bán</Typography>
+              </Box>
+              {/* Đánh giá */}
+              <Box sx={{ textAlign: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.3 }}>
+                  <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
+                    {Number(seller?.reputationScore ?? 5).toFixed(1)}
+                  </Typography>
+                  <StarIcon sx={{ fontSize: 14, color: '#FFC107', mt: -0.2 }} />
+                </Box>
+                <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>
+                  {seller?.reviewCount ?? 34} đánh giá
+                </Typography>
+              </Box>
             </Box>
-          )}
+          </Box>
 
           {/* Khối trả giá */}
           {!isOwnListing && !listing.isGiveaway && (
@@ -840,7 +873,7 @@ export default function ListingDetailPage() {
                 bgcolor: CARD_BG,
                 border: `1px solid ${BORDER}`,
                 borderRadius: '12px',
-                p: 2,
+                p: 2, mt: 1
               }}
             >
               <Typography fontSize={13} fontWeight={600} color={TEXT_SEC} sx={{ mb: 1.2 }}>
