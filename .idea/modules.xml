@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/SLIFE_SECONDHAND-MARKETPLACE-PLATFORM-FOR-HOA-LAC-STUDENTS.iml" filepath="$PROJECT_DIR$/.idea/SLIFE_SECONDHAND-MARKETPLACE-PLATFORM-FOR-HOA-LAC-STUDENTS.iml" />
       <module fileurl="file://$PROJECT_DIR$/frontend/frontend.iml" filepath="$PROJECT_DIR$/frontend/frontend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/backend/marketplace.iml" filepath="$PROJECT_DIR$/backend/marketplace.iml" />
     </modules>
   </component>
 </project>
