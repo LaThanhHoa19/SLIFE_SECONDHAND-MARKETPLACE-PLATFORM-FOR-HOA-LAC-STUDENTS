@@ -27,6 +27,8 @@ public enum ErrorCode {
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+    SAVED_LISTING_ALREADY("SAVED_LISTING_ALREADY", "Listing already saved", HttpStatus.CONFLICT),
+    SAVED_LISTING_NOT_SAVED("SAVED_LISTING_NOT_SAVED", "Listing was not saved", HttpStatus.NOT_FOUND),
 
     // Upload
     FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
@@ -43,6 +45,10 @@ public enum ErrorCode {
     OFFER_NOT_PENDING("OFFER_NOT_PENDING", "Offer is no longer pending", HttpStatus.CONFLICT),
     FILE_TOO_LARGE("FILE_TOO_LARGE", "File exceeds 5 MB limit", HttpStatus.PAYLOAD_TOO_LARGE),
     INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+
+    // Comment related
+    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "Comment not found", HttpStatus.NOT_FOUND),
+    COMMENT_DELETE_FORBIDDEN("COMMENT_DELETE_FORBIDDEN", "Only the comment author, listing owner or admin can delete this comment", HttpStatus.FORBIDDEN),
 
     // Report related
     REPORT_NOT_FOUND("REPORT_NOT_FOUND", "Report not found", HttpStatus.NOT_FOUND),

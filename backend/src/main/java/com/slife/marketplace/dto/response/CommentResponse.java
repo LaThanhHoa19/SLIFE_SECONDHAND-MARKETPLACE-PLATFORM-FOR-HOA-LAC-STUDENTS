@@ -13,12 +13,11 @@ public class CommentResponse {
     private String content;
     private Instant createdAt;
 
-    /**
-     * Limited user info to avoid leaking sensitive fields.
-     * Example keys: userId, fullName, avatarUrl.
-     */
+    /** Limited user info: userId, fullName, avatarUrl */
     private Map<String, Object> author;
+
+    /** URLs cac anh trong comment */
+    private List<String> images;
 
     private List<CommentResponse> replies;
 }
-

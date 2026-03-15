@@ -151,7 +151,6 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid auth response');
       }
 
-      // Store tokens and user
       localStorage.setItem(TOKEN_KEY, accessToken);
       if (payload.refreshToken) {
         localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
@@ -334,11 +333,8 @@ export function AuthProvider({ children }) {
             const userData = unwrapApiData(await userApi.getUser());
             setUser(userData);
             localStorage.setItem(USER_KEY, JSON.stringify(userData));
-
-            // Setup auto refresh
             setupTokenRefresh(token);
           } catch (error) {
-            // Invalid token, clear auth
             console.error('Failed to fetch user:', error);
             await logout();
           }
