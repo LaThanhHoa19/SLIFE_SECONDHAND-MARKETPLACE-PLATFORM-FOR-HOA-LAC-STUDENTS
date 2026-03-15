@@ -453,6 +453,7 @@ export default function ListingDetailPage() {
   const [snackType, setSnackType]     = useState('success');
   const [sellerListings, setSellerListings] = useState([]);
   const [similarListings, setSimilarListings] = useState([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
 
   // Load listing
   useEffect(() => {
@@ -466,30 +467,51 @@ export default function ListingDetailPage() {
   }, [id]);
 
   // Load tin khác của người bán + tin tương tự
+  // Backend không hỗ trợ sellerId param → load toàn bộ rồi filter client-side
   useEffect(() => {
     if (!listing) return;
-    const sellerId = listing.sellerId;
-    const categoryId = listing.categoryId;
+    // Lấy seller id từ listing.seller.id (theo đúng field backend trả về)
+    const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+    const currentId = Number(id);
 
-    if (sellerId) {
-      getListings({ sellerId, size: 4, status: 'ACTIVE' })
-        .then((res) => {
-          const data = getPayload(res);
-          const list = Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : [];
-          setSellerListings(list.filter((l) => (l.id ?? l.listingId) !== Number(id)));
-        })
-        .catch(() => {});
-    }
+    setLoadingRelated(true);
+    getListings({ size: 20 })
+      .then((res) => {
+        const data = getPayload(res);
+        const allList = Array.isArray(data?.content)
+          ? data.content
+          : Array.isArray(data) ? data : [];
 
-    if (categoryId) {
-      getListings({ categoryId, size: 5, status: 'ACTIVE' })
-        .then((res) => {
-          const data = getPayload(res);
-          const list = Array.isArray(data?.content) ? data.content : Array.isArray(data) ? data : [];
-          setSimilarListings(list.filter((l) => (l.id ?? l.listingId) !== Number(id)).slice(0, 4));
-        })
-        .catch(() => {});
-    }
+        // Tin khác của cùng người bán (loại trừ tin hiện tại)
+        const bySellerRaw = sellerId
+          ? allList.filter((l) => {
+              const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
+              return String(lSellerId) === String(sellerId) && (l.id ?? l.listingId) !== currentId;
+            })
+          : [];
+        setSellerListings(bySellerRaw.slice(0, 6));
+
+        // Tin tương tự: cùng điều kiện sản phẩm hoặc mức giá tương đồng, loại trừ tin hiện tại và tin của cùng seller
+        const condition = listing?.condition ?? listing?.itemCondition;
+        const price = Number(listing?.price ?? 0);
+        const similar = allList
+          .filter((l) => {
+            const lId = l.id ?? l.listingId;
+            if (lId === currentId) return false;
+            const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
+            if (String(lSellerId) === String(sellerId)) return false; // bỏ tin của cùng seller (đã có section trên)
+            // ưu tiên: cùng condition hoặc giá trong khoảng ±50%
+            const lCond = l?.condition ?? l?.itemCondition;
+            const lPrice = Number(l?.price ?? 0);
+            const sameCondition = condition && lCond === condition;
+            const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
+            return sameCondition || similarPrice || true; // fallback: show all other listings
+          })
+          .slice(0, 4);
+        setSimilarListings(similar);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingRelated(false));
   }, [listing, id]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
@@ -879,51 +901,94 @@ export default function ListingDetailPage() {
           <CommentsSection listingId={listing.id} currentUser={currentUser} />
         </Card>
 
-        {/* Cột phải: Tin khác của người bán */}
+        {/* Cột phải: Tin rao khác của shop – luôn hiện, dạng scroll ngang */}
         <Box>
-          {sellerListings.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-                <Typography fontSize={14} fontWeight={700} color={TEXT_PRI}>
-                  Tin khác của {seller?.fullName || 'người bán'}
-                </Typography>
-                {sellerId && (
-                  <Typography
-                    fontSize={12}
-                    color={PURPLE}
-                    sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                    onClick={() => navigate(`/profile/${sellerId}`)}
-                  >
-                    Xem tất cả
-                  </Typography>
-                )}
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.2 }}>
-                {sellerListings.slice(0, 4).map((l) => (
-                  <MiniListingCard key={l.id ?? l.listingId} listing={l} />
-                ))}
-              </Box>
+          <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography fontSize={14} fontWeight={700} color={TEXT_PRI}>
+              Tin rao khác của {seller?.fullName || 'người bán'}
+            </Typography>
+            {(seller?.id ?? listing?.seller?.id) && (
+              <Typography
+                fontSize={12}
+                color={PURPLE}
+                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                onClick={() => navigate(`/profile/${seller?.id ?? listing?.seller?.id}`)}
+              >
+                Xem tất cả
+              </Typography>
+            )}
+          </Box>
+          {loadingRelated ? (
+            <Box sx={{ display: 'flex', gap: 1.2, overflowX: 'auto' }}>
+              {[1, 2, 3].map((n) => (
+                <Skeleton key={n} variant="rectangular" width={120} height={150}
+                  sx={{ bgcolor: '#2A2535', borderRadius: '10px', flexShrink: 0 }} />
+              ))}
+            </Box>
+          ) : sellerListings.length === 0 ? (
+            <Box
+              sx={{
+                bgcolor: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: '10px',
+                p: 2, textAlign: 'center',
+              }}
+            >
+              <Typography fontSize={12} color={TEXT_SEC}>Chưa có tin đăng nào khác.</Typography>
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: 'flex', gap: 1.2,
+                overflowX: 'auto', pb: 0.5,
+                '::-webkit-scrollbar': { height: 4 },
+                '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
+              }}
+            >
+              {sellerListings.map((l) => (
+                <Box key={l.id ?? l.listingId} sx={{ flexShrink: 0, width: 130 }}>
+                  <MiniListingCard listing={l} />
+                </Box>
+              ))}
             </Box>
           )}
         </Box>
       </Box>
 
-      {/* Tin tương tự – full width */}
-      {similarListings.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-            <Typography fontSize={15} fontWeight={700} color={TEXT_PRI}>
-              Tin đăng tương tự
-            </Typography>
-            <Typography
-              fontSize={13}
-              color={PURPLE}
-              sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-              onClick={() => navigate('/feed')}
-            >
-              Xem thêm
-            </Typography>
+      {/* Tin đăng tương tự – luôn hiện, grid 4 cột */}
+      <Box sx={{ mt: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+          <Typography fontSize={15} fontWeight={700} color={TEXT_PRI}>
+            Tin đăng tương tự
+          </Typography>
+          <Typography
+            fontSize={13}
+            color={PURPLE}
+            sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+            onClick={() => navigate('/feed')}
+          >
+            Xem thêm
+          </Typography>
+        </Box>
+        {loadingRelated ? (
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+            gap: 1.5,
+          }}>
+            {[1, 2, 3, 4].map((n) => (
+              <Skeleton key={n} variant="rectangular" height={200}
+                sx={{ bgcolor: '#2A2535', borderRadius: '12px' }} />
+            ))}
           </Box>
+        ) : similarListings.length === 0 ? (
+          <Box
+            sx={{
+              bgcolor: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: '12px',
+              p: 3, textAlign: 'center',
+            }}
+          >
+            <Typography fontSize={13} color={TEXT_SEC}>Chưa có tin tương tự.</Typography>
+          </Box>
+        ) : (
           <Box
             sx={{
               display: 'grid',
@@ -939,8 +1004,8 @@ export default function ListingDetailPage() {
               <MiniListingCard key={l.id ?? l.listingId} listing={l} />
             ))}
           </Box>
-        </Box>
-      )}
+        )}
+      </Box>
 
       {/* Snackbar thông báo */}
       <Snackbar
