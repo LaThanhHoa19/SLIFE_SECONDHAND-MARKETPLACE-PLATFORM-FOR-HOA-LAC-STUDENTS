@@ -31,9 +31,9 @@ public class ListingController {
     private String frontendUrl;
 
     public ListingController(ListingService listingService,
-                             UserService userService,
-                             ListingRepository listingRepository,
-                             SavedListingService savedListingService) {
+            UserService userService,
+            ListingRepository listingRepository,
+            SavedListingService savedListingService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
@@ -44,10 +44,10 @@ public class ListingController {
     public ResponseEntity<ApiResponse<PagedResponse<ListingResponse>>> getListings(
             @RequestParam(name = "category", required = false) String category,
             @RequestParam(name = "location", required = false) String location,
-            @RequestParam(name = "q",        required = false) String q,
-            @RequestParam(name = "sort",     defaultValue = "createdAt,desc") String sort,
-            @RequestParam(name = "page",     defaultValue = "0") int page,
-            @RequestParam(name = "size",     defaultValue = "10") int size) {
+            @RequestParam(name = "q", required = false) String q,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
 
         User currentUser = userService.getCurrentUserOptional().orElse(null);
         PagedResponse<ListingResponse> listings = listingService.getFilteredListings(
@@ -67,15 +67,15 @@ public class ListingController {
         User currentUser = userService.getCurrentUserOptional().orElse(null);
 
         Map<String, Object> data = new HashMap<>();
-        data.put("id",           listing.getId());
-        data.put("title",        listing.getTitle());
-        data.put("description",  listing.getDescription());
-        data.put("price",        listing.getPrice());
-        data.put("condition",    listing.getItemCondition());
-        data.put("purpose",      listing.getPurpose());
-        data.put("status",       listing.getStatus());
-        data.put("isGiveaway",   listing.getIsGiveaway());
-        data.put("createdAt",    listing.getCreatedAt());
+        data.put("id", listing.getId());
+        data.put("title", listing.getTitle());
+        data.put("description", listing.getDescription());
+        data.put("price", listing.getPrice());
+        data.put("condition", listing.getItemCondition());
+        data.put("purpose", listing.getPurpose());
+        data.put("status", listing.getStatus());
+        data.put("isGiveaway", listing.getIsGiveaway());
+        data.put("createdAt", listing.getCreatedAt());
 
         if (listing.getPickupAddress() != null) {
             data.put("location", listing.getPickupAddress().getLocationName());
@@ -83,10 +83,10 @@ public class ListingController {
 
         if (listing.getSeller() != null) {
             Map<String, Object> seller = new HashMap<>();
-            seller.put("id",          listing.getSeller().getId());
-            seller.put("fullName",     listing.getSeller().getFullName());
-            seller.put("avatarUrl",    listing.getSeller().getAvatarUrl());
-            seller.put("reputation",   listing.getSeller().getReputationScore());
+            seller.put("id", listing.getSeller().getId());
+            seller.put("fullName", listing.getSeller().getFullName());
+            seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
+            seller.put("reputation", listing.getSeller().getReputationScore());
             data.put("seller", seller);
         }
 
@@ -94,14 +94,15 @@ public class ListingController {
                 .map(img -> img.getImageUrl()).toList());
 
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
-        data.put("isSaved",    isSaved);
+        data.put("isSaved", isSaved);
         data.put("isFollowed", false);
 
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
     /**
-     * POST /api/listings/{id}/save — luu listing vao danh sach yeu thich (auth required).
+     * POST /api/listings/{id}/save — luu listing vao danh sach yeu thich (auth
+     * required).
      */
     @PostMapping("/{id}/save")
     public ResponseEntity<ApiResponse<Void>> saveListing(@PathVariable("id") Long id) {
@@ -130,23 +131,28 @@ public class ListingController {
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 
         String thumbnail = listing.getImages() != null && !listing.getImages().isEmpty()
-                ? listing.getImages().get(0).getImageUrl() : null;
+                ? listing.getImages().get(0).getImageUrl()
+                : null;
 
         Map<String, Object> data = new HashMap<>();
-        data.put("shareUrl",    frontendUrl + "/listings/" + listing.getId());
-        data.put("title",       listing.getTitle());
+        data.put("shareUrl", frontendUrl + "/listings/" + listing.getId());
+        data.put("title", listing.getTitle());
         data.put("description", listing.getDescription());
-        data.put("price",       listing.getPrice());
-        data.put("thumbnailUrl",thumbnail);
-        data.put("purpose",     listing.getPurpose());
-        data.put("condition",   listing.getItemCondition());
+        data.put("price", listing.getPrice());
+        data.put("thumbnailUrl", thumbnail);
+        data.put("purpose", listing.getPurpose());
+        data.put("condition", listing.getItemCondition());
 
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
     private Long parseCategory(String category) {
-        if (category == null || category.isBlank()) return null;
-        try { return Long.parseLong(category.trim()); }
-        catch (NumberFormatException ignored) { return null; }
+        if (category == null || category.isBlank())
+            return null;
+        try {
+            return Long.parseLong(category.trim());
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }
