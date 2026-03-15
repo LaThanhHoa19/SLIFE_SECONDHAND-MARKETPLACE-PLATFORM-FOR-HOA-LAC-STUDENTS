@@ -22,8 +22,8 @@ export default function useNotifications() {
 
       try {
         const response = await getNotifications();
-        const data = response.data;
-        setNotifications(Array.isArray(data) ? data : (data?.content ?? []));
+        const raw = response?.data?.data ?? response?.data;
+        setNotifications(Array.isArray(raw) ? raw : []);
       } catch (error) {
         console.error('Failed to load notifications:', error);
         setNotifications([]);
@@ -44,22 +44,20 @@ export default function useNotifications() {
 
   const markRead = async (id) => {
     await markNotificationRead(id);
-    setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-    );
+    setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   };
 
   const markAllRead = async () => {
     await apiMarkAllRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => ({ ...n, isRead: true })));
   };
 
   const refetch = async () => {
     if (!token) return;
     try {
       const response = await getNotifications();
-      const data = response.data;
-      setNotifications(Array.isArray(data) ? data : (data?.content ?? []));
+      const raw = response?.data?.data ?? response?.data;
+      setNotifications(Array.isArray(raw) ? raw : []);
     } catch (error) {
       console.error('Failed to reload notifications:', error);
     }

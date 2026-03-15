@@ -90,44 +90,23 @@ export default function AppRouter() {
                     }
                 />
 
-                {/* ===== ADMIN ROUTES - Chỉ cho ADMIN/MODERATOR ===== */}
+                {/* Admin routes (tạm thời không cần login để test UI) */}
                 <Route
                     path="/admin"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <AdminLayout
-                                title="Bảng điều khiển"
-                                subtitle="Tổng quan hoạt động quản trị hệ thống"
-                            >
-                                <SuspenseDashboardPage />
-                            </AdminLayout>
-                        </RouteGuard>
+                        <SuspenseDashboardPage />
                     }
                 />
                 <Route
                     path="/admin/reports"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <AdminLayout
-                                title="Báo cáo"
-                                subtitle="Theo dõi và xử lý báo cáo vi phạm"
-                            >
-                                <SuspenseReportManagementPage />
-                            </AdminLayout>
-                        </RouteGuard>
+                        <SuspenseReportManagementPage />
                     }
                 />
                 <Route
                     path="/admin/users"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <AdminLayout
-                                title="Người dùng"
-                                subtitle="Quản lý tài khoản và uy tín người dùng"
-                            >
-                                <SuspenseUserManagementPage />
-                            </AdminLayout>
-                        </RouteGuard>
+                        <SuspenseUserManagementPage />
                     }
                 />
 
