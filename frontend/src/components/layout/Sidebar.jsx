@@ -8,11 +8,13 @@ import {
     Add as AddIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { SIDEBAR_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
-const SIDEBAR_WIDTH = 148;
+const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new'];
 
 const NAV_ITEMS = [
-    { label: 'Feed', icon: HomeIcon, path: '/' },
+    { label: 'Feed', icon: HomeIcon, path: '/feed' },
     { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
     { label: 'Đăng tin', icon: CampaignIcon, path: '/listings/new' },
 ];
@@ -20,11 +22,20 @@ const NAV_ITEMS = [
 export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { isAuthenticated } = useAuth();
 
     if (!open) return null;
 
+    const handleNavClick = (path) => {
+        if (AUTH_REQUIRED_PATHS.includes(path) && !isAuthenticated) {
+            navigate('/login', { state: { from: path, message: 'Bạn cần đăng nhập để truy cập' } });
+            return;
+        }
+        navigate(path);
+    };
+
     const isActive = (path) => {
-        if (path === '/') return location.pathname === '/';
+        if (path === '/feed') return location.pathname === '/feed';
         return location.pathname.startsWith(path);
     };
 
@@ -34,13 +45,14 @@ export default function Sidebar({ open = true }) {
             sx={{
                 width: SIDEBAR_WIDTH,
                 minWidth: SIDEBAR_WIDTH,
-                height: 'calc(100vh - 56px)',
+                height: `calc(100vh - ${SIDEBAR_TOP_OFFSET}px)`,
                 backgroundColor: '#201D26',
                 borderRight: '1px solid rgba(255,255,255,0.07)',
                 display: 'flex',
                 flexDirection: 'column',
-                position: 'sticky',
-                top: '56px',
+                position: 'fixed',
+                top: `${SIDEBAR_TOP_OFFSET}px`,
+                left: 0,
                 zIndex: 1200,
                 pt: 1.5,
                 pb: 2,
@@ -55,7 +67,7 @@ export default function Sidebar({ open = true }) {
                 return (
                     <Box
                         key={path}
-                        onClick={() => navigate(path)}
+                        onClick={() => handleNavClick(path)}
                         sx={{
                             display: 'flex',
                             alignItems: 'center',

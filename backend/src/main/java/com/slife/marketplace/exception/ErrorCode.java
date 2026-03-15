@@ -27,6 +27,8 @@ public enum ErrorCode {
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+    SAVED_LISTING_ALREADY("SAVED_LISTING_ALREADY", "Listing already saved", HttpStatus.CONFLICT),
+    SAVED_LISTING_NOT_SAVED("SAVED_LISTING_NOT_SAVED", "Listing was not saved", HttpStatus.NOT_FOUND),
 
     // Upload
     FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
@@ -42,7 +44,18 @@ public enum ErrorCode {
     OFFER_SPAM_LIMIT("OFFER_SPAM_LIMIT", "You have reached the maximum offer limit (5) for this listing (BR-35)", HttpStatus.TOO_MANY_REQUESTS),
     OFFER_NOT_PENDING("OFFER_NOT_PENDING", "Offer is no longer pending", HttpStatus.CONFLICT),
     FILE_TOO_LARGE("FILE_TOO_LARGE", "File exceeds 5 MB limit", HttpStatus.PAYLOAD_TOO_LARGE),
-    INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    INVALID_FILE_TYPE("INVALID_FILE_TYPE", "Only JPG, PNG, WebP images are allowed", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+
+    // Comment related
+    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "Comment not found", HttpStatus.NOT_FOUND),
+    COMMENT_DELETE_FORBIDDEN("COMMENT_DELETE_FORBIDDEN", "Only the comment author, listing owner or admin can delete this comment", HttpStatus.FORBIDDEN),
+
+    // Report related
+    REPORT_NOT_FOUND("REPORT_NOT_FOUND", "Report not found", HttpStatus.NOT_FOUND),
+    REPORT_DUPLICATE("REPORT_DUPLICATE", "You have already reported this item", HttpStatus.CONFLICT),
+    REPORT_SELF("REPORT_SELF", "You cannot report your own content", HttpStatus.BAD_REQUEST),
+    REPORT_INVALID_TARGET("REPORT_INVALID_TARGET", "Invalid report target type (must be LISTING or USER)", HttpStatus.BAD_REQUEST),
+    REPORT_INVALID_STATUS("REPORT_INVALID_STATUS", "Invalid resolve status (must be RESOLVED or DISMISSED)", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;
