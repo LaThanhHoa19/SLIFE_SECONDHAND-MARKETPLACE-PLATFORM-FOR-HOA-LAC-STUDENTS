@@ -12,6 +12,7 @@ import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.SavedListingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,12 +43,15 @@ class ListingServiceTest {
     @Mock
     private ListingImageRepository listingImageRepository;
 
+    @Mock
+    private SavedListingRepository savedListingRepository;
+
 
     private ListingService listingService;
 
     @BeforeEach
     void setUp() {
-        listingService = new ListingService(listingRepository, listingImageRepository);
+        listingService = new ListingService(listingRepository, listingImageRepository, savedListingRepository);
     }
 
 
@@ -77,7 +81,7 @@ class ListingServiceTest {
         image.setImageUrl("https://example.com/iphone.jpg");
 
         Page<Listing> pageData = new PageImpl<>(List.of(listing));
-        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(pageData);
         when(listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(10L))
                 .thenReturn(List.of(image));

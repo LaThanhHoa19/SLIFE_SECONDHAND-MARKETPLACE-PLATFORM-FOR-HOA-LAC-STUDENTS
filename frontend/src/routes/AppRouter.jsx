@@ -33,13 +33,15 @@ import {
 export default function AppRouter() {
     return (
         <Routes>
+            {/* Landing page = trang chủ khi mở app */}
             <Route element={<LandingLayout />}>
+                <Route path="/" element={<SuspenseStitchLandingPage />} />
                 <Route path="/landing" element={<SuspenseStitchLandingPage />} />
             </Route>
 
             <Route element={<MainLayout />}>
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
-                <Route path="/" element={<SuspenseListingsPage />} />
+                <Route path="/feed" element={<SuspenseListingsPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
@@ -129,7 +131,7 @@ export default function AppRouter() {
                 {/* Dev/test route */}
                 <Route path="/backend-test" element={<SuspenseBackendTestPage />} />
 
-                {/* Fallback */}
+                {/* Fallback: không match route nào thì về landing */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
         </Routes>

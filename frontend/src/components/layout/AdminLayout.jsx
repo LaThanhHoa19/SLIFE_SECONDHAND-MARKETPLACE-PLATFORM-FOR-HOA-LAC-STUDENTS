@@ -1,6 +1,7 @@
 import { Box, Typography, Paper } from '@mui/material';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
+import { CONTENT_MAX_WIDTH } from '../../utils/layoutConstants';
 
 export default function AdminLayout({ title, subtitle, children, rightSlot }) {
     return (
@@ -25,7 +26,7 @@ export default function AdminLayout({ title, subtitle, children, rightSlot }) {
                 <AdminHeader />
                 <Box
                     sx={{
-                        maxWidth: 1200,
+                        maxWidth: CONTENT_MAX_WIDTH,
                         mx: 'auto',
                         px: 3,
                         py: 3,
