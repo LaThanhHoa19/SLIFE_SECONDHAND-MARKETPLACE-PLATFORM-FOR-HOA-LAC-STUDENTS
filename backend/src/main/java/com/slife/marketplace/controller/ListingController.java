@@ -1,7 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.response.ApiResponse;
-import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.ListingCardResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
@@ -41,17 +41,13 @@ public class ListingController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PagedResponse<ListingResponse>>> getListings(
-            @RequestParam(name = "category", required = false) String category,
-            @RequestParam(name = "location", required = false) String location,
-            @RequestParam(name = "q", required = false) String q,
-            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort,
+    public ResponseEntity<ApiResponse<PagedResponse<ListingCardResponse>>> getListings(
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "10") int size) {
+            @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        User currentUser = userService.getCurrentUserOptional().orElse(null);
-        PagedResponse<ListingResponse> listings = listingService.getFilteredListings(
-                parseCategory(category), location, q, sort, page, size, currentUser);
+        PagedResponse<ListingCardResponse> listings = 
+            listingService.getActiveListingCards(page, size);
+            
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
 
@@ -146,13 +142,4 @@ public class ListingController {
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
-    private Long parseCategory(String category) {
-        if (category == null || category.isBlank())
-            return null;
-        try {
-            return Long.parseLong(category.trim());
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
 }
