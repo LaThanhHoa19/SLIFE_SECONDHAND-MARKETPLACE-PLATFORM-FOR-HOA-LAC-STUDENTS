@@ -21,7 +21,7 @@ export const authGuard = {
 export const guestGuard = {
     name: 'guest',
     check: ({ user, token }) => !(token && user),
-    redirect: '/',
+    redirect: '/feed',
     message: 'Bạn đã đăng nhập rồi'
 };
 
@@ -35,14 +35,14 @@ export const emailVerifiedGuard = {
 export const adminGuard = {
     name: 'admin',
     check: ({ user }) => user?.role === 'ADMIN',
-    redirect: '/',
+    redirect: '/feed',
     message: 'Cần quyền admin'
 };
 
 export const moderatorGuard = {
     name: 'moderator',
     check: ({ user }) => ['ADMIN', 'MODERATOR'].includes(user?.role),
-    redirect: '/',
+    redirect: '/feed',
     message: 'Cần quyền moderator'
 };
 
@@ -134,7 +134,7 @@ export const createCustomGuard = (name, checkFn, redirect, message) => ({
 
 /**
  * Pre-built guard combinations
- */
+ */git
 export const GUARD_PRESETS = {
     // User cần đăng nhập
     AUTH_REQUIRED: [authGuard],
