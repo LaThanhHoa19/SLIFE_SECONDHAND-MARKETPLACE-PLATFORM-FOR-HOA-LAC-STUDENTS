@@ -1,22 +1,43 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import {
-    Box, Button, TextField, Typography, Grid, MenuItem, Checkbox, 
-    FormControlLabel, ToggleButton, ToggleButtonGroup, Dialog, 
-    DialogTitle, List, ListItemButton, ListItemText, IconButton, 
-    InputAdornment, Radio, Stack
+    Box, Button, TextField, Typography, Grid, MenuItem, Checkbox,
+    FormControlLabel, ToggleButton, ToggleButtonGroup, Dialog,
+    DialogTitle, List, ListItemButton, ListItemText, IconButton,
+    InputAdornment, Stack, Collapse,
 } from "@mui/material";
 
 // Icons
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MenuBookOutlined from "@mui/icons-material/MenuBookOutlined";
-import LaptopMacOutlined from "@mui/icons-material/LaptopMacOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
 import { getLocations } from '../../api/locationApi';
+
+function buildCategoryTree(flatList) {
+    if (!Array.isArray(flatList) || flatList.length === 0) return [];
+    const byId = new Map();
+    flatList.forEach((c) => {
+        const id = c.id ?? c.categoryId;
+        byId.set(id, { ...c, id, children: [] });
+    });
+    const roots = [];
+    flatList.forEach((c) => {
+        const node = byId.get(c.id ?? c.categoryId);
+        if (!node) return;
+        const parentId = c.parentId ?? c.parent_id ?? null;
+        if (parentId == null) {
+            roots.push(node);
+        } else {
+            const parent = byId.get(parentId);
+            if (parent) parent.children.push(node);
+            else roots.push(node);
+        }
+    });
+    return roots;
+}
 
 export default function ListingForm({ defaultValues = {}, onSubmit, submitting = false, mode = 'create' }) {
     // Logic quản lý State & Form
@@ -25,6 +46,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
     const [categories, setCategories] = useState([]);
     const [locations, setLocations] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
+    const [expandedCatId, setExpandedCatId] = useState(null);
     
     const { register, handleSubmit, watch, setValue, clearErrors, formState: { errors } } = useForm({
         defaultValues: {
@@ -424,43 +446,130 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
             </Grid>
 
             {/* DIALOG CHỌN DANH MỤC */}
-            <Dialog open={openCategory} onClose={() => setOpenCategory(false)} fullWidth maxWidth="xs">
+            <Dialog
+                open={openCategory}
+                onClose={() => { setOpenCategory(false); setExpandedCatId(null); }}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { bgcolor: '#201D26', backgroundImage: 'none' } }}
+            >
                 <DialogTitle
                     sx={{
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        background: "#201D26",
-                        color: "#fff"
+                        bgcolor: "#2A2733",
+                        color: "#fff",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        py: 1.5,
                     }}
                 >
-                    Chọn danh mục
-                    <IconButton onClick={() => setOpenCategory(false)} sx={{ color: "#fff" }}>
-                        <CloseIcon />
+                    <Typography fontWeight={700} fontSize={16}>Chọn danh mục</Typography>
+                    <IconButton onClick={() => { setOpenCategory(false); setExpandedCatId(null); }} sx={{ color: "rgba(255,255,255,0.6)" }}>
+                        <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <List sx={{ background: "#201D26", color: "#fff", p: 0 }}>
-                    {categories.map((c) => (
-                        <ListItemButton
-                            key={c.id || c.categoryId}
-                            onClick={() => {
-                                setValue('categoryId', c.id || c.categoryId);
-                                setValue('categoryName', c.name);
-                                clearErrors('categoryId');
-                                setOpenCategory(false);
-                            }}
-                            sx={{
-                                borderBottom: "1px solid rgba(255,255,255,0.1)",
-                                py: 2,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 2
-                            }}
-                        >
-                            <ListItemText primary={c.name} />
-                            <ChevronRightIcon />
-                        </ListItemButton>
-                    ))}
+                <List sx={{ p: 0, maxHeight: 480, overflowY: 'auto' }}>
+                    {buildCategoryTree(categories).map((parent, idx, arr) => {
+                        const parentId = parent.id ?? parent.categoryId;
+                        const hasChildren = parent.children?.length > 0;
+                        const isExpanded = expandedCatId === parentId;
+
+                        const selectCategory = (id, name) => {
+                            setValue('categoryId', id);
+                            setValue('categoryName', name);
+                            clearErrors('categoryId');
+                            setOpenCategory(false);
+                            setExpandedCatId(null);
+                        };
+
+                        return (
+                            <Box key={parentId}>
+                                {/* Hàng danh mục cha */}
+                                <ListItemButton
+                                    onClick={() => {
+                                        if (hasChildren) {
+                                            setExpandedCatId(isExpanded ? null : parentId);
+                                        } else {
+                                            selectCategory(parentId, parent.name);
+                                        }
+                                    }}
+                                    sx={{
+                                        py: 1.75,
+                                        px: 2.5,
+                                        borderBottom: (!isExpanded && idx < arr.length - 1)
+                                            ? '1px solid rgba(255,255,255,0.07)'
+                                            : 'none',
+                                        bgcolor: isExpanded ? 'rgba(157,110,237,0.1)' : 'transparent',
+                                        '&:hover': { bgcolor: 'rgba(157,110,237,0.12)' },
+                                    }}
+                                >
+                                    <ListItemText
+                                        primary={parent.name}
+                                        primaryTypographyProps={{
+                                            fontSize: 15,
+                                            fontWeight: isExpanded ? 700 : 500,
+                                            color: isExpanded ? '#B794F6' : 'rgba(255,255,255,0.9)',
+                                        }}
+                                    />
+                                    {hasChildren ? (
+                                        <ExpandMoreIcon
+                                            sx={{
+                                                fontSize: 20,
+                                                color: isExpanded ? '#9D6EED' : 'rgba(255,255,255,0.4)',
+                                                transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                                                transition: 'transform 0.2s, color 0.2s',
+                                            }}
+                                        />
+                                    ) : (
+                                        <ChevronRightIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.3)' }} />
+                                    )}
+                                </ListItemButton>
+
+                                {/* Danh mục con — accordion */}
+                                {hasChildren && (
+                                    <Collapse in={isExpanded} timeout={200}>
+                                        <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                                            {parent.children.map((child, cIdx) => {
+                                                const childId = child.id ?? child.categoryId;
+                                                return (
+                                                    <ListItemButton
+                                                        key={childId}
+                                                        onClick={() => selectCategory(childId, `${parent.name} > ${child.name}`)}
+                                                        sx={{
+                                                            py: 1.4,
+                                                            pl: 4,
+                                                            pr: 2.5,
+                                                            borderBottom: cIdx < parent.children.length - 1
+                                                                ? '1px solid rgba(255,255,255,0.05)'
+                                                                : 'none',
+                                                            '&:hover': { bgcolor: 'rgba(157,110,237,0.15)' },
+                                                        }}
+                                                    >
+                                                        <Box
+                                                            sx={{
+                                                                width: 4, height: 4, borderRadius: '50%',
+                                                                bgcolor: 'rgba(157,110,237,0.7)',
+                                                                mr: 1.5, flexShrink: 0,
+                                                            }}
+                                                        />
+                                                        <ListItemText
+                                                            primary={child.name}
+                                                            primaryTypographyProps={{
+                                                                fontSize: 14,
+                                                                fontWeight: 400,
+                                                                color: 'rgba(255,255,255,0.8)',
+                                                            }}
+                                                        />
+                                                    </ListItemButton>
+                                                );
+                                            })}
+                                        </Box>
+                                    </Collapse>
+                                )}
+                            </Box>
+                        );
+                    })}
                 </List>
             </Dialog>
         </Box>
