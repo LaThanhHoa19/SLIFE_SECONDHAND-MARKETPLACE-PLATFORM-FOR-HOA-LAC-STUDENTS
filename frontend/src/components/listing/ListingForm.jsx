@@ -267,7 +267,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                             "& .MuiInputBase-input": {
                                 fontSize: "20px"
                             },
-                            "& .Mui-disabled": {
+                            "& .MuiInputBase-input.Mui-disabled": {
                                 WebkitTextFillColor: "#fff"
                             }
                         }}
