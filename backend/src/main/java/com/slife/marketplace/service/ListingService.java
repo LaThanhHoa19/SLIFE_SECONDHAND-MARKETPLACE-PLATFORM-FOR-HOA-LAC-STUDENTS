@@ -6,6 +6,8 @@ import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
+import com.slife.marketplace.exception.ErrorCode;
+import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
@@ -17,6 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -224,5 +227,37 @@ public class ListingService {
         response.setCategoryName(listing.getCategory() != null ? listing.getCategory().getName() : null);
         response.setReportCount(listingRepository.countReportsByListingId(listing.getId()));
         return response;
+    }
+
+    // ----------------------------------------------------------------
+    // Hide / Unhide
+    // ----------------------------------------------------------------
+
+    @Transactional
+    public void hideListing(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+
+        listing.setStatus("HIDDEN");
+        listing.setUpdatedAt(Instant.now());
+        listingRepository.save(listing);
+    }
+
+    @Transactional
+    public void unhideListing(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+
+        listing.setStatus("ACTIVE");
+        listing.setUpdatedAt(Instant.now());
+        listingRepository.save(listing);
     }
 }
