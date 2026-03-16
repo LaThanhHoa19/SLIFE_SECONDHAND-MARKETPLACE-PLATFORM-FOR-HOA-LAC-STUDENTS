@@ -1,6 +1,7 @@
 package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -49,16 +50,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             @Param("priceMax")   BigDecimal priceMax,
             Pageable pageable);
 
-    /** Distinct pickup locations for filter dropdown */
+    /**
+     * Distinct pickup locations for filter dropdown
+     */
     @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
            "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
-    List<String> findDistinctPickupLocationNames();
-    java.util.List<String> findDistinctPickupLocationNames();
-    // Helper for UI filter dropdowns
-    @Query("SELECT DISTINCT a.locationName FROM Listing l " +
-            "JOIN l.pickupAddress a " +
-            "WHERE l.status = 'ACTIVE' " +
-            "ORDER BY a.locationName")
     List<String> findDistinctPickupLocationNames();
 
     // --- My Listings Management (pageable versions) ---
