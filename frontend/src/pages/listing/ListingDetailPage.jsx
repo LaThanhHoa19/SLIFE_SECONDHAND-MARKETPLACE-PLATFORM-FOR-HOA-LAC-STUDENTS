@@ -50,6 +50,7 @@ import { getUserById } from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
+import * as offerApi from '../../api/offerApi';
 
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
@@ -116,7 +117,6 @@ export default function ListingDetailPage() {
   const [startingChat, setStartingChat] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [liked, setLiked] = useState(false);
-  const [offerPrice, setOfferPrice] = useState('');
   const [snackMsg, setSnackMsg] = useState('');
   const [snackType, setSnackType] = useState('success');
   const [sellerListings, setSellerListings] = useState([]);
@@ -235,6 +235,11 @@ export default function ListingDetailPage() {
       return;
     }
     setShowPhone(true);
+  };
+
+  const showSnack = (msg, type = 'success') => {
+    setSnackType(type);
+    setSnackMsg(msg);
   };
 
   const handleOffer = async () => {
@@ -419,9 +424,7 @@ export default function ListingDetailPage() {
             seller={seller}
             sellerId={sellerId}
             isOwnListing={isOwnListing}
-            offerPrice={offerPrice}
-            setOfferPrice={setOfferPrice}
-            handleOffer={handleOffer}
+            onNotify={showSnack}
           />
         </Box>
 

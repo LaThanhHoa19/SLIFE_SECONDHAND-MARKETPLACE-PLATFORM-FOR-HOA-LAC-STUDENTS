@@ -14,9 +14,7 @@ export default function ListingRightInfoBlock({
   seller,
   sellerId,
   isOwnListing,
-  offerPrice,
-  setOfferPrice,
-  handleOffer
+  onNotify
 }) {
   return (
     <Box
@@ -59,9 +57,8 @@ export default function ListingRightInfoBlock({
       <Box>
         {!isOwnListing && !listing.isGiveaway && (
           <ListingOffer
-            offerPrice={offerPrice}
-            setOfferPrice={setOfferPrice}
-            handleOffer={handleOffer}
+            listing={listing}
+            onNotify={onNotify}
           />
         )}
       </Box>
