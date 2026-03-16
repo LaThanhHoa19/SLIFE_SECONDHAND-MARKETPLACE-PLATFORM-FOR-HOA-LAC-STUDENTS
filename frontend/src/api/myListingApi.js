@@ -13,3 +13,12 @@ const sanitize = (params = {}) =>
 
 export const getMyListings = (params = {}, config = {}) =>
     axiosClient.get('/api/listings/my', { params: sanitize(params), ...config });
+
+export const hideListing = (id) =>
+    axiosClient.patch(`/api/listings/${id}/hide`);
+
+export const renewListing = (id) =>
+    axiosClient.patch(`/api/listings/${id}/renew`);
+
+export const unhideListing = (id) =>
+    axiosClient.patch(`/api/listings/${id}/unhide`);
