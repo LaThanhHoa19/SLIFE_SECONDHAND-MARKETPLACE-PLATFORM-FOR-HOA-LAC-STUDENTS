@@ -38,6 +38,9 @@ public class SecurityConfig {
             // Save listing: auth required
             .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
             .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
+            // Hide / Unhide listing: chỉ seller mới được thực hiện
+            .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
+            .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
             .requestMatchers("/api/me/**").authenticated()
             // Guest access
             .requestMatchers("/api/listings/**").permitAll()
