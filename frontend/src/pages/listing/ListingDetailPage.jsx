@@ -119,6 +119,7 @@ export default function ListingDetailPage() {
   const [liked, setLiked] = useState(false);
   const [snackMsg, setSnackMsg] = useState('');
   const [snackType, setSnackType] = useState('success');
+  const [snackAction, setSnackAction] = useState(null);
   const [sellerListings, setSellerListings] = useState([]);
   const [similarListings, setSimilarListings] = useState([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
@@ -237,9 +238,10 @@ export default function ListingDetailPage() {
     setShowPhone(true);
   };
 
-  const showSnack = (msg, type = 'success') => {
+  const showSnack = (msg, type = 'success', action = null) => {
     setSnackType(type);
     setSnackMsg(msg);
+    setSnackAction(action);
   };
 
   const handleOffer = async () => {
@@ -487,7 +489,20 @@ export default function ListingDetailPage() {
           onClose={() => setSnackMsg('')}
           severity={snackType}
           variant="filled"
-          sx={{ borderRadius: '10px' }}
+          sx={{ 
+            borderRadius: '12px',
+            bgcolor: snackType === 'warning' ? '#FF9F43' : undefined,
+            color: '#fff',
+            fontWeight: 500,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+            '& .MuiAlert-action': {
+              alignItems: 'center',
+              paddingTop: 0,
+              paddingBottom: 0,
+              marginLeft: 1
+            }
+          }}
+          action={snackAction}
         >
           {snackMsg}
         </Alert>

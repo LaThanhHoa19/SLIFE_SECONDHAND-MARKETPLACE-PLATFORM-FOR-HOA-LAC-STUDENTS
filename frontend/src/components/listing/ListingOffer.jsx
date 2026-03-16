@@ -1,8 +1,9 @@
 import { Box, Button, Typography } from '@mui/material';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined';
 import OfferModal from './OfferModal';
 import * as offerApi from '../../api/offerApi';
+import { useAuth } from '../../hooks/useAuth';
 
 const CARD_BG = '#201D26';
 const BORDER = 'rgba(255,255,255,0.07)';
@@ -10,10 +11,51 @@ const TEXT_SEC = 'rgba(255,255,255,0.55)';
 const PURPLE = '#9D6EED';
 
 export default function ListingOffer({ listing, onNotify }) {
+  const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState('');
   const [message, setMessage] = useState('Để cho mình giá này nhé sếp!');
   const [loading, setLoading] = useState(false);
+
+  // Tự động mở popup nếu quay lại từ trang đăng nhập
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'makeOffer' && isAuthenticated) {
+      setOpen(true);
+      // Xóa action khỏi URL để tránh mở lại khi load trang
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [isAuthenticated]);
+
+  const handleOpen = () => {
+    if (!isAuthenticated) {
+      const redirectUrl = encodeURIComponent(`${window.location.pathname}?action=makeOffer`);
+      onNotify?.(
+        'Bạn cần đăng nhập để thực hiện trả giá.', 
+        'warning',
+        <Button 
+          variant="contained"
+          size="small" 
+          sx={{ 
+            fontWeight: 700, 
+            textTransform: 'none', 
+            ml: 2,
+            bgcolor: '#fff',
+            color: '#000',
+            borderRadius: '20px',
+            px: 2,
+            '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' }
+          }}
+          onClick={() => window.location.href = `/login?redirect=${redirectUrl}`}
+        >
+          Đăng nhập
+        </Button>
+      );
+      return;
+    }
+    setOpen(true);
+  };
 
   const handleSubmit = async () => {
     const numericPrice = Number(price);
@@ -44,7 +86,7 @@ export default function ListingOffer({ listing, onNotify }) {
 
       <Button
         fullWidth
-        onClick={() => setOpen(true)}
+        onClick={handleOpen}
         startIcon={<LocalOfferOutlinedIcon />}
         sx={{
           height: 48, bgcolor: `${PURPLE}15`, color: PURPLE, border: `1px solid ${PURPLE}33`,
