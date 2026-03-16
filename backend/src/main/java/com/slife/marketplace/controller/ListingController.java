@@ -138,6 +138,26 @@ public class ListingController {
     }
 
     /**
+     * PATCH /api/listings/{id}/hide — Ẩn tin (chỉ seller của listing mới được thực hiện).
+     */
+    @PatchMapping("/{id}/hide")
+    public ResponseEntity<ApiResponse<Void>> hideListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.hideListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/unhide — Hiển thị lại tin đã ẩn (chỉ seller của listing mới được thực hiện).
+     */
+    @PatchMapping("/{id}/unhide")
+    public ResponseEntity<ApiResponse<Void>> unhideListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.unhideListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
      * GET /api/listings/{id}/share
      * Tra ve share URL + metadata de FE render share card.
      */

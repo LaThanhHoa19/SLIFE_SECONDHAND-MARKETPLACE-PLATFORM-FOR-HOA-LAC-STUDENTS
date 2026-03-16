@@ -483,22 +483,22 @@ export default function MyListingsPage() {
     const handleHide = async (id) => {
         try {
             await hideListing(id);
-            showSnackbar('Đã ẩn bài đăng thành công.', 'success');
-            fetchListings(activeTab, page);
+            showSnackbar('Đã ẩn tin thành công', 'success');
             fetchTabCounts();
+            fetchListings(activeTab, page);
         } catch {
-            showSnackbar('Tính năng ẩn tin đang được phát triển.', 'info');
+            showSnackbar('Không thể ẩn tin. Vui lòng thử lại.', 'error');
         }
     };
 
     const handleUnhide = async (id) => {
         try {
             await unhideListing(id);
-            showSnackbar('Đã hiển thị lại bài đăng thành công.', 'success');
-            fetchListings(activeTab, page);
+            showSnackbar('Tin đăng đã hiển thị lại', 'success');
             fetchTabCounts();
+            fetchListings(activeTab, page);
         } catch {
-            showSnackbar('Tính năng hiển thị lại đang được phát triển.', 'info');
+            showSnackbar('Không thể hiển thị lại tin. Vui lòng thử lại.', 'error');
         }
     };
 
