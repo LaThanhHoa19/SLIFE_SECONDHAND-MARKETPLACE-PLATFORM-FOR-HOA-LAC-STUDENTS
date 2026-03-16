@@ -155,9 +155,21 @@ export default function FilterPanel() {
         }}>
 
             {/* Header */}
-            <Box sx={{ px: 1 }}>
-                <Typography sx={{ fontSize: '14px', fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
+            <Box sx={{ px: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography sx={{ fontSize: '16px', fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
                     Bộ lọc
+                </Typography>
+                <Typography
+                    onClick={handleReset}
+                    sx={{
+                        fontSize: '16px',
+                        fontWeight: 500,
+                        color: '#9D6EED',
+                        cursor: 'pointer',
+                        '&:hover': { color: '#B794F6', textDecoration: 'underline' },
+                    }}
+                >
+                    Xóa lọc
                 </Typography>
             </Box>
 
