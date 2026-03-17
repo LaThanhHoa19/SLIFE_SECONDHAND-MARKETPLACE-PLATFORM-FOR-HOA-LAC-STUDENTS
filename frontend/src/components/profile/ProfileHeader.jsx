@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
   Box,
@@ -61,6 +62,7 @@ export default function ProfileHeader({
   handleChat,
   error
 }) {
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -316,8 +318,8 @@ export default function ProfileHeader({
                         <Button
                           variant="outlined"
                           size="medium"
-                          startIcon={editing ? <CloseIcon /> : <EditIcon />}
-                          onClick={() => setEditing(!editing)}
+                          startIcon={<EditIcon />}
+                          onClick={() => navigate('/profile/edit')}
                           sx={{
                             textTransform: 'none',
                             fontWeight: 700,
@@ -328,7 +330,7 @@ export default function ProfileHeader({
                             '&:hover': { borderColor: '#B289FF', bgcolor: 'rgba(157, 110, 237, 0.08)' },
                           }}
                         >
-                          {editing ? 'Hủy' : 'Chỉnh sửa trang cá nhân'}
+                          Chỉnh sửa trang cá nhân
                         </Button>
                         <IconButton
                           sx={{
