@@ -2,6 +2,11 @@ import { Box, Button, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ProfileListingCard from './ProfileListingCard';
 
+const PAGE_BG = '#1C1B23';
+const CARD_BG = '#201D26';
+const BORDER = 'rgba(255, 255, 255, 0.07)';
+const TEXT_PRI = 'rgba(255, 255, 255, 0.95)';
+const TEXT_SEC = 'rgba(255, 255, 255, 0.55)';
 const PURPLE = '#9D6EED';
 
 export default function ListingSection({
@@ -22,12 +27,15 @@ export default function ListingSection({
           variant="contained"
           sx={{
             mb: 3,
-            borderRadius: 2,
+            borderRadius: 2.5,
             textTransform: 'none',
-            fontWeight: 700,
+            fontWeight: 800,
             bgcolor: PURPLE,
-            boxShadow: '0 4px 12px rgba(157, 110, 237, 0.3)',
-            '&:hover': { bgcolor: '#835cd4' },
+            px: 3,
+            py: 1.2,
+            color: '#fff',
+            boxShadow: '0 8px 20px rgba(157, 110, 237, 0.2)',
+            '&:hover': { bgcolor: '#835cd4', boxShadow: '0 10px 25px rgba(157, 110, 237, 0.3)' },
           }}
           onClick={onNavigateNew}
         >
@@ -36,8 +44,8 @@ export default function ListingSection({
       )}
 
       {listings.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography color="text.secondary">{emptyMessage}</Typography>
+        <Box sx={{ textAlign: 'center', py: 10 }}>
+          <Typography color={TEXT_SEC} fontWeight={500}>{emptyMessage}</Typography>
         </Box>
       ) : (
         <>
@@ -63,12 +71,14 @@ export default function ListingSection({
                 onClick={() => setShowAll(!showAll)}
                 sx={{
                   borderRadius: 10,
-                  px: 4,
+                  px: 5,
+                  py: 1,
                   textTransform: 'none',
-                  fontWeight: 600,
-                  borderColor: PURPLE,
+                  fontWeight: 700,
+                  borderColor: 'rgba(157, 110, 237, 0.3)',
                   color: PURPLE,
-                  '&:hover': { borderColor: '#835cd4', bgcolor: 'rgba(157, 110, 237, 0.05)' }
+                  borderWidth: 1.5,
+                  '&:hover': { borderColor: PURPLE, bgcolor: 'rgba(157, 110, 237, 0.08)', borderWidth: 1.5 }
                 }}
               >
                 {showAll ? 'Thu gọn' : 'Xem thêm tin đăng'}

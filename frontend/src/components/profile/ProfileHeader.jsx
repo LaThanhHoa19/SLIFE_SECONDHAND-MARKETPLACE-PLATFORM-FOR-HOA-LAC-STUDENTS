@@ -27,8 +27,13 @@ import ForumIcon from '@mui/icons-material/Forum';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 
+const PAGE_BG = '#1C1B23';
+const CARD_BG = '#201D26';
+const BORDER = 'rgba(255, 255, 255, 0.07)';
+const TEXT_PRI = 'rgba(255, 255, 255, 0.95)';
+const TEXT_SEC = 'rgba(255, 255, 255, 0.55)';
 const PURPLE = '#9D6EED';
-const GRADIENT = 'linear-gradient(135deg, #9D6EED 0%, #7B4FD9 100%)';
+const GRADIENT = 'linear-gradient(135deg, #2D2A3A 0%, #1C1B23 100%)';
 
 export default function ProfileHeader({
   user,
@@ -96,16 +101,18 @@ export default function ProfileHeader({
               size="small"
               sx={{
                 position: 'absolute',
-                bottom: 16,
+                top: 16,
                 right: 16,
                 textTransform: 'none',
                 borderRadius: 2,
-                fontWeight: 600,
-                bgcolor: 'rgba(255,255,255,0.9)',
+                px: 2,
+                fontWeight: 700,
+                bgcolor: 'rgba(255,255,255,0.1)',
                 backdropFilter: 'blur(10px)',
-                color: 'grey.900',
-                border: '1px solid rgba(255,255,255,0.3)',
-                '&:hover': { bgcolor: '#fff' },
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
               }}
             >
               {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
@@ -157,12 +164,12 @@ export default function ProfileHeader({
         <Paper
           elevation={0}
           sx={{
-            borderRadius: 4,
+            borderRadius: 6,
             overflow: 'hidden',
-            bgcolor: 'rgba(255, 255, 255, 0.8)',
+            bgcolor: CARD_BG,
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 24px 48px rgba(0, 0, 0, 0.5)',
+            border: `1px solid ${BORDER}`,
           }}
         >
           {/* Avatar + tên, ngày tham gia, rating, Chat/Báo cáo */}
@@ -183,7 +190,7 @@ export default function ProfileHeader({
                 >
                   {fullName.charAt(0).toUpperCase()}
                 </Avatar>
-                {user.isOnline && (
+                {user.isOnline && !isMe && (
                   <Box sx={{
                     position: 'absolute',
                     bottom: 5,
@@ -236,7 +243,7 @@ export default function ProfileHeader({
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
                   <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                      <Typography variant="h4" fontWeight={800} sx={{ color: '#1d1d1f', letterSpacing: '-0.02em' }}>
+                      <Typography variant="h4" fontWeight={800} sx={{ color: TEXT_PRI, letterSpacing: '-0.02em' }}>
                         {fullName}
                       </Typography>
                       {user.isOnline && !isMe && (
@@ -246,24 +253,25 @@ export default function ProfileHeader({
                       )}
                     </Box>
                     {joinDate && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, color: 'text.secondary' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, color: TEXT_SEC }}>
                         <AccessTimeIcon sx={{ fontSize: 16 }} />
                         <Typography variant="body2">{joinDate}</Typography>
                       </Box>
                     )}
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                     {!isMe ? (
                       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                         <IconButton
                           sx={{
-                            bgcolor: 'rgba(157, 110, 237, 0.1)',
+                            bgcolor: 'rgba(157, 110, 237, 0.12)',
                             color: PURPLE,
                             width: 40,
                             height: 40,
                             borderRadius: 2,
-                            '&:hover': { bgcolor: PURPLE, color: 'white' },
+                            border: `1px solid ${BORDER}`,
+                            '&:hover': { bgcolor: PURPLE, color: '#fff', borderColor: PURPLE },
                             transition: 'all 0.2s ease'
                           }}
                           title="Chia sẻ"
@@ -272,12 +280,13 @@ export default function ProfileHeader({
                         </IconButton>
                         <IconButton
                           sx={{
-                            bgcolor: 'rgba(157, 110, 237, 0.1)',
+                            bgcolor: 'rgba(157, 110, 237, 0.12)',
                             color: PURPLE,
                             width: 40,
                             height: 40,
                             borderRadius: 2,
-                            '&:hover': { bgcolor: PURPLE, color: 'white' },
+                            border: `1px solid ${BORDER}`,
+                            '&:hover': { bgcolor: PURPLE, color: '#fff', borderColor: PURPLE },
                             transition: 'all 0.2s ease'
                           }}
                           title="Theo dõi"
@@ -288,13 +297,14 @@ export default function ProfileHeader({
                           onClick={handleChat}
                           disabled={chatLoading}
                           sx={{
-                            bgcolor: 'rgba(157, 110, 237, 0.1)',
+                            bgcolor: 'rgba(157, 110, 237, 0.12)',
                             color: PURPLE,
                             width: 40,
                             height: 40,
                             borderRadius: 2,
-                            '&:hover': { bgcolor: PURPLE, color: 'white' },
-                            transition: 'all 0.3s ease'
+                            border: `1px solid ${BORDER}`,
+                            '&:hover': { bgcolor: PURPLE, color: '#fff', borderColor: PURPLE },
+                            transition: 'all 0.2s ease'
                           }}
                           title="Nhắn tin"
                         >
@@ -302,22 +312,40 @@ export default function ProfileHeader({
                         </IconButton>
                       </Box>
                     ) : (
-                      <Button
-                        variant="outlined"
-                        size="medium"
-                        startIcon={editing ? <CloseIcon /> : <EditIcon />}
-                        onClick={() => setEditing(!editing)}
-                        sx={{
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          borderRadius: 2,
-                          borderColor: PURPLE,
-                          color: PURPLE,
-                          '&:hover': { borderColor: '#835cd4', bgcolor: 'rgba(157, 110, 237, 0.05)' },
-                        }}
-                      >
-                        {editing ? 'Hủy' : 'Chỉnh sửa hồ sơ'}
-                      </Button>
+                      <>
+                        <Button
+                          variant="outlined"
+                          size="medium"
+                          startIcon={editing ? <CloseIcon /> : <EditIcon />}
+                          onClick={() => setEditing(!editing)}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            borderRadius: 2,
+                            borderColor: PURPLE,
+                            color: PURPLE,
+                            px: 3,
+                            '&:hover': { borderColor: '#B289FF', bgcolor: 'rgba(157, 110, 237, 0.08)' },
+                          }}
+                        >
+                          {editing ? 'Hủy' : 'Chỉnh sửa trang cá nhân'}
+                        </Button>
+                        <IconButton
+                          sx={{
+                            bgcolor: 'rgba(157, 110, 237, 0.12)',
+                            color: PURPLE,
+                            width: 40,
+                            height: 40,
+                            borderRadius: 2,
+                            border: `1px solid ${BORDER}`,
+                            '&:hover': { bgcolor: PURPLE, color: '#fff', borderColor: PURPLE },
+                            transition: 'all 0.2s ease'
+                          }}
+                          title="Chia sẻ trang của bạn"
+                        >
+                          <ShareIcon fontSize="small" />
+                        </IconButton>
+                      </>
                     )}
                   </Box>
                 </Box>
@@ -327,37 +355,38 @@ export default function ProfileHeader({
                   gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
                   gap: 2,
                   mt: 3,
-                  p: 2,
-                  bgcolor: 'rgba(157, 110, 237, 0.05)',
-                  borderRadius: 3
+                  p: 2.5,
+                  bgcolor: 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: 3,
+                  border: `1px solid ${BORDER}`,
                 }}>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">Đánh giá</Typography>
+                    <Typography variant="caption" color={TEXT_SEC} display="block" sx={{ mb: 0.5 }}>Đánh giá</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Typography variant="h6" fontWeight={700}>{reputationScore}</Typography>
+                      <Typography variant="h6" fontWeight={800} color={TEXT_PRI}>{reputationScore}</Typography>
                       <StarIcon sx={{ fontSize: 18, color: '#FFC107' }} />
-                      <Typography variant="caption" color="text.secondary">({ratingCount})</Typography>
+                      <Typography variant="caption" color={TEXT_SEC}>({ratingCount})</Typography>
                     </Box>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">Đã bán</Typography>
+                    <Typography variant="caption" color={TEXT_SEC} display="block" sx={{ mb: 0.5 }}>Đã bán</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <ShoppingBagIcon sx={{ fontSize: 18, color: PURPLE }} />
-                      <Typography variant="h6" fontWeight={700}>{user.soldCount || '45'}</Typography>
+                      <Typography variant="h6" fontWeight={800} color={TEXT_PRI}>{user.soldCount || '45'}</Typography>
                     </Box>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">Người theo dõi</Typography>
+                    <Typography variant="caption" color={TEXT_SEC} display="block" sx={{ mb: 0.5 }}>Người theo dõi</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <PeopleIcon sx={{ fontSize: 18, color: PURPLE }} />
-                      <Typography variant="h6" fontWeight={700}>{user.followers || '1.2k'}</Typography>
+                      <Typography variant="h6" fontWeight={800} color={TEXT_PRI}>{user.followers || '1.2k'}</Typography>
                     </Box>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">Địa chỉ</Typography>
+                    <Typography variant="caption" color={TEXT_SEC} display="block" sx={{ mb: 0.5 }}>Địa chỉ</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
                       <LocationOnIcon sx={{ fontSize: 18, color: PURPLE }} />
-                      <Typography variant="body2" fontWeight={600} noWrap>{user.address || 'Hòa Lạc'}</Typography>
+                      <Typography variant="body2" fontWeight={700} color={TEXT_PRI} noWrap>{user.address || 'Hòa Lạc'}</Typography>
                     </Box>
                   </Box>
                 </Box>
