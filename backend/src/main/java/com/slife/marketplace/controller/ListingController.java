@@ -136,6 +136,16 @@ public class ListingController {
     }
 
     /**
+     * PATCH /api/listings/{id}/renew — Gia hạn tin (chỉ khi còn ≤ 7 ngày trước khi hết hạn).
+     */
+    @PatchMapping("/{id}/renew")
+    public ResponseEntity<ApiResponse<Void>> renewListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.renewListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
      * DELETE /api/listings/{id}/draft — Xóa vĩnh viễn bản nháp (chỉ seller, chỉ khi status = DRAFT).
      */
     @DeleteMapping("/{id}/draft")
