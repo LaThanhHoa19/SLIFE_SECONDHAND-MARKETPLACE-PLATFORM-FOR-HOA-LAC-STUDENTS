@@ -26,6 +26,7 @@ import {
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
+    SuspenseSearchPage,
     SuspenseNotificationsPage,
     SuspenseMyListingsPage,
 } from './LazyRoutes';
@@ -42,6 +43,7 @@ export default function AppRouter() {
             <Route element={<MainLayout />}>
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/feed" element={<SuspenseListingsPage />} />
+                <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
