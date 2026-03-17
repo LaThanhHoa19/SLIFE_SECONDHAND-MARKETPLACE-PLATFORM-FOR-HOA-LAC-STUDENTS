@@ -132,13 +132,21 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         onSubmit?.(finalValues, imageFiles);
     };
 
-    const handleSaveDraftClick = () => {
-        const values = watch(); // lấy giá trị hiện tại không qua validation
+    // Lưu nháp: chạy qua validation của react-hook-form (cùng rule với đăng tin)
+    const handleSaveDraftSubmit = (values) => {
         const finalValues = {
             ...values,
-            price: values.price ? Number(values.price.toString().replace(/\D/g, "")) : 0,
+            price: Number(values.price.toString().replace(/\D/g, "")),
         };
         onSaveDraft?.(finalValues, imageFiles);
+    };
+
+    const handleSaveDraftClick = (e) => {
+        e.preventDefault();
+        if (imageFiles.length === 0) {
+            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+        }
+        handleSubmit(handleSaveDraftSubmit)(e);
     };
 
     const handleFilesChange = useCallback((files) => {
