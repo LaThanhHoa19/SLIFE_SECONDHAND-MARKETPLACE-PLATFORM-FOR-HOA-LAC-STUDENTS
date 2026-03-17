@@ -12,25 +12,29 @@ function formatPrice(value) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
 }
 
+const PURPLE = '#9D6EED';
+
 export default function ProfileListingCard({ listing, onClick }) {
   const title = listing?.title || 'Không có tên';
   const price = listing?.price ?? listing?.priceDisplay;
   const imgList = listing?.images;
-  const thumbPath = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : null;
-  const thumb = thumbPath ? fullImageUrl(thumbPath) : null;
+  const thumbPath = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : (listing?.imageUrl || null);
+  const thumb = thumbPath ? (thumbPath.startsWith('http') ? thumbPath : fullImageUrl(thumbPath)) : null;
 
   return (
     <Card
       elevation={0}
       sx={{
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'divider',
+        borderRadius: 3,
         overflow: 'hidden',
-        transition: 'box-shadow 0.2s, border-color 0.2s',
+        transition: 'all 0.3s ease',
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
         '&:hover': {
-          boxShadow: 2,
-          borderColor: 'primary.light',
+          transform: 'translateY(-4px)',
+          boxShadow: '0 12px 24px rgba(157, 110, 237, 0.15)',
+          borderColor: PURPLE,
         },
       }}
     >
@@ -38,11 +42,12 @@ export default function ProfileListingCard({ listing, onClick }) {
         <Box
           sx={{
             aspectRatio: '1',
-            bgcolor: 'grey.100',
+            bgcolor: '#f0f0f5',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             overflow: 'hidden',
+            position: 'relative'
           }}
         >
           {thumb ? (
@@ -53,25 +58,52 @@ export default function ProfileListingCard({ listing, onClick }) {
               sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
-            <ImageIcon sx={{ fontSize: 48, color: 'grey.400' }} />
+            <ImageIcon sx={{ fontSize: 40, color: 'grey.300' }} />
+          )}
+          {listing.status === 'SOLD' && (
+            <Box sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              bgcolor: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1
+            }}>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'white', px: 1.5, py: 0.5, border: '2px solid white', borderRadius: 1 }}>
+                ĐÃ BÁN
+              </Typography>
+            </Box>
           )}
         </Box>
         <Box sx={{ p: 1.5 }}>
           <Typography
             variant="body2"
-            fontWeight={600}
+            fontWeight={700}
             sx={{
+              color: '#1d1d1f',
+              height: '2.8em',
+              lineHeight: '1.4em',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
+              mb: 0.5
             }}
           >
             {title}
           </Typography>
-          <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: PURPLE, fontWeight: 800, fontSize: '0.95rem' }}>
             {listing?.isGiveaway ? 'Cho tặng' : formatPrice(price)}
           </Typography>
+          {listing.location && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, opacity: 0.7 }}>
+              {listing.location}
+            </Typography>
+          )}
         </Box>
       </CardActionArea>
     </Card>
