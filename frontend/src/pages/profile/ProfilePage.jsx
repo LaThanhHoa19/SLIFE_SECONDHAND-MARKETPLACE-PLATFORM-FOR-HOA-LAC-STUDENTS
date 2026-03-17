@@ -32,7 +32,7 @@ import ReviewList from '../../components/profile/ReviewList';
 import ListingSection from '../../components/profile/ListingSection';
 
 // Mock Data
-import { MOCK_REVIEWS, MOCK_SELLING, MOCK_SOLD, mockSeller } from './mockData';
+import { MOCK_ME, MOCK_REVIEWS, MOCK_SELLING, MOCK_SOLD, mockSeller } from './mockData';
 
 function getPayload(res) {
   const body = res?.data;
@@ -48,6 +48,13 @@ function formatJoinDate(createdAt) {
   return `Tham gia từ ${String(m).padStart(2, '0')}/${y}`;
 }
 
+const PAGE_BG = '#1C1B23';
+const CARD_BG = '#201D26';
+const BORDER = 'rgba(255, 255, 255, 0.07)';
+const TEXT_PRI = 'rgba(255, 255, 255, 0.95)';
+const TEXT_SEC = 'rgba(255, 255, 255, 0.55)';
+const PURPLE = '#9D6EED';
+
 function fullImageUrl(url) {
   if (!url) return null;
   if (url.startsWith('http')) return url;
@@ -59,6 +66,21 @@ export default function ProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user: currentUser, updateUser: updateAuthUser } = useAuth();
+  const isMe = id === 'me' || !!(currentUser && currentUser.id && String(currentUser.id) === String(id));
+
+  const formatRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    const now = new Date('2026-03-17T15:00:00Z'); // Mocked current time
+    const date = new Date(dateString);
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) return `${diffDays} ngày`;
+    const months = Math.floor(diffDays / 30);
+    const remainingDays = diffDays % 30;
+    
+    return months > 0 ? `${months} tháng ${remainingDays} ngày` : `${remainingDays} ngày`;
+  };
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,35 +100,25 @@ export default function ProfilePage() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [showAllListings, setShowAllListings] = useState(false);
-  const [showAllReviews, setShowAllReviews] = useState(false);
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
-
-  const isMe = id === 'me' || (currentUser && String(currentUser.id) === String(id));
 
   const loadUser = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setError(null);
     try {
-      if (id === 'me') {
-        try {
-          const res = await userApi.getUser();
-          const data = getPayload(res);
-          setProfileUser(data ?? currentUser);
-        } catch {
-          setProfileUser(currentUser);
-        }
+      if (id === 'me' || id === currentUser?.id) {
+        setProfileUser(MOCK_ME);
       } else {
         setProfileUser(mockSeller(id));
       }
     } catch (err) {
       setError(err?.message || 'Không tải được thông tin người dùng.');
-      if (isMe && currentUser) setProfileUser(currentUser);
     } finally {
       setLoading(false);
     }
-  }, [id, isMe, currentUser]);
+  }, [id, currentUser]);
 
   const loadListings = useCallback(async () => {
     setListingsLoading(true);
@@ -211,13 +223,13 @@ export default function ProfilePage() {
   const avatarUrl = fullImageUrl(user.avatarUrl ?? user.avatar_url) || user.avatarUrl;
   const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl ?? user.cover_image_url) || user.coverImageUrl);
   const fullName = user.fullName ?? user.full_name ?? 'Người dùng';
-  const bio = user.bio || 'Người bán uy tín, chuyên đồ điện tử và gia dụng.';
+  const bio = editing ? editForm.bio : (user.bio || 'Chưa cung cấp giới thiệu.');
   const reputationScore = user.reputationScore ?? user.reputation_score ?? 4.8;
   const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
+  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || user.phoneVerified;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: PAGE_BG, pb: 6 }}>
       <ProfileHeader
         user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
         handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
@@ -233,28 +245,57 @@ export default function ProfilePage() {
 
       <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, mt: 2 }}>
-          <Box sx={{ p: 4, bgcolor: 'rgba(0,0,0,0.01)', borderRight: { md: '1px solid rgba(0,0,0,0.06)' } }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Giới thiệu</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><CheckCircleIcon fontSize="small" color="success" /><Typography variant="body2">Email đã xác minh</Typography></Box>
+          <Box sx={{ p: 4, bgcolor: 'transparent', borderRight: { md: `1px solid ${BORDER}` } }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: TEXT_PRI }}>Mô tả</Typography>
+            <Typography variant="body2" color={TEXT_SEC} sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{bio}</Typography>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: TEXT_PRI }}>Xác minh thông tin</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
-                <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
+                <CheckCircleIcon fontSize="small" sx={{ color: PURPLE }} />
+                <Typography variant="body2" color={TEXT_PRI}>Email đã xác minh</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                {phoneVerified ? <CheckCircleIcon fontSize="small" sx={{ color: PURPLE }} /> : <WarningAmberIcon fontSize="small" color="warning" />}
+                <Typography variant="body2" color={TEXT_PRI}>{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
               </Box>
             </Box>
             {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
+            <Tabs 
+              value={tab} 
+              onChange={(_, v) => setTab(v)} 
+              sx={{ 
+                px: 3, 
+                borderBottom: `1px solid ${BORDER}`,
+                '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0', bgcolor: PURPLE },
+                '& .MuiTab-root': {
+                  color: TEXT_SEC,
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  minHeight: 64,
+                  '&.Mui-selected': { color: TEXT_PRI }
+                }
+              }}
+            >
+              <Tab label={isMe ? `Tin đang hoạt động (${MOCK_SELLING.length})` : 'Đang bán'} />
+              <Tab label={`Đã bán (${MOCK_SOLD.length})`} />
+              <Tab label="Đánh giá" />
             </Tabs>
-            <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? MOCK_SELLING : MOCK_SELLING.slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} listings={MOCK_SOLD} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} />}
-              {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+            <Box sx={{ flex: 1, p: { xs: 2, sm: 4 } }}>
+              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? MOCK_SELLING : MOCK_SELLING.slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listing/create')} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} emptyMessage={isMe ? "Bạn chưa có tin đăng nào đang hoạt động." : "Người bán chưa có tin đang hoạt động nào."} />}
+              {tab === 1 && <ListingSection isMe={isMe} listings={MOCK_SOLD} isSold showAll={true} emptyMessage={isMe ? "Bạn chưa có tin nào đã bán." : "Người bán chưa có tin nào đã bán."} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} />}
+              {tab === 2 && (
+                MOCK_REVIEWS.length > 0 ? (
+                  <ReviewList reviews={isMe ? [] : (showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5))} showAll={showAllReviews} setShowAll={setShowAllReviews} />
+                ) : (
+                  <Box sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography color="text.secondary">Chưa có đánh giá</Typography>
+                  </Box>
+                )
+              )}
             </Box>
           </Box>
         </Box>
