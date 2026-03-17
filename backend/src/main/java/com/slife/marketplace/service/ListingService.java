@@ -84,6 +84,30 @@ public class ListingService {
         );
     }
 
+    /**
+     * Optimized method for Listing Cards (UC-ListingCard-Performance)
+     */
+    @Transactional(readOnly = true)
+    public PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> getActiveListingCards(int page, int size) {
+        Pageable pageable = PageRequest.of(
+                Math.max(page, 0),
+                size > 0 ? Math.min(size, 20) : 20,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+
+        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult = 
+            listingRepository.findAllActiveListingCards(pageable);
+
+        return new PagedResponse<>(
+                pageResult.getContent(),
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages()
+        );
+    }
+
+
 
     /** Public for use by SavedListingService when building saved list. */
     public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
