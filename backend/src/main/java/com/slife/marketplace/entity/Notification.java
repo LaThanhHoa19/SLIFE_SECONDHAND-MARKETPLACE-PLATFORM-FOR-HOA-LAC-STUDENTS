@@ -28,7 +28,6 @@ public class Notification {
     private User user;
 
     @NotNull
-    @Lob
     @Column(name = "type", nullable = false)
     private String type;
 
