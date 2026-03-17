@@ -29,7 +29,6 @@ import {
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ListingsFeed from '../../components/listing/ListingsFeed';
-import BlurText from '../../components/reactbits/BlurText';
 import useListings from '../../hooks/useListings';
 import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
@@ -191,14 +190,9 @@ export default function SearchPage() {
                     >
                         {/* Title row */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                            <BlurText
-                                text={isLoading ? 'Đang tìm kiếm...' : 'Kết quả tìm kiếm'}
-                                animateBy="words"
-                                direction="top"
-                                delay={120}
-                                stepDuration={0.25}
-                                className="rb-search-title"
-                            />
+                            <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB' }}>
+                                {isLoading ? 'Đang tìm kiếm...' : 'Kết quả tìm kiếm'}
+                            </Typography>
                             {q && (
                                 <Typography sx={{ fontSize: 14, color: 'rgba(226,232,240,0.9)' }}>
                                     cho&nbsp;
