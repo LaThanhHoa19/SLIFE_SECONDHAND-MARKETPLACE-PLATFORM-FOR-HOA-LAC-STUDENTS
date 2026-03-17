@@ -1,11 +1,39 @@
-import { Box, Chip, Typography, ToggleButton, ToggleButtonGroup, FormControl, InputLabel, Select, MenuItem, TextField, Popover, Button, IconButton } from '@mui/material';
-import { ViewList as ViewListIcon, GridView as GridViewIcon } from '@mui/icons-material';
-import { useEffect, useState } from 'react';
+import {
+    Box,
+    Chip,
+    Typography,
+    ToggleButton,
+    ToggleButtonGroup,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    TextField,
+    Popover,
+    Button,
+    IconButton,
+} from '@mui/material';
+import {
+    ViewList as ViewListIcon,
+    GridView as GridViewIcon,
+    Tune as TuneIcon,
+    AttachMoney as AttachMoneyIcon,
+    LocationOn as LocationOnIcon,
+    Category as CategoryIcon,
+    ArrowUpward as ArrowUpwardIcon,
+    ArrowDownward as ArrowDownwardIcon,
+    FlashOn as FlashOnIcon,
+    Lightbulb as LightbulbIcon,
+    Search as SearchIcon,
+} from '@mui/icons-material';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ListingsFeed from '../../components/listing/ListingsFeed';
+import BlurText from '../../components/reactbits/BlurText';
 import useListings from '../../hooks/useListings';
 import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
+import { useAuth } from '../../hooks/useAuth';
 
 function buildCategoryTree(flatList) {
     if (!Array.isArray(flatList) || flatList.length === 0) return [];
@@ -33,6 +61,7 @@ function buildCategoryTree(flatList) {
 export default function SearchPage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
 
     const [locations, setLocations] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -42,6 +71,19 @@ export default function SearchPage() {
     const [draftMinPrice, setDraftMinPrice] = useState('');
     const [draftMaxPrice, setDraftMaxPrice] = useState('');
     const [advancedAnchorEl, setAdvancedAnchorEl] = useState(null);
+
+    const getEmptyDraft = useCallback(() => ({
+        q: '',
+        category: '',
+        location: '',
+        sort: 'createdAt,desc',
+        condition: '',
+        hasVideo: false,
+        minPrice: '',
+        maxPrice: '',
+    }), []);
+
+    const [draft, setDraft] = useState(getEmptyDraft);
 
     const q = searchParams.get('q') || '';
     const category = searchParams.get('category') || '';
@@ -53,6 +95,32 @@ export default function SearchPage() {
     const maxPrice = searchParams.get('maxPrice') || '';
     const page = Number(searchParams.get('page') || 0);
     const size = Number(searchParams.get('size') || 20);
+
+    useEffect(() => {
+        setDraft({
+            q,
+            category,
+            location,
+            sort,
+            condition,
+            hasVideo,
+            minPrice,
+            maxPrice,
+        });
+    }, [q, category, location, sort, condition, hasVideo, minPrice, maxPrice]);
+
+    const applyDraft = useCallback((d) => {
+        const params = new URLSearchParams();
+        if (d.q) params.set('q', d.q);
+        if (d.category) params.set('category', d.category);
+        if (d.location) params.set('location', d.location);
+        if (d.sort && d.sort !== 'createdAt,desc') params.set('sort', d.sort);
+        if (d.condition) params.set('condition', d.condition);
+        if (d.hasVideo) params.set('hasVideo', 'true');
+        if (d.minPrice) params.set('minPrice', d.minPrice);
+        if (d.maxPrice) params.set('maxPrice', d.maxPrice);
+        navigate(`/search?${params.toString()}`);
+    }, [navigate]);
 
     const { data, isLoading, meta } = useListings({
         q,
@@ -83,17 +151,6 @@ export default function SearchPage() {
             .catch(() => setCategories([]));
     }, []);
 
-    const setParam = (key, value) => {
-        const params = new URLSearchParams(searchParams);
-        if (value) {
-            params.set(key, value);
-        } else {
-            params.delete(key);
-        }
-        params.delete('page');
-        navigate(`/search?${params.toString()}`);
-    };
-
     const hasFilter = !!(category || location || condition || hasVideo || q || minPrice || maxPrice);
 
     const categoryTree = buildCategoryTree(categories);
@@ -109,33 +166,39 @@ export default function SearchPage() {
         <Box sx={{ px: 3, py: 2 }}>
             <Box
                 sx={{
-                    maxWidth: 1160,
+                    maxWidth: 1220, // 868 (left như cũ) + 320 (right mới) + ~32px gap
                     mx: 'auto',
-                    display: 'flex',
-                    gap: 2.5,
+                    display: 'grid',
+                    gridTemplateColumns: '868px 320px',
+                    columnGap: 4,
                     alignItems: 'flex-start',
                 }}
             >
-                <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                     {/* Search header */}
                     <Box
                         sx={{
-                            borderRadius: 3,
+                            borderRadius: 4,
                             px: 3,
-                            py: 2.25,
-                            bgcolor: 'linear-gradient(135deg, rgba(30,64,175,0.32), rgba(76,29,149,0.55))',
-                            border: '1px solid rgba(129,140,248,0.55)',
-                            boxShadow: '0 18px 45px rgba(15,23,42,0.75)',
+                            py: 2.5,
+                            bgcolor: 'transparent',
+                            border: '1px solid rgba(55,65,81,0.7)',
+                            boxShadow: '0 16px 40px rgba(0,0,0,0.6)',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: 1.5,
+                            gap: 1.75,
                         }}
                     >
                         {/* Title row */}
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                            <Typography sx={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB' }}>
-                                {isLoading ? 'Đang tìm kiếm...' : 'Kết quả tìm kiếm'}
-                            </Typography>
+                            <BlurText
+                                text={isLoading ? 'Đang tìm kiếm...' : 'Kết quả tìm kiếm'}
+                                animateBy="words"
+                                direction="top"
+                                delay={120}
+                                stepDuration={0.25}
+                                className="rb-search-title"
+                            />
                             {q && (
                                 <Typography sx={{ fontSize: 14, color: 'rgba(226,232,240,0.9)' }}>
                                     cho&nbsp;
@@ -154,7 +217,11 @@ export default function SearchPage() {
                                 <Chip
                                     label="Xóa tất cả"
                                     size="small"
-                                    onClick={() => navigate('/search')}
+                                    onClick={() => {
+                                        const empty = getEmptyDraft();
+                                        setDraft(empty);
+                                        applyDraft(empty);
+                                    }}
                                     sx={{
                                         bgcolor: 'transparent',
                                         color: '#E5E7EB',
@@ -175,7 +242,11 @@ export default function SearchPage() {
                                 <Chip
                                     label={`Từ khóa: ${q}`}
                                     size="small"
-                                    onDelete={() => setParam('q', '')}
+                                    onDelete={() => {
+                                        const next = { ...draft, q: '' };
+                                        setDraft(next);
+                                        applyDraft(next);
+                                    }}
                                     sx={{
                                         bgcolor: 'rgba(129,140,248,0.28)',
                                         color: '#F5F3FF',
@@ -188,7 +259,11 @@ export default function SearchPage() {
                                 <Chip
                                     label={`Khu vực: ${location}`}
                                     size="small"
-                                    onDelete={() => setParam('location', '')}
+                                    onDelete={() => {
+                                        const next = { ...draft, location: '' };
+                                        setDraft(next);
+                                        applyDraft(next);
+                                    }}
                                     sx={{
                                         bgcolor: 'rgba(56,189,248,0.24)',
                                         color: '#ECFEFF',
@@ -200,7 +275,11 @@ export default function SearchPage() {
                                 <Chip
                                     label={`Danh mục: ${selectedCategoryLabel || category}`}
                                     size="small"
-                                    onDelete={() => setParam('category', '')}
+                                    onDelete={() => {
+                                        const next = { ...draft, category: '' };
+                                        setDraft(next);
+                                        applyDraft(next);
+                                    }}
                                     sx={{
                                         bgcolor: 'rgba(45,212,191,0.24)',
                                         color: '#CCFBF1',
@@ -212,7 +291,11 @@ export default function SearchPage() {
                                 <Chip
                                     label={condition === 'NEW' ? 'Tình trạng: Mới' : 'Tình trạng: Đã sử dụng'}
                                     size="small"
-                                    onDelete={() => setParam('condition', '')}
+                                    onDelete={() => {
+                                        const next = { ...draft, condition: '' };
+                                        setDraft(next);
+                                        applyDraft(next);
+                                    }}
                                     sx={{
                                         bgcolor: 'rgba(248,250,252,0.12)',
                                         color: '#F9FAFB',
@@ -261,6 +344,7 @@ export default function SearchPage() {
                                         },
                                     }}
                                 >
+                                    <TuneIcon sx={{ fontSize: 16, mr: 0.5 }} />
                                     Mở lọc nâng cao
                                 </Button>
                             </Box>
@@ -281,12 +365,12 @@ export default function SearchPage() {
                                     size="small"
                                     variant="outlined"
                                     onClick={(e) => {
-                                        setDraftMinPrice(minPrice);
-                                        setDraftMaxPrice(maxPrice);
+                                        setDraftMinPrice(draft.minPrice);
+                                        setDraftMaxPrice(draft.maxPrice);
                                         setPriceAnchorEl(e.currentTarget);
                                     }}
                                     sx={{
-                                        justifyContent: 'space-between',
+                                        justifyContent: 'flex-start',
                                         width: '100%',
                                         borderRadius: 999,
                                         borderColor: 'rgba(148,163,184,0.55)',
@@ -301,13 +385,14 @@ export default function SearchPage() {
                                         },
                                     }}
                                 >
-                                    {!minPrice && !maxPrice
+                                    <AttachMoneyIcon sx={{ fontSize: 16, mr: 0.5, opacity: 0.9 }} />
+                                    {!draft.minPrice && !draft.maxPrice
                                         ? 'Chọn khoảng giá'
-                                        : minPrice && maxPrice
-                                            ? `₫${minPrice} - ₫${maxPrice}`
-                                            : minPrice
-                                                ? `≥ ₫${minPrice}`
-                                                : `≤ ₫${maxPrice}`}
+                                        : draft.minPrice && draft.maxPrice
+                                            ? `₫${draft.minPrice} - ₫${draft.maxPrice}`
+                                            : draft.minPrice
+                                                ? `≥ ₫${draft.minPrice}`
+                                                : `≤ ₫${draft.maxPrice}`}
                                 </Button>
                             </Box>
 
@@ -328,7 +413,7 @@ export default function SearchPage() {
                                     variant="outlined"
                                     onClick={(e) => setLocationAnchorEl(e.currentTarget)}
                                     sx={{
-                                        justifyContent: 'space-between',
+                                        justifyContent: 'flex-start',
                                         width: '100%',
                                         borderRadius: 999,
                                         borderColor: 'rgba(148,163,184,0.55)',
@@ -343,7 +428,8 @@ export default function SearchPage() {
                                         },
                                     }}
                                 >
-                                    {location || 'Tất cả khu vực'}
+                                    <LocationOnIcon sx={{ fontSize: 16, mr: 0.5, opacity: 0.9 }} />
+                                    {draft.location || 'Tất cả khu vực'}
                                 </Button>
                             </Box>
 
@@ -364,7 +450,7 @@ export default function SearchPage() {
                                     variant="outlined"
                                     onClick={(e) => setCategoryAnchorEl(e.currentTarget)}
                                     sx={{
-                                        justifyContent: 'space-between',
+                                        justifyContent: 'flex-start',
                                         width: '100%',
                                         borderRadius: 999,
                                         borderColor: 'rgba(148,163,184,0.55)',
@@ -379,96 +465,130 @@ export default function SearchPage() {
                                         },
                                     }}
                                 >
-                                    {category ? selectedCategoryLabel || 'Đã chọn danh mục' : 'Tất cả danh mục'}
+                                    <CategoryIcon sx={{ fontSize: 16, mr: 0.5, opacity: 0.9 }} />
+                                    {draft.category ? (flatCategories.find((c) => String(c.id ?? c.categoryId ?? c.name) === draft.category)?.name || 'Đã chọn danh mục') : 'Tất cả danh mục'}
                                 </Button>
                             </Box>
 
                             <Box sx={{ flexGrow: 1 }} />
 
-                        </Box>
-
-                        {/* Sort & view bar */}
-                        <Box
-                            sx={{
-                                mt: 1,
-                                mb: 0.5,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-end',
-                                gap: 1.5,
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <ToggleButtonGroup
-                                    exclusive
-                                    value={sort}
-                                    onChange={(_, val) => setParam('sort', val || 'createdAt,desc')}
-                                    size="small"
-                                    sx={{
-                                        '& .MuiToggleButton-root': {
-                                            textTransform: 'none',
-                                            fontSize: 12,
-                                            px: 1.4,
-                                            color: 'rgba(226,232,240,0.9)',
-                                            borderColor: 'rgba(148,163,184,0.35)',
-                                            bgcolor: 'transparent',
-                                            '&.Mui-selected': {
-                                                bgcolor: 'rgba(129,140,248,0.18)',
-                                                color: '#F9FAFB',
-                                                borderColor: 'rgba(129,140,248,0.9)',
-                                            },
-                                        },
-                                    }}
-                                >
-                                    <ToggleButton value="createdAt,desc">Mới nhất</ToggleButton>
-                                    <ToggleButton value="createdAt,asc">Cũ nhất</ToggleButton>
-                                </ToggleButtonGroup>
-
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography sx={{ fontSize: 12, color: 'rgba(148,163,184,0.95)' }}>
-                                        Dạng hiển thị:
-                                    </Typography>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => setViewMode('list')}
-                                        sx={{
-                                            color: viewMode === 'list' ? '#E5E7EB' : 'rgba(148,163,184,0.9)',
-                                            bgcolor: viewMode === 'list' ? 'rgba(129,140,248,0.25)' : 'transparent',
-                                            borderRadius: 2,
-                                        }}
-                                        title="Dạng danh sách"
-                                    >
-                                        <ViewListIcon fontSize="small" />
-                                    </IconButton>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => setViewMode('grid')}
-                                        sx={{
-                                            color: viewMode === 'grid' ? '#E5E7EB' : 'rgba(148,163,184,0.9)',
-                                            bgcolor: viewMode === 'grid' ? 'rgba(129,140,248,0.25)' : 'transparent',
-                                            borderRadius: 2,
-                                        }}
-                                        title="Dạng lưới"
-                                    >
-                                        <GridViewIcon fontSize="small" />
-                                    </IconButton>
-                                </Box>
-                            </Box>
+                            <Button
+                                variant="contained"
+                                onClick={() => applyDraft(draft)}
+                                startIcon={<SearchIcon />}
+                                sx={{
+                                    alignSelf: 'flex-end',
+                                    textTransform: 'none',
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    px: 2.5,
+                                    py: 1,
+                                    borderRadius: 2,
+                                    bgcolor: '#9D6EED',
+                                    '&:hover': { bgcolor: '#8A5BDF' },
+                                }}
+                            >
+                                Áp dụng bộ lọc
+                            </Button>
                         </Box>
 
                     </Box>
 
+                    {/* Sort & view bar – nằm ngoài khung header, phía trên danh sách */}
+                    <Box
+                        sx={{
+                            mt: 1.5,
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1.5,
+                        }}
+                    >
+                        {/* Nhóm sắp xếp bên trái */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <ToggleButtonGroup
+                                exclusive
+                                value={draft.sort}
+                                onChange={(_, val) => setDraft((prev) => ({ ...prev, sort: val || 'createdAt,desc' }))}
+                                size="small"
+                                sx={{
+                                    '& .MuiToggleButton-root': {
+                                        textTransform: 'none',
+                                        fontSize: 12,
+                                        px: 1.4,
+                                        color: 'rgba(226,232,240,0.9)',
+                                        borderColor: 'rgba(148,163,184,0.35)',
+                                        bgcolor: 'transparent',
+                                        '&.Mui-selected': {
+                                            bgcolor: '#9D6EED',
+                                            color: '#FFFFFF',
+                                            borderColor: '#9D6EED',
+                                            boxShadow: '0 0 0 1px rgba(157,110,237,0.6)',
+                                        },
+                                    },
+                                }}
+                            >
+                                <ToggleButton value="createdAt,desc">
+                                    <ArrowUpwardIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                                    Mới nhất
+                                </ToggleButton>
+                                <ToggleButton value="createdAt,asc">
+                                    <ArrowDownwardIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                                    Cũ nhất
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
+
+                        {/* Nhóm dạng hiển thị bên phải */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography sx={{ fontSize: 12, color: 'rgba(148,163,184,0.95)' }}>
+                                Dạng hiển thị:
+                            </Typography>
+                            <IconButton
+                                size="small"
+                                onClick={() => setViewMode('list')}
+                                sx={{
+                                    color: viewMode === 'list' ? '#E5E7EB' : 'rgba(148,163,184,0.9)',
+                                    bgcolor: viewMode === 'list' ? 'rgba(129,140,248,0.25)' : 'transparent',
+                                    borderRadius: 2,
+                                }}
+                                title="Dạng danh sách"
+                            >
+                                <ViewListIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton
+                                size="small"
+                                onClick={() => setViewMode('grid')}
+                                sx={{
+                                    color: viewMode === 'grid' ? '#E5E7EB' : 'rgba(148,163,184,0.9)',
+                                    bgcolor: viewMode === 'grid' ? 'rgba(129,140,248,0.25)' : 'transparent',
+                                    borderRadius: 2,
+                                }}
+                                title="Dạng lưới"
+                            >
+                                <GridViewIcon fontSize="small" />
+                            </IconButton>
+                        </Box>
+                    </Box>
+
                     {/* Results */}
                     <Box sx={{ mt: 0.5, pb: 4 }}>
-                        <ListingsFeed listings={data} isLoading={isLoading} viewMode={viewMode} />
+                        <ListingsFeed
+                            listings={data}
+                            isLoading={isLoading}
+                            viewMode={viewMode}
+                            cardVariant="fullWidth"
+                            imageAspect={viewMode === 'list' ? 'compactList' : undefined}
+                        />
                     </Box>
                 </Box>
 
                 {/* Right suggestion column */}
                 <Box
                     sx={{
-                        width: 260,
-                        flexShrink: 0,
+                        width: 320,
+                        minWidth: 320,
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 1.5,
@@ -477,33 +597,38 @@ export default function SearchPage() {
                     <Box
                         sx={{
                             borderRadius: 3,
-                            px: 2,
-                            py: 1.75,
-                            bgcolor: 'rgba(15,23,42,0.9)',
-                            border: '1px solid rgba(148,163,184,0.4)',
+                            px: 2.5,
+                            py: 2.2,
+                            bgcolor: 'linear-gradient(145deg, #020617 0%, #020617 40%, #111827 70%, #1d2240 100%)',
+                            border: '1px solid rgba(56,189,248,0.45)',
+                            boxShadow: '0 18px 40px rgba(15,23,42,0.9)',
                         }}
                     >
                         <Typography
                             sx={{
-                                fontSize: 14,
+                                fontSize: 15,
                                 fontWeight: 600,
                                 color: '#E5E7EB',
                                 mb: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 0.75,
                             }}
                         >
+                            <FlashOnIcon sx={{ fontSize: 18, color: '#60A5FA' }} />
                             Gợi ý nhanh
                         </Typography>
-                        <Typography sx={{ fontSize: 12, color: 'rgba(148,163,184,0.95)', mb: 1.25 }}>
+                        <Typography sx={{ fontSize: 13, color: 'rgba(148,163,184,0.95)', mb: 1.5 }}>
                             Thử một số từ khóa và danh mục phổ biến bên dưới.
                         </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.1 }}>
                             {['Giáo trình', 'Đồ điện tử', 'Đồ dùng KTX', 'Đồ gia dụng'].map((label) => (
                                 <Chip
                                     key={label}
                                     label={label}
                                     size="small"
                                     onClick={() => {
-                                        setParam('q', label);
+                                        setDraft((prev) => ({ ...prev, q: label }));
                                     }}
                                     sx={{
                                         borderRadius: '999px',
@@ -521,20 +646,96 @@ export default function SearchPage() {
                     <Box
                         sx={{
                             borderRadius: 3,
-                            px: 2,
-                            py: 1.75,
-                            bgcolor: 'rgba(24,24,27,0.95)',
-                            border: '1px solid rgba(63,63,70,0.9)',
+                            px: 2.5,
+                            py: 2.1,
+                            bgcolor: 'linear-gradient(145deg, #020617 0%, #020617 40%, #111827 70%, #1d2240 100%)',
+                            border: '1px solid rgba(56,189,248,0.45)',
+                            boxShadow: '0 18px 40px rgba(15,23,42,0.9)',
                         }}
                     >
-                        <Typography sx={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', mb: 0.75 }}>
-                            Mẹo tìm kiếm
+                        <Typography sx={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', mb: 1 }}>
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                                <LightbulbIcon sx={{ fontSize: 18, color: '#FACC15' }} />
+                                Mẹo tìm kiếm
+                            </Box>
                         </Typography>
-                        <Box component="ul" sx={{ pl: 2, m: 0, color: 'rgba(161,161,170,0.95)', fontSize: 12, lineHeight: 1.6 }}>
+                        <Box component="ul" sx={{ pl: 2, m: 0, color: 'rgba(161,161,170,0.95)', fontSize: 13, lineHeight: 1.7 }}>
                             <li>Ưu tiên dùng tên cụ thể: “Logitech G304”, “IKEA bàn học”.</li>
                             <li>Kết hợp với khu vực để thu hẹp kết quả.</li>
                             <li>Dùng sắp xếp theo giá để so sánh nhanh.</li>
                         </Box>
+                    </Box>
+
+                    {/* Banner cộng đồng – reuse design from RightPanel */}
+                    <Box
+                        sx={{
+                            background: 'linear-gradient(145deg, #6D28D9 0%, #8B5CF6 50%, #A78BFA 100%)',
+                            borderRadius: 3,
+                            p: 2.25,
+                            mt: 1.5,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
+                        }}
+                    >
+                        <Typography
+                            sx={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: '#EDE9FE',
+                                lineHeight: 1.45,
+                                mb: 1.5,
+                                pr: 4,
+                            }}
+                        >
+                            Tham gia cộng đồng mua bán cùng SLIFE!
+                        </Typography>
+                        <Button
+                            onClick={() => {
+                                if (!isAuthenticated) {
+                                    navigate('/login', {
+                                        state: {
+                                            from: '/listings/new',
+                                            message: 'Bạn cần đăng nhập để đăng tin',
+                                        },
+                                    });
+                                    return;
+                                }
+                                navigate('/listings/new');
+                            }}
+                            sx={{
+                                bgcolor: '#FFF',
+                                color: '#6D28D9',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                px: 2,
+                                py: 0.75,
+                                borderRadius: '10px',
+                                textTransform: 'none',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                                transition: 'transform 0.15s, box-shadow 0.15s',
+                                '&:hover': {
+                                    bgcolor: '#FFF',
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                                },
+                            }}
+                        >
+                            Đăng tin ngay
+                        </Button>
+                        <Typography
+                            sx={{
+                                position: 'absolute',
+                                right: 12,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                fontSize: 32,
+                                opacity: 0.35,
+                                pointerEvents: 'none',
+                            }}
+                        >
+                            📢
+                        </Typography>
                     </Box>
                 </Box>
             </Box>
@@ -566,9 +767,9 @@ export default function SearchPage() {
                     Chọn khu vực
                 </Typography>
                 <MenuItem
-                    selected={!location}
+                    selected={!draft.location}
                     onClick={() => {
-                        setParam('location', '');
+                        setDraft((prev) => ({ ...prev, location: '' }));
                         setLocationAnchorEl(null);
                     }}
                     sx={{ fontSize: 13, color: '#E5E7EB' }}
@@ -578,9 +779,9 @@ export default function SearchPage() {
                 {locations.map((loc) => (
                     <MenuItem
                         key={loc}
-                        selected={location === loc}
+                        selected={draft.location === loc}
                         onClick={() => {
-                            setParam('location', loc);
+                            setDraft((prev) => ({ ...prev, location: loc }));
                             setLocationAnchorEl(null);
                         }}
                         sx={{ fontSize: 13, color: '#E5E7EB' }}
@@ -632,9 +833,9 @@ export default function SearchPage() {
                         Chọn danh mục
                     </Typography>
                     <MenuItem
-                        selected={!category}
+                        selected={!draft.category}
                         onClick={() => {
-                            setParam('category', '');
+                            setDraft((prev) => ({ ...prev, category: '' }));
                             setCategoryAnchorEl(null);
                         }}
                         sx={{ fontSize: 13, color: '#E5E7EB' }}
@@ -655,9 +856,9 @@ export default function SearchPage() {
                                 }}
                             >
                                 <MenuItem
-                                    selected={category === parentId}
+                                    selected={draft.category === parentId}
                                     onClick={() => {
-                                        setParam('category', parentId);
+                                        setDraft((prev) => ({ ...prev, category: parentId }));
                                         setCategoryAnchorEl(null);
                                     }}
                                     sx={{
@@ -675,9 +876,9 @@ export default function SearchPage() {
                                         return (
                                             <MenuItem
                                                 key={childId}
-                                                selected={category === childId}
+                                                selected={draft.category === childId}
                                                 onClick={() => {
-                                                    setParam('category', childId);
+                                                    setDraft((prev) => ({ ...prev, category: childId }));
                                                     setCategoryAnchorEl(null);
                                                 }}
                                                 sx={{
@@ -787,8 +988,7 @@ export default function SearchPage() {
                         onClick={() => {
                             setDraftMinPrice('');
                             setDraftMaxPrice('');
-                            setParam('minPrice', '');
-                            setParam('maxPrice', '');
+                            setDraft((prev) => ({ ...prev, minPrice: '', maxPrice: '' }));
                             setPriceAnchorEl(null);
                         }}
                         sx={{ color: 'rgba(148,163,184,0.95)', textTransform: 'none', fontSize: 12 }}
@@ -799,27 +999,15 @@ export default function SearchPage() {
                         variant="contained"
                         size="small"
                         onClick={() => {
-                            const params = new URLSearchParams(searchParams);
-                            if (draftMinPrice) {
-                                params.set('minPrice', draftMinPrice);
-                            } else {
-                                params.delete('minPrice');
-                            }
-                            if (draftMaxPrice) {
-                                params.set('maxPrice', draftMaxPrice);
-                            } else {
-                                params.delete('maxPrice');
-                            }
-                            params.delete('page');
-                            navigate(`/search?${params.toString()}`);
+                            setDraft((prev) => ({ ...prev, minPrice: draftMinPrice, maxPrice: draftMaxPrice }));
                             setPriceAnchorEl(null);
                         }}
                         sx={{
                             textTransform: 'none',
                             fontSize: 13,
                             px: 2,
-                            bgcolor: '#6366F1',
-                            '&:hover': { bgcolor: '#4F46E5' },
+                            bgcolor: '#9D6EED',
+                            '&:hover': { bgcolor: '#8A5BDF' },
                         }}
                     >
                         Áp dụng
@@ -867,8 +1055,8 @@ export default function SearchPage() {
                     </Typography>
                     <ToggleButtonGroup
                         exclusive
-                        value={condition}
-                        onChange={(_, val) => setParam('condition', val || '')}
+                        value={draft.condition}
+                        onChange={(_, val) => setDraft((prev) => ({ ...prev, condition: val || '' }))}
                         size="small"
                         sx={{
                             '& .MuiToggleButton-root': {
@@ -906,8 +1094,8 @@ export default function SearchPage() {
                     </Typography>
                     <ToggleButtonGroup
                         exclusive
-                        value={hasVideo ? 'yes' : ''}
-                        onChange={(_, val) => setParam('hasVideo', val === 'yes' ? 'true' : '')}
+                        value={draft.hasVideo ? 'yes' : ''}
+                        onChange={(_, val) => setDraft((prev) => ({ ...prev, hasVideo: val === 'yes' }))}
                         size="small"
                         sx={{
                             '& .MuiToggleButton-root': {
@@ -935,8 +1123,7 @@ export default function SearchPage() {
                         variant="text"
                         size="small"
                         onClick={() => {
-                            setParam('condition', '');
-                            setParam('hasVideo', '');
+                            setDraft((prev) => ({ ...prev, condition: '', hasVideo: false }));
                             setAdvancedAnchorEl(null);
                         }}
                         sx={{ color: 'rgba(148,163,184,0.95)', textTransform: 'none', fontSize: 12 }}
@@ -951,8 +1138,8 @@ export default function SearchPage() {
                             textTransform: 'none',
                             fontSize: 13,
                             px: 2,
-                            bgcolor: '#6366F1',
-                            '&:hover': { bgcolor: '#4F46E5' },
+                            bgcolor: '#9D6EED',
+                            '&:hover': { bgcolor: '#8A5BDF' },
                         }}
                     >
                         Đóng
