@@ -260,4 +260,25 @@ public class ListingService {
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
     }
+
+    // ----------------------------------------------------------------
+    // Delete Draft
+    // ----------------------------------------------------------------
+
+    @Transactional
+    public void deleteDraft(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+
+        if (!"DRAFT".equals(listing.getStatus())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_DRAFT);
+        }
+
+        listingImageRepository.deleteByListing_Id(id);
+        listingRepository.delete(listing);
+    }
 }
