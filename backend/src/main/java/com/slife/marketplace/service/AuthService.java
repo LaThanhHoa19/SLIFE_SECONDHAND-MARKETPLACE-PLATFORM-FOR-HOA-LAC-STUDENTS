@@ -189,6 +189,7 @@ public class AuthService {
         user.setRole("USER");
         user.setStatus("ACTIVE");
         user.setReputationScore(BigDecimal.valueOf(5.00));
+        user.setViolationCount(0);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);

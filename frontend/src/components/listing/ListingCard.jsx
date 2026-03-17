@@ -50,7 +50,13 @@ const getConditionText = (listing) =>
     listing?.itemCondition || listing?.condition || listing?.status || '';
 
 
-export default function ListingCard({listing, onClick}) {
+export default function ListingCard({
+                                        listing,
+                                        onClick,
+                                        cardVariant = 'default',
+                                        layout = 'list',
+                                        imageAspect,
+                                    }) {
     const navigate = useNavigate();
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
@@ -66,7 +72,20 @@ export default function ListingCard({listing, onClick}) {
     const locationText = getLocationText(listing);
 
     return (
-        <Card sx={{ maxWidth: 640, mx: 'auto', width: '100%', bgcolor: '#201D26', borderRadius: '16px', mb: 3, border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+        <Card
+            sx={{
+                width: '100%',
+                maxWidth: cardVariant === 'fullWidth' ? 'none' : 640,
+                mx: cardVariant === 'fullWidth' ? 0 : 'auto',
+                bgcolor: '#201D26',
+                borderRadius: '16px',
+                border: '1px solid rgba(255,255,255,0.05)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+            }}
+        >
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
@@ -94,24 +113,37 @@ export default function ListingCard({listing, onClick}) {
             >
                 {/* Images */}
                 {!!images.length && (
-                    <Box sx={{ width: '100%', position: 'relative' }}>
+                    <Box
+                        sx={{
+                            width: '100%',
+                            position: 'relative',
+                            pt:
+                                layout === 'grid'
+                                    ? '65%'
+                                    : imageAspect === 'compactList'
+                                        ? '45%'
+                                        : '65%',
+                            overflow: 'hidden',
+                        }}
+                    >
                         <Box
                             component="img"
                             src={fullImageUrl(images[0])}
                             alt={listing?.title}
                             sx={{
+                                position: 'absolute',
+                                inset: 0,
                                 width: '100%',
-                                maxHeight: 500,
+                                height: '100%',
                                 objectFit: 'cover',
-                                display: 'block'
+                                display: 'block',
                             }}
                         />
-                        {/* Overlay Price badge if desired, but we place it inline below */}
                     </Box>
                 )}
 
                 {/* Content */}
-                <CardContent sx={{ pt: 2, pb: 1, px: 2 }}>
+                <CardContent sx={{ pt: 2, pb: 1, px: 2, flexGrow: 1 }}>
                     <Typography fontSize={16} fontWeight={600} color="rgba(255,255,255,0.95)" sx={{ lineHeight: 1.4, mb: 0.5 }}>
                         {listing?.title || 'Không có tiêu đề'}
                     </Typography>
