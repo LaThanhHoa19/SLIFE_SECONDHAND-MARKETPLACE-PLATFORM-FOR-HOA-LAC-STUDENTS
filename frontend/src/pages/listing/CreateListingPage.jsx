@@ -4,7 +4,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Paper, Alert, CircularProgress } from '@mui/material';
+import { Box, Alert } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
 import { createListing, uploadImages } from '../../api/listingApi';
 
@@ -29,7 +29,8 @@ export default function CreateListingPage() {
         categoryId: values.categoryId ? Number(values.categoryId) : null,
         condition: values.condition || 'USED_GOOD',
         isGiveaway: !!values.isGiveaway,
-        purpose: values.purpose || 'SALE',
+        purpose: values.isGiveaway ? 'GIVEAWAY' : (values.purpose || 'SALE'),
+        pickupLocationName: values.location || null,
       };
       const res = await createListing(payload);
       const created = getPayload(res);
@@ -52,18 +53,15 @@ export default function CreateListingPage() {
   };
 
   return (
-    <Box sx={{ maxWidth: 640, mx: 'auto', py: 3, px: 2 }}>
-      <Typography variant="h5" fontWeight={700} gutterBottom>
-        Tạo tin mới
-      </Typography>
-      <Paper sx={{ p: 3 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+    <Box>
+      {error && (
+        <Box sx={{ maxWidth: "1200px", width: "90%", mx: "auto", mt: 2 }}>
+          <Alert severity="error" onClose={() => setError('')}>
             {error}
           </Alert>
-        )}
-        <ListingForm onSubmit={handleSubmit} submitting={submitting} mode="create" />
-      </Paper>
+        </Box>
+      )}
+      <ListingForm onSubmit={handleSubmit} submitting={submitting} mode="create" />
     </Box>
   );
 }
