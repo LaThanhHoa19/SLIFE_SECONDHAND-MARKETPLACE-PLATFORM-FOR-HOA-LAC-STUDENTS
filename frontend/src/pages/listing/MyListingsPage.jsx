@@ -38,6 +38,7 @@ import {
     HourglassEmpty as ExpiredIcon,
     ImageNotSupported as NoImageIcon,
     LocationOn as LocationIcon,
+    Replay as RepostIcon,
     Schedule as PendingIcon,
     Search as SearchIcon,
     Visibility as UnhideIcon,
@@ -88,6 +89,15 @@ const STATUS_LABELS = {
 const PAGE_SIZE = 10;
 
 const toCurrency = (v) => `${Number(v || 0).toLocaleString('vi-VN')} ₫`;
+
+/** Trả về true nếu listing còn trong vòng 7 ngày trước khi hết hạn (chưa expired). */
+const isRenewable = (expirationDate) => {
+    if (!expirationDate) return false;
+    const now = Date.now();
+    const expiry = new Date(expirationDate).getTime();
+    const diffDays = (expiry - now) / (1000 * 60 * 60 * 24);
+    return diffDays >= 0 && diffDays <= 7;
+};
 
 // ─── Skeleton card ────────────────────────────────────────────────────────────
 
@@ -152,20 +162,21 @@ function EmptyState({ tab }) {
 
 // ─── Listing card ─────────────────────────────────────────────────────────────
 
-function ActionButton({ icon, label, onClick, color, borderColor, bgColor, hoverBg }) {
+function ActionButton({ icon, label, onClick, color, borderColor, bgColor, hoverBg, disabled }) {
     return (
         <Box
-            onClick={onClick}
+            onClick={disabled ? undefined : onClick}
             sx={{
                 display: 'flex', alignItems: 'center', gap: 0.5,
                 px: 1.25, py: 0.4,
                 borderRadius: '8px',
                 border: `1px solid ${borderColor}`,
                 bgcolor: bgColor,
-                cursor: 'pointer',
+                cursor: disabled ? 'default' : 'pointer',
                 userSelect: 'none',
+                opacity: disabled ? 0.5 : 1,
                 transition: 'background 0.15s, border-color 0.15s',
-                '&:hover': { bgcolor: hoverBg, borderColor: color },
+                '&:hover': disabled ? {} : { bgcolor: hoverBg, borderColor: color },
             }}
         >
             {icon}
@@ -263,6 +274,19 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onDelete
                     <Stack direction="row" gap={0.75} flexShrink={0} alignItems="center" sx={{ mt: '-2px' }}>
                         {activeTab === 'ACTIVE' && (
                             <>
+                                {isRenewable(listing?.expirationDate) && (
+                                    <Tooltip title="Gia hạn thêm 15 ngày (chỉ khả dụng trong 7 ngày cuối)" arrow>
+                                        <ActionButton
+                                            icon={<RenewIcon sx={{ fontSize: 12, color: '#2ed573' }} />}
+                                            label="Gia hạn"
+                                            onClick={() => onRenew(id)}
+                                            color="#2ed573"
+                                            borderColor="rgba(46,213,115,0.35)"
+                                            bgColor="rgba(46,213,115,0.08)"
+                                            hoverBg="rgba(46,213,115,0.16)"
+                                        />
+                                    </Tooltip>
+                                )}
                                 <Tooltip title="Ẩn tin — bài đăng sẽ không hiển thị với người khác" arrow>
                                     <ActionButton
                                         icon={<HideIcon sx={{ fontSize: 12, color: '#ffa500' }} />}
@@ -321,15 +345,16 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onDelete
                         )}
 
                         {activeTab === 'EXPIRED' && (
-                            <Tooltip title="Gia hạn bài đăng thêm 30 ngày" arrow>
+                            <Tooltip title="Đăng lại (đang phát triển)" arrow>
                                 <ActionButton
-                                    icon={<RenewIcon sx={{ fontSize: 12, color: '#2ed573' }} />}
-                                    label="Gia hạn"
-                                    onClick={() => onRenew(id)}
-                                    color="#2ed573"
-                                    borderColor="rgba(46,213,115,0.35)"
-                                    bgColor="rgba(46,213,115,0.08)"
-                                    hoverBg="rgba(46,213,115,0.16)"
+                                    icon={<RepostIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }} />}
+                                    label="Đăng lại"
+                                    onClick={() => {}}
+                                    color="rgba(255,255,255,0.3)"
+                                    borderColor="rgba(255,255,255,0.12)"
+                                    bgColor="rgba(255,255,255,0.04)"
+                                    hoverBg="rgba(255,255,255,0.04)"
+                                    disabled
                                 />
                             </Tooltip>
                         )}
@@ -536,11 +561,11 @@ export default function MyListingsPage() {
     const handleRenew = async (id) => {
         try {
             await renewListing(id);
-            showSnackbar('Đã gia hạn bài đăng thêm 30 ngày.', 'success');
+            showSnackbar('Đã gia hạn bài đăng thêm 15 ngày tính từ ngày hôm nay.', 'success');
             fetchListings(activeTab, page);
             fetchTabCounts();
         } catch {
-            showSnackbar('Tính năng gia hạn đang được phát triển.', 'info');
+            showSnackbar('Không thể gia hạn. Vui lòng thử lại.', 'error');
         }
     };
 
