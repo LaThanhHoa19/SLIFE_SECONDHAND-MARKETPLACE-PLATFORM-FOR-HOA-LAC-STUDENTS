@@ -92,7 +92,21 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
     >
       <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography fontSize={15} fontWeight={700} color={TEXT_PRI}>
-          Tin rao khác của {seller?.fullName || 'người bán'}
+          Tin rao khác của{' '}
+          <Box
+            component="span"
+            sx={{
+              color: PURPLE,
+              cursor: 'pointer',
+              '&:hover': { textDecoration: 'underline' }
+            }}
+            onClick={() => {
+              const sid = seller?.id ?? seller?.userId ?? listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+              if (sid) navigate(`/profile/${sid}`);
+            }}
+          >
+            {seller?.fullName || 'người bán'}
+          </Box>
         </Typography>
         <Typography
           fontSize={13}
@@ -103,7 +117,10 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
             transition: 'all 0.2s',
             '&:hover': { color: '#B289FF', textDecoration: 'underline' }
           }}
-          onClick={() => navigate(`/profile/${seller?.id ?? listing?.seller?.id}`)}
+          onClick={() => {
+            const sid = seller?.id ?? seller?.userId ?? listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+            if (sid) navigate(`/profile/${sid}`);
+          }}
         >
           Xem tất cả
         </Typography>
