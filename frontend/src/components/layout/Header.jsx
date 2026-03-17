@@ -80,6 +80,14 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
         height: '40px',
         boxSizing: 'border-box',
         width: '100%',
+        outline: 'none',
+        border: 'none',
+        boxShadow: 'none',
+        '&:focus': {
+            outline: 'none',
+            border: 'none',
+            boxShadow: 'none',
+        },
         '&::placeholder': {
             color: 'rgba(255,255,255,0.45)',
             opacity: 1,
