@@ -1,10 +1,17 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.request.CreateListingRequest;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.entity.Address;
+import com.slife.marketplace.entity.Category;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
+import com.slife.marketplace.exception.ErrorCode;
+import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.AddressRepository;
+import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
@@ -29,13 +36,19 @@ public class ListingService {
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
     private final SavedListingRepository savedListingRepository;
+    private final CategoryRepository categoryRepository;
+    private final AddressRepository addressRepository;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
-                          SavedListingRepository savedListingRepository) {
+                          SavedListingRepository savedListingRepository,
+                          CategoryRepository categoryRepository,
+                          AddressRepository addressRepository) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
+        this.categoryRepository = categoryRepository;
+        this.addressRepository = addressRepository;
     }
 
 
@@ -112,6 +125,69 @@ public class ListingService {
     /** Public for use by SavedListingService when building saved list. */
     public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
         return toListingResponse(listing, currentUser, isSaved);
+    }
+
+    /**
+     * Tạo listing mới từ request + user hiện tại.
+     *  - Nếu pickupAddressId != null: dùng address có sẵn của user.
+     *  - Nếu có pickupLocationName + lat/lng: tạo Address mới.
+     *  - Status mặc định: ACTIVE.
+     */
+    @Transactional
+    public ListingResponse createListing(User seller, CreateListingRequest request) {
+        if (seller == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT));
+
+        Address pickup = resolvePickupAddress(seller, request);
+
+        Listing listing = new Listing();
+        listing.setSeller(seller);
+        listing.setCategory(category);
+        listing.setPickupAddress(pickup);
+        listing.setTitle(request.getTitle());
+        listing.setDescription(request.getDescription());
+        listing.setPrice(request.normalizedPrice());
+        listing.setItemCondition(normalizeCondition(request.getCondition()));
+        listing.setPurpose(
+                request.getPurpose() != null && !request.getPurpose().isBlank()
+                        ? request.getPurpose()
+                        : "SALE"
+        );
+        listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
+        listing.setStatus("ACTIVE");
+        listing.setViewCount(0L);
+        listing.setCreatedAt(java.time.Instant.now());
+        listing.setUpdatedAt(java.time.Instant.now());
+
+        Listing saved = listingRepository.save(listing);
+
+        return toListingResponse(saved, seller, false);
+    }
+
+    private Address resolvePickupAddress(User seller, CreateListingRequest request) {
+        if (request.getPickupAddressId() != null) {
+            return addressRepository.findByIdAndUser_Id(request.getPickupAddressId(), seller.getId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT));
+        }
+        if (request.getPickupLocationName() == null || request.getPickupLocationName().isBlank()) {
+            return null;
+        }
+
+        Address addr = new Address();
+        addr.setUser(seller);
+        addr.setLocationName(request.getPickupLocationName());
+        addr.setAddressText(request.getPickupAddressText());
+        addr.setLat(request.getPickupLat());
+        addr.setLng(request.getPickupLng());
+        addr.setIsDefault(false);
+        java.time.Instant now = java.time.Instant.now();
+        addr.setCreatedAt(now);
+        addr.setUpdatedAt(now);
+        return addressRepository.save(addr);
     }
 
     private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved) {
@@ -191,5 +267,20 @@ public class ListingService {
 
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    /**
+     * Ánh xạ giá trị condition từ FE về ENUM hợp lệ của DB:
+     * DB enum: NEW, USED_LIKE_NEW, USED_GOOD, USED_FAIR
+     */
+    private String normalizeCondition(String condition) {
+        if (condition == null || condition.isBlank()) return "USED_GOOD";
+        return switch (condition.trim().toUpperCase()) {
+            case "NEW"          -> "NEW";
+            case "USED_LIKE_NEW" -> "USED_LIKE_NEW";
+            case "USED_FAIR"    -> "USED_FAIR";
+            case "USED_GOOD", "USED", "SECOND_HAND" -> "USED_GOOD";
+            default             -> "USED_GOOD";
+        };
     }
 }

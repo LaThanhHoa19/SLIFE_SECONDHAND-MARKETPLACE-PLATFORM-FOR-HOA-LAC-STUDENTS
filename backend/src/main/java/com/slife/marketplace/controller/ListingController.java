@@ -1,5 +1,6 @@
 package com.slife.marketplace.controller;
 
+import com.slife.marketplace.dto.request.CreateListingRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingCardResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
@@ -9,9 +10,11 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.service.ListingService;
+import com.slife.marketplace.service.ListingImageService;
 import com.slife.marketplace.service.SavedListingService;
 import com.slife.marketplace.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,18 +29,50 @@ public class ListingController {
     private final UserService userService;
     private final ListingRepository listingRepository;
     private final SavedListingService savedListingService;
+    private final ListingImageService listingImageService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
     public ListingController(ListingService listingService,
-            UserService userService,
-            ListingRepository listingRepository,
-            SavedListingService savedListingService) {
+                             UserService userService,
+                             ListingRepository listingRepository,
+                             SavedListingService savedListingService,
+                             ListingImageService listingImageService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
         this.savedListingService = savedListingService;
+        this.listingImageService = listingImageService;
+    }
+
+    /**
+     * POST /api/listings
+     * Tạo listing mới cho seller hiện tại.
+     * Payload: multipart/form-data với:
+     *  - payload: JSON CreateListingRequest
+     *  - images: (optional) danh sách file ảnh (hiện BE mới lưu meta listing + address;
+     *            flow upload ảnh listing chi tiết có thể bổ sung sau).
+     */
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<com.slife.marketplace.dto.response.ListingResponse>> createListingJson(
+            @RequestBody @jakarta.validation.Valid CreateListingRequest request) {
+        User seller = userService.getCurrentUser();
+        var response = listingService.createListing(seller, request);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * POST /api/listings/{id}/images
+     * Upload danh sách ảnh cho listing đã tồn tại.
+     * Body: multipart/form-data với images[].
+     */
+    @PostMapping(path = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Void>> uploadListingImages(
+            @PathVariable("id") Long id,
+            @RequestPart("images") java.util.List<org.springframework.web.multipart.MultipartFile> images) {
+        listingImageService.uploadListingImages(id, images);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
     @GetMapping

@@ -22,15 +22,18 @@ const normalizeSeller = (item) => {
 
 const normalizeImages = (item) => {
     const raw = item?.images ?? item?.imageUrls ?? item?.image_urls ?? item?.listingImages ?? item?.listing_images;
-    if (!Array.isArray(raw)) return [];
-
-    return raw
-        .map((img) => {
-            if (typeof img === 'string') return img;
-            if (img && typeof img === 'object') return img.imageUrl || img.image_url || '';
-            return '';
-        })
-        .filter(Boolean);
+    if (Array.isArray(raw) && raw.length > 0) {
+        return raw
+            .map((img) => {
+                if (typeof img === 'string') return img;
+                if (img && typeof img === 'object') return img.imageUrl || img.image_url || '';
+                return '';
+            })
+            .filter(Boolean);
+    }
+    // ListingCardResponse từ GET /api/listings trả về thumbnailUrl thay vì mảng images
+    if (item?.thumbnailUrl) return [item.thumbnailUrl];
+    return [];
 };
 
 const normalizeListing = (item) => {
