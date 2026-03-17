@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -282,6 +284,40 @@ public class ListingService {
 
         listing.setStatus("ACTIVE");
         listing.setUpdatedAt(Instant.now());
+        listingRepository.save(listing);
+    }
+
+    // ----------------------------------------------------------------
+    // Renew Listing
+    // ----------------------------------------------------------------
+
+    @Transactional
+    public void renewListing(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+
+        if (!"ACTIVE".equals(listing.getStatus())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_RENEWABLE);
+        }
+
+        Instant now = Instant.now();
+        Instant expiry = listing.getExpirationDate();
+
+        if (expiry == null || expiry.isBefore(now)) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_RENEWABLE);
+        }
+
+        long daysUntilExpiry = ChronoUnit.DAYS.between(now, expiry);
+        if (daysUntilExpiry > 7) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_RENEWABLE);
+        }
+
+        listing.setExpirationDate(now.plus(15, ChronoUnit.DAYS));
+        listing.setUpdatedAt(now);
         listingRepository.save(listing);
     }
 

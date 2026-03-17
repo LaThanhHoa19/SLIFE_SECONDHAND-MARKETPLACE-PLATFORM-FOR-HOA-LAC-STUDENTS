@@ -40,6 +40,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
             // Delete draft listing: chỉ seller mới được thực hiện
             .requestMatchers(HttpMethod.DELETE, "/api/listings/*/draft").authenticated()
+            // Renew listing: chỉ seller mới được thực hiện
+            .requestMatchers(HttpMethod.PATCH, "/api/listings/*/renew").authenticated()
             // Hide / Unhide listing: chỉ seller mới được thực hiện
             .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
             .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
