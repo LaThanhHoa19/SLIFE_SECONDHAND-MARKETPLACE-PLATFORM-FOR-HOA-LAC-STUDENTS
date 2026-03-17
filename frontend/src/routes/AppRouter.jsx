@@ -27,6 +27,7 @@ import {
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
+    SuspenseEditProfilePage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -80,6 +81,14 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseProfilePage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/profile/edit"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseEditProfilePage />
                         </RouteGuard>
                     }
                 />
