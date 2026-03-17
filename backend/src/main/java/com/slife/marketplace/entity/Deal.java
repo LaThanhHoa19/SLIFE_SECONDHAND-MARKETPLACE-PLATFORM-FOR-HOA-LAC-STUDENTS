@@ -9,7 +9,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -24,63 +24,50 @@ public class Deal {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "conversation_id", nullable = false)
-    private Conversation conversation;
-
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "listing_id", nullable = false)
     private Listing listing;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "proposed_by_id", nullable = false)
-    private User proposedBy;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "offer_id")
-    private Offer offer;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "address_id")
-    private Address address;
+    @JoinColumn(name = "buyer_id", nullable = false)
+    private User buyer;
 
     @NotNull
-    @Column(name = "deal_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal dealPrice;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "seller_id", nullable = false)
+    private User seller;
+
+    @NotNull
+    @Column(name = "offered_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal offeredPrice;
 
     @NotNull
     @ColumnDefault("'PENDING'")
-    @Lob
-    @Column(name = "status", nullable = false)
-    private String status;
-
-    @Column(name = "confirmed_at")
-    private Instant confirmedAt;
-
-    @Column(name = "pickup_time")
-    private Instant pickupTime;
+    @Column(name = "status", nullable = false, length = 20)
+    private String status; // PENDING, ACCEPTED, REJECTED, CANCELLED
 
     @NotNull
-    @ColumnDefault("0")
-    @Column(name = "reminder_sent", nullable = false)
-    private Boolean reminderSent;
+    @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime createdAt;
 
     @NotNull
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "created_at", nullable = false)
-    private Instant createdAt;
+    @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
+    private LocalDateTime updatedAt;
 
-    @NotNull
-    @ColumnDefault("CURRENT_TIMESTAMP")
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(name = "deleted_at", columnDefinition = "DATETIME")
+    private LocalDateTime deletedAt;
 
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        if (status == null) status = "PENDING";
+    }
 
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
