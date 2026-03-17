@@ -24,6 +24,7 @@ const PageLoader = ({ message = "Đang tải trang..." }) => (
 export const LazyLoginPage = lazy(() => import('../pages/auth/LoginPage'));
 export const LazyRegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 export const LazyListingsPage = lazy(() => import('../pages/listing/ListingsPage'));
+export const LazySearchPage = lazy(() => import('../pages/listing/SearchPage.jsx'));
 export const LazyListingDetailPage = lazy(() => import('../pages/listing/ListingDetailPage'));
 export const LazyCreateListingPage = lazy(() => import('../pages/listing/CreateListingPage'));
 export const LazyProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
@@ -48,6 +49,7 @@ export const withSuspense = (Component, loadingMessage) => (props) => (
 export const SuspenseLoginPage = withSuspense(LazyLoginPage, "Đang tải trang đăng nhập...");
 export const SuspenseRegisterPage = withSuspense(LazyRegisterPage, "Đang tải trang đăng ký...");
 export const SuspenseListingsPage = withSuspense(LazyListingsPage, "Đang tải danh sách tin...");
+export const SuspenseSearchPage = withSuspense(LazySearchPage, "Đang tải kết quả tìm kiếm...");
 export const SuspenseListingDetailPage = withSuspense(LazyListingDetailPage, "Đang tải chi tiết tin...");
 export const SuspenseCreateListingPage = withSuspense(LazyCreateListingPage, "Đang tải trang đăng tin...");
 export const SuspenseProfilePage = withSuspense(LazyProfilePage, "Đang tải trang cá nhân...");
