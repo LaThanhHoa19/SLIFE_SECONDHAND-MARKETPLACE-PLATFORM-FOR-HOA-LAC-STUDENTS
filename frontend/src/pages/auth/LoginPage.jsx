@@ -34,6 +34,12 @@ export default function LoginPage() {
   const GOOGLE_CLIENT_ID =
       import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
+  const getRedirectTarget = () => {
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    return redirect ? decodeURIComponent(redirect) : '/feed';
+  };
+
   // Read ?google_error= from URL (set by backend on OAuth failure)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -49,7 +55,7 @@ export default function LoginPage() {
   const onSubmit = async (values) => {
     setUrlError('');
     const result = await login(values, {
-      onSuccess: () => navigate('/feed'),
+      onSuccess: () => navigate(getRedirectTarget()),
     });
     if (!result.success) {
       // authError is set inside login(), displayed via displayError
@@ -72,7 +78,7 @@ export default function LoginPage() {
           client_id: GOOGLE_CLIENT_ID,
           callback: async (response) => {
             const result = await googleLogin(response.credential, {
-              onSuccess: () => navigate('/feed'),
+              onSuccess: () => navigate(getRedirectTarget()),
             });
             if (!result.success && !cancelled) {
               setGoogleError(result.error || 'Đăng nhập Google thất bại.');

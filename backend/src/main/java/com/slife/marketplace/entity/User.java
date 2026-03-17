@@ -54,13 +54,11 @@ public class User {
 
     @NotNull
     @ColumnDefault("'USER'")
-    @Lob
     @Column(name = "role", nullable = false)
     private String role;
 
     @NotNull
     @ColumnDefault("'ACTIVE'")
-    @Lob
     @Column(name = "status", nullable = false)
     private String status;
 
