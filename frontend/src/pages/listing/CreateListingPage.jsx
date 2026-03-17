@@ -30,7 +30,12 @@ export default function CreateListingPage() {
         condition: values.condition || 'USED_GOOD',
         isGiveaway: !!values.isGiveaway,
         purpose: values.isGiveaway ? 'GIVEAWAY' : (values.purpose || 'SALE'),
-        pickupLocationName: values.location || null,
+        pickupAddressId: values.pickupAddressId ? Number(values.pickupAddressId) : null,
+        // Nếu chưa có tích hợp map, dùng location text làm pickupLocationName
+        pickupLocationName: values.pickupLocationName?.trim() || values.location || null,
+        pickupAddressText: values.pickupAddressText?.trim() || null,
+        pickupLat: values.pickupLat ? Number(values.pickupLat) : null,
+        pickupLng: values.pickupLng ? Number(values.pickupLng) : null,
       };
       const res = await createListing(payload);
       const created = getPayload(res);

@@ -70,7 +70,7 @@ export default function AppRouter() {
                 <Route
                     path="/listings/new"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.VERIFIED_USER}>
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseCreateListingPage />
                         </RouteGuard>
                     }

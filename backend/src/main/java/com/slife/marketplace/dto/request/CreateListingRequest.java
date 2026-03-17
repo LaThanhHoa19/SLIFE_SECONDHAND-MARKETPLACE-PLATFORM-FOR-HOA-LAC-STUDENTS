@@ -15,6 +15,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Data
 public class CreateListingRequest {
@@ -39,4 +40,28 @@ public class CreateListingRequest {
     private String purpose;
 
     private Long pickupAddressId;
+
+    /**
+     * Tên địa điểm hiển thị cho người dùng (ví dụ: "KTX Dom A, ĐH FPT Hòa Lạc").
+     * Nếu FE không truyền pickupAddressId thì BE sẽ tạo Address mới với các field này.
+     */
+    private String pickupLocationName;
+
+    /**
+     * Địa chỉ chi tiết (tùy chọn), mô tả thêm cho locationName.
+     */
+    private String pickupAddressText;
+
+    /**
+     * Tọa độ Vietmap (lat, lng) khi user chọn gợi ý hoặc gim trên bản đồ.
+     */
+    private BigDecimal pickupLat;
+    private BigDecimal pickupLng;
+
+    /**
+     * Chuẩn hóa dữ liệu numeric trước khi xử lý, tránh scale lạ từ FE.
+     */
+    public BigDecimal normalizedPrice() {
+        return price != null ? price.setScale(2, RoundingMode.HALF_UP) : null;
+    }
 }

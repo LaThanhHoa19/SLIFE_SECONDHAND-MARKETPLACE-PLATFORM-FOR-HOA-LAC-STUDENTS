@@ -185,7 +185,16 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleCreatePost = () => {
-        navigate('/listing/create');
+        if (!user) {
+            navigate('/login', {
+                state: {
+                    from: '/listings/new',
+                    message: 'Bạn cần đăng nhập để đăng tin',
+                },
+            });
+            return;
+        }
+        navigate('/listings/new');
     };
 
     const handleManagePosts = () => {
