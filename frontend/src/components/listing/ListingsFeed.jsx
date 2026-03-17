@@ -5,7 +5,13 @@ import ListingCardSkeleton from './ListingCardSkeleton';
 
 const SKELETON_COUNT = 6;
 
-export default function ListingsFeed({ listings = [], isLoading = false, viewMode = 'list' }) {
+export default function ListingsFeed({
+                                         listings = [],
+                                         isLoading = false,
+                                         viewMode = 'list',
+                                         cardVariant = 'default',
+                                         imageAspect,
+                                     }) {
     if (isLoading) {
         return (
             <Fade in timeout={{ enter: 280 }}>
@@ -55,7 +61,7 @@ export default function ListingsFeed({ listings = [], isLoading = false, viewMod
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr',
-                    gap: 2,
+                    gap: viewMode === 'grid' ? 2 : 1.5,
                     '& > *': {
                         animation: 'listingsCardFadeIn 0.4s ease-out both',
                     },
@@ -73,7 +79,13 @@ export default function ListingsFeed({ listings = [], isLoading = false, viewMod
                 }}
             >
                 {listings.map((item) => (
-                    <ListingCard key={item.id || item.listingId} listing={item} />
+                    <ListingCard
+                        key={item.id || item.listingId}
+                        listing={item}
+                        cardVariant={cardVariant}
+                        layout={viewMode === 'grid' ? 'grid' : 'list'}
+                        imageAspect={imageAspect}
+                    />
                 ))}
             </Box>
         </Fade>
