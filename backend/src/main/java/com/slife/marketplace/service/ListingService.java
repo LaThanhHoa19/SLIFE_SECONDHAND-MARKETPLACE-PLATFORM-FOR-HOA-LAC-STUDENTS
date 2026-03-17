@@ -139,8 +139,27 @@ public class ListingService {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
         }
 
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT));
+        boolean isDraft = request.isDraftMode();
+
+        // Validate bắt buộc chỉ khi ĐĂNG TIN THẬT (không phải nháp)
+        if (!isDraft) {
+            if (request.getTitle() == null || request.getTitle().isBlank()) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
+            }
+            if (request.getCategoryId() == null) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không được để trống");
+            }
+            if (request.getPrice() == null) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá không được để trống");
+            }
+        }
+
+        // Category: bắt buộc khi đăng thật, tùy chọn khi lưu nháp
+        Category category = null;
+        if (request.getCategoryId() != null) {
+            category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+        }
 
         Address pickup = resolvePickupAddress(seller, request);
 
@@ -148,9 +167,13 @@ public class ListingService {
         listing.setSeller(seller);
         listing.setCategory(category);
         listing.setPickupAddress(pickup);
-        listing.setTitle(request.getTitle());
+        listing.setTitle(
+                request.getTitle() != null && !request.getTitle().isBlank()
+                        ? request.getTitle()
+                        : "Nháp chưa đặt tên"
+        );
         listing.setDescription(request.getDescription());
-        listing.setPrice(request.normalizedPrice());
+        listing.setPrice(request.normalizedPrice() != null ? request.normalizedPrice() : java.math.BigDecimal.ZERO);
         listing.setItemCondition(normalizeCondition(request.getCondition()));
         listing.setPurpose(
                 request.getPurpose() != null && !request.getPurpose().isBlank()
@@ -158,12 +181,13 @@ public class ListingService {
                         : "SALE"
         );
         listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
-        listing.setStatus("ACTIVE");
+        listing.setStatus(isDraft ? "DRAFT" : "ACTIVE");
         listing.setViewCount(0L);
         listing.setCreatedAt(java.time.Instant.now());
         listing.setUpdatedAt(java.time.Instant.now());
 
         Listing saved = listingRepository.save(listing);
+        log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
         return toListingResponse(saved, seller, false);
     }
