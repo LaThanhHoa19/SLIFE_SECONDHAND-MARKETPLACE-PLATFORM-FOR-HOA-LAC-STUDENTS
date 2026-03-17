@@ -138,6 +138,16 @@ public class ListingController {
     }
 
     /**
+     * DELETE /api/listings/{id}/draft — Xóa vĩnh viễn bản nháp (chỉ seller, chỉ khi status = DRAFT).
+     */
+    @DeleteMapping("/{id}/draft")
+    public ResponseEntity<ApiResponse<Void>> deleteDraft(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.deleteDraft(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
      * PATCH /api/listings/{id}/hide — Ẩn tin (chỉ seller của listing mới được thực hiện).
      */
     @PatchMapping("/{id}/hide")
