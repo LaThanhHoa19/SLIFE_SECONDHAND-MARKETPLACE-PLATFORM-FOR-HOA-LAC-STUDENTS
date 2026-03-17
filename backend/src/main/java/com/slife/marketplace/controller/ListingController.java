@@ -56,7 +56,7 @@ public class ListingController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<com.slife.marketplace.dto.response.ListingResponse>> createListingJson(
-            @RequestBody @jakarta.validation.Valid CreateListingRequest request) {
+            @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
