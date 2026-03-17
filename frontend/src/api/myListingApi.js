@@ -22,3 +22,6 @@ export const renewListing = (id) =>
 
 export const unhideListing = (id) =>
     axiosClient.patch(`/api/listings/${id}/unhide`);
+
+export const deleteDraft = (id) =>
+    axiosClient.delete(`/api/listings/${id}/draft`);

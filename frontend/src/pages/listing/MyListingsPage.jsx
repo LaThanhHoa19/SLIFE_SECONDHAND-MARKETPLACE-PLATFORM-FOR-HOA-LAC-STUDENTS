@@ -7,7 +7,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Alert,
     Box,
+    Button,
     Chip,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
     IconButton,
     InputAdornment,
     Pagination as MuiPagination,
@@ -26,6 +32,7 @@ import {
     Autorenew as RenewIcon,
     Block as RejectedIcon,
     CheckCircleOutline as ActiveIcon,
+    DeleteOutline as DeleteIcon,
     EditOutlined as EditIcon,
     ErrorOutline as ReportedIcon,
     HourglassEmpty as ExpiredIcon,
@@ -37,7 +44,7 @@ import {
     VisibilityOff as HideIcon,
 } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getMyListings, hideListing, renewListing, unhideListing } from '../../api/myListingApi';
+import { deleteDraft, getMyListings, hideListing, renewListing, unhideListing } from '../../api/myListingApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 
@@ -167,7 +174,7 @@ function ActionButton({ icon, label, onClick, color, borderColor, bgColor, hover
     );
 }
 
-function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew }) {
+function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onDeleteDraft }) {
     const navigate = useNavigate();
     const id = listing?.id;
     const images = Array.isArray(listing?.images) ? listing.images : [];
@@ -278,17 +285,39 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew }) {
                         )}
 
                         {activeTab === 'DRAFT' && (
-                            <Tooltip title="Tiếp tục chỉnh sửa và đăng bài" arrow>
-                                <ActionButton
-                                    icon={<EditIcon sx={{ fontSize: 12, color: '#9D6EED' }} />}
-                                    label="Chỉnh sửa &amp; Đăng"
-                                    onClick={() => navigate('/listings/new')}
-                                    color="#9D6EED"
-                                    borderColor="rgba(157,110,237,0.35)"
-                                    bgColor="rgba(157,110,237,0.1)"
-                                    hoverBg="rgba(157,110,237,0.2)"
-                                />
-                            </Tooltip>
+                            <>
+                                <Tooltip title="Tiếp tục chỉnh sửa và đăng bài" arrow>
+                                    <ActionButton
+                                        icon={<EditIcon sx={{ fontSize: 12, color: '#9D6EED' }} />}
+                                        label="Chỉnh sửa &amp; Đăng"
+                                        onClick={() => navigate('/listings/new')}
+                                        color="#9D6EED"
+                                        borderColor="rgba(157,110,237,0.35)"
+                                        bgColor="rgba(157,110,237,0.1)"
+                                        hoverBg="rgba(157,110,237,0.2)"
+                                    />
+                                </Tooltip>
+                                <Tooltip title="Xóa bản nháp này vĩnh viễn" arrow>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => onDeleteDraft(id)}
+                                        sx={{
+                                            p: '4px',
+                                            color: '#ff4757',
+                                            border: '1px solid rgba(255,71,87,0.3)',
+                                            borderRadius: '8px',
+                                            bgcolor: 'rgba(255,71,87,0.06)',
+                                            transition: 'background 0.15s, border-color 0.15s',
+                                            '&:hover': {
+                                                bgcolor: 'rgba(255,71,87,0.16)',
+                                                borderColor: '#ff4757',
+                                            },
+                                        }}
+                                    >
+                                        <DeleteIcon sx={{ fontSize: 15 }} />
+                                    </IconButton>
+                                </Tooltip>
+                            </>
                         )}
 
                         {activeTab === 'EXPIRED' && (
@@ -458,6 +487,8 @@ export default function MyListingsPage() {
     const [snackbar,       setSnackbar]       = useState({ open: false, message: '', severity: 'info' });
     const [tabCounts,      setTabCounts]      = useState({});
     const [searchQuery,    setSearchQuery]    = useState('');
+    const [deleteDialog,   setDeleteDialog]   = useState({ open: false, listingId: null });
+    const [isDeleting,     setIsDeleting]     = useState(false);
     const abortRef = useRef(null);
 
     const showSnackbar = (message, severity = 'info') =>
@@ -511,6 +542,29 @@ export default function MyListingsPage() {
         } catch {
             showSnackbar('Tính năng gia hạn đang được phát triển.', 'info');
         }
+    };
+
+    const handleDeleteDraft = (id) => {
+        setDeleteDialog({ open: true, listingId: id });
+    };
+
+    const handleConfirmDelete = async () => {
+        setIsDeleting(true);
+        try {
+            await deleteDraft(deleteDialog.listingId);
+            setDeleteDialog({ open: false, listingId: null });
+            showSnackbar('Đã xóa bản nháp thành công.', 'success');
+            fetchTabCounts();
+            fetchListings(activeTab, page);
+        } catch {
+            showSnackbar('Không thể xóa bản nháp. Vui lòng thử lại.', 'error');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleCancelDelete = () => {
+        setDeleteDialog({ open: false, listingId: null });
     };
 
     const fetchListings = useCallback(async (tab, pg) => {
@@ -795,10 +849,89 @@ export default function MyListingsPage() {
                             onHide={handleHide}
                             onUnhide={handleUnhide}
                             onRenew={handleRenew}
+                            onDeleteDraft={handleDeleteDraft}
                         />
                     ))}
                 </Stack>
             )}
+
+            {/* ── Delete Draft Confirm Dialog ── */}
+            <Dialog
+                open={deleteDialog.open}
+                onClose={handleCancelDelete}
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#1e1a2e',
+                        border: '1px solid rgba(255,71,87,0.25)',
+                        borderRadius: '16px',
+                        px: 0.5,
+                        minWidth: 340,
+                    },
+                }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+                    <Box sx={{
+                        width: 36, height: 36,
+                        borderRadius: '10px',
+                        bgcolor: 'rgba(255,71,87,0.12)',
+                        border: '1px solid rgba(255,71,87,0.3)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                    }}>
+                        <DeleteIcon sx={{ fontSize: 18, color: '#ff4757' }} />
+                    </Box>
+                    <Typography fontSize={16} fontWeight={700} color="rgba(255,255,255,0.9)">
+                        Xóa bản nháp
+                    </Typography>
+                </DialogTitle>
+
+                <DialogContent sx={{ pt: 0.5 }}>
+                    <DialogContentText sx={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, lineHeight: 1.6 }}>
+                        Bạn có chắc chắn muốn xóa bản nháp này?{' '}
+                        <Box component="span" sx={{ color: '#ff4757', fontWeight: 600 }}>
+                            Hành động này không thể hoàn tác.
+                        </Box>
+                    </DialogContentText>
+                </DialogContent>
+
+                <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+                    <Button
+                        onClick={handleCancelDelete}
+                        disabled={isDeleting}
+                        sx={{
+                            flex: 1,
+                            borderRadius: '10px',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.2)' },
+                        }}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleConfirmDelete}
+                        disabled={isDeleting}
+                        sx={{
+                            flex: 1,
+                            borderRadius: '10px',
+                            bgcolor: '#ff4757',
+                            color: '#fff',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': { bgcolor: '#e03040' },
+                            '&:disabled': { bgcolor: 'rgba(255,71,87,0.4)', color: 'rgba(255,255,255,0.5)' },
+                        }}
+                        variant="contained"
+                        disableElevation
+                    >
+                        {isDeleting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* ── Snackbar feedback ── */}
             <Snackbar
