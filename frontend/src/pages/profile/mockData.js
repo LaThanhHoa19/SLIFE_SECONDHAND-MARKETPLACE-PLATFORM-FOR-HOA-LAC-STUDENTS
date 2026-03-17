@@ -72,7 +72,7 @@ export const mockSeller = (id) => ({
   coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200&q=80',
   reputationScore: 4.8,
   createdAt: '2022-05-15T00:00:00Z',
-  responseRate: '98%',
+  soldCount: 45,
   followers: '1.2k',
   address: 'Hầu Lâu, Thạch Thất, Hà Nội',
   bio: 'Chuyên cung cấp đồ công nghệ cũ và mới tại khu vực Hòa Lạc. Cam kết bảo hành chu đáo, giao dịch nhanh gọn.',

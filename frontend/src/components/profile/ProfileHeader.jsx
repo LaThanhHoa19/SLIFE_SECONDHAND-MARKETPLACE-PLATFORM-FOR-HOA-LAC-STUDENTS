@@ -25,6 +25,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PeopleIcon from '@mui/icons-material/People';
 import ForumIcon from '@mui/icons-material/Forum';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 
 const PURPLE = '#9D6EED';
 const GRADIENT = 'linear-gradient(135deg, #9D6EED 0%, #7B4FD9 100%)';
@@ -339,10 +340,10 @@ export default function ProfileHeader({
                     </Box>
                   </Box>
                   <Box>
-                    <Typography variant="caption" color="text.secondary" display="block">Phản hồi</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">Đã bán</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <ForumIcon sx={{ fontSize: 18, color: PURPLE }} />
-                      <Typography variant="h6" fontWeight={700}>{user.responseRate || '98%'}</Typography>
+                      <ShoppingBagIcon sx={{ fontSize: 18, color: PURPLE }} />
+                      <Typography variant="h6" fontWeight={700}>{user.soldCount || '45'}</Typography>
                     </Box>
                   </Box>
                   <Box>
