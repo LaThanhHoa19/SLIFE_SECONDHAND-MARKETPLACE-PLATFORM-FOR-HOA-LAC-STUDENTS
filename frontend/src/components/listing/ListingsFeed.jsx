@@ -5,7 +5,7 @@ import ListingCardSkeleton from './ListingCardSkeleton';
 
 const SKELETON_COUNT = 6;
 
-export default function ListingsFeed({ listings = [], isLoading = false }) {
+export default function ListingsFeed({ listings = [], isLoading = false, viewMode = 'list' }) {
     if (isLoading) {
         return (
             <Fade in timeout={{ enter: 280 }}>
@@ -53,8 +53,8 @@ export default function ListingsFeed({ listings = [], isLoading = false }) {
         <Fade in timeout={{ enter: 360 }}>
             <Box
                 sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
+                    display: 'grid',
+                    gridTemplateColumns: viewMode === 'grid' ? 'repeat(auto-fill, minmax(260px, 1fr))' : '1fr',
                     gap: 2,
                     '& > *': {
                         animation: 'listingsCardFadeIn 0.4s ease-out both',

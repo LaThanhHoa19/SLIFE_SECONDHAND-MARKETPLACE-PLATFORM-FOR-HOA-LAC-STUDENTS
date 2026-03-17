@@ -156,8 +156,11 @@ export default function Header({ onToggleSidebar }) {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        if (searchValue.trim()) {
-            navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
+        const q = searchValue.trim();
+        if (q) {
+            navigate(`/search?q=${encodeURIComponent(q)}`);
+        } else {
+            navigate('/search');
         }
     };
 
