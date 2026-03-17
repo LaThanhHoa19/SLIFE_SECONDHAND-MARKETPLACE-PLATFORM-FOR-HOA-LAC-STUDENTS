@@ -69,7 +69,7 @@ export const mockSeller = (id) => ({
   id: id,
   fullName: 'Hoàng Anh Tài',
   avatarUrl: 'https://i.pravatar.cc/150?u=1',
-  coverImageUrl: 'https://images.unsplash.com/photo-1557683316-973673baf926?w=1200',
+  coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200&q=80',
   reputationScore: 4.8,
   createdAt: '2022-05-15T00:00:00Z',
   responseRate: '98%',
