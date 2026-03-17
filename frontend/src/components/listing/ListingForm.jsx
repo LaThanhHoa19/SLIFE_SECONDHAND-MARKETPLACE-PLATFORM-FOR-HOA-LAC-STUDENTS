@@ -41,7 +41,7 @@ function buildCategoryTree(flatList) {
     return roots;
 }
 
-export default function ListingForm({ defaultValues = {}, onSubmit, submitting = false, mode = 'create' }) {
+export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft, submitting = false, savingDraft = false, mode = 'create' }) {
     // Logic quản lý State & Form
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
@@ -125,15 +125,20 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
     };
 
     const handleFormSubmit = (values) => {
-        // if (imageFiles.length === 0) {
-        //     setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
-        //     return;
-        // }
         const finalValues = {
             ...values,
             price: Number(values.price.toString().replace(/\D/g, ""))
         };
         onSubmit?.(finalValues, imageFiles);
+    };
+
+    const handleSaveDraftClick = () => {
+        const values = watch(); // lấy giá trị hiện tại không qua validation
+        const finalValues = {
+            ...values,
+            price: values.price ? Number(values.price.toString().replace(/\D/g, "")) : 0,
+        };
+        onSaveDraft?.(finalValues, imageFiles);
     };
 
     const handleFilesChange = useCallback((files) => {
@@ -659,6 +664,8 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         <Button
                             variant="outlined"
                             fullWidth
+                            onClick={handleSaveDraftClick}
+                            disabled={savingDraft || submitting}
                             sx={{
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
@@ -667,13 +674,11 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                                 fontWeight: 600,
                                 borderRadius: "12px",
                                 border: "none",
-
-                                "&:hover": {
-                                    backgroundColor: "#d5d5d5"
-                                }
+                                "&:hover": { backgroundColor: "#d5d5d5" },
+                                "&.Mui-disabled": { opacity: 0.6 },
                             }}
                         >
-                            LƯU NHÁP
+                            {savingDraft ? 'ĐANG LƯU...' : 'LƯU NHÁP'}
                         </Button>
                         <Button
                             type="submit"
