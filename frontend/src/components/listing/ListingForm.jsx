@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import {
     Box, Button, TextField, Typography, Grid, MenuItem, Checkbox,
@@ -15,6 +15,8 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
 import { getLocations } from '../../api/locationApi';
+import { searchPlaces, reverseGeocode } from '../../api/geoApi';
+import useDebounce from '../../hooks/useDebounce';
 
 function buildCategoryTree(flatList) {
     if (!Array.isArray(flatList) || flatList.length === 0) return [];
@@ -53,11 +55,17 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
             title: '',
             description: '',
             price: '',
-            condition: 'USED',
+            condition: 'USED_GOOD',
             location: '',
             isGiveaway: false,
             categoryId: '',
             categoryName: '', // Hiển thị trên UI
+            // Các field dành cho Vietmap / tạo địa chỉ mới
+            pickupAddressId: null,
+            pickupLocationName: '',
+            pickupAddressText: '',
+            pickupLat: '',
+            pickupLng: '',
             ...defaultValues,
         },
     });
@@ -65,6 +73,17 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
     const isGiveaway = watch('isGiveaway');
     const selectedCategoryName = watch('categoryName');
     const currentCondition = watch('condition');
+    const pickupAddressText = watch('pickupAddressText');
+    const pickupLat = watch('pickupLat');
+    const pickupLng = watch('pickupLng');
+
+    // State cho Vietmap search
+    const [searchQuery, setSearchQuery] = useState('');
+    const debouncedQuery = useDebounce(searchQuery, 400);
+    const [suggestions, setSuggestions] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const mapRef = useRef(null);
+    const markerRef = useRef(null);
 
     // Fetch danh mục từ API
     useEffect(() => {
@@ -126,6 +145,130 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
         e.preventDefault();
         if (imageFiles.length === 0) setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
         handleSubmit(handleFormSubmit)(e);
+    };
+
+    // Inject Vietmap GL JS + init map (click để gim vị trí)
+    useEffect(() => {
+        const VIETMAP_TILE_KEY = import.meta.env.VITE_VIETMAP_TILE_KEY;
+        if (!VIETMAP_TILE_KEY) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const initMap = () => {
+            if (cancelled || mapRef.current || !window.vietmapgl) return;
+
+            const centerLat = pickupLat ? Number(pickupLat) : 10.803866;
+            const centerLng = pickupLng ? Number(pickupLng) : 106.668171;
+
+            const map = new window.vietmapgl.Map({
+                container: 'vietmap-container',
+                style: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${VIETMAP_TILE_KEY}`,
+                center: [centerLng, centerLat],
+                zoom: 14,
+            });
+
+            map.addControl(new window.vietmapgl.NavigationControl(), 'top-left');
+
+            mapRef.current = map;
+
+            if (pickupLat && pickupLng) {
+                const marker = new window.vietmapgl.Marker()
+                    .setLngLat([Number(pickupLng), Number(pickupLat)])
+                    .addTo(map);
+                markerRef.current = marker;
+            }
+
+            map.on('click', async (e) => {
+                const { lng, lat } = e.lngLat;
+                if (!markerRef.current) {
+                    markerRef.current = new window.vietmapgl.Marker().setLngLat([lng, lat]).addTo(map);
+                } else {
+                    markerRef.current.setLngLat([lng, lat]);
+                }
+
+                setValue('pickupLat', lat.toFixed(6));
+                setValue('pickupLng', lng.toFixed(6));
+
+                try {
+                    const res = await reverseGeocode({ lat, lng });
+                    const data = res?.data?.data ?? res?.data;
+                    if (data) {
+                        const name = data.locationName || '';
+                        const addr = data.addressText || '';
+                        setValue('pickupLocationName', name || addr);
+                        setValue('pickupAddressText', addr);
+                        setSearchQuery(addr || name || '');
+                    }
+                } catch {
+                    // ignore reverse error
+                }
+            });
+        };
+
+        const ensureCss = () => {
+            if (document.querySelector('link[data-vietmap-gl-css]')) return;
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.css';
+            link.dataset.vietmapGlCss = 'true';
+            document.head.appendChild(link);
+        };
+
+        ensureCss();
+
+        let script = document.querySelector('script[data-vietmap-gl]');
+        if (!script) {
+            script = document.createElement('script');
+            script.src = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.js';
+            script.async = true;
+            script.defer = true;
+            script.dataset.vietmapGl = 'true';
+            script.addEventListener('load', initMap);
+            document.body.appendChild(script);
+        } else if (window.vietmapgl) {
+            initMap();
+        } else {
+            script.addEventListener('load', initMap);
+        }
+
+        return () => {
+            cancelled = true;
+        };
+    }, [pickupLat, pickupLng, setValue]);
+
+    // Gọi BE geo search khi user gõ địa chỉ chi tiết
+    useEffect(() => {
+        const q = debouncedQuery.trim();
+        if (!q) {
+            setSuggestions([]);
+            return;
+        }
+        setIsSearching(true);
+        searchPlaces({ q })
+            .then((res) => {
+                const data = res?.data?.data ?? res?.data;
+                setSuggestions(Array.isArray(data) ? data : []);
+            })
+            .catch(() => setSuggestions([]))
+            .finally(() => setIsSearching(false));
+    }, [debouncedQuery]);
+
+    const handleSuggestionClick = (sugg) => {
+        const lat = sugg.lat ?? sugg.latitude;
+        const lng = sugg.lng ?? sugg.longitude;
+        const name = sugg.name ?? sugg.locationName ?? '';
+        const address = sugg.address ?? sugg.addressText ?? '';
+
+        setValue('pickupLocationName', name || address);
+        setValue('pickupAddressText', address);
+        setValue('pickupLat', lat ?? '');
+        setValue('pickupLng', lng ?? '');
+        setValue('location', name || address);
+        setSearchQuery(name || address);
+        setSuggestions([]);
+        clearErrors('pickupLocationName');
     };
 
     return (
@@ -311,6 +454,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                     <Typography fontWeight={600} fontSize={20} mb={1.5}>
                         Khu vực giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
+                    {/* Dropdown khu vực (giữ logic cũ để tương thích) */}
                     <TextField
                         select
                         fullWidth
@@ -330,8 +474,117 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         ))}
                     </TextField>
 
+                    {/* Trường địa chỉ chi tiết + gợi ý từ Vietmap */}
+                    <TextField
+                        fullWidth
+                        label="Địa chỉ chi tiết (tuỳ chọn)"
+                        margin="normal"
+                        placeholder="VD: KTX Dom A, phòng 402"
+                        {...register("pickupAddressText")}
+                        value={pickupAddressText}
+                        onChange={(e) => {
+                            setValue('pickupAddressText', e.target.value);
+                            setSearchQuery(e.target.value);
+                        }}
+                        sx={{
+                            "& .MuiInputBase-input": {
+                                fontSize: "16px"
+                            }
+                        }}
+                    />
+                    {pickupAddressText && suggestions.length > 0 && (
+                        <Box
+                            sx={{
+                                mt: 0.5,
+                                maxHeight: 220,
+                                overflowY: 'auto',
+                                borderRadius: 1,
+                                border: '1px solid rgba(148, 163, 184, 0.35)',
+                                bgcolor: '#111827',
+                            }}
+                        >
+                            {suggestions.map((sugg, idx) => (
+                                <Box
+                                    key={`${sugg.id || idx}-${sugg.name || ''}`}
+                                    onClick={() => handleSuggestionClick(sugg)}
+                                    sx={{
+                                        px: 1.5,
+                                        py: 1,
+                                        cursor: 'pointer',
+                                        '&:hover': { bgcolor: 'rgba(148, 163, 184, 0.18)' },
+                                        borderBottom: idx < suggestions.length - 1
+                                            ? '1px solid rgba(55, 65, 81, 0.6)'
+                                            : 'none',
+                                    }}
+                                >
+                                    <Typography fontSize={14} fontWeight={600} color="#e5e7eb">
+                                        {sugg.name || sugg.locationName || 'Điểm gợi ý'}
+                                    </Typography>
+                                    {sugg.address && (
+                                        <Typography fontSize={12} color="#9ca3af">
+                                            {sugg.address}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            ))}
+                            {isSearching && (
+                                <Box sx={{ px: 1.5, py: 1 }}>
+                                    <Typography fontSize={12} color="#9ca3af">
+                                        Đang tìm kiếm...
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+                    )}
+                    {/* Toạ độ lat/lng (có thể được điền tự động từ gợi ý hoặc user nhập tay) */}
+                    <Grid container spacing={2} mt={0.5}>
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                label="Lat"
+                                placeholder="21.0135"
+                                {...register("pickupLat")}
+                                sx={{
+                                    "& .MuiInputBase-input": {
+                                        fontSize: "16px"
+                                    }
+                                }}
+                            />
+                        </Grid>
+                        <Grid item xs={6}>
+                            <TextField
+                                fullWidth
+                                label="Lng"
+                                placeholder="105.5257"
+                                {...register("pickupLng")}
+                                sx={{
+                                    "& .MuiInputBase-input": {
+                                        fontSize: "16px"
+                                    }
+                                }}
+                            />
+                        </Grid>
+                    </Grid>
+
                     <Typography fontSize={16} mt={1} color="error">
-                        Chỉ hỗ trợ giao dịch trong khu vực Hoà Lạc
+                        Chỉ hỗ trợ giao dịch trong khu vực Hoà Lạc. Bấm trên bản đồ Vietmap bên dưới để gim vị trí.
+                    </Typography>
+
+                    {/* Bản đồ Vietmap (click để gim vị trí) */}
+                    <Box
+                        id="vietmap-container"
+                        sx={{
+                            mt: 2,
+                            width: '100%',
+                            height: 260,
+                            borderRadius: 2,
+                            overflow: 'hidden',
+                            border: '1px solid rgba(148, 163, 184, 0.35)',
+                            bgcolor: '#020617',
+                        }}
+                    />
+                    <Typography fontSize={12} mt={0.5} color="#9ca3af">
+                        Nếu bản đồ không hiển thị, hãy kiểm tra lại key Vietmap (VITE_VIETMAP_TILE_KEY) hoặc kết nối mạng.
                     </Typography>
                 </Grid>
             </Grid>
@@ -348,7 +601,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, submitting =
                         onChange={(_, val) => val && setValue('condition', val)}
                     >
                         <ToggleButton
-                            value="USED"
+                            value="USED_GOOD"
                             sx={{
                                 px: 4,
                                 py: 1.2,
