@@ -321,7 +321,7 @@ export default function ListingDetailPage() {
   // ── Dẫn xuất dữ liệu ─────────────────────────────────────────────────────
   const images = (listing?.images ?? []).map((p) => fullImageUrl(p)).filter(Boolean);
   const seller = getSeller(listing);
-  const sellerId = listing.sellerId;
+  const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id ?? listing?.sellerId;
   const conditionInfo = getConditionInfo(listing.itemCondition);
   const locationText = getLocation(listing);
   const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
