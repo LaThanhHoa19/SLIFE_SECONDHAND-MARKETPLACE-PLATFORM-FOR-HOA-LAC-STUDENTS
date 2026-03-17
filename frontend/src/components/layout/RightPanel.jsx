@@ -9,6 +9,8 @@ import {
     ListItemButton,
     Popover,
     Skeleton,
+    ToggleButton,
+    ToggleButtonGroup,
 } from '@mui/material';
 import {
     LocationOn as LocationOnIcon,
@@ -28,6 +30,7 @@ import {
     SportsEsports as GameIcon,
     MenuBook as BookIcon,
     Category as DefaultCategoryIcon,
+    CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -97,6 +100,11 @@ export default function RightPanel() {
     const [locAnchorEl, setLocAnchorEl] = useState(null);
     const locOpen = Boolean(locAnchorEl);
 
+    const selectedSort = searchParams.get('sort') || '';
+    const selectedCondition = searchParams.get('condition') || '';
+    const selectedCategory = searchParams.get('category') || '';
+    const selectedSubcategory = searchParams.get('subcategory') || '';
+
     const categoryTree = buildCategoryTree(categories);
 
     const toggleCategoryExpand = (id) => {
@@ -110,6 +118,17 @@ export default function RightPanel() {
 
     const selectedLocation = searchParams.get('location') || '';
     const locationLabel = selectedLocation || 'Tất cả xã';
+
+    const setParam = (key, value) => {
+        const params = new URLSearchParams(searchParams);
+        if (value) {
+            params.set(key, value);
+        } else {
+            params.delete(key);
+        }
+        params.delete('page');
+        navigate(`/feed?${params.toString()}`);
+    };
 
     useEffect(() => {
         getLocations()
@@ -127,12 +146,7 @@ export default function RightPanel() {
                 const list = res?.data ?? res ?? [];
                 const arr = Array.isArray(list) ? list : [];
                 setCategories(arr);
-                // Khi API trả cây cha-con: mở sẵn danh mục cha đầu tiên có con để dễ thấy cấu trúc
-                const tree = buildCategoryTree(arr);
-                const firstWithChildren = tree.find((n) => n.children?.length > 0);
-                if (firstWithChildren?.id != null) {
-                    setExpandedParents((prev) => (prev.size ? prev : new Set([firstWithChildren.id])));
-                }
+                // Không tự động mở sẵn danh mục nào — để người dùng tự tương tác
             })
             .catch(() => setCategories([]))
             .finally(() => setCatLoading(false));
@@ -146,15 +160,12 @@ export default function RightPanel() {
             params.delete('location');
         }
         params.delete('page');
-        navigate(`/?${params.toString()}`);
+        navigate(`/feed?${params.toString()}`);
         setLocAnchorEl(null);
     };
 
     const handleReset = () => {
-        const params = new URLSearchParams(searchParams);
-        params.delete('location');
-        params.delete('page');
-        navigate(`/?${params.toString()}`);
+        navigate('/feed');
     };
 
     return (
@@ -230,6 +241,137 @@ export default function RightPanel() {
                 </IconButton>
             </Box>
 
+            {/* Sort theo giá */}
+            <Box
+                sx={{
+                    bgcolor: 'rgba(42,39,51,0.6)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    px: 2,
+                    py: 1.5,
+                    mt: 0.5,
+                }}
+            >
+                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', mb: 1 }}>
+                    Sắp xếp theo giá
+                </Typography>
+                <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={selectedSort}
+                    onChange={(_, val) => setParam('sort', val ?? '')}
+                    sx={{ gap: 1 }}
+                >
+                    <ToggleButton
+                        value="price_asc"
+                        sx={{
+                            flex: 1,
+                            py: 0.8,
+                            borderRadius: '8px !important',
+                            border: '1px solid rgba(255,255,255,0.1) !important',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(157,110,237,0.2)',
+                                color: '#9D6EED',
+                                borderColor: '#9D6EED !important',
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                        }}
+                    >
+                        Giá thấp → cao
+                    </ToggleButton>
+                    <ToggleButton
+                        value="price_desc"
+                        sx={{
+                            flex: 1,
+                            py: 0.8,
+                            borderRadius: '8px !important',
+                            border: '1px solid rgba(255,255,255,0.1) !important',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(157,110,237,0.2)',
+                                color: '#9D6EED',
+                                borderColor: '#9D6EED !important',
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                        }}
+                    >
+                        Giá cao → thấp
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+
+            {/* Tình trạng */}
+            <Box
+                sx={{
+                    bgcolor: 'rgba(42,39,51,0.6)',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    px: 2,
+                    py: 1.5,
+                }}
+            >
+                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', mb: 1 }}>
+                    Tình trạng
+                </Typography>
+                <ToggleButtonGroup
+                    exclusive
+                    fullWidth
+                    value={selectedCondition}
+                    onChange={(_, val) => setParam('condition', val ?? '')}
+                    sx={{ gap: 1 }}
+                >
+                    <ToggleButton
+                        value="USED"
+                        sx={{
+                            flex: 1,
+                            py: 0.8,
+                            borderRadius: '8px !important',
+                            border: '1px solid rgba(255,255,255,0.1) !important',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(157,110,237,0.2)',
+                                color: '#9D6EED',
+                                borderColor: '#9D6EED !important',
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                        }}
+                    >
+                        Đã sử dụng
+                    </ToggleButton>
+                    <ToggleButton
+                        value="NEW"
+                        sx={{
+                            flex: 1,
+                            py: 0.8,
+                            borderRadius: '8px !important',
+                            border: '1px solid rgba(255,255,255,0.1) !important',
+                            color: 'rgba(255,255,255,0.6)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(157,110,237,0.2)',
+                                color: '#9D6EED',
+                                borderColor: '#9D6EED !important',
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+                        }}
+                    >
+                        Mới
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+
             {/* Location Popover */}
             <Popover
                 open={locOpen}
@@ -300,49 +442,6 @@ export default function RightPanel() {
                 </List>
             </Popover>
 
-            {/* Banner cộng đồng */}
-            <Box
-                sx={{
-                    background: 'linear-gradient(145deg, #6D28D9 0%, #8B5CF6 50%, #A78BFA 100%)',
-                    borderRadius: '16px',
-                    p: 2.5,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
-                }}
-            >
-                <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#FFF', lineHeight: 1.45, mb: 1.5, pr: 4 }}>
-                    Tham gia cộng đồng mua bán cùng SLIFE!
-                </Typography>
-                <Button
-                    onClick={() => {
-                        if (!isAuthenticated) {
-                            navigate('/login', { state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' } });
-                            return;
-                        }
-                        navigate('/listings/new');
-                    }}
-                    sx={{
-                        bgcolor: '#FFF',
-                        color: '#6D28D9',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        px: 2,
-                        py: 0.75,
-                        borderRadius: '10px',
-                        textTransform: 'none',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                        transition: 'transform 0.15s, box-shadow 0.15s',
-                        '&:hover': { bgcolor: '#FFF', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' },
-                    }}
-                >
-                    Đăng tin ngay
-                </Button>
-                <Typography sx={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 36, opacity: 0.4, pointerEvents: 'none' }}>
-                    📢
-                </Typography>
-            </Box>
-
             {/* Danh mục hàng đầu */}
             <Box sx={{ bgcolor: 'rgba(42,39,51,0.6)', borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
                 <Box sx={{ px: 2, py: 1.75, borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -379,6 +478,27 @@ export default function RightPanel() {
                             const isExpanded = expandedParents.has(catId);
                             const Icon = getCategoryIcon(cat.name);
                             const count = cat.listingCount ?? cat.count ?? null;
+
+                            const catIdStr = catId != null ? String(catId) : cat.name;
+                            const isCategorySelected =
+                                selectedCategory &&
+                                String(selectedCategory) === catIdStr &&
+                                !selectedSubcategory;
+
+                            const hasSelectedChild =
+                                hasChildren &&
+                                cat.children.some((child) => {
+                                    const childId = child.id ?? child.categoryId ?? child.name;
+                                    const parentId =
+                                        child.parentId ??
+                                        child.parent_id ??
+                                        catIdStr;
+                                    return (
+                                        String(parentId) === String(selectedCategory) &&
+                                        String(childId) === String(selectedSubcategory)
+                                    );
+                                });
+
                             return (
                                 <Box key={catId ?? cat.name}>
                                     {/* Hàng danh mục cha */}
@@ -413,7 +533,14 @@ export default function RightPanel() {
                                             )}
                                         </Box>
                                         <Box
-                                            onClick={() => navigate(`/?category=${catId ?? encodeURIComponent(cat.name)}`)}
+                                            onClick={() => {
+                                                const id = catId ?? encodeURIComponent(cat.name);
+                                                const params = new URLSearchParams(searchParams);
+                                                params.set('category', id);
+                                                params.delete('subcategory');
+                                                params.delete('page');
+                                                navigate(`/feed?${params.toString()}`);
+                                            }}
                                             sx={{ display: 'flex', alignItems: 'center', flex: 1, gap: 1.25, minWidth: 0 }}
                                         >
                                             {hasChildren ? (
@@ -421,8 +548,19 @@ export default function RightPanel() {
                                             ) : (
                                                 <Icon sx={{ fontSize: 18, color: '#9D6EED', flexShrink: 0 }} />
                                             )}
-                                            <Typography sx={{ fontSize: '13px', fontWeight: hasChildren ? 600 : 500, color: 'rgba(255,255,255,0.9)', flex: 1,
-                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: '13px',
+                                                    fontWeight: isCategorySelected || hasSelectedChild ? 700 : hasChildren ? 600 : 500,
+                                                    color: isCategorySelected || hasSelectedChild
+                                                        ? '#B794F6'
+                                                        : 'rgba(255,255,255,0.9)',
+                                                    flex: 1,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
                                                 {cat.name}
                                             </Typography>
                                             {count != null && (
@@ -430,7 +568,18 @@ export default function RightPanel() {
                                                     {count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count}
                                                 </Typography>
                                             )}
-                                            <ChevronRightIcon sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
+                                            {(isCategorySelected || hasSelectedChild) && (
+                                                <CheckCircleIcon
+                                                    sx={{ fontSize: 16, color: '#B794F6', flexShrink: 0, ml: 0.5 }}
+                                                />
+                                            )}
+                                            {!isCategorySelected &&
+                                                !hasSelectedChild &&
+                                                hasChildren && (
+                                                    <ChevronRightIcon
+                                                        sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}
+                                                    />
+                                                )}
                                         </Box>
                                     </Box>
                                     {/* Danh mục con */}
@@ -440,10 +589,26 @@ export default function RightPanel() {
                                                 const childId = child.id ?? child.categoryId;
                                                 const ChildIcon = getCategoryIcon(child.name);
                                                 const childCount = child.listingCount ?? child.count ?? null;
+
+                                                const parentId =
+                                                    child.parentId ??
+                                                    child.parent_id ??
+                                                    catIdStr;
+                                                const isChildSelected =
+                                                    String(parentId) === String(selectedCategory) &&
+                                                    String(childId ?? child.name) === String(selectedSubcategory);
+
                                                 return (
                                                     <Box
                                                         key={childId ?? child.name}
-                                                        onClick={() => navigate(`/?category=${childId ?? encodeURIComponent(child.name)}`)}
+                                                        onClick={() => {
+                                                            const subId = childId ?? encodeURIComponent(child.name);
+                                                            const params = new URLSearchParams(searchParams);
+                                                            params.set('category', parentId);
+                                                            params.set('subcategory', subId);
+                                                            params.delete('page');
+                                                            navigate(`/feed?${params.toString()}`);
+                                                        }}
                                                         sx={{
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -453,20 +618,49 @@ export default function RightPanel() {
                                                             cursor: 'pointer',
                                                             borderRadius: '8px',
                                                             transition: 'background-color 0.2s',
+                                                            bgcolor: isChildSelected ? 'rgba(157,110,237,0.16)' : 'transparent',
                                                             '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
                                                         }}
                                                     >
-                                                        <ChildIcon sx={{ fontSize: 16, color: 'rgba(157,110,237,0.85)', flexShrink: 0 }} />
-                                                        <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', flex: 1,
-                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        <ChildIcon
+                                                            sx={{
+                                                                fontSize: 16,
+                                                                color: isChildSelected ? '#C4A1FF' : 'rgba(157,110,237,0.85)',
+                                                                flexShrink: 0,
+                                                            }}
+                                                        />
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: '12px',
+                                                                color: isChildSelected
+                                                                    ? '#EDE9FE'
+                                                                    : 'rgba(255,255,255,0.8)',
+                                                                flex: 1,
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                            }}
+                                                        >
                                                             {child.name}
                                                         </Typography>
                                                         {childCount != null && (
-                                                            <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', flexShrink: 0 }}>
+                                                            <Typography
+                                                                sx={{
+                                                                    fontSize: '11px',
+                                                                    color: isChildSelected
+                                                                        ? 'rgba(255,255,255,0.85)'
+                                                                        : 'rgba(255,255,255,0.45)',
+                                                                    flexShrink: 0,
+                                                                }}
+                                                            >
                                                                 {childCount >= 1000 ? `${(childCount / 1000).toFixed(1)}k` : childCount}
                                                             </Typography>
                                                         )}
-                                                        <ChevronRightIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                                                        {isChildSelected && (
+                                                            <CheckCircleIcon
+                                                                sx={{ fontSize: 14, color: '#C4A1FF', flexShrink: 0, ml: 0.5 }}
+                                                            />
+                                                        )}
                                                     </Box>
                                                 );
                                             })}
@@ -480,6 +674,50 @@ export default function RightPanel() {
                         })}
                     </>
                 )}
+            </Box>
+
+            {/* Banner cộng đồng */}
+            <Box
+                sx={{
+                    background: 'linear-gradient(145deg, #6D28D9 0%, #8B5CF6 50%, #A78BFA 100%)',
+                    borderRadius: '16px',
+                    p: 2.25,
+                    mt: 2,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
+                }}
+            >
+                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#EDE9FE', lineHeight: 1.45, mb: 1.5, pr: 4 }}>
+                    Tham gia cộng đồng mua bán cùng SLIFE!
+                </Typography>
+                <Button
+                    onClick={() => {
+                        if (!isAuthenticated) {
+                            navigate('/login', { state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' } });
+                            return;
+                        }
+                        navigate('/listings/new');
+                    }}
+                    sx={{
+                        bgcolor: '#FFF',
+                        color: '#6D28D9',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        px: 2,
+                        py: 0.75,
+                        borderRadius: '10px',
+                        textTransform: 'none',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        transition: 'transform 0.15s, box-shadow 0.15s',
+                        '&:hover': { bgcolor: '#FFF', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' },
+                    }}
+                >
+                    Đăng tin ngay
+                </Button>
+                <Typography sx={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 32, opacity: 0.35, pointerEvents: 'none' }}>
+                    📢
+                </Typography>
             </Box>
 
         </Box>
