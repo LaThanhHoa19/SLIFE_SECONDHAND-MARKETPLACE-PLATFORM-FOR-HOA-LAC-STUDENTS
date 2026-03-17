@@ -8,11 +8,9 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Divider,
   InputAdornment,
-  Paper,
   Snackbar,
   Stack,
   TextField,
@@ -27,29 +25,57 @@ import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import StoreOutlinedIcon from '@mui/icons-material/StoreOutlined';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import { getDeal, confirmDeal, sendReminder } from '../../api/dealApi';
+import { getDeal, confirmDeal, updatePickupTime, sendReminder } from '../../api/dealApi';
 import { useAuth } from '../../hooks/useAuth';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { fullImageUrl } from '../../utils/constants';
 
+// ── Design tokens (đồng bộ ListingForm) ──────────────────────────────────────
+
+const C = {
+  bg: '#201D26',
+  surface: '#312F37',
+  surfaceHover: '#3a3845',
+  accent: '#9D6EED',
+  accentHover: '#B794F6',
+  text: '#FFFFFF',
+  textMuted: 'rgba(255,255,255,0.55)',
+  border: 'rgba(255,255,255,0.08)',
+};
+
+// ── Đồng bộ kích thước ─────────────────────────────────────────────────────
+
+const FONT = {
+    input: '14px',
+    label: '12px',
+    title: '14px',
+    small: '12px',
+};
+
 // ── StatusBadge (SCRUM-82) ─────────────────────────────────────────────────────
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Chờ xác nhận', color: 'warning' },
-  CONFIRMED: { label: 'Đã xác nhận', color: 'success' },
-  COMPLETED: { label: 'Hoàn thành', color: 'info' },
-  CANCELLED: { label: 'Đã hủy', color: 'error' },
+  PENDING:   { label: 'Chờ xác nhận', bg: '#ed6c02', color: '#fff' },
+  CONFIRMED: { label: 'Đã xác nhận',  bg: '#2e7d32', color: '#fff' },
+  COMPLETED: { label: 'Hoàn thành',   bg: '#0277bd', color: '#fff' },
+  CANCELLED: { label: 'Đã hủy',       bg: '#c62828', color: '#fff' },
 };
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] ?? { label: status ?? 'Không rõ', color: 'default' };
+  const cfg = STATUS_CONFIG[status] ?? { label: status ?? 'Không rõ', bg: '#555', color: '#fff' };
   return (
-    <Chip
-      label={cfg.label}
-      color={cfg.color}
-      size="small"
-      sx={{ fontWeight: 700, letterSpacing: 0.3, px: 0.5 }}
-    />
+    <Box sx={{
+      display: 'inline-flex', alignItems: 'center',
+      px: 2, py: 0.6,
+      borderRadius: '20px',
+      bgcolor: cfg.bg,
+      color: cfg.color,
+      fontWeight: 700,
+      fontSize: '0.88rem',
+      letterSpacing: 0.4,
+    }}>
+      {cfg.label}
+    </Box>
   );
 }
 
@@ -107,7 +133,16 @@ function fmtDate(val) {
   });
 }
 
-// ── FormField — TextField read-only dạng form ────────────────────────────────
+/** ISO → "YYYY-MM-DDTHH:mm" cho input datetime-local */
+function toDatetimeLocal(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d)) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ── FormField — TextField read-only, dark theme ───────────────────────────────
 
 function FormField({ label, value, icon, multiline }) {
   return (
@@ -122,16 +157,37 @@ function FormField({ label, value, icon, multiline }) {
         input: {
           readOnly: true,
           startAdornment: icon ? (
-            <InputAdornment position="start">{icon}</InputAdornment>
+            <InputAdornment position="start">
+              <Box sx={{ color: C.textMuted }}>{icon}</Box>
+            </InputAdornment>
           ) : undefined,
         },
+        inputLabel: { shrink: true },
       }}
       sx={{
-        '& .MuiInputBase-input': { cursor: 'default' },
-        '& .MuiOutlinedInput-root': {
-          bgcolor: 'grey.50',
-          '&:hover fieldset': { borderColor: 'divider' },
-          '&.Mui-focused fieldset': { borderColor: 'divider', borderWidth: 1 },
+          '& .MuiInputBase-root': {
+              backgroundColor: C.surface,
+              color: C.text,
+              fontSize: FONT.input,
+              borderRadius: '10px',
+          },
+          '& .MuiInputBase-input': {
+              color: C.text,
+              cursor: 'default',
+              fontSize: FONT.input,
+          },
+          '& .MuiInputLabel-root': {
+              color: C.textMuted,
+              fontSize: FONT.label,
+          },
+        '& .MuiInputLabel-root.Mui-focused': { color: C.accent },
+        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+        '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+          borderColor: C.accent,
+        },
+        '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+          borderColor: C.accent,
+          borderWidth: 1,
         },
       }}
     />
@@ -141,12 +197,15 @@ function FormField({ label, value, icon, multiline }) {
 // ── SectionTitle ──────────────────────────────────────────────────────────────
 
 function SectionTitle({ children }) {
-  return (
-    <Typography variant="subtitle2" fontWeight={700} color="text.secondary"
-      sx={{ textTransform: 'uppercase', letterSpacing: 0.8, fontSize: '0.7rem', mb: 1.5, mt: 0.5 }}>
-      {children}
-    </Typography>
-  );
+    return (
+        <Typography
+            fontWeight={600}
+            fontSize={FONT.title} // 18px
+            sx={{ color: C.text, mb: 2, mt: 0.5 }}
+        >
+            {children}
+        </Typography>
+    );
 }
 
 // ── DealDetailPage ────────────────────────────────────────────────────────────
@@ -164,6 +223,7 @@ export default function DealDetailPage() {
   const [confirming, setConfirming] = useState(false);
 
   const [reminderSending, setReminderSending] = useState(false);
+  const [pickupTimeLocal, setPickupTimeLocal] = useState('');
   const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
 
   const showSnack = (message, severity = 'success') =>
@@ -175,13 +235,15 @@ export default function DealDetailPage() {
     getDeal(id)
       .then((res) => {
         const data = getPayload(res);
-        // Fallback sang mock khi backend chưa trả data (chỉ trong dev)
-        setDeal(data ?? DEV_MOCK_DEAL);
+        const resolved = data ?? DEV_MOCK_DEAL;
+        setDeal(resolved);
+        setPickupTimeLocal(toDatetimeLocal(resolved?.pickupTime));
         setError('');
       })
       .catch((err) => {
         if (DEV_MOCK_DEAL) {
           setDeal(DEV_MOCK_DEAL);
+          setPickupTimeLocal(toDatetimeLocal(DEV_MOCK_DEAL.pickupTime));
           setError('');
         } else {
           setError(err?.response?.data?.message || err?.message || 'Không tải được giao dịch.');
@@ -196,9 +258,18 @@ export default function DealDetailPage() {
   const handleConfirm = async () => {
     setConfirming(true);
     try {
+      // Lưu pickup time nếu đã chỉnh sửa
+      if (pickupTimeLocal) {
+        await updatePickupTime(id, new Date(pickupTimeLocal).toISOString());
+      }
       const res = await confirmDeal(id);
       const updated = getPayload(res);
-      setDeal((prev) => ({ ...prev, ...(updated ?? {}), status: updated?.status ?? 'CONFIRMED' }));
+      setDeal((prev) => ({
+        ...prev,
+        ...(updated ?? {}),
+        status: updated?.status ?? 'CONFIRMED',
+        pickupTime: pickupTimeLocal ? new Date(pickupTimeLocal).toISOString() : prev.pickupTime,
+      }));
       setConfirmOpen(false);
       showSnack('Giao dịch đã được xác nhận thành công!');
     } catch (err) {
@@ -224,6 +295,7 @@ export default function DealDetailPage() {
       setReminderSending(false);
     }
   };
+
 
   // ── loading / error ────────────────────────────────────────────────────────
 
@@ -268,181 +340,272 @@ export default function DealDetailPage() {
     deal.listing?.sellerSummary ?? deal.sellerName ?? (sellerId ? `#${sellerId}` : '—');
 
   return (
-    <Box sx={{ maxWidth: 860, mx: 'auto', py: 3, px: 2 }}>
+    <Box sx={{ maxWidth: 660, mx: 'auto', py: 3, px: 2 }}>
       {/* Back */}
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<ArrowBackIcon sx={{ fontSize: 14, verticalAlign: 'middle' }} />}
+        onClick={() => navigate(-1)}
+        sx={{
+          mb: 1.5,
+          color: C.text,
+          fontSize: '13px',
+          borderRadius: '14px',
+          borderColor: C.border,
+          backgroundColor: '#201D26',
+          textTransform: 'none',
+          px: 1.5,
+          lineHeight: 1,
+          display: 'inline-flex',
+          alignItems: 'center',
+          '&:hover': {
+            backgroundColor: '#2D2A33',
+            borderColor: C.border,
+            color: C.text,
+          },
+        }}
+      >
         Quay lại
       </Button>
 
-      <Paper elevation={2} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-        {/* ── Form header ── */}
-        <Box sx={{ px: 3, py: 2.5, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Box>
-              <Typography variant="h6" fontWeight={700}>
-                Giao dịch #{deal.id}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                Tạo lúc {fmtDate(deal.createdAt)}
-              </Typography>
+      <Box
+        sx={{
+          maxWidth: '1200px',
+          width: '100%',
+          mx: 'auto',
+          p: 2.5,
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '14px',
+          backgroundColor: C.bg,
+          color: C.text,
+        }}
+      >
+        {/* ── Header ── */}
+        <Box mb={2}>
+          <Typography fontWeight={700} fontSize="18px" color={C.text}>
+            Xác nhận giao dịch
+          </Typography>
+          <Typography fontSize="13px" sx={{ color: C.textMuted, mt: 0.5 }}>
+            Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi hoàn tất.
+          </Typography>
+        </Box>
+        <Divider sx={{ borderColor: C.border, mb: 2 }} />
+
+        {/* ── Section: Tin đăng ── */}
+        <SectionTitle>Tin đăng</SectionTitle>
+        <Box
+          sx={{
+            display: 'flex', gap: 2, alignItems: 'center', mb: 2,
+            p: 2, borderRadius: '10px', bgcolor: C.surface,
+            cursor: deal.listing?.id ? 'pointer' : 'default',
+            '&:hover': deal.listing?.id ? { bgcolor: C.surfaceHover } : {},
+            transition: 'background 0.15s',
+          }}
+          onClick={() => deal.listing?.id && navigate(`/listings/${deal.listing.id}`)}
+        >
+          {listingImage ? (
+            <Box
+              component="img"
+              src={listingImage}
+              alt={deal.listing?.title}
+              sx={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '8px', flexShrink: 0 }}
+            />
+          ) : (
+            <Box sx={{
+              width: 80, height: 80, borderRadius: '8px', bgcolor: 'rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <StoreOutlinedIcon sx={{ color: C.textMuted, fontSize: 28 }} />
             </Box>
-            <StatusBadge status={deal.status} />
-          </Stack>
+          )}
+          <Box sx={{ minWidth: 0 }}>
+            <Typography fontWeight={600} fontSize="15px" color={C.text} noWrap>
+              {deal.listing?.title ?? '—'}
+            </Typography>
+            <Typography fontSize="13px" sx={{ color: C.textMuted, mt: 0.4 }}>
+              Giá niêm yết:{' '}
+              <Box component="span" sx={{ color: C.accentHover, fontWeight: 600 }}>
+                {deal.listing?.isGiveaway ? 'Cho tặng' : fmtPrice(deal.listing?.price)}
+              </Box>
+            </Typography>
+          </Box>
         </Box>
 
-        <Box sx={{ px: 3, py: 3 }}>
-          {/* ── Section: Tin đăng ── */}
-          <SectionTitle>Tin đăng</SectionTitle>
+        <Divider sx={{ borderColor: C.border, mb: 2 }} />
 
-          {/* Thumbnail + link */}
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
-            {listingImage ? (
-              <Box
-                component="img"
-                src={listingImage}
-                alt={deal.listing?.title}
-                sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1.5, flexShrink: 0 }}
-              />
-            ) : (
-              <Box sx={{
-                width: 64, height: 64, borderRadius: 1.5, bgcolor: 'grey.200',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <StoreOutlinedIcon sx={{ color: 'grey.400' }} />
-              </Box>
-            )}
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                variant="body2"
-                fontWeight={600}
-                sx={{
-                  cursor: deal.listing?.id ? 'pointer' : 'default',
-                  '&:hover': deal.listing?.id ? { color: 'primary.main', textDecoration: 'underline' } : {},
-                }}
-                onClick={() => deal.listing?.id && navigate(`/listings/${deal.listing.id}`)}
-              >
-                {deal.listing?.title ?? '—'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Giá niêm yết:{' '}
-                <strong>{deal.listing?.isGiveaway ? 'Cho tặng' : fmtPrice(deal.listing?.price)}</strong>
-              </Typography>
-            </Box>
-          </Box>
-
-          <Divider sx={{ mb: 2.5 }} />
-
-          {/* ── Section: Thông tin giao dịch ── */}
-          <SectionTitle>Thông tin giao dịch</SectionTitle>
-          <Stack spacing={2}>
+        {/* ── Section: Thông tin giao dịch ── */}
+        <SectionTitle>Thông tin giao dịch</SectionTitle>
+        <Stack spacing={2.5} mb={2}>
+          <FormField
+            label="Giá thỏa thuận"
+            value={fmtPrice(deal.dealPrice)}
+            icon={<AttachMoneyIcon />}
+          />
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
             <FormField
-              label="Giá thỏa thuận"
-              value={fmtPrice(deal.dealPrice)}
-              icon={<AttachMoneyIcon fontSize="small" />}
+              label="Người mua"
+              value={buyerLabel}
+              icon={<PersonOutlineIcon />}
             />
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <FormField
-                label="Người mua"
-                value={buyerLabel}
-                icon={<PersonOutlineIcon fontSize="small" />}
-              />
-              <FormField
-                label="Người bán"
-                value={sellerLabel}
-                icon={<StoreOutlinedIcon fontSize="small" />}
-              />
-            </Stack>
+            <FormField
+              label="Người bán"
+              value={sellerLabel}
+              icon={<StoreOutlinedIcon />}
+            />
           </Stack>
+        </Stack>
 
-          <Divider sx={{ my: 2.5 }} />
+        <Divider sx={{ borderColor: C.border, mb: 2 }} />
 
           {/* ── Section: Thời gian & Địa điểm ── */}
           <SectionTitle>Thời gian &amp; Địa điểm</SectionTitle>
-          <Stack spacing={2}>
-            <FormField
-              label="Thời gian nhận hàng"
-              value={fmtDate(deal.pickupTime)}
-              icon={<AccessTimeIcon fontSize="small" />}
-            />
-            <FormField
-              label="Địa điểm nhận hàng"
-              value={fmtAddress(deal.address) ?? '—'}
-              icon={<LocationOnOutlinedIcon fontSize="small" />}
-              multiline
-            />
-            {deal.confirmedAt && (
-              <FormField
-                label="Xác nhận lúc"
-                value={fmtDate(deal.confirmedAt)}
-                icon={<CheckCircleOutlineIcon fontSize="small" />}
+          <Stack spacing={2.5} mb={2}>
+            {/* Pickup time — editable */}
+            <Stack direction="row" alignItems="center" spacing={2.5}>
+              <Box sx={{
+                width: 40, height: 40, borderRadius: '10px', flexShrink: 0,
+                bgcolor: 'rgba(157,110,237,0.18)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <AccessTimeIcon sx={{ color: C.accent, fontSize: 20 }} />
+              </Box>
+              <TextField
+                type="datetime-local"
+                label="Thời gian nhận hàng"
+                size="small"
+                fullWidth
+                value={pickupTimeLocal}
+                onChange={(e) => setPickupTimeLocal(e.target.value)}
+                slotProps={{
+                  input: {},
+                  inputLabel: { shrink: true },
+                }}
+                sx={{
+                  '& .MuiInputBase-root': {
+                    backgroundColor: C.surface, color: C.text,
+                    fontSize: FONT.input, borderRadius: '10px',
+                  },
+                  '& .MuiInputBase-input': {
+                    color: C.text, fontSize: FONT.input, colorScheme: 'dark',
+                  },
+                  '& .MuiInputLabel-root': { color: C.textMuted, fontSize: FONT.label },
+                  '& .MuiInputLabel-root.Mui-focused': { color: C.accent },
+                  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: C.accent },
+                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: C.accent, borderWidth: 1 },
+                }}
               />
-            )}
-          </Stack>
+            </Stack>
 
-          <Divider sx={{ my: 2.5 }} />
+            {/* Address */}
+            <Stack direction="row" alignItems="flex-start" spacing={2.5}>
+              <Box sx={{
+                width: 40, height: 40, borderRadius: '10px', flexShrink: 0,
+                bgcolor: 'rgba(157,110,237,0.18)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                mt: 0.5,
+              }}>
+                <LocationOnOutlinedIcon sx={{ color: C.accent, fontSize: 20 }} />
+              </Box>
+              <FormField
+                label="Địa điểm nhận hàng"
+                value={fmtAddress(deal.address) ?? '—'}
+                multiline
+              />
+            </Stack>
+          {deal.confirmedAt && (
+            <FormField
+              label="Xác nhận lúc"
+              value={fmtDate(deal.confirmedAt)}
+              icon={<CheckCircleOutlineIcon />}
+            />
+          )}
+        </Stack>
 
-          {/* ── Section: Hành động ── */}
-          <SectionTitle>Hành động</SectionTitle>
-          <Stack spacing={1.5}>
-            {/* Confirm Button (SCRUM-81) — nổi bật, full-width, chỉ seller + PENDING */}
-            {canConfirm && (
-              <Button
-                fullWidth
-                variant="contained"
-                color="success"
-                size="large"
-                startIcon={<CheckCircleOutlineIcon />}
-                onClick={() => setConfirmOpen(true)}
-                sx={{ py: 1.4, fontWeight: 700, fontSize: '1rem', textTransform: 'none', borderRadius: 2 }}
-              >
-                Xác nhận giao dịch
-              </Button>
-            )}
+        <Divider sx={{ borderColor: C.border, mb: 2 }} />
 
-            {/* Disabled khi đã confirm */}
-            {isSeller && deal.status !== 'PENDING' && deal.status !== 'CANCELLED' && (
-              <Tooltip title={`Trạng thái: ${STATUS_CONFIG[deal.status]?.label ?? deal.status}`}>
-                <span>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    color="success"
-                    size="large"
-                    startIcon={<CheckCircleOutlineIcon />}
-                    disabled
-                    sx={{ py: 1.4, fontWeight: 700, textTransform: 'none', borderRadius: 2 }}
-                  >
-                    Đã xác nhận
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
+        {/* ── Hành động ── */}
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={1.5}>
+          {/* Confirm Button (SCRUM-81) */}
+          {canConfirm && (
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              startIcon={<CheckCircleOutlineIcon />}
+              onClick={() => setConfirmOpen(true)}
+              sx={{
+                backgroundColor: C.accent,
+                py: 1.5,
+                fontSize: '16px',
+                fontWeight: 600,
+                borderRadius: '12px',
+                textTransform: 'none',
+                '&:hover': { backgroundColor: C.accentHover },
+              }}
+            >
+              Xác nhận thông tin giao dịch
+            </Button>
+          )}
 
-            {/* Gửi nhắc nhở */}
-            {canRemind && (
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                startIcon={reminderSending ? <CircularProgress size={18} /> : <NotificationsActiveIcon />}
-                onClick={handleReminder}
-                disabled={reminderSending}
-                sx={{ py: 1.2, textTransform: 'none', borderRadius: 2 }}
-              >
-                {reminderSending ? 'Đang gửi...' : 'Gửi nhắc nhở'}
-              </Button>
-            )}
+          {/* Disabled khi đã confirm */}
+          {isSeller && deal.status !== 'PENDING' && deal.status !== 'CANCELLED' && (
+            <Tooltip title={`Trạng thái: ${STATUS_CONFIG[deal.status]?.label ?? deal.status}`}>
+              <span style={{ flex: 1 }}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  size="large"
+                  startIcon={<CheckCircleOutlineIcon />}
+                  disabled
+                  sx={{
+                    py: 0.8,
+                    fontSize: FONT.input,
+                    fontWeight: 600,
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                  }}
+                >
+                  Đã xác nhận
+                </Button>
+              </span>
+            </Tooltip>
+          )}
 
-          </Stack>
-        </Box>
-      </Paper>
+          {/* Gửi nhắc nhở */}
+          {canRemind && (
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              startIcon={reminderSending ? <CircularProgress size={20} sx={{ color: C.text }} /> : <NotificationsActiveIcon />}
+              onClick={handleReminder}
+              disabled={reminderSending}
+              sx={{
+                backgroundColor: '#E0E0E0',
+                color: C.bg,
+                py: 0.8,
+                fontSize: FONT.input,
+                fontWeight: 600,
+                borderRadius: '8px',
+                border: 'none',
+                textTransform: 'none',
+                '&:hover': { backgroundColor: '#d5d5d5', border: 'none' },
+              }}
+            >
+              {reminderSending ? 'Đang gửi...' : 'Gửi nhắc nhở'}
+            </Button>
+          )}
+        </Stack>
+      </Box>
 
       {/* Confirm Dialog (SCRUM-81) */}
       <ConfirmDialog
         open={confirmOpen}
         variant="info"
-        title="Xác nhận giao dịch"
-        content='Bạn xác nhận đã nhận được tiền và giao hàng cho người mua? Trạng thái sẽ chuyển sang "Đã xác nhận".'
+        title="Xác nhận thông tin"
+        content='Bạn xác nhận thông tin giao dịch đã được đầy đủ và chính xác? Trạng thái sẽ chuyển sang "Đã xác nhận".'
         confirmLabel="Xác nhận"
         cancelLabel="Hủy"
         loading={confirming}
