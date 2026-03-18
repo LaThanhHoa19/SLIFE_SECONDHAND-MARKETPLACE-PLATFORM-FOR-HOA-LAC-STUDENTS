@@ -45,7 +45,7 @@ import {
     VisibilityOff as HideIcon,
 } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { deleteDraft, getMyListings, hideListing, renewListing, unhideListing } from '../../api/myListingApi';
+import { deleteDraft, getMyListings, hideListing, renewListing, repostListing, unhideListing } from '../../api/myListingApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 
@@ -185,7 +185,7 @@ function ActionButton({ icon, label, onClick, color, borderColor, bgColor, hover
     );
 }
 
-function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onDeleteDraft }) {
+function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost, onDeleteDraft }) {
     const navigate = useNavigate();
     const id = listing?.id;
     const images = Array.isArray(listing?.images) ? listing.images : [];
@@ -345,16 +345,15 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onDelete
                         )}
 
                         {activeTab === 'EXPIRED' && (
-                            <Tooltip title="Đăng lại (đang phát triển)" arrow>
+                            <Tooltip title="Đăng lại — tin sẽ hiển thị công khai trong 30 ngày" arrow>
                                 <ActionButton
-                                    icon={<RepostIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }} />}
+                                    icon={<RepostIcon sx={{ fontSize: 12, color: '#9D6EED' }} />}
                                     label="Đăng lại"
-                                    onClick={() => {}}
-                                    color="rgba(255,255,255,0.3)"
-                                    borderColor="rgba(255,255,255,0.12)"
-                                    bgColor="rgba(255,255,255,0.04)"
-                                    hoverBg="rgba(255,255,255,0.04)"
-                                    disabled
+                                    onClick={() => onRepost(id)}
+                                    color="#9D6EED"
+                                    borderColor="rgba(157,110,237,0.35)"
+                                    bgColor="rgba(157,110,237,0.08)"
+                                    hoverBg="rgba(157,110,237,0.18)"
                                 />
                             </Tooltip>
                         )}
@@ -566,6 +565,17 @@ export default function MyListingsPage() {
             fetchTabCounts();
         } catch {
             showSnackbar('Không thể gia hạn. Vui lòng thử lại.', 'error');
+        }
+    };
+
+    const handleRepost = async (id) => {
+        try {
+            await repostListing(id);
+            showSnackbar('Đã đăng lại thành công! Tin sẽ hiển thị trong 30 ngày.', 'success');
+            fetchTabCounts();
+            fetchListings(activeTab, page);
+        } catch {
+            showSnackbar('Không thể đăng lại. Vui lòng thử lại.', 'error');
         }
     };
 
@@ -874,6 +884,7 @@ export default function MyListingsPage() {
                             onHide={handleHide}
                             onUnhide={handleUnhide}
                             onRenew={handleRenew}
+                            onRepost={handleRepost}
                             onDeleteDraft={handleDeleteDraft}
                         />
                     ))}
