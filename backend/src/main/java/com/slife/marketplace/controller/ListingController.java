@@ -136,6 +136,16 @@ public class ListingController {
     }
 
     /**
+     * PATCH /api/listings/{id}/repost — Đăng lại tin đã hết hạn (status EXPIRED → ACTIVE, gia hạn 30 ngày).
+     */
+    @PatchMapping("/{id}/repost")
+    public ResponseEntity<ApiResponse<Void>> repostListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.repostListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
      * PATCH /api/listings/{id}/renew — Gia hạn tin (chỉ khi còn ≤ 7 ngày trước khi hết hạn).
      */
     @PatchMapping("/{id}/renew")
