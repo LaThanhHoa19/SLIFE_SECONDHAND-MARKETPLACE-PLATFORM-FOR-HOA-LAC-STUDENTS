@@ -322,6 +322,41 @@ public class ListingService {
     }
 
     // ----------------------------------------------------------------
+    // Repost Listing (EXPIRED → ACTIVE)
+    // ----------------------------------------------------------------
+
+    @Transactional
+    public void repostListing(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+
+        Instant now = Instant.now();
+
+        // Dùng cùng định nghĩa "hết hạn" với findExpiredListingsBySeller:
+        // expirationDate đã qua (không quan tâm status field), HOẶC status = "EXPIRED"
+        // Không cho phép đăng lại nếu bị BANNED, SOLD, GIVEN_AWAY
+        boolean isFunctionallyExpired = "EXPIRED".equals(listing.getStatus())
+                || (listing.getExpirationDate() != null && listing.getExpirationDate().isBefore(now));
+
+        boolean isBlockedStatus = "BANNED".equals(listing.getStatus())
+                || "SOLD".equals(listing.getStatus())
+                || "GIVEN_AWAY".equals(listing.getStatus());
+
+        if (!isFunctionallyExpired || isBlockedStatus) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_EXPIRED);
+        }
+
+        listing.setStatus("ACTIVE");
+        listing.setExpirationDate(now.plus(30, ChronoUnit.DAYS));
+        listing.setUpdatedAt(now);
+        listingRepository.save(listing);
+    }
+
+    // ----------------------------------------------------------------
     // Delete Draft
     // ----------------------------------------------------------------
 
