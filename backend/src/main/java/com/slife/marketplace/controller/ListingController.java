@@ -2,6 +2,8 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingCardResponse;
+import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
@@ -45,9 +47,25 @@ public class ListingController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
-        PagedResponse<ListingCardResponse> listings = 
+        PagedResponse<ListingCardResponse> listings =
             listingService.getActiveListingCards(page, size);
-            
+
+        return ResponseEntity.ok(ApiResponse.success("OK", listings));
+    }
+
+    /**
+     * GET /api/listings/my — Lấy danh sách tin đăng của user hiện tại.
+     * ?status=ACTIVE|DRAFT|HIDDEN|SOLD|GIVEN_AWAY|BANNED|EXPIRED|REPORTED
+     * Không truyền status → trả về tất cả.
+     */
+    @GetMapping("/my")
+    public ResponseEntity<ApiResponse<PagedResponse<MyListingResponse>>> getMyListings(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        User currentUser = userService.getCurrentUser();
+        PagedResponse<MyListingResponse> listings = listingService.getMyListings(status, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
 
@@ -114,6 +132,56 @@ public class ListingController {
     public ResponseEntity<ApiResponse<Void>> unsaveListing(@PathVariable("id") Long id) {
         User user = userService.getCurrentUser();
         savedListingService.unsave(user, id);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/repost — Đăng lại tin đã hết hạn (status EXPIRED → ACTIVE, gia hạn 30 ngày).
+     */
+    @PatchMapping("/{id}/repost")
+    public ResponseEntity<ApiResponse<Void>> repostListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.repostListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/renew — Gia hạn tin (chỉ khi còn ≤ 7 ngày trước khi hết hạn).
+     */
+    @PatchMapping("/{id}/renew")
+    public ResponseEntity<ApiResponse<Void>> renewListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.renewListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * DELETE /api/listings/{id}/draft — Xóa vĩnh viễn bản nháp (chỉ seller, chỉ khi status = DRAFT).
+     */
+    @DeleteMapping("/{id}/draft")
+    public ResponseEntity<ApiResponse<Void>> deleteDraft(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.deleteDraft(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/hide — Ẩn tin (chỉ seller của listing mới được thực hiện).
+     */
+    @PatchMapping("/{id}/hide")
+    public ResponseEntity<ApiResponse<Void>> hideListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.hideListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/unhide — Hiển thị lại tin đã ẩn (chỉ seller của listing mới được thực hiện).
+     */
+    @PatchMapping("/{id}/unhide")
+    public ResponseEntity<ApiResponse<Void>> unhideListing(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.unhideListing(id, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
