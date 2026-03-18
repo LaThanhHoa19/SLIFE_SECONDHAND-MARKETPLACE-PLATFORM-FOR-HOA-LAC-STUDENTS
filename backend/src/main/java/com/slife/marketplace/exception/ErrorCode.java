@@ -27,6 +27,9 @@ public enum ErrorCode {
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+    LISTING_NOT_DRAFT("LISTING_NOT_DRAFT", "Only DRAFT listings can be deleted", HttpStatus.CONFLICT),
+    LISTING_NOT_EXPIRED("LISTING_NOT_EXPIRED", "Only EXPIRED listings can be reposted", HttpStatus.CONFLICT),
+    LISTING_NOT_RENEWABLE("LISTING_NOT_RENEWABLE", "Listing can only be renewed within 7 days before expiration", HttpStatus.CONFLICT),
     SAVED_LISTING_ALREADY("SAVED_LISTING_ALREADY", "Listing already saved", HttpStatus.CONFLICT),
     SAVED_LISTING_NOT_SAVED("SAVED_LISTING_NOT_SAVED", "Listing was not saved", HttpStatus.NOT_FOUND),
 
