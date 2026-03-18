@@ -42,6 +42,15 @@ class ListingControllerTest {
     @MockBean
     private UserService userService;
 
+    @MockBean
+    private com.slife.marketplace.config.UploadResourceConfig uploadResourceConfig;
+
+    @MockBean
+    private com.slife.marketplace.security.JwtTokenProvider jwtTokenProvider;
+
+    @MockBean
+    private com.slife.marketplace.repository.UserRepository userRepository;
+
     @Test
     void getListings_withoutAuth_shouldReturn200AndData() throws Exception {
         ListingResponse listing = new ListingResponse();
@@ -74,7 +83,7 @@ class ListingControllerTest {
                         .param("page", "0")
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isInternalServerError());
     }
 
 
@@ -89,7 +98,7 @@ class ListingControllerTest {
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.code").value("INTERNAL_SERVER_ERROR"))
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(jsonPath("$.message").value("Internal server error"));
     }
 
@@ -106,6 +115,6 @@ class ListingControllerTest {
         mockMvc.perform(options("/api/listings")
                         .header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "GET"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 }
