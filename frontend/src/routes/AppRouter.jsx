@@ -27,6 +27,8 @@ import {
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
+    SuspenseNotificationsPage,
+    SuspenseMyListingsPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -88,6 +90,22 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseDealDetailPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/notifications"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseNotificationsPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/my-listings"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseMyListingsPage />
                         </RouteGuard>
                     }
                 />
