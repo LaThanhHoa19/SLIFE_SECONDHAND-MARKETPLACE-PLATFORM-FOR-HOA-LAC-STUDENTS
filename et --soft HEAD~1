@@ -1,0 +1,13 @@
+[33mcommit 9bbff0b82ea942bc7406c896cc7edd46d4602050[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mViet[m[33m)[m
+Author: vietldhe180008 <vietldhe180008@fpt.edu.vn>
+Date:   Thu Mar 12 18:07:49 2026 +0700
+
+    test: fix,add unit tests for ListingService and ListingController
+
+.idea/compiler.xml
+.idea/dataSources.xml
+.idea/data_source_mapping.xml
+.idea/db-forest-config.xml
+backend/src/main/resources/application.properties
+backend/src/test/java/com/slife/marketplace/controller/ListingControllerTest.java
+backend/src/test/java/com/slife/marketplace/service/ListingServiceTest.java
