@@ -44,7 +44,6 @@ public class Offer {
 
     @NotNull
     @ColumnDefault("'PENDING'")
-    @Lob
     @Column(name = "status", nullable = false)
     private String status;
 
