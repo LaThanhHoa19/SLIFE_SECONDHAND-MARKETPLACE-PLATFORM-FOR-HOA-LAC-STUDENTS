@@ -117,7 +117,9 @@ export default function AppRouter() {
                     path="/admin"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
-                            <SuspenseDashboardPage />
+                            <AdminLayout>
+                                <SuspenseDashboardPage />
+                            </AdminLayout>
                         </RouteGuard>
                     }
                 />
@@ -125,7 +127,9 @@ export default function AppRouter() {
                     path="/admin/reports"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
-                            <SuspenseReportManagementPage />
+                            <AdminLayout>
+                                <SuspenseReportManagementPage />
+                            </AdminLayout>
                         </RouteGuard>
                     }
                 />
@@ -133,7 +137,9 @@ export default function AppRouter() {
                     path="/admin/users"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
-                            <SuspenseUserManagementPage />
+                            <AdminLayout>
+                                <SuspenseUserManagementPage />
+                            </AdminLayout>
                         </RouteGuard>
                     }
                 />
