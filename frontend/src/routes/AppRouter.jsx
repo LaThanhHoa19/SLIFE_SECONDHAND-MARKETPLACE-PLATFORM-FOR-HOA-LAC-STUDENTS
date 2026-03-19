@@ -20,6 +20,7 @@ import {
     SuspenseCreateListingPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
+    SuspenseNotificationsPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
@@ -89,6 +90,15 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseDealDetailPage />
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/notifications"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseNotificationsPage />
                         </RouteGuard>
                     }
                 />

@@ -1,9 +1,10 @@
 /**
- * Mục đích: Lấy thông báo và hỗ trợ realtime qua socket.io, fallback polling.
+ * Mục đích: Lấy thông báo + realtime qua Spring STOMP/SockJS, fallback polling.
  * API dùng: GET /api/notifications, PATCH read endpoints.
  */
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
+import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs';
 import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
 import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from './useAuth';
@@ -13,7 +14,7 @@ export default function useNotifications() {
   const { token } = useAuth();
 
   useEffect(() => {
-    let socket;
+    let stompClient;
     const fetchData = async () => {
       if (!token) {
         setNotifications([]);
@@ -33,13 +34,37 @@ export default function useNotifications() {
     fetchData();
 
     if (token) {
-      // TODO: nếu BE chưa có socket gateway thì bỏ đoạn này và dùng polling.
-      socket = io(API_BASE_URL, { auth: { token } });
-      socket.on('notification:new', (payload) => setNotifications((prev) => [payload, ...prev]));
+      // Backend WebSocket: Spring STOMP + SockJS endpoint `/chat`
+      // Token gửi qua query: `/chat?token=JWT`
+      // NotificationService push unread count to: `/user/queue/notifications`
+      stompClient = new Client({
+        // SockJS is used because backend registers with `.withSockJS()`.
+        webSocketFactory: () => new SockJS(`${API_BASE_URL}/chat?token=${encodeURIComponent(token)}`),
+        reconnectDelay: 5000,
+        debug: () => {},
+        onConnect: () => {
+          stompClient.subscribe('/user/queue/notifications', (message) => {
+            // Payload is unread count (number). We refetch notifications to keep UI consistent.
+            if (!token) return;
+            fetchData();
+          });
+        },
+        onStompError: (frame) => {
+          // Fallback to polling will still work.
+          console.error('STOMP error:', frame?.headers, frame?.body);
+        },
+      });
+
+      stompClient.activate();
     }
 
     const pollingId = token ? setInterval(fetchData, 30000) : null;
-    return () => { clearInterval(pollingId); socket?.disconnect(); };
+    return () => {
+      clearInterval(pollingId);
+      if (stompClient && stompClient.active) {
+        stompClient.deactivate();
+      }
+    };
   }, [token]);
 
   const markRead = async (id) => {
