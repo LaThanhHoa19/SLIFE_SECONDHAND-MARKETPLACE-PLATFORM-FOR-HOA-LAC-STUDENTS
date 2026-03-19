@@ -20,9 +20,12 @@ import {
     SuspenseCreateListingPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
+    SuspenseNotificationsPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
+    SuspenseCategoryManagementPage,
+    SuspenseReportPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
@@ -71,7 +74,7 @@ export default function AppRouter() {
                 <Route
                     path="/listings/new"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.VERIFIED_USER}>
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseCreateListingPage />
                         </RouteGuard>
                     }
@@ -101,23 +104,64 @@ export default function AppRouter() {
                     }
                 />
 
+                <Route
+                    path="/notifications"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseNotificationsPage />
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/report"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseReportPage />
+                        </RouteGuard>
+                    }
+                />
+
                 {/* Admin routes (tạm thời không cần login để test UI) */}
                 <Route
                     path="/admin"
                     element={
-                        <SuspenseDashboardPage />
+                        <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
+                            <AdminLayout>
+                                <SuspenseDashboardPage />
+                            </AdminLayout>
+                        </RouteGuard>
                     }
                 />
                 <Route
                     path="/admin/reports"
                     element={
-                        <SuspenseReportManagementPage />
+                        <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
+                            <AdminLayout>
+                                <SuspenseReportManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
                     }
                 />
                 <Route
                     path="/admin/users"
                     element={
-                        <SuspenseUserManagementPage />
+                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+                            <AdminLayout>
+                                <SuspenseUserManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/admin/categories"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+                            <AdminLayout>
+                                <SuspenseCategoryManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
                     }
                 />
 

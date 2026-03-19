@@ -10,11 +10,15 @@ import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
+import com.slife.marketplace.repository.AddressRepository;
+import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,10 +31,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -44,13 +48,23 @@ class ListingServiceTest {
     @Mock
     private SavedListingRepository savedListingRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
 
+    @Mock
+    private AddressRepository addressRepository;
 
     private ListingService listingService;
 
     @BeforeEach
     void setUp() {
-        listingService = new ListingService(listingRepository, listingImageRepository, savedListingRepository);
+        listingService = new ListingService(
+                listingRepository,
+                listingImageRepository,
+                savedListingRepository,
+                categoryRepository,
+                addressRepository
+        );
     }
 
 
@@ -115,5 +129,135 @@ class ListingServiceTest {
         assertEquals("Alice", sellerSummary.get("fullName"));
         assertFalse(listingResponse.getIsSaved());
         assertFalse(listingResponse.getIsFollowed());
+    }
+
+    // =========================================================================
+    // FEATURE: QUẢN LÝ PHÂN TRANG VÀ AN TOÀN DỮ LIỆU (PAGINATION & SAFETY)
+    // =========================================================================
+    @Nested
+    @DisplayName("Tính năng: An toàn phân trang và Sắp xếp")
+    class PaginationAndSortingSafety {
+
+        @Test
+        @DisplayName("Hệ thống phải tự điều chỉnh khi tham số phân trang nằm ngoài phạm vi cho phép")
+        void should_SanitizePagination_When_InputIsOutOfRange() {
+            // GIVEN: Người dùng truyền page âm (-1) và size quá lớn (100)
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            // WHEN
+            listingService.getFilteredListings(null, null, null, null, -1, 100, null);
+
+            // THEN: Hệ thống tự đưa về page 0 và size 20 (giới hạn tối đa)
+            org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+            verify(listingRepository).findByFilters(any(), any(), any(), captor.capture());
+
+            assertEquals(0, captor.getValue().getPageNumber());
+            assertEquals(20, captor.getValue().getPageSize());
+        }
+
+        @Test
+        @DisplayName("Hệ thống phải dùng sắp xếp mặc định (createdAt, DESC) khi người dùng truyền field không hợp lệ")
+        void should_FallbackToDefaultSort_When_InvalidFieldProvided() {
+            // GIVEN: Field 'password' là field bị cấm/không tồn tại
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            // WHEN
+            listingService.getFilteredListings(null, null, null, "password,asc", 0, 10, null);
+
+            // THEN: Kết quả phải là createdAt: DESC (Sau khi bạn đã sửa logic code chính)
+            org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+            verify(listingRepository).findByFilters(any(), any(), any(), captor.capture());
+
+            assertEquals("createdAt: DESC", captor.getValue().getSort().toString());
+        }
+
+        @Test
+        @DisplayName("Hệ thống phải chấp nhận hướng sắp xếp tăng dần (ASC) nếu field hợp lệ")
+        void should_ApplyAscendingOrder_When_ValidFieldAndDirectionProvided() {
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            listingService.getFilteredListings(null, null, null, "price,asc", 0, 10, null);
+
+            org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+            verify(listingRepository).findByFilters(any(), any(), any(), captor.capture());
+
+            assertEquals("price: ASC", captor.getValue().getSort().toString());
+        }
+    }
+
+    // =========================================================================
+    // FEATURE: CHUẨN HÓA THAM SỐ TÌM KIẾM (SEARCH NORMALIZATION)
+    // =========================================================================
+    @Nested
+    @DisplayName("Tính năng: Chuẩn hóa dữ liệu tìm kiếm")
+    class SearchNormalization {
+
+        @Test
+        @DisplayName("Hệ thống phải loại bỏ khoảng trắng thừa và chuyển chuỗi trống thành null")
+        void should_NormalizeInputParams_When_Searching() {
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            // WHEN: Truyền chuỗi có khoảng trắng và chuỗi chỉ có dấu cách
+            listingService.getFilteredListings(1L, "  Hoa Lac  ", "   ", null, 0, 10, null);
+
+            // THEN: Repo nhận được "Hoa Lac" (đã trim) và null (thay vì "   ")
+            verify(listingRepository).findByFilters(eq(1L), eq("Hoa Lac"), isNull(), any());
+        }
+
+        @Test
+        @DisplayName("Hệ thống phải xử lý an toàn khi các tham số tìm kiếm hoàn toàn null")
+        void should_HandleNullParams_Gracefully() {
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            listingService.getFilteredListings(null, null, null, null, 0, 10, null);
+
+            verify(listingRepository).findByFilters(isNull(), isNull(), isNull(), any());
+        }
+    }
+
+    // =========================================================================
+    // FEATURE: HIỂN THỊ THÔNG TIN CHI TIẾT (INFORMATION RESOLVING)
+    // =========================================================================
+    @Nested
+    @DisplayName("Tính năng: Hiển thị thông tin địa điểm và người bán")
+    class InformationMapping {
+
+        @Test
+        @DisplayName("Nên hiển thị AddressText nếu LocationName bị trống")
+        void should_FallbackToAddressText_When_LocationNameIsBlank() {
+            Listing listing = new Listing();
+            Address address = new Address();
+            address.setLocationName("");
+            address.setAddressText("Ký túc xá Dom A");
+            listing.setPickupAddress(address);
+
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of(listing)));
+
+            PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null, null, 0, 10, null);
+
+            assertEquals("Ký túc xá Dom A", result.getContent().get(0).getLocation());
+        }
+
+        @Test
+        @DisplayName("Nên xử lý an toàn (trả về null) khi Listing thiếu địa chỉ hoặc người bán")
+        void should_ReturnNull_When_MandatoryFieldsAreMissing() {
+            Listing listing = new Listing();
+            listing.setSeller(null);
+            listing.setPickupAddress(null);
+
+            when(listingRepository.findByFilters(any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of(listing)));
+
+            PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null, null, 0, 10, null);
+
+            assertNull(result.getContent().get(0).getSellerSummary());
+            assertNull(result.getContent().get(0).getLocation());
+        }
     }
 }

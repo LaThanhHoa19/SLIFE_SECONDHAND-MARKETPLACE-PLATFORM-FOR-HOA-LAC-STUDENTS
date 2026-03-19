@@ -185,7 +185,16 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleCreatePost = () => {
-        navigate('/listing/create');
+        if (!user) {
+            navigate('/login', {
+                state: {
+                    from: '/listings/new',
+                    message: 'Bạn cần đăng nhập để đăng tin',
+                },
+            });
+            return;
+        }
+        navigate('/listings/new');
     };
 
     const handleManagePosts = () => {
@@ -255,7 +264,6 @@ export default function Header({ onToggleSidebar }) {
 
                 {/* Navigation Buttons */}
                 <Box sx={{ display: 'flex', gap: 0.5, ml: 3 }}>
-                    <NavButton onClick={handleCreatePost}>Đăng tin</NavButton>
                     <NavButton onClick={() => navigate('/giveaway')}>Trao tặng</NavButton>
                     <NavButton onClick={() => navigate('/community')}>Cộng đồng</NavButton>
                 </Box>
@@ -322,7 +330,6 @@ export default function Header({ onToggleSidebar }) {
                         <>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1.5 }}>
                                 <ActionButton onClick={handleManagePosts}>Quản lý tin</ActionButton>
-                                <PostButton onClick={handleCreatePost}>Đăng tin</PostButton>
                             </Box>
                             <IconButton
                                 onClick={handleUserMenuOpen}

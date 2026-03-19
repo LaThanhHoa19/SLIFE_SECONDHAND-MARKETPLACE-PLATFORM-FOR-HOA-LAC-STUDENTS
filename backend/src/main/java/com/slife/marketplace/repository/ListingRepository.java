@@ -1,6 +1,7 @@
 package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -55,10 +56,19 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      */
     @Query("""
         SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
-            l.id, l.title, l.price, 
-            COALESCE(a.locationName, a.addressText), 
+            l.id, l.title, l.price,
+            CASE
+                WHEN a IS NULL THEN NULL
+                WHEN a.locationName IS NOT NULL AND a.locationName <> '' AND a.addressText IS NOT NULL AND a.addressText <> ''
+                    THEN CONCAT(a.locationName, ' — ', a.addressText)
+                WHEN a.locationName IS NOT NULL AND a.locationName <> '' THEN a.locationName
+                ELSE a.addressText
+            END,
             l.status,
-            (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1)
+            (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
+            l.seller.id,
+            l.seller.fullName,
+            l.seller.avatarUrl
         )
         FROM Listing l
         LEFT JOIN l.pickupAddress a
@@ -70,4 +80,23 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
             "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
     List<String> findDistinctPickupLocationNames();
-}
+
+    // --- My Listings Management (pageable versions) ---
+
+    Page<Listing> findBySellerOrderByCreatedAtDesc(User seller, Pageable pageable);
+
+    Page<Listing> findBySellerAndStatus(User seller, String status, Pageable pageable);
+
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
+            "ORDER BY l.expirationDate DESC")
+    Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND EXISTS (SELECT r FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = l.id) " +
+            "ORDER BY l.createdAt DESC")
+    Page<Listing> findReportedListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    @Query("SELECT COUNT(r) FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = :listingId")
+    long countReportsByListingId(@Param("listingId") Long listingId);
+}
