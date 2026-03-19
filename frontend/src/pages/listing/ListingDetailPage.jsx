@@ -48,6 +48,7 @@ import { getListing, getListings } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
 import { getUserById } from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
+import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 import * as offerApi from '../../api/offerApi';
@@ -101,7 +102,9 @@ const getLocation = (listing) => {
   if (typeof loc === 'string' && loc.trim()) return loc;
   const pa = listing?.pickupAddress;
   if (typeof pa === 'string' && pa.trim()) return pa;
-  if (pa && typeof pa === 'object') return pa.locationName || pa.addressText || '';
+  if (pa && typeof pa === 'object') {
+    return formatPickupDisplayLine(pa.locationName ?? pa.location_name, pa.addressText ?? pa.address_text);
+  }
   return '';
 };
 

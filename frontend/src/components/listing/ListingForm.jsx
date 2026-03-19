@@ -15,8 +15,38 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
 import { getLocations } from '../../api/locationApi';
-import { searchPlaces, reverseGeocode } from '../../api/geoApi';
+import { searchPlaces, reverseGeocode, getGeoClientConfig, getPlaceByRefId } from '../../api/geoApi';
 import useDebounce from '../../hooks/useDebounce';
+
+/** Đại học FPT Hà Nội — khuôn viên Hòa Lạc (mặc định bản đồ đăng tin) */
+const FPT_UNIVERSITY_HN_LAT = 21.0135;
+const FPT_UNIVERSITY_HN_LNG = 105.5257;
+const MAP_DEFAULT_ZOOM = 15;
+
+function truncateUtf(str, maxLen) {
+    if (!str || maxLen <= 0) return '';
+    const s = String(str);
+    if (s.length <= maxLen) return s;
+    return `${s.slice(0, maxLen - 1)}…`;
+}
+
+/** Gộp tên địa điểm + địa chỉ từ Vietmap thành một dòng hiển thị đầy đủ */
+function buildFullAddressLine(nameRaw, addressRaw) {
+    const name = (nameRaw || '').trim();
+    const addr = (addressRaw || '').trim();
+    if (!name) return addr;
+    if (!addr) return name;
+    const n = name.toLowerCase();
+    const a = addr.toLowerCase();
+    if (a.includes(n) || n.includes(a)) return addr.length >= name.length ? addr : name;
+    return `${name}, ${addr}`;
+}
+
+function parseCoord(v) {
+    if (v == null || v === '') return NaN;
+    const n = typeof v === 'number' ? v : Number(v);
+    return Number.isFinite(n) ? n : NaN;
+}
 
 function buildCategoryTree(flatList) {
     if (!Array.isArray(flatList) || flatList.length === 0) return [];
@@ -64,6 +94,8 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             pickupAddressId: null,
             pickupLocationName: '',
             pickupAddressText: '',
+            /** Ghi chú không có trên bản đồ (vd: phòng 102) — gửi riêng pickupAddressSupplement, lưu DB ở address_text */
+            pickupAddressSupplement: '',
             pickupLat: '',
             pickupLng: '',
             ...defaultValues,
@@ -77,13 +109,44 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
     const pickupLat = watch('pickupLat');
     const pickupLng = watch('pickupLng');
 
-    // State cho Vietmap search
-    const [searchQuery, setSearchQuery] = useState('');
-    const debouncedQuery = useDebounce(searchQuery, 400);
+    // Tìm kiếm trên bản đồ (tách khỏi địa chỉ từ gim / reverse)
+    const [mapSearchQuery, setMapSearchQuery] = useState('');
+    const debouncedMapQuery = useDebounce(mapSearchQuery, 400);
     const [suggestions, setSuggestions] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const mapRef = useRef(null);
     const markerRef = useRef(null);
+    const [mapReady, setMapReady] = useState(false);
+
+    const applyReverseToForm = useCallback((data) => {
+        if (!data) return;
+        const name = (data.locationName || '').trim();
+        const addr = (data.addressText || '').trim();
+        const line = buildFullAddressLine(name, addr);
+        if (!line) return;
+        setValue('pickupLocationName', truncateUtf(line, 200));
+        setValue('pickupAddressText', line);
+    }, [setValue]);
+
+    /** Tile key: ưu tiên VITE_VIETMAP_TILE_KEY; nếu thiếu (chạy local không Docker) lấy từ BE /api/geo/client-config */
+    const [vietmapTileKey, setVietmapTileKey] = useState(
+        () => (import.meta.env.VITE_VIETMAP_TILE_KEY || '').trim(),
+    );
+
+    useEffect(() => {
+        if (vietmapTileKey) return;
+        let cancelled = false;
+        getGeoClientConfig()
+            .then((res) => {
+                const data = res?.data?.data ?? res?.data;
+                const key = typeof data?.tileKey === 'string' ? data.tileKey.trim() : '';
+                if (!cancelled && key) setVietmapTileKey(key);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [vietmapTileKey]);
 
     // Fetch danh mục từ API
     useEffect(() => {
@@ -160,64 +223,51 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         handleSubmit(handleFormSubmit)(e);
     };
 
-    // Inject Vietmap GL JS + init map (click để gim vị trí)
+    // Vietmap GL: khởi tạo một lần, mặc định trung tâm ĐH FPT Hà Nội (Hòa Lạc)
     useEffect(() => {
-        const VIETMAP_TILE_KEY = import.meta.env.VITE_VIETMAP_TILE_KEY;
-        if (!VIETMAP_TILE_KEY) {
+        if (!vietmapTileKey) {
             return;
         }
 
         let cancelled = false;
 
+        const onMapClick = async (e) => {
+            const { lng, lat } = e.lngLat;
+            setValue('pickupLat', lat.toFixed(6));
+            setValue('pickupLng', lng.toFixed(6));
+            try {
+                const res = await reverseGeocode({ lat, lng });
+                const data = res?.data?.data ?? res?.data;
+                if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+                    applyReverseToForm(data);
+                } else {
+                    const fb = buildFullAddressLine('Vị trí đã chọn', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+                    setValue('pickupLocationName', truncateUtf(fb, 200));
+                    setValue('pickupAddressText', fb);
+                }
+            } catch {
+                const fb = buildFullAddressLine('Vị trí đã chọn', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+                setValue('pickupLocationName', truncateUtf(fb, 200));
+                setValue('pickupAddressText', fb);
+            }
+        };
+
         const initMap = () => {
             if (cancelled || mapRef.current || !window.vietmapgl) return;
 
-            const centerLat = pickupLat ? Number(pickupLat) : 10.803866;
-            const centerLng = pickupLng ? Number(pickupLng) : 106.668171;
-
             const map = new window.vietmapgl.Map({
                 container: 'vietmap-container',
-                style: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${VIETMAP_TILE_KEY}`,
-                center: [centerLng, centerLat],
-                zoom: 14,
+                style: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${vietmapTileKey}`,
+                center: [FPT_UNIVERSITY_HN_LNG, FPT_UNIVERSITY_HN_LAT],
+                zoom: MAP_DEFAULT_ZOOM,
             });
 
             map.addControl(new window.vietmapgl.NavigationControl(), 'top-left');
-
-            mapRef.current = map;
-
-            if (pickupLat && pickupLng) {
-                const marker = new window.vietmapgl.Marker()
-                    .setLngLat([Number(pickupLng), Number(pickupLat)])
-                    .addTo(map);
-                markerRef.current = marker;
-            }
-
-            map.on('click', async (e) => {
-                const { lng, lat } = e.lngLat;
-                if (!markerRef.current) {
-                    markerRef.current = new window.vietmapgl.Marker().setLngLat([lng, lat]).addTo(map);
-                } else {
-                    markerRef.current.setLngLat([lng, lat]);
-                }
-
-                setValue('pickupLat', lat.toFixed(6));
-                setValue('pickupLng', lng.toFixed(6));
-
-                try {
-                    const res = await reverseGeocode({ lat, lng });
-                    const data = res?.data?.data ?? res?.data;
-                    if (data) {
-                        const name = data.locationName || '';
-                        const addr = data.addressText || '';
-                        setValue('pickupLocationName', name || addr);
-                        setValue('pickupAddressText', addr);
-                        setSearchQuery(addr || name || '');
-                    }
-                } catch {
-                    // ignore reverse error
-                }
+            map.once('load', () => {
+                if (!cancelled) setMapReady(true);
             });
+            map.on('click', onMapClick);
+            mapRef.current = map;
         };
 
         const ensureCss = () => {
@@ -248,38 +298,113 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
         return () => {
             cancelled = true;
+            setMapReady(false);
+            if (mapRef.current) {
+                try {
+                    mapRef.current.remove();
+                } catch {
+                    /* bỏ qua */
+                }
+                mapRef.current = null;
+            }
+            markerRef.current = null;
         };
-    }, [pickupLat, pickupLng, setValue]);
+    }, [vietmapTileKey, setValue, applyReverseToForm]);
 
-    // Gọi BE geo search khi user gõ địa chỉ chi tiết
+    // Đồng bộ marker + camera khi đổi tọa độ (gợi ý tìm kiếm / chỉnh từ nguồn khác)
     useEffect(() => {
-        const q = debouncedQuery.trim();
+        if (!mapReady || !mapRef.current || !window.vietmapgl) return;
+        const lat = pickupLat !== '' && pickupLat != null ? Number(pickupLat) : NaN;
+        const lng = pickupLng !== '' && pickupLng != null ? Number(pickupLng) : NaN;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        const map = mapRef.current;
+        map.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(map.getZoom(), MAP_DEFAULT_ZOOM),
+            essential: true,
+        });
+
+        if (!markerRef.current) {
+            markerRef.current = new window.vietmapgl.Marker()
+                .setLngLat([lng, lat])
+                .addTo(map);
+        } else {
+            markerRef.current.setLngLat([lng, lat]);
+        }
+    }, [pickupLat, pickupLng, mapReady]);
+
+    // Gợi ý địa điểm khi tìm trên bản đồ (bias khu vực FPT Hòa Lạc)
+    useEffect(() => {
+        const q = debouncedMapQuery.trim();
         if (!q) {
             setSuggestions([]);
             return;
         }
         setIsSearching(true);
-        searchPlaces({ q })
+        searchPlaces({ q, lat: FPT_UNIVERSITY_HN_LAT, lng: FPT_UNIVERSITY_HN_LNG })
             .then((res) => {
                 const data = res?.data?.data ?? res?.data;
                 setSuggestions(Array.isArray(data) ? data : []);
             })
             .catch(() => setSuggestions([]))
             .finally(() => setIsSearching(false));
-    }, [debouncedQuery]);
+    }, [debouncedMapQuery]);
 
-    const handleSuggestionClick = (sugg) => {
-        const lat = sugg.lat ?? sugg.latitude;
-        const lng = sugg.lng ?? sugg.longitude;
-        const name = sugg.name ?? sugg.locationName ?? '';
-        const address = sugg.address ?? sugg.addressText ?? '';
+    const handleSuggestionClick = async (sugg) => {
+        const name = (sugg.name ?? sugg.locationName ?? '').trim();
+        const address = (sugg.address ?? sugg.addressText ?? '').trim();
+        const displayFromSearch = (sugg.display ?? '').trim();
+        const refId = sugg.ref_id ?? sugg.refId ?? null;
 
-        setValue('pickupLocationName', name || address);
-        setValue('pickupAddressText', address);
-        setValue('pickupLat', lat ?? '');
-        setValue('pickupLng', lng ?? '');
-        setValue('location', name || address);
-        setSearchQuery(name || address);
+        let lat = parseCoord(sugg.lat ?? sugg.latitude);
+        let lng = parseCoord(sugg.lng ?? sugg.longitude);
+        let place = null;
+
+        // Search v3 thường chỉ trả ref_id, không có lat/lng — cần Place API
+        if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && refId) {
+            try {
+                const res = await getPlaceByRefId(refId);
+                place = res?.data?.data ?? res?.data ?? null;
+                lat = parseCoord(place?.lat);
+                lng = parseCoord(place?.lng);
+            } catch {
+                /* bỏ qua */
+            }
+        }
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        const displayFromPlace = place && typeof place.display === 'string' ? place.display.trim() : '';
+        const nameP = (place && typeof place.name === 'string' ? place.name : name) || '';
+        const addrP = (place && typeof place.address === 'string' ? place.address : address) || '';
+
+        let fullLine =
+            displayFromPlace ||
+            displayFromSearch ||
+            buildFullAddressLine(nameP, addrP);
+
+        if (!fullLine) {
+            try {
+                const res = await reverseGeocode({ lat, lng });
+                const data = res?.data?.data ?? res?.data;
+                if (data && typeof data === 'object') {
+                    fullLine = buildFullAddressLine(data.locationName, data.addressText);
+                }
+            } catch {
+                /* bỏ qua */
+            }
+        }
+
+        if (!fullLine) {
+            fullLine = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        }
+
+        setValue('pickupLat', lat.toFixed(6));
+        setValue('pickupLng', lng.toFixed(6));
+        setValue('pickupLocationName', truncateUtf(fullLine, 200));
+        setValue('pickupAddressText', fullLine);
+        setMapSearchQuery(fullLine);
         setSuggestions([]);
         clearErrors('pickupLocationName');
     };
@@ -487,25 +612,65 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         ))}
                     </TextField>
 
-                    {/* Trường địa chỉ chi tiết + gợi ý từ Vietmap */}
+                    <input type="hidden" {...register('pickupLat')} />
+                    <input type="hidden" {...register('pickupLng')} />
+                    <input type="hidden" {...register('pickupAddressText')} />
+
+                    <Typography fontWeight={600} fontSize={16} mt={2} mb={0.75}>
+                        Địa chỉ điểm hẹn (từ bản đồ)
+                    </Typography>
+                    <Box
+                        sx={{
+                            minHeight: 52,
+                            px: 2,
+                            py: 1.25,
+                            borderRadius: 1,
+                            border: '1px solid rgba(148, 163, 184, 0.35)',
+                            bgcolor: '#111827',
+                            display: 'flex',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <Typography
+                            fontSize={16}
+                            color={pickupAddressText ? '#e5e7eb' : '#6b7280'}
+                            sx={{ lineHeight: 1.45 }}
+                        >
+                            {pickupAddressText?.trim()
+                                ? pickupAddressText
+                                : 'Tìm hoặc bấm trên bản đồ để gim vị trí — địa chỉ đầy đủ sẽ hiện ở đây.'}
+                        </Typography>
+                    </Box>
+
                     <TextField
                         fullWidth
-                        label="Địa chỉ chi tiết (tuỳ chọn)"
+                        label="Ghi chú thêm (tuỳ chọn)"
                         margin="normal"
-                        placeholder="VD: KTX Dom A, phòng 402"
-                        {...register("pickupAddressText")}
-                        value={pickupAddressText}
-                        onChange={(e) => {
-                            setValue('pickupAddressText', e.target.value);
-                            setSearchQuery(e.target.value);
-                        }}
+                        placeholder="Chỉ khi không có trên bản đồ, VD: Phòng 102, tầng 3"
+                        {...register('pickupAddressSupplement')}
                         sx={{
                             "& .MuiInputBase-input": {
                                 fontSize: "16px"
                             }
                         }}
                     />
-                    {pickupAddressText && suggestions.length > 0 && (
+
+                    <Typography fontWeight={600} fontSize={16} mt={2} mb={0.75}>
+                        Tìm trên bản đồ
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="VD: KTX Đại học FPT, tòa Alpha…"
+                        value={mapSearchQuery}
+                        onChange={(e) => setMapSearchQuery(e.target.value)}
+                        sx={{
+                            "& .MuiInputBase-input": {
+                                fontSize: "16px"
+                            }
+                        }}
+                    />
+                    {(mapSearchQuery.trim() && (suggestions.length > 0 || isSearching)) && (
                         <Box
                             sx={{
                                 mt: 0.5,
@@ -549,47 +714,17 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                             )}
                         </Box>
                     )}
-                    {/* Toạ độ lat/lng (có thể được điền tự động từ gợi ý hoặc user nhập tay) */}
-                    <Grid container spacing={2} mt={0.5}>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="Lat"
-                                placeholder="21.0135"
-                                {...register("pickupLat")}
-                                sx={{
-                                    "& .MuiInputBase-input": {
-                                        fontSize: "16px"
-                                    }
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField
-                                fullWidth
-                                label="Lng"
-                                placeholder="105.5257"
-                                {...register("pickupLng")}
-                                sx={{
-                                    "& .MuiInputBase-input": {
-                                        fontSize: "16px"
-                                    }
-                                }}
-                            />
-                        </Grid>
-                    </Grid>
 
-                    <Typography fontSize={16} mt={1} color="error">
-                        Chỉ hỗ trợ giao dịch trong khu vực Hoà Lạc. Bấm trên bản đồ Vietmap bên dưới để gim vị trí.
+                    <Typography fontSize={15} mt={1.5} color="error">
+                        Chỉ hỗ trợ giao dịch trong khu vực Hoà Lạc. Tìm địa điểm hoặc bấm trên bản đồ để gim vị trí (mặc định: ĐH FPT Hà Nội).
                     </Typography>
 
-                    {/* Bản đồ Vietmap (click để gim vị trí) */}
                     <Box
                         id="vietmap-container"
                         sx={{
                             mt: 2,
                             width: '100%',
-                            height: 260,
+                            height: 340,
                             borderRadius: 2,
                             overflow: 'hidden',
                             border: '1px solid rgba(148, 163, 184, 0.35)',
@@ -597,7 +732,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         }}
                     />
                     <Typography fontSize={12} mt={0.5} color="#9ca3af">
-                        Nếu bản đồ không hiển thị, hãy kiểm tra lại key Vietmap (VITE_VIETMAP_TILE_KEY) hoặc kết nối mạng.
+                        Nếu bản đồ không hiển thị: kiểm tra VITE_VIETMAP_TILE_KEY, backend dev (vietmap.tileKey / GET /api/geo/client-config), hoặc kết nối mạng.
                     </Typography>
                 </Grid>
             </Grid>

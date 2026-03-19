@@ -13,6 +13,7 @@ import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.ListingImageService;
 import com.slife.marketplace.service.SavedListingService;
 import com.slife.marketplace.service.UserService;
+import com.slife.marketplace.util.AddressFormat;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -109,7 +110,14 @@ public class ListingController {
         data.put("createdAt", listing.getCreatedAt());
 
         if (listing.getPickupAddress() != null) {
-            data.put("location", listing.getPickupAddress().getLocationName());
+            var pa = listing.getPickupAddress();
+            data.put("location", AddressFormat.pickupDisplayLine(pa.getLocationName(), pa.getAddressText()));
+            Map<String, Object> pickup = new HashMap<>();
+            pickup.put("locationName", pa.getLocationName());
+            pickup.put("addressText", pa.getAddressText());
+            pickup.put("lat", pa.getLat());
+            pickup.put("lng", pa.getLng());
+            data.put("pickupAddress", pickup);
         }
 
         if (listing.getSeller() != null) {

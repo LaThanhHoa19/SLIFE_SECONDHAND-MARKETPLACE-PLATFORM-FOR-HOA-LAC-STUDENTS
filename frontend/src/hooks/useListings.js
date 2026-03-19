@@ -5,6 +5,7 @@
  */
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {getListings} from '../api/listingApi';
+import {formatPickupDisplayLine} from '../utils/addressDisplay';
 import useDebounce from './useDebounce';
 
 const toBoolean = (value) => value === true || value === 1 || value === '1';
@@ -39,7 +40,10 @@ const normalizeImages = (item) => {
 const normalizeListing = (item) => {
     const pickupAddress = item?.pickupAddress ?? item?.pickup_address;
     const locationFromAddress = typeof pickupAddress === 'object'
-        ? pickupAddress?.locationName || pickupAddress?.location_name || pickupAddress?.addressText || pickupAddress?.address_text
+        ? formatPickupDisplayLine(
+            pickupAddress?.locationName ?? pickupAddress?.location_name,
+            pickupAddress?.addressText ?? pickupAddress?.address_text,
+        )
         : pickupAddress;
     const purpose = item?.purpose ?? item?.listingType ?? item?.listing_type;
     const isGiveaway = toBoolean(item?.isGiveaway ?? item?.is_giveaway) || purpose === 'GIVEAWAY';

@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
+import com.slife.marketplace.util.AddressFormat;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Address;
@@ -193,8 +194,17 @@ public class ListingService {
 
         Address addr = new Address();
         addr.setUser(seller);
-        addr.setLocationName(request.getPickupLocationName());
-        addr.setAddressText(request.getPickupAddressText());
+        String loc = request.getPickupLocationName().trim();
+        if (loc.length() > 200) {
+            loc = loc.substring(0, 200);
+        }
+        addr.setLocationName(loc);
+        String supplement = request.getPickupAddressSupplement();
+        if (supplement != null && !supplement.isBlank()) {
+            addr.setAddressText(supplement.trim());
+        } else {
+            addr.setAddressText(null);
+        }
         addr.setLat(request.getPickupLat());
         addr.setLng(request.getPickupLng());
         addr.setIsDefault(false);
@@ -238,13 +248,9 @@ public class ListingService {
 
         if (listing.getPickupAddress() == null) return null;
 
-        String locationName = listing.getPickupAddress().getLocationName();
-
-        if (locationName != null && !locationName.isBlank()) {
-            return locationName;
-        }
-
-        return listing.getPickupAddress().getAddressText();
+        return AddressFormat.pickupDisplayLine(
+                listing.getPickupAddress().getLocationName(),
+                listing.getPickupAddress().getAddressText());
     }
 
     private List<String> findImageUrls(Long listingId) {
