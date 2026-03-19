@@ -37,18 +37,13 @@ public class Offer {
     private User buyer;
 
     @NotNull
-    @Column(name = "proposed_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal proposedPrice;
-
-    @Lob
-    @Column(name = "message")
-    private String message;
+    @Column(name = "amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal amount;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.RESTRICT)
-    @JoinColumn(name = "status_id", nullable = false)
-    private OfferStatus offerStatus;
+    @ColumnDefault("'PENDING'")
+    @Column(name = "status", nullable = false)
+    private String status;
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
@@ -60,36 +55,27 @@ public class Offer {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    /**
-     * Backward-compatible accessor for existing chat flow code.
-     */
+    /** Compatibility for APIs using proposedPrice name. */
     @Transient
-    public String getStatus() {
-        return offerStatus != null ? offerStatus.getCode() : null;
+    public BigDecimal getProposedPrice() {
+        return amount;
     }
 
-    /**
-     * Backward-compatible mutator for existing chat flow code.
-     * The actual status FK must be assigned by service via OfferStatusRepository.
-     */
+    /** Compatibility for APIs using proposedPrice name. */
     @Transient
-    public void setStatus(String ignored) {
-        // no-op by design
+    public void setProposedPrice(BigDecimal proposedPrice) {
+        this.amount = proposedPrice;
     }
 
-    /**
-     * Backward-compatible accessor for legacy field name.
-     */
+    /** Current schema has no message column yet. */
     @Transient
-    public BigDecimal getAmount() {
-        return proposedPrice;
+    public String getMessage() {
+        return null;
     }
 
-    /**
-     * Backward-compatible mutator for legacy field name.
-     */
+    /** Current schema has no message column yet. */
     @Transient
-    public void setAmount(BigDecimal amount) {
-        this.proposedPrice = amount;
+    public void setMessage(String ignored) {
+        // no-op until message column exists
     }
 }
