@@ -20,8 +20,8 @@ Bộ khung frontend để team/AI tiếp tục triển khai UI, state management
 - `POST /api/listings/{id}/images` upload ảnh bằng `multipart/form-data`.
 
 ## Realtime & notification
-- Ưu tiên `socket.io-client` với token auth từ `AuthContext`.
-- Fallback polling 30s tại `useNotifications`.
+- Backend chat dùng **STOMP + SockJS** (`/chat`), không phải Socket.IO — đừng gọi `socket.io` tới cổng Spring.
+- Thông báo: polling 30s trong `useNotifications` (realtime STOMP có thể bổ sung sau).
 
 ## Validation
 - Khuyến nghị dùng `react-hook-form`.

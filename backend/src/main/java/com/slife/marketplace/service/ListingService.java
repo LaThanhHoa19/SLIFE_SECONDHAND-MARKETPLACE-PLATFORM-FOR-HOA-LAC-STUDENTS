@@ -1,16 +1,22 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.request.CreateListingRequest;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.entity.Address;
+import com.slife.marketplace.entity.Category;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.AddressRepository;
+import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
+import com.slife.marketplace.util.AddressFormat;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,7 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,20 +35,30 @@ import java.util.Set;
 @Service
 @Slf4j
 public class ListingService {
+
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
     private final SavedListingRepository savedListingRepository;
+    private final CategoryRepository categoryRepository;
+    private final AddressRepository addressRepository;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
-                          SavedListingRepository savedListingRepository) {
+                          SavedListingRepository savedListingRepository,
+                          CategoryRepository categoryRepository,
+                          AddressRepository addressRepository) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
+        this.categoryRepository = categoryRepository;
+        this.addressRepository = addressRepository;
     }
 
+    // ----------------------------------------------------------------
+    // Public listing search
+    // ----------------------------------------------------------------
 
     @Transactional(readOnly = true)
     public PagedResponse<ListingResponse> getFilteredListings(
@@ -55,7 +70,6 @@ public class ListingService {
             int size,
             User currentUser) {
 
-
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 10,
@@ -66,8 +80,8 @@ public class ListingService {
                 normalizeParam(q),
                 categoryId,
                 normalizeParam(location),
-                null,   // purpose: khong filter tren trang listing chinh
-                null,   // itemCond: khong filter tren trang listing chinh
+                null,   // purpose
+                null,   // itemCond
                 null,   // priceMin
                 null,   // priceMax
                 pageable
@@ -101,8 +115,8 @@ public class ListingService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
 
-        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult = 
-            listingRepository.findAllActiveListingCards(pageable);
+        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
+                listingRepository.findAllActiveListingCards(pageable);
 
         return new PagedResponse<>(
                 pageResult.getContent(),
@@ -113,11 +127,99 @@ public class ListingService {
         );
     }
 
-
-
     /** Public for use by SavedListingService when building saved list. */
     public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
         return toListingResponse(listing, currentUser, isSaved);
+    }
+
+    // ----------------------------------------------------------------
+    // Create listing
+    // ----------------------------------------------------------------
+
+    /**
+     * Tạo listing mới từ request + user hiện tại.
+     *  - Nếu pickupAddressId != null: dùng address có sẵn của user.
+     *  - Nếu có pickupLocationName + lat/lng: tạo Address mới.
+     *  - Status mặc định: ACTIVE hoặc DRAFT.
+     */
+    @Transactional
+    public ListingResponse createListing(User seller, CreateListingRequest request) {
+        if (seller == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+
+        boolean isDraft = request.isDraftMode();
+
+        // Validate bắt buộc cho cả đăng tin lẫn lưu nháp
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
+        }
+        if (request.getCategoryId() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không được để trống");
+        }
+        if (request.getPrice() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá không được để trống");
+        }
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+
+        Address pickup = resolvePickupAddress(seller, request);
+
+        Listing listing = new Listing();
+        listing.setSeller(seller);
+        listing.setCategory(category);
+        listing.setPickupAddress(pickup);
+        listing.setTitle(request.getTitle().trim());
+        listing.setDescription(request.getDescription());
+        listing.setPrice(request.normalizedPrice() != null ? request.normalizedPrice() : java.math.BigDecimal.ZERO);
+        listing.setItemCondition(normalizeCondition(request.getCondition()));
+        listing.setPurpose(
+                request.getPurpose() != null && !request.getPurpose().isBlank()
+                        ? request.getPurpose()
+                        : "SALE"
+        );
+        listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
+        listing.setStatus(isDraft ? "DRAFT" : "ACTIVE");
+        listing.setViewCount(0L);
+        listing.setCreatedAt(Instant.now());
+        listing.setUpdatedAt(Instant.now());
+
+        Listing saved = listingRepository.save(listing);
+        log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
+
+        return toListingResponse(saved, seller, false);
+    }
+
+    private Address resolvePickupAddress(User seller, CreateListingRequest request) {
+        if (request.getPickupAddressId() != null) {
+            return addressRepository.findByIdAndUser_Id(request.getPickupAddressId(), seller.getId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT));
+        }
+        if (request.getPickupLocationName() == null || request.getPickupLocationName().isBlank()) {
+            return null;
+        }
+
+        Address addr = new Address();
+        addr.setUser(seller);
+        String loc = request.getPickupLocationName().trim();
+        if (loc.length() > 200) {
+            loc = loc.substring(0, 200);
+        }
+        addr.setLocationName(loc);
+        String supplement = request.getPickupAddressSupplement();
+        if (supplement != null && !supplement.isBlank()) {
+            addr.setAddressText(supplement.trim());
+        } else {
+            addr.setAddressText(null);
+        }
+        addr.setLat(request.getPickupLat());
+        addr.setLng(request.getPickupLng());
+        addr.setIsDefault(false);
+        Instant now = Instant.now();
+        addr.setCreatedAt(now);
+        addr.setUpdatedAt(now);
+        return addressRepository.save(addr);
     }
 
     private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved) {
@@ -151,16 +253,10 @@ public class ListingService {
     }
 
     private String resolveLocation(Listing listing) {
-
         if (listing.getPickupAddress() == null) return null;
-
-        String locationName = listing.getPickupAddress().getLocationName();
-
-        if (locationName != null && !locationName.isBlank()) {
-            return locationName;
-        }
-
-        return listing.getPickupAddress().getAddressText();
+        return AddressFormat.pickupDisplayLine(
+                listing.getPickupAddress().getLocationName(),
+                listing.getPickupAddress().getAddressText());
     }
 
     private List<String> findImageUrls(Long listingId) {
@@ -194,9 +290,23 @@ public class ListingService {
         if (value == null) {
             return null;
         }
-
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    /**
+     * Ánh xạ giá trị condition từ FE về ENUM hợp lệ của DB:
+     * DB enum: NEW, USED_LIKE_NEW, USED_GOOD, USED_FAIR
+     */
+    private String normalizeCondition(String condition) {
+        if (condition == null || condition.isBlank()) return "USED_GOOD";
+        return switch (condition.trim().toUpperCase()) {
+            case "NEW"           -> "NEW";
+            case "USED_LIKE_NEW" -> "USED_LIKE_NEW";
+            case "USED_FAIR"     -> "USED_FAIR";
+            case "USED_GOOD", "USED", "SECOND_HAND" -> "USED_GOOD";
+            default              -> "USED_GOOD";
+        };
     }
 
     // ----------------------------------------------------------------
@@ -336,9 +446,6 @@ public class ListingService {
 
         Instant now = Instant.now();
 
-        // Dùng cùng định nghĩa "hết hạn" với findExpiredListingsBySeller:
-        // expirationDate đã qua (không quan tâm status field), HOẶC status = "EXPIRED"
-        // Không cho phép đăng lại nếu bị BANNED, SOLD, GIVEN_AWAY
         boolean isFunctionallyExpired = "EXPIRED".equals(listing.getStatus())
                 || (listing.getExpirationDate() != null && listing.getExpirationDate().isBefore(now));
 
