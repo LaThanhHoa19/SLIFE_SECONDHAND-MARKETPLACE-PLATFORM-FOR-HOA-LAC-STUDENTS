@@ -24,6 +24,9 @@ import {
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
+    SuspenseCategoryManagementPage,
+    SuspenseConfigurationManagementPage,
+    SuspenseAdminProfilePage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
@@ -61,6 +64,16 @@ export default function AppRouter() {
                     }
                 />
                 <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
+            </Route>
+
+            {/* ===== ADMIN ROUTES - Dùng AdminLayout (header + sidebar) ===== */}
+            <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<SuspenseDashboardPage />} />
+                <Route path="reports" element={<SuspenseReportManagementPage />} />
+                <Route path="users" element={<SuspenseUserManagementPage />} />
+                <Route path="categories" element={<SuspenseCategoryManagementPage />} />
+                <Route path="settings" element={<SuspenseConfigurationManagementPage />} />
+                <Route path="profile" element={<SuspenseAdminProfilePage />} />
             </Route>
 
             <Route element={<MainLayout />}>
@@ -116,7 +129,7 @@ export default function AppRouter() {
                 />
 
                 {/* Admin routes (tạm thời không cần login để test UI) */}
-                <Route
+                {/* <Route
                     path="/admin"
                     element={
                         <SuspenseDashboardPage />
@@ -133,7 +146,7 @@ export default function AppRouter() {
                     element={
                         <SuspenseUserManagementPage />
                     }
-                />
+                /> */}
 
                 {/* Dev/test route */}
                 <Route path="/backend-test" element={<SuspenseBackendTestPage />} />
