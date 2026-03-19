@@ -1,6 +1,8 @@
 package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.Offer;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,14 @@ import java.util.Optional;
 public interface OfferRepository extends JpaRepository<Offer, Long> {
 
     List<Offer> findByConversation_IdOrderByCreatedAtDesc(Long conversationId);
+
+    Page<Offer> findByConversation_IdOrderByCreatedAtDesc(Long conversationId, Pageable pageable);
+
+    Page<Offer> findByConversation_IdAndBuyer_IdOrderByCreatedAtDesc(Long conversationId, Long buyerId, Pageable pageable);
+
+    Page<Offer> findByListing_IdOrderByCreatedAtDesc(Long listingId, Pageable pageable);
+
+    Page<Offer> findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(Long listingId, Long buyerId, Pageable pageable);
 
     Optional<Offer> findByIdAndConversation_Id(Long offerId, Long conversationId);
 
