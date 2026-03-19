@@ -1,9 +1,6 @@
 package com.slife.marketplace.dto.response;
 
 import lombok.Data;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
 
 @Data
 public class ListingResponse {
@@ -18,5 +15,5 @@ public class ListingResponse {
     private java.util.List<String> images;
     private Object sellerSummary;
     private Boolean isSaved;
-    private Boolean isFollowed;
+    private Boolean isFollowed; // From 'Hoa' - Seller follow status
 }
