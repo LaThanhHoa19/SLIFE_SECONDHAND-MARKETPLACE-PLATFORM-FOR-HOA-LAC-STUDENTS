@@ -9,6 +9,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import LandingLayout from '../components/layout/LandingLayout';
 import AdminLayout from '../components/layout/AdminLayout';
+import AuthLayout from '../components/layout/AuthLayout';
 import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
 
 // Lazy loaded components
@@ -40,17 +41,8 @@ export default function AppRouter() {
                 <Route path="/landing" element={<SuspenseStitchLandingPage />} />
             </Route>
 
-            <Route element={<MainLayout />}>
-                {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
-                <Route path="/feed" element={<SuspenseListingsPage />} />
-                <Route path="/search" element={<SuspenseSearchPage />} />
-                <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
-                <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
-
-                {/* Google OAuth2 redirect callback — no guard, no layout needed */}
-                <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
-
-                {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
+            {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
+            <Route element={<AuthLayout />}>
                 <Route
                     path="/login"
                     element={
@@ -67,12 +59,23 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+            </Route>
+
+            <Route element={<MainLayout />}>
+                {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
+                <Route path="/feed" element={<SuspenseListingsPage />} />
+                <Route path="/search" element={<SuspenseSearchPage />} />
+                <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+                <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
+
+                {/* Google OAuth2 redirect callback — no guard, no layout needed */}
+                <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
 
                 {/* ===== PROTECTED ROUTES - Cần đăng nhập ===== */}
                 <Route
                     path="/listings/new"
                     element={
-                        <RouteGuard guards={GUARD_PRESETS.VERIFIED_USER}>
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseCreateListingPage />
                         </RouteGuard>
                     }
