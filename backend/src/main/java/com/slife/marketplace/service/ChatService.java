@@ -41,7 +41,6 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final ListingRepository listingRepository;
     private final OfferRepository offerRepository;
-    private final OfferStatusRepository offerStatusRepository;
     private final UserService userService;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
@@ -54,7 +53,6 @@ public class ChatService {
                        MessageRepository messageRepository,
                        ListingRepository listingRepository,
                        OfferRepository offerRepository,
-                       OfferStatusRepository offerStatusRepository,
                        UserService userService,
                        NotificationService notificationService,
                        SimpMessagingTemplate messagingTemplate,
@@ -63,7 +61,6 @@ public class ChatService {
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
         this.offerRepository = offerRepository;
-        this.offerStatusRepository = offerStatusRepository;
         this.userService = userService;
         this.notificationService = notificationService;
         this.messagingTemplate = messagingTemplate;
@@ -310,8 +307,8 @@ public class ChatService {
         offer.setConversation(conv);
         offer.setListing(listing);
         offer.setBuyer(buyer);
-        offer.setProposedPrice(amount);
-        offer.setOfferStatus(resolveOfferStatus(OfferService.STATUS_PENDING));
+        offer.setAmount(amount);
+        offer.setStatus(OfferService.STATUS_PENDING);
         offer.setCreatedAt(Instant.now());
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
@@ -359,7 +356,7 @@ public class ChatService {
         }
 
         boolean accepted = "ACCEPTED".equalsIgnoreCase(action);
-        offer.setOfferStatus(resolveOfferStatus(accepted ? OfferService.STATUS_ACCEPTED : OfferService.STATUS_REJECTED));
+        offer.setStatus(accepted ? OfferService.STATUS_ACCEPTED : OfferService.STATUS_REJECTED);
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
 
@@ -569,14 +566,9 @@ public class ChatService {
                 .messageType(m.getMessageType())
                 .fileUrl(m.getFileUrl())
                 .offerId(offer != null ? offer.getId() : null)
-                .offerAmount(offer != null ? offer.getProposedPrice() : null)
+                .offerAmount(offer != null ? offer.getAmount() : null)
                 .offerStatus(offer != null ? offer.getStatus() : null)
                 .build();
-    }
-
-    private OfferStatus resolveOfferStatus(String code) {
-        return offerStatusRepository.findByCode(code)
-                .orElseThrow(() -> new SlifeException(ErrorCode.INTERNAL_ERROR, "Offer status not configured: " + code));
     }
 
     private static String truncate(String s, int max) {
