@@ -34,6 +34,7 @@ export const LazyDashboardPage = lazy(() => import('../pages/admin/DashboardPage
 export const LazyReportManagementPage = lazy(() => import('../pages/admin/ReportManagementPage'));
 export const LazyUserManagementPage = lazy(() => import('../pages/admin/UserManagementPage'));
 export const LazyReportPage = lazy(() => import('../pages/report/ReportPage'));
+export const LazyCategoryManagementPage = lazy(() => import('../pages/admin/CategoryManagementPage'));
 export const LazyBackendTestPage = lazy(() => import('../pages/BackendTestPage'));
 export const LazyGoogleCallbackPage = lazy(() => import('../pages/auth/GoogleCallbackPage'));
 export const LazyStitchLandingPage = lazy(() => import('../landing_page/StitchLandingPage.jsx'));
@@ -58,6 +59,7 @@ export const SuspenseNotificationsPage = withSuspense(LazyNotificationsPage, "Đ
 export const SuspenseDashboardPage = withSuspense(LazyDashboardPage, "Đang tải dashboard...");
 export const SuspenseReportManagementPage = withSuspense(LazyReportManagementPage, "Đang tải quản lý báo cáo...");
 export const SuspenseUserManagementPage = withSuspense(LazyUserManagementPage, "Đang tải quản lý người dùng...");
+export const SuspenseCategoryManagementPage = withSuspense(LazyCategoryManagementPage, "Đang tải quản lý danh mục...");
 export const SuspenseReportPage = withSuspense(LazyReportPage, "Đang tải trang báo cáo...");
 export const SuspenseBackendTestPage = withSuspense(LazyBackendTestPage, "Đang tải trang backend test...");
 export const SuspenseGoogleCallbackPage = withSuspense(LazyGoogleCallbackPage, "Đang xử lý đăng nhập...");

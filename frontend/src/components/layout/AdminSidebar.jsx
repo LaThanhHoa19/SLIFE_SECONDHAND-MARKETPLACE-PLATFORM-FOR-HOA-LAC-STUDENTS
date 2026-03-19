@@ -3,6 +3,7 @@ import {
     Dashboard as DashboardIcon,
     People as PeopleIcon,
     Flag as FlagIcon,
+    Category as CategoryIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,6 +27,12 @@ const ADMIN_ITEMS = [
         label: 'Người dùng',
         icon: PeopleIcon,
         path: '/admin/users',
+        allowedRoles: ['ADMIN'],
+    },
+    {
+        label: 'Danh mục',
+        icon: CategoryIcon,
+        path: '/admin/categories',
         allowedRoles: ['ADMIN'],
     },
 ];
