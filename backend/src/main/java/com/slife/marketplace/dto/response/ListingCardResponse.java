@@ -18,4 +18,9 @@ public class ListingCardResponse {
     private String location;
     private String status;
     private String thumbnailUrl;
+
+    // Thông tin người bán để hiển thị trên feed
+    private Long sellerId;
+    private String sellerName;
+    private String sellerAvatarUrl;
 }
