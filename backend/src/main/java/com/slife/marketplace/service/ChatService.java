@@ -348,7 +348,17 @@ public class ChatService {
             throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
         }
         Conversation conv = offer.getConversation();
-        if (conv == null) throw new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND);
+        if (conv == null) {
+            Long listingId = offer.getListing() != null ? offer.getListing().getId() : null;
+            Long buyerId = offer.getBuyer() != null ? offer.getBuyer().getId() : null;
+            Long sellerId = offer.getListing() != null && offer.getListing().getSeller() != null
+                    ? offer.getListing().getSeller().getId() : null;
+            if (listingId == null || buyerId == null || sellerId == null) {
+                throw new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND);
+            }
+            conv = conversationRepository.findActiveByListingBuyerSeller(listingId, buyerId, sellerId)
+                    .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
+        }
         ensureParticipant(conv, seller);
         // Seller must not be the buyer
         if (offer.getBuyer().getId().equals(seller.getId())) {

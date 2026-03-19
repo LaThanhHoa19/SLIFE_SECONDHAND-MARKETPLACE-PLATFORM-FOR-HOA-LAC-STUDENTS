@@ -15,6 +15,7 @@ import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.util.Constants;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -81,11 +82,11 @@ public class OfferService {
 
         BigDecimal proposed = request.getProposedPrice();
         if (proposed == null || proposed.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Proposed price must be positive");
         }
         BigDecimal listingPrice = listing.getPrice() != null ? listing.getPrice() : BigDecimal.ZERO;
         if (proposed.compareTo(listingPrice) >= 0) {
-            throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer price must be lower than original price");
         }
 
         Offer offer = new Offer();
@@ -113,43 +114,53 @@ public class OfferService {
 
         Page<Offer> offerPage;
         if (sessionId != null && !sessionId.isBlank()) {
-            Conversation conversation = conversationRepository.findBySessionUuid(sessionId)
-                    .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
-            boolean isParticipant = conversation.getUserId1().getId().equals(currentUser.getId())
-                    || conversation.getUserId2().getId().equals(currentUser.getId());
-            boolean isListingSeller = conversation.getListing() != null
-                    && conversation.getListing().getSeller() != null
-                    && conversation.getListing().getSeller().getId().equals(currentUser.getId());
-            if (!isParticipant && !isListingSeller) {
-                throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT);
+            // DB-first fallback: if listingId is already provided, avoid touching chat schema.
+            if (listingId != null) {
+                offerPage = queryOfferHistoryByListing(listingId, buyerId, currentUser, pageable);
+                var content = offerPage.getContent().stream().map(this::toResponse).toList();
+                return new PagedResponse<>(
+                        content,
+                        offerPage.getNumber(),
+                        offerPage.getSize(),
+                        offerPage.getTotalElements(),
+                        offerPage.getTotalPages()
+                );
             }
-            if (buyerId != null) {
-                if (!isListingSeller && !buyerId.equals(currentUser.getId())) {
-                    throw new SlifeException(ErrorCode.FORBIDDEN);
+            try {
+                Conversation conversation = conversationRepository.findBySessionUuid(sessionId)
+                        .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
+                boolean isParticipant = conversation.getUserId1().getId().equals(currentUser.getId())
+                        || conversation.getUserId2().getId().equals(currentUser.getId());
+                boolean isListingSeller = conversation.getListing() != null
+                        && conversation.getListing().getSeller() != null
+                        && conversation.getListing().getSeller().getId().equals(currentUser.getId());
+                if (!isParticipant && !isListingSeller) {
+                    throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT);
                 }
-                offerPage = offerRepository.findByConversation_IdAndBuyer_IdOrderByCreatedAtDesc(conversation.getId(), buyerId, pageable);
-            } else {
-                offerPage = offerRepository.findByConversation_IdOrderByCreatedAtDesc(conversation.getId(), pageable);
+                Long listingIdFromSession = conversation.getListing() != null ? conversation.getListing().getId() : null;
+                if (listingIdFromSession == null) {
+                    throw new SlifeException(ErrorCode.INVALID_INPUT, "Session has no listing");
+                }
+                Long sessionBuyerId = resolveBuyerIdFromConversation(conversation);
+                if (buyerId != null && !buyerId.equals(sessionBuyerId)) {
+                    throw new SlifeException(ErrorCode.FORBIDDEN, Constants.MSG23);
+                }
+                offerPage = offerRepository.findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(
+                        listingIdFromSession, sessionBuyerId, pageable
+                );
+            } catch (SlifeException ex) {
+                // Preserve explicit domain errors.
+                if (ex.getErrorCode() == ErrorCode.NOT_CHAT_PARTICIPANT || ex.getErrorCode() == ErrorCode.FORBIDDEN) {
+                    throw ex;
+                }
+                throw new SlifeException(ErrorCode.INVALID_INPUT,
+                        "sessionId mode is unavailable in current DB schema. Please query by listingId.");
+            } catch (Exception ex) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT,
+                        "sessionId mode is unavailable in current DB schema. Please query by listingId.");
             }
         } else {
-            if (listingId == null) {
-                throw new SlifeException(ErrorCode.INVALID_INPUT, "listingId or sessionId is required");
-            }
-            Listing listing = listingRepository.findById(listingId)
-                    .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-            boolean isSeller = listing.getSeller() != null && listing.getSeller().getId().equals(currentUser.getId());
-
-            Long effectiveBuyerId = buyerId;
-            if (!isSeller) {
-                if (effectiveBuyerId == null) {
-                    effectiveBuyerId = currentUser.getId();
-                } else if (!effectiveBuyerId.equals(currentUser.getId())) {
-                    throw new SlifeException(ErrorCode.FORBIDDEN);
-                }
-            }
-            offerPage = effectiveBuyerId != null
-                    ? offerRepository.findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(listingId, effectiveBuyerId, pageable)
-                    : offerRepository.findByListing_IdOrderByCreatedAtDesc(listingId, pageable);
+            offerPage = queryOfferHistoryByListing(listingId, buyerId, currentUser, pageable);
         }
 
         var content = offerPage.getContent().stream().map(this::toResponse).toList();
@@ -160,6 +171,38 @@ public class OfferService {
                 offerPage.getTotalElements(),
                 offerPage.getTotalPages()
         );
+    }
+
+    private Page<Offer> queryOfferHistoryByListing(Long listingId, Long buyerId, User currentUser, Pageable pageable) {
+        if (listingId == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "listingId or sessionId is required");
+        }
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        boolean isSeller = listing.getSeller() != null && listing.getSeller().getId().equals(currentUser.getId());
+
+        Long effectiveBuyerId = buyerId;
+        if (!isSeller) {
+            if (effectiveBuyerId == null) {
+                effectiveBuyerId = currentUser.getId();
+            } else if (!effectiveBuyerId.equals(currentUser.getId())) {
+                throw new SlifeException(ErrorCode.FORBIDDEN, Constants.MSG23);
+            }
+        }
+        return effectiveBuyerId != null
+                ? offerRepository.findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(listingId, effectiveBuyerId, pageable)
+                : offerRepository.findByListing_IdOrderByCreatedAtDesc(listingId, pageable);
+    }
+
+    private Long resolveBuyerIdFromConversation(Conversation conversation) {
+        if (conversation.getListing() == null || conversation.getListing().getSeller() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Session has no seller/listing");
+        }
+        Long sellerId = conversation.getListing().getSeller().getId();
+        if (!conversation.getUserId1().getId().equals(sellerId)) {
+            return conversation.getUserId1().getId();
+        }
+        return conversation.getUserId2().getId();
     }
 
     /**
@@ -179,11 +222,11 @@ public class OfferService {
         }
         BigDecimal proposed = amount;
         if (proposed == null || proposed.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Proposed price must be positive");
         }
         BigDecimal listingPrice = listing.getPrice() != null ? listing.getPrice() : BigDecimal.ZERO;
         if (proposed.compareTo(listingPrice) >= 0) {
-            throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer price must be lower than original price");
         }
         if (listing.getSeller().getId().equals(current.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Người bán không thể trả giá cho bài đăng của chính mình");
@@ -206,9 +249,6 @@ public class OfferService {
     public Deal acceptOffer(Long offerId, String sessionId) {
         User current = userService.getCurrentUser();
         Offer offer = offerRepository.findById(offerId).orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));
-        if (offer.getConversation() == null || !offer.getConversation().getSessionUuid().equals(sessionId)) {
-            throw new SlifeException(ErrorCode.OFFER_NOT_FOUND);
-        }
         if (!offer.getListing().getSeller().getId().equals(current.getId())) {
             throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT);
         }
