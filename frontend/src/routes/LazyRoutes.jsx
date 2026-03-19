@@ -24,6 +24,7 @@ const PageLoader = ({ message = "Đang tải trang..." }) => (
 export const LazyLoginPage = lazy(() => import('../pages/auth/LoginPage'));
 export const LazyRegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 export const LazyListingsPage = lazy(() => import('../pages/listing/ListingsPage'));
+export const LazySearchPage = lazy(() => import('../pages/listing/SearchPage.jsx'));
 export const LazyListingDetailPage = lazy(() => import('../pages/listing/ListingDetailPage'));
 export const LazyCreateListingPage = lazy(() => import('../pages/listing/CreateListingPage'));
 export const LazyProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
@@ -34,6 +35,8 @@ export const LazyUserManagementPage = lazy(() => import('../pages/admin/UserMana
 export const LazyBackendTestPage = lazy(() => import('../pages/BackendTestPage'));
 export const LazyGoogleCallbackPage = lazy(() => import('../pages/auth/GoogleCallbackPage'));
 export const LazyStitchLandingPage = lazy(() => import('../landing_page/StitchLandingPage.jsx'));
+export const LazyNotificationsPage = lazy(() => import('../pages/notification/NotificationsPage'));
+export const LazyMyListingsPage = lazy(() => import('../pages/listing/MyListingsPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -46,6 +49,7 @@ export const withSuspense = (Component, loadingMessage) => (props) => (
 export const SuspenseLoginPage = withSuspense(LazyLoginPage, "Đang tải trang đăng nhập...");
 export const SuspenseRegisterPage = withSuspense(LazyRegisterPage, "Đang tải trang đăng ký...");
 export const SuspenseListingsPage = withSuspense(LazyListingsPage, "Đang tải danh sách tin...");
+export const SuspenseSearchPage = withSuspense(LazySearchPage, "Đang tải kết quả tìm kiếm...");
 export const SuspenseListingDetailPage = withSuspense(LazyListingDetailPage, "Đang tải chi tiết tin...");
 export const SuspenseCreateListingPage = withSuspense(LazyCreateListingPage, "Đang tải trang đăng tin...");
 export const SuspenseProfilePage = withSuspense(LazyProfilePage, "Đang tải trang cá nhân...");
@@ -56,3 +60,5 @@ export const SuspenseUserManagementPage = withSuspense(LazyUserManagementPage, "
 export const SuspenseBackendTestPage = withSuspense(LazyBackendTestPage, "Đang tải trang backend test...");
 export const SuspenseGoogleCallbackPage = withSuspense(LazyGoogleCallbackPage, "Đang xử lý đăng nhập...");
 export const SuspenseStitchLandingPage = withSuspense(LazyStitchLandingPage, "Đang tải trang giới thiệu...");
+export const SuspenseNotificationsPage = withSuspense(LazyNotificationsPage, "Đang tải thông báo...");
+export const SuspenseMyListingsPage = withSuspense(LazyMyListingsPage, "Đang tải tin đăng của bạn...");
