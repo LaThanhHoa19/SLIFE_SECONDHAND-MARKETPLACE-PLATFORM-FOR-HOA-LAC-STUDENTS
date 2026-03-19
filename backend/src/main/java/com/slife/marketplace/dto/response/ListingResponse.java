@@ -12,11 +12,10 @@ public class ListingResponse {
     private String description;
     private java.math.BigDecimal price;
     private String condition;
-    private String purpose;
     private String location;
     private java.time.Instant createdAt;
     private java.util.List<String> images;
     private Object sellerSummary;
     private Boolean isSaved;
-    private Boolean isFollowed;
+    private Boolean isFollowed; // From 'Hoa' - Seller follow status
 }

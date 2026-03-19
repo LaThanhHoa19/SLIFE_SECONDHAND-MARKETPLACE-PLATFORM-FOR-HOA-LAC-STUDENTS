@@ -14,6 +14,12 @@ export default defineConfig({
     hmr: {
       host: "localhost",
       protocol: "ws"
+    },
+    proxy: {
+      '/maps': {
+        target: 'https://maps.vietmap.vn',
+        changeOrigin: true
+      }
     }
   }
 })
