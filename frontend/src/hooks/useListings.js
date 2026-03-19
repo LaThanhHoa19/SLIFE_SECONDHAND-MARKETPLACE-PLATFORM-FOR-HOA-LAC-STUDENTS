@@ -18,7 +18,12 @@ const normalizeSeller = (item) => {
     if (seller && typeof seller === 'object') return seller;
 
     const fallbackName = sellerSummary || item?.sellerName || item?.seller_name;
-    return fallbackName ? {fullName: fallbackName} : {};
+    const avatar = item?.sellerAvatarUrl ?? item?.seller_avatar_url;
+    return fallbackName
+        ? {fullName: fallbackName, avatarUrl: avatar}
+        : avatar
+            ? {avatarUrl: avatar}
+            : {};
 };
 
 const normalizeImages = (item) => {
