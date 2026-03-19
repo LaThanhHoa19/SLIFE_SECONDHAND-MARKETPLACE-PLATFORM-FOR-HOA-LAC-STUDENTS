@@ -100,15 +100,8 @@ class ListingServiceTest {
                 .thenReturn(List.of(image));
 
         PagedResponse<ListingResponse> result = listingService.getFilteredListings(
-                null,
-                null,
-                null,
-                "createdAt,desc",
-                0,
-                10,
-                null
+                null, null, null, "createdAt,desc", 0, 10, null
         );
-
 
         assertEquals(1, result.getContent().size());
         assertEquals(1L, result.getTotalElements());
@@ -141,16 +134,13 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải tự điều chỉnh khi tham số phân trang nằm ngoài phạm vi cho phép")
         void should_SanitizePagination_When_InputIsOutOfRange() {
-            // GIVEN: Người dùng truyền page âm (-1) và size quá lớn (100)
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
-            // WHEN
             listingService.getFilteredListings(null, null, null, null, -1, 100, null);
 
-            // THEN: Hệ thống tự đưa về page 0 và size 20 (giới hạn tối đa)
             org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-            verify(listingRepository).findByFilters(any(), any(), any(), captor.capture());
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), captor.capture());
 
             assertEquals(0, captor.getValue().getPageNumber());
             assertEquals(20, captor.getValue().getPageSize());
@@ -159,16 +149,13 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải dùng sắp xếp mặc định (createdAt, DESC) khi người dùng truyền field không hợp lệ")
         void should_FallbackToDefaultSort_When_InvalidFieldProvided() {
-            // GIVEN: Field 'password' là field bị cấm/không tồn tại
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
-            // WHEN
             listingService.getFilteredListings(null, null, null, "password,asc", 0, 10, null);
 
-            // THEN: Kết quả phải là createdAt: DESC (Sau khi bạn đã sửa logic code chính)
             org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-            verify(listingRepository).findByFilters(any(), any(), any(), captor.capture());
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), captor.capture());
 
             assertEquals("createdAt: DESC", captor.getValue().getSort().toString());
         }
@@ -176,13 +163,13 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải chấp nhận hướng sắp xếp tăng dần (ASC) nếu field hợp lệ")
         void should_ApplyAscendingOrder_When_ValidFieldAndDirectionProvided() {
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(null, null, null, "price,asc", 0, 10, null);
 
             org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-            verify(listingRepository).findByFilters(any(), any(), any(), captor.capture());
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), captor.capture());
 
             assertEquals("price: ASC", captor.getValue().getSort().toString());
         }
@@ -198,25 +185,31 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải loại bỏ khoảng trắng thừa và chuyển chuỗi trống thành null")
         void should_NormalizeInputParams_When_Searching() {
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
-            // WHEN: Truyền chuỗi có khoảng trắng và chuỗi chỉ có dấu cách
             listingService.getFilteredListings(1L, "  Hoa Lac  ", "   ", null, 0, 10, null);
 
-            // THEN: Repo nhận được "Hoa Lac" (đã trim) và null (thay vì "   ")
-            verify(listingRepository).findByFilters(eq(1L), eq("Hoa Lac"), isNull(), any());
+            org.mockito.ArgumentCaptor<String> locationCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(listingRepository).findByFilters(
+                    isNull(),
+                    isNull(),
+                    locationCaptor.capture(),
+                    isNull(), isNull(), isNull(), isNull(),
+                    any(Pageable.class)
+            );
+            assertEquals("Hoa Lac", locationCaptor.getValue());
         }
 
         @Test
         @DisplayName("Hệ thống phải xử lý an toàn khi các tham số tìm kiếm hoàn toàn null")
         void should_HandleNullParams_Gracefully() {
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(null, null, null, null, 0, 10, null);
 
-            verify(listingRepository).findByFilters(isNull(), isNull(), isNull(), any());
+            verify(listingRepository).findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
         }
     }
 
@@ -236,7 +229,7 @@ class ListingServiceTest {
             address.setAddressText("Ký túc xá Dom A");
             listing.setPickupAddress(address);
 
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(listing)));
 
             PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null, null, 0, 10, null);
@@ -251,7 +244,7 @@ class ListingServiceTest {
             listing.setSeller(null);
             listing.setPickupAddress(null);
 
-            when(listingRepository.findByFilters(any(), any(), any(), any()))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(listing)));
 
             PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null, null, 0, 10, null);
