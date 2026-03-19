@@ -16,6 +16,10 @@ FROM eclipse-temurin:17-jre-alpine AS runtime
 WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 COPY --from=builder /app/app.jar ./app.jar
+# Tạo thư mục uploads và cấp quyền cho user spring trước khi switch.
+# Khi Docker khởi tạo named volume uploads_data (lần đầu còn rỗng),
+# nó copy ownership này vào volume, đảm bảo spring user có quyền write.
+RUN mkdir -p /app/uploads/listings && chown -R spring:spring /app/uploads
 USER spring:spring
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 \
