@@ -37,6 +37,7 @@ export const LazyGoogleCallbackPage = lazy(() => import('../pages/auth/GoogleCal
 export const LazyStitchLandingPage = lazy(() => import('../landing_page/StitchLandingPage.jsx'));
 export const LazyNotificationsPage = lazy(() => import('../pages/notification/NotificationsPage'));
 export const LazyMyListingsPage = lazy(() => import('../pages/listing/MyListingsPage'));
+export const LazyAdminLoginPage = lazy(() => import('../pages/admin/AdminLoginPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -62,3 +63,4 @@ export const SuspenseGoogleCallbackPage = withSuspense(LazyGoogleCallbackPage, "
 export const SuspenseStitchLandingPage = withSuspense(LazyStitchLandingPage, "Đang tải trang giới thiệu...");
 export const SuspenseNotificationsPage = withSuspense(LazyNotificationsPage, "Đang tải thông báo...");
 export const SuspenseMyListingsPage = withSuspense(LazyMyListingsPage, "Đang tải tin đăng của bạn...");
+export const SuspenseAdminLoginPage = withSuspense(LazyAdminLoginPage, "Đang tải trang đăng nhập admin...");

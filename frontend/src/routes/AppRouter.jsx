@@ -30,6 +30,7 @@ import {
     SuspenseSearchPage,
     SuspenseNotificationsPage,
     SuspenseMyListingsPage,
+    SuspenseAdminLoginPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -59,6 +60,7 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+                <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
             </Route>
 
             <Route element={<MainLayout />}>
