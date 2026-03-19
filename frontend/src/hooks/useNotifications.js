@@ -1,12 +1,13 @@
 /**
- * Mục đích: Lấy thông báo + realtime qua Spring STOMP/SockJS, fallback polling.
+ * Mục đích: Lấy thông báo; làm mới định kỳ (polling).
+ * BE dùng STOMP/SockJS tại /chat — không phải Socket.IO; gọi io(localhost:8080) sẽ 403 và spam console.
+ * Khi cần realtime: nối STOMP client tới /chat (SockJS), không dùng socket.io-client.
  * API dùng: GET /api/notifications, PATCH read endpoints.
  */
 import { useEffect, useState } from 'react';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
-import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from './useAuth';
 
 export default function useNotifications() {

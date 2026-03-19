@@ -57,6 +57,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_VIETMAP_TILE_KEY: ${VITE_VIETMAP_TILE_KEY}
     image: slife/frontend:latest
     pull_policy: build
     container_name: slife-frontend
