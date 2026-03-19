@@ -72,7 +72,7 @@ public class OfferService {
             throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
         }
         if (listing.getSeller().getId().equals(current.getId())) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT, "Seller cannot make an offer on own listing");
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Người bán không thể trả giá cho bài đăng của chính mình");
         }
         Offer offer = new Offer();
         offer.setConversation(conv);
@@ -106,15 +106,11 @@ public class OfferService {
         offerRepository.save(offer);
 
         Deal deal = new Deal();
-        deal.setOffer(offer);
-        deal.setConversation(offer.getConversation());
         deal.setListing(offer.getListing());
-        deal.setProposedBy(offer.getBuyer());
-        deal.setDealPrice(offer.getAmount());
+        deal.setBuyer(offer.getBuyer());
+        deal.setSeller(offer.getListing().getSeller());
+        deal.setOfferedPrice(offer.getAmount());
         deal.setStatus("PENDING");
-        deal.setReminderSent(false);
-        deal.setCreatedAt(Instant.now());
-        deal.setUpdatedAt(Instant.now());
         return dealRepository.save(deal);
     }
 }
