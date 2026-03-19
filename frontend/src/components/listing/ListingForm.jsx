@@ -414,14 +414,14 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             component="form"
             onSubmit={onFormSubmit}
             sx={{
-                maxWidth: "1200px",
-                width: "90%",
+                maxWidth: "680px",
+                width: "100%",
                 mx: "auto",
-                mt: 6,
-                mb: 8,
-                p: 6,
-                border: "3px solid #201D26",
-                borderRadius: "14px",
+                mt: 3,
+                mb: 5,
+                p: 2.5,
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "12px",
                 backgroundColor: "#201D26",
                 color: "#FFFFFF",
 
@@ -436,7 +436,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             }}
         >
             {/* 1. HÌNH ẢNH */}
-            <Typography fontWeight={600} fontSize={20} mb={2}>
+            <Typography fontWeight={600} fontSize={16} mb={2}>
                 Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
             <Box mb={4}>
@@ -446,18 +446,19 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 />
 
                 {imageError && (
-                    <Typography color="error" sx={{ mt: 1 }}>
+                    <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
                         {imageError}
                     </Typography>
                 )}
             </Box>
 
             {/* 2. MÔ TẢ */}
-            <Typography fontWeight={600} fontSize={20} mb={1.5}>
+            <Typography fontWeight={600} fontSize={16} mb={1.5}>
                 Mô tả chi tiết <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
             <TextField
                 fullWidth
+                size="small"
                 multiline
                 rows={5}
                 placeholder="Ví dụ: Máy còn mới 95%, đầy đủ phụ kiện, bảo hành 3 tháng..."
@@ -471,19 +472,20 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 sx={{
                     mb: 4,
                     "& .MuiInputBase-input": {
-                        fontSize: "20px"
+                        fontSize: "14px"
                     }
                 }}
             />
 
             {/* 3. TIÊU ĐỀ & DANH MỤC */}
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Tiêu đề <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <TextField
                         fullWidth
+                        size="small"
                         placeholder="Tên sản phẩm của bạn"
                         {...register("title", { 
                             required: "Nhập tiêu đề",
@@ -493,14 +495,14 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         helperText={errors.title?.message}
                         sx={{
                             "& .MuiInputBase-input": {
-                                fontSize: "20px"
+                                fontSize: "14px"
                             }
                         }}
                     />
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Danh mục <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <input
@@ -511,10 +513,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         onClick={() => setOpenCategory(true)}
                         sx={{
                             border: `1px solid ${errors.categoryId ? '#d32f2f' : 'transparent'}`,
-                            borderRadius: "10px",
-                            px: 2, py: 1.5,
+                            borderRadius: "8px",
+                            px: 1.5, py: 0.75,
                             cursor: "pointer",
-                            fontSize: "20px",
+                            fontSize: "13px",
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -531,7 +533,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         }}
                     >
                         {selectedCategoryName || "Chọn danh mục sản phẩm"}
-                        <ChevronRightIcon />
+                        <ChevronRightIcon sx={{ fontSize: 18 }} />
                     </Box>
                     {errors.categoryId && (
                         <Typography color="error" variant="caption" sx={{ ml: 2 }}>
@@ -542,13 +544,14 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             </Grid>
 
             {/* 4. GIÁ & ĐỊA ĐIỂM */}
-            <Grid container spacing={3} mt={1}>
+            <Grid container spacing={2} mt={1}>
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Giá bán <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <TextField
                         fullWidth
+                        size="small"
                         {...register("price", {
                             validate: (v) => {
                                 if (isGiveaway) return true;
@@ -564,11 +567,11 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         error={!!errors.price}
                         helperText={errors.price?.message}
                         InputProps={{
-                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 20, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
+                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 14, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
                         }}
                         sx={{
                             "& .MuiInputBase-input": {
-                                fontSize: "20px"
+                                fontSize: "14px"
                             },
                             "& .MuiInputBase-input.Mui-disabled": {
                                 WebkitTextFillColor: "#fff"
@@ -581,7 +584,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         sx={{
                             mt: 1,
                             "& .MuiFormControlLabel-label": {
-                                fontSize: "18px",
+                                fontSize: "14px",
                                 fontWeight: 500
                             }
                         }}
@@ -589,19 +592,20 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Khu vực giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     {/* Dropdown khu vực (giữ logic cũ để tương thích) */}
                     <TextField
                         select
                         fullWidth
+                        size="small"
                         {...register("location")}
                         value={watch('location')}
                         onChange={(e) => setValue('location', e.target.value)}
                         sx={{
                             "& .MuiInputBase-input": {
-                                fontSize: "20px"
+                                fontSize: "14px"
                             }
                         }}
                     >
@@ -644,13 +648,14 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
                     <TextField
                         fullWidth
+                        size="small"
                         label="Ghi chú thêm (tuỳ chọn)"
                         margin="normal"
                         placeholder="Chỉ khi không có trên bản đồ, VD: Phòng 102, tầng 3"
                         {...register('pickupAddressSupplement')}
                         sx={{
                             "& .MuiInputBase-input": {
-                                fontSize: "16px"
+                                fontSize: "14px"
                             }
                         }}
                     />
@@ -666,7 +671,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         onChange={(e) => setMapSearchQuery(e.target.value)}
                         sx={{
                             "& .MuiInputBase-input": {
-                                fontSize: "16px"
+                                fontSize: "14px"
                             }
                         }}
                     />
@@ -740,7 +745,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             {/* 5. TÌNH TRẠNG & SUBMIT */}
             <Grid container spacing={3} mt={2} alignItems="center">
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Tình trạng sản phẩm
                     </Typography>
                     <ToggleButtonGroup
@@ -751,8 +756,9 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         <ToggleButton
                             value="USED_GOOD"
                             sx={{
-                                px: 4,
-                                py: 1.2,
+                                px: 2.5,
+                                py: 0.8,
+                                fontSize: "13px",
                                 borderRadius: "12px",
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
@@ -777,8 +783,9 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         <ToggleButton
                             value="NEW"
                             sx={{
-                                px: 4,
-                                py: 1.2,
+                                px: 2.5,
+                                py: 0.8,
+                                fontSize: "13px",
                                 borderRadius: "12px",
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
@@ -812,10 +819,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                             sx={{
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
-                                py: 1.6,
-                                fontSize: "18px",
+                                py: 1.1,
+                                fontSize: "14px",
                                 fontWeight: 600,
-                                borderRadius: "12px",
+                                borderRadius: "10px",
                                 border: "none",
                                 "&:hover": { backgroundColor: "#d5d5d5" },
                                 "&.Mui-disabled": { opacity: 0.6 },
@@ -830,10 +837,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                             disabled={submitting}
                             sx={{
                                 backgroundColor: "#9D6EED",
-                                py: 1.6,
-                                fontSize: "18px",
+                                py: 1.1,
+                                fontSize: "14px",
                                 fontWeight: 600,
-                                borderRadius: "12px",
+                                borderRadius: "10px",
 
                                 "&:hover": {
                                     backgroundColor: "#B794F6"
