@@ -24,6 +24,7 @@ import {
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
+    SuspenseCategoryManagementPage,
     SuspenseReportPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
@@ -139,6 +140,17 @@ export default function AppRouter() {
                         <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
                             <AdminLayout>
                                 <SuspenseUserManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/admin/categories"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+                            <AdminLayout>
+                                <SuspenseCategoryManagementPage />
                             </AdminLayout>
                         </RouteGuard>
                     }
