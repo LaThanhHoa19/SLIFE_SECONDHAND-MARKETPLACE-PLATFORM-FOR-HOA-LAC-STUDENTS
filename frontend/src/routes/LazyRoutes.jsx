@@ -32,11 +32,10 @@ export const LazyDealDetailPage = lazy(() => import('../pages/deal/DealDetailPag
 export const LazyDashboardPage = lazy(() => import('../pages/admin/DashboardPage'));
 export const LazyReportManagementPage = lazy(() => import('../pages/admin/ReportManagementPage'));
 export const LazyUserManagementPage = lazy(() => import('../pages/admin/UserManagementPage'));
+export const LazyReportPage = lazy(() => import('../pages/report/ReportPage'));
 export const LazyBackendTestPage = lazy(() => import('../pages/BackendTestPage'));
 export const LazyGoogleCallbackPage = lazy(() => import('../pages/auth/GoogleCallbackPage'));
 export const LazyStitchLandingPage = lazy(() => import('../landing_page/StitchLandingPage.jsx'));
-export const LazyNotificationsPage = lazy(() => import('../pages/notification/NotificationsPage'));
-export const LazyMyListingsPage = lazy(() => import('../pages/listing/MyListingsPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -57,8 +56,7 @@ export const SuspenseDealDetailPage = withSuspense(LazyDealDetailPage, "Đang t�
 export const SuspenseDashboardPage = withSuspense(LazyDashboardPage, "Đang tải dashboard...");
 export const SuspenseReportManagementPage = withSuspense(LazyReportManagementPage, "Đang tải quản lý báo cáo...");
 export const SuspenseUserManagementPage = withSuspense(LazyUserManagementPage, "Đang tải quản lý người dùng...");
+export const SuspenseReportPage = withSuspense(LazyReportPage, "Đang tải trang báo cáo...");
 export const SuspenseBackendTestPage = withSuspense(LazyBackendTestPage, "Đang tải trang backend test...");
 export const SuspenseGoogleCallbackPage = withSuspense(LazyGoogleCallbackPage, "Đang xử lý đăng nhập...");
 export const SuspenseStitchLandingPage = withSuspense(LazyStitchLandingPage, "Đang tải trang giới thiệu...");
-export const SuspenseNotificationsPage = withSuspense(LazyNotificationsPage, "Đang tải thông báo...");
-export const SuspenseMyListingsPage = withSuspense(LazyMyListingsPage, "Đang tải tin đăng của bạn...");
