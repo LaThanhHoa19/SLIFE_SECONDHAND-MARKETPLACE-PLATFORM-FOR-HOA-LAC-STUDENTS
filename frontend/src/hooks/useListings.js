@@ -5,6 +5,7 @@
  */
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {getListings} from '../api/listingApi';
+import {formatPickupDisplayLine} from '../utils/addressDisplay';
 import useDebounce from './useDebounce';
 
 const toBoolean = (value) => value === true || value === 1 || value === '1';
@@ -17,26 +18,37 @@ const normalizeSeller = (item) => {
     if (seller && typeof seller === 'object') return seller;
 
     const fallbackName = sellerSummary || item?.sellerName || item?.seller_name;
-    return fallbackName ? {fullName: fallbackName} : {};
+    const avatar = item?.sellerAvatarUrl ?? item?.seller_avatar_url;
+    return fallbackName
+        ? {fullName: fallbackName, avatarUrl: avatar}
+        : avatar
+            ? {avatarUrl: avatar}
+            : {};
 };
 
 const normalizeImages = (item) => {
     const raw = item?.images ?? item?.imageUrls ?? item?.image_urls ?? item?.listingImages ?? item?.listing_images;
-    if (!Array.isArray(raw)) return [];
-
-    return raw
-        .map((img) => {
-            if (typeof img === 'string') return img;
-            if (img && typeof img === 'object') return img.imageUrl || img.image_url || '';
-            return '';
-        })
-        .filter(Boolean);
+    if (Array.isArray(raw) && raw.length > 0) {
+        return raw
+            .map((img) => {
+                if (typeof img === 'string') return img;
+                if (img && typeof img === 'object') return img.imageUrl || img.image_url || '';
+                return '';
+            })
+            .filter(Boolean);
+    }
+    // ListingCardResponse từ GET /api/listings trả về thumbnailUrl thay vì mảng images
+    if (item?.thumbnailUrl) return [item.thumbnailUrl];
+    return [];
 };
 
 const normalizeListing = (item) => {
     const pickupAddress = item?.pickupAddress ?? item?.pickup_address;
     const locationFromAddress = typeof pickupAddress === 'object'
-        ? pickupAddress?.locationName || pickupAddress?.location_name || pickupAddress?.addressText || pickupAddress?.address_text
+        ? formatPickupDisplayLine(
+            pickupAddress?.locationName ?? pickupAddress?.location_name,
+            pickupAddress?.addressText ?? pickupAddress?.address_text,
+        )
         : pickupAddress;
     const purpose = item?.purpose ?? item?.listingType ?? item?.listing_type;
     const isGiveaway = toBoolean(item?.isGiveaway ?? item?.is_giveaway) || purpose === 'GIVEAWAY';

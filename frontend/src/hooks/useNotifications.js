@@ -1,11 +1,11 @@
 /**
- * Mục đích: Lấy thông báo và hỗ trợ realtime qua socket.io, fallback polling.
+ * Mục đích: Lấy thông báo; làm mới định kỳ (polling).
+ * BE dùng STOMP/SockJS tại /chat — không phải Socket.IO; gọi io(localhost:8080) sẽ 403 và spam console.
+ * Khi cần realtime: nối STOMP client tới /chat (SockJS), không dùng socket.io-client.
  * API dùng: GET /api/notifications, PATCH read endpoints.
  */
 import { useEffect, useState } from 'react';
-import { io } from 'socket.io-client';
 import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
-import { API_BASE_URL } from '../utils/constants';
 import { useAuth } from './useAuth';
 
 export default function useNotifications() {
@@ -13,7 +13,6 @@ export default function useNotifications() {
   const { token } = useAuth();
 
   useEffect(() => {
-    let socket;
     const fetchData = async () => {
       if (!token) {
         setNotifications([]);
@@ -32,14 +31,10 @@ export default function useNotifications() {
 
     fetchData();
 
-    if (token) {
-      // TODO: nếu BE chưa có socket gateway thì bỏ đoạn này và dùng polling.
-      socket = io(API_BASE_URL, { auth: { token } });
-      socket.on('notification:new', (payload) => setNotifications((prev) => [payload, ...prev]));
-    }
-
     const pollingId = token ? setInterval(fetchData, 30000) : null;
-    return () => { clearInterval(pollingId); socket?.disconnect(); };
+    return () => {
+      clearInterval(pollingId);
+    };
   }, [token]);
 
   const markRead = async (id) => {
