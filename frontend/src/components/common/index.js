@@ -3,6 +3,7 @@
  * Dùng: import { Loading, ErrorState, Pagination } from '@/components/common';
  */
 export { default as AdminDataTable } from './AdminDataTable';
+export { default as ReusableTable } from './ReusableTable';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as ErrorState } from './ErrorState';
 export { default as ImageUploader } from './ImageUploader';
