@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import {useNavigate} from 'react-router-dom';
 import {fullImageUrl} from '../../utils/constants';
+import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
 
 const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
@@ -40,7 +41,10 @@ const getLocationText = (listing) => {
     const pickupAddress = listing?.pickupAddress;
     if (typeof pickupAddress === 'string' && pickupAddress.trim()) return pickupAddress;
     if (pickupAddress && typeof pickupAddress === 'object') {
-        return pickupAddress.locationName || pickupAddress.addressText || '';
+        return formatPickupDisplayLine(
+            pickupAddress.locationName ?? pickupAddress.location_name,
+            pickupAddress.addressText ?? pickupAddress.address_text,
+        );
     }
 
     return '';
