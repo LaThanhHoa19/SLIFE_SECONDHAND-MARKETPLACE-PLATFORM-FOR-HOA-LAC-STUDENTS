@@ -1,15 +1,15 @@
 package com.slife.marketplace.controller;
 
-import com.slife.marketplace.dto.request.ConfirmDealRequest;
+import com.slife.marketplace.dto.request.DealRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
-import com.slife.marketplace.entity.Deal;
+import com.slife.marketplace.dto.response.DealResponse;
 import com.slife.marketplace.service.DealService;
-import com.slife.marketplace.util.Constants;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api")
 public class DealController {
 
     private final DealService dealService;
@@ -18,37 +18,23 @@ public class DealController {
         this.dealService = dealService;
     }
 
-    /**
-     * v1: Finalize the transaction.
-     */
-    @PostMapping("/api/v1/deals/confirm")
-    public ResponseEntity<ApiResponse<Deal>> confirmDeal(@Valid @RequestBody ConfirmDealRequest request) {
-        Deal deal = dealService.confirm(request);
-        return ResponseEntity.ok(ApiResponse.success(Constants.MSG10, deal));
+    @PostMapping("/listings/{listingId}/deals")
+    public ResponseEntity<ApiResponse<DealResponse>> createDeal(
+            @PathVariable Long listingId,
+            @Valid @RequestBody DealRequest request) {
+        DealResponse response = dealService.createDeal(listingId, request);
+        return ResponseEntity.ok(ApiResponse.success("Tạo lượt trả giá thành công", response));
     }
 
-    @PostMapping("/api/deals")
-    public ResponseEntity<?> m1(@RequestBody Object r) {
-        return ResponseEntity.ok().build();
+    @PutMapping("/deals/{id}/reject")
+    public ResponseEntity<ApiResponse<DealResponse>> rejectDeal(@PathVariable Long id) {
+        DealResponse response = dealService.rejectDeal(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối lượt trả giá", response));
     }
 
-    @GetMapping("/api/deals/{id}")
-    public ResponseEntity<?> m2(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    @DeleteMapping("/deals/{id}")
+    public ResponseEntity<ApiResponse<Void>> cancelDeal(@PathVariable Long id) {
+        dealService.cancelDeal(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã hủy lượt trả giá", null));
     }
-
-    @PutMapping("/api/deals/{id}/confirm")
-    public ResponseEntity<?> m3(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
-    }
-
-    @PutMapping("/api/deals/{id}/cancel")
-    public ResponseEntity<?> m4(@PathVariable Long id, @RequestBody Object r) {
-        return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/api/users/{id}/deals")
-    public ResponseEntity<?> m5(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
-    }
-}
+}
