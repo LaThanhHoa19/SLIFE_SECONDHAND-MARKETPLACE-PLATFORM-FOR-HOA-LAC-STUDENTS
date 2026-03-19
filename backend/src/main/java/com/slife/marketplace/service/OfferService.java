@@ -3,9 +3,9 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.CreateOfferRequest;
 import com.slife.marketplace.dto.request.MakeOfferRequest;
 import com.slife.marketplace.dto.response.OfferResponse;
+import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.Conversation;
 import com.slife.marketplace.entity.Offer;
-import com.slife.marketplace.entity.OfferStatus;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
@@ -13,9 +13,12 @@ import com.slife.marketplace.repository.ConversationRepository;
 import com.slife.marketplace.repository.DealRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
-import com.slife.marketplace.repository.OfferStatusRepository;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +34,6 @@ public class OfferService {
     public static final String STATUS_EXPIRED = "EXPIRED";
 
     private final OfferRepository offerRepository;
-    private final OfferStatusRepository offerStatusRepository;
     private final ListingRepository listingRepository;
     private final ConversationRepository conversationRepository;
     private final DealRepository dealRepository;
@@ -39,14 +41,12 @@ public class OfferService {
     private final NotificationService notificationService;
 
     public OfferService(OfferRepository offerRepository,
-                        OfferStatusRepository offerStatusRepository,
                         ListingRepository listingRepository,
                         ConversationRepository conversationRepository,
                         DealRepository dealRepository,
                         UserService userService,
                         NotificationService notificationService) {
         this.offerRepository = offerRepository;
-        this.offerStatusRepository = offerStatusRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
         this.dealRepository = dealRepository;
@@ -92,9 +92,8 @@ public class OfferService {
         offer.setListing(listing);
         offer.setBuyer(buyer);
         offer.setConversation(null);
-        offer.setProposedPrice(proposed);
-        offer.setMessage(request.getMessage() != null && !request.getMessage().isBlank() ? request.getMessage().trim() : null);
-        offer.setOfferStatus(requireStatus(STATUS_PENDING));
+        offer.setAmount(proposed);
+        offer.setStatus(STATUS_PENDING);
         offer.setCreatedAt(Instant.now());
         offer.setUpdatedAt(Instant.now());
         Offer saved = offerRepository.save(offer);
@@ -103,6 +102,64 @@ public class OfferService {
             notificationService.notifyOfferProposal(listing.getSeller(), buyer, listing.getId(), proposed);
         }
         return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<OfferResponse> getOfferHistory(Long listingId, Long buyerId, String sessionId, int page, int size) {
+        User currentUser = userService.getCurrentUser();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(20, Math.max(10, size));
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Offer> offerPage;
+        if (sessionId != null && !sessionId.isBlank()) {
+            Conversation conversation = conversationRepository.findBySessionUuid(sessionId)
+                    .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
+            boolean isParticipant = conversation.getUserId1().getId().equals(currentUser.getId())
+                    || conversation.getUserId2().getId().equals(currentUser.getId());
+            boolean isListingSeller = conversation.getListing() != null
+                    && conversation.getListing().getSeller() != null
+                    && conversation.getListing().getSeller().getId().equals(currentUser.getId());
+            if (!isParticipant && !isListingSeller) {
+                throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT);
+            }
+            if (buyerId != null) {
+                if (!isListingSeller && !buyerId.equals(currentUser.getId())) {
+                    throw new SlifeException(ErrorCode.FORBIDDEN);
+                }
+                offerPage = offerRepository.findByConversation_IdAndBuyer_IdOrderByCreatedAtDesc(conversation.getId(), buyerId, pageable);
+            } else {
+                offerPage = offerRepository.findByConversation_IdOrderByCreatedAtDesc(conversation.getId(), pageable);
+            }
+        } else {
+            if (listingId == null) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "listingId or sessionId is required");
+            }
+            Listing listing = listingRepository.findById(listingId)
+                    .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+            boolean isSeller = listing.getSeller() != null && listing.getSeller().getId().equals(currentUser.getId());
+
+            Long effectiveBuyerId = buyerId;
+            if (!isSeller) {
+                if (effectiveBuyerId == null) {
+                    effectiveBuyerId = currentUser.getId();
+                } else if (!effectiveBuyerId.equals(currentUser.getId())) {
+                    throw new SlifeException(ErrorCode.FORBIDDEN);
+                }
+            }
+            offerPage = effectiveBuyerId != null
+                    ? offerRepository.findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(listingId, effectiveBuyerId, pageable)
+                    : offerRepository.findByListing_IdOrderByCreatedAtDesc(listingId, pageable);
+        }
+
+        var content = offerPage.getContent().stream().map(this::toResponse).toList();
+        return new PagedResponse<>(
+                content,
+                offerPage.getNumber(),
+                offerPage.getSize(),
+                offerPage.getTotalElements(),
+                offerPage.getTotalPages()
+        );
     }
 
     /**
@@ -135,8 +192,8 @@ public class OfferService {
         offer.setConversation(conv);
         offer.setListing(listing);
         offer.setBuyer(current);
-        offer.setProposedPrice(proposed);
-        offer.setOfferStatus(requireStatus(STATUS_PENDING));
+        offer.setAmount(proposed);
+        offer.setStatus(STATUS_PENDING);
         offer.setCreatedAt(Instant.now());
         offer.setUpdatedAt(Instant.now());
         return offerRepository.save(offer);
@@ -158,7 +215,7 @@ public class OfferService {
         if (!STATUS_PENDING.equals(offer.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer is not pending");
         }
-        offer.setOfferStatus(requireStatus(STATUS_ACCEPTED));
+        offer.setStatus(STATUS_ACCEPTED);
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
 
@@ -171,17 +228,12 @@ public class OfferService {
         return dealRepository.save(deal);
     }
 
-    private OfferStatus requireStatus(String code) {
-        return offerStatusRepository.findByCode(code)
-                .orElseThrow(() -> new SlifeException(ErrorCode.INTERNAL_ERROR, "Offer status not configured: " + code));
-    }
-
     private OfferResponse toResponse(Offer offer) {
         OfferResponse response = new OfferResponse();
         response.setId(offer.getId());
         response.setListingId(offer.getListing() != null ? offer.getListing().getId() : null);
         response.setBuyerId(offer.getBuyer() != null ? offer.getBuyer().getId() : null);
-        response.setProposedPrice(offer.getProposedPrice());
+        response.setProposedPrice(offer.getAmount());
         response.setMessage(offer.getMessage());
         response.setStatus(offer.getStatus());
         response.setCreatedAt(offer.getCreatedAt());
