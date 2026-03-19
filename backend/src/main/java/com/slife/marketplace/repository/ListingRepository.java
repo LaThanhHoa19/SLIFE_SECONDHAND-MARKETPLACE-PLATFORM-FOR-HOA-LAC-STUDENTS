@@ -1,6 +1,7 @@
 package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,35 +23,71 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      * Chi tra ve listing co status = ACTIVE.
      */
     @Query(value = """
-        SELECT l
+            SELECT l
+            FROM Listing l
+            LEFT JOIN l.category c
+            LEFT JOIN l.pickupAddress a
+            WHERE l.status = 'ACTIVE'
+              AND (:categoryId IS NULL OR c.id           = :categoryId)
+              AND (:location   IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
+              AND (:purpose    IS NULL OR :purpose = ''  OR l.purpose      = :purpose)
+              AND (:itemCond   IS NULL OR :itemCond = '' OR l.itemCondition = :itemCond)
+              AND (:priceMin   IS NULL OR l.price >= :priceMin)
+              AND (:priceMax   IS NULL OR l.price <= :priceMax)
+              AND (
+                  :q IS NULL OR :q = ''
+                  OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
+                  OR l.description  LIKE CONCAT('%', :q, '%')
+              )
+            """)
+    Page<Listing> findByFilters(
+            @Param("q") String q,
+            @Param("categoryId") Long categoryId,
+            @Param("location") String location,
+            @Param("purpose") String purpose,
+            @Param("itemCond") String itemCond,
+            @Param("priceMin") BigDecimal priceMin,
+            @Param("priceMax") BigDecimal priceMax,
+            Pageable pageable);
+
+    /**
+     * Optimized query for Listing Cards.
+     * Uses Constructor Projection to fetch only required fields.
+     */
+    @Query("""
+        SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
+            l.id, l.title, l.price, 
+            COALESCE(a.locationName, a.addressText), 
+            l.status,
+            (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1)
+        )
         FROM Listing l
-        LEFT JOIN l.category c
         LEFT JOIN l.pickupAddress a
         WHERE l.status = 'ACTIVE'
-          AND (:categoryId IS NULL OR c.id           = :categoryId)
-          AND (:location   IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
-          AND (:purpose    IS NULL OR :purpose = ''  OR l.purpose      = :purpose)
-          AND (:itemCond   IS NULL OR :itemCond = '' OR l.itemCondition = :itemCond)
-          AND (:priceMin   IS NULL OR l.price >= :priceMin)
-          AND (:priceMax   IS NULL OR l.price <= :priceMax)
-          AND (
-              :q IS NULL OR :q = ''
-              OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
-              OR l.description  LIKE CONCAT('%', :q, '%')
-          )
-        """)
-    Page<Listing> findByFilters(
-            @Param("q")          String q,
-            @Param("categoryId") Long categoryId,
-            @Param("location")   String location,
-            @Param("purpose")    String purpose,
-            @Param("itemCond")   String itemCond,
-            @Param("priceMin")   BigDecimal priceMin,
-            @Param("priceMax")   BigDecimal priceMax,
-            Pageable pageable);
+    """)
+    Page<com.slife.marketplace.dto.response.ListingCardResponse> findAllActiveListingCards(Pageable pageable);
 
     /** Distinct pickup locations for filter dropdown */
     @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
-           "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
+            "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
     List<String> findDistinctPickupLocationNames();
+
+    // --- My Listings Management (pageable versions) ---
+
+    Page<Listing> findBySellerOrderByCreatedAtDesc(User seller, Pageable pageable);
+
+    Page<Listing> findBySellerAndStatus(User seller, String status, Pageable pageable);
+
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
+            "ORDER BY l.expirationDate DESC")
+    Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND EXISTS (SELECT r FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = l.id) " +
+            "ORDER BY l.createdAt DESC")
+    Page<Listing> findReportedListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    @Query("SELECT COUNT(r) FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = :listingId")
+    long countReportsByListingId(@Param("listingId") Long listingId);
 }
