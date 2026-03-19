@@ -152,13 +152,33 @@ export default function LoginPage() {
   }, [GOOGLE_CLIENT_ID, googleLogin, navigate]);
 
   return (
-      <Box sx={{ minHeight: 'calc(100vh - 120px)', display: 'grid', placeItems: 'center', p: 2 }}>
-        <Paper elevation={3} sx={{ width: '100%', maxWidth: 420, p: 4, borderRadius: 3 }}>
-          <Stack spacing={2.5}>
-            <Box>
-              <Typography variant="h4" fontWeight={700}>Đăng nhập</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Đăng nhập bằng email hoặc Google SSO (@fpt.edu.vn).
+      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            width: '100%',
+            maxWidth: 500,
+            p: 5,
+            borderRadius: 3,
+            bgcolor: '#1F1D25',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+          }}
+        >
+          <Stack spacing={3}>
+            <Box textAlign="center">
+              <Typography
+                variant="h2"
+                fontWeight={800}
+                sx={{ color: '#a78bfa', letterSpacing: '0.12em', mb: 2 }}
+              >
+                SLIFE
+              </Typography>
+              <Typography variant="h5" fontWeight={700} color="#fff">
+                Đăng nhập / Đăng ký
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', mt: 0.75 }}>
+                Đăng nhập bằng Email / Google SSO (@fpt.edu.vn) để tiếp tục
               </Typography>
             </Box>
 
@@ -168,6 +188,7 @@ export default function LoginPage() {
                 </Alert>
             )}
 
+            {/* TẠM COMMENT: Đăng nhập bằng email/password
             <Box component="form" onSubmit={handleSubmit(onSubmit)}>
               <Stack spacing={2}>
                 <TextField
@@ -203,17 +224,18 @@ export default function LoginPage() {
             </Box>
 
             <Divider>hoặc</Divider>
+            */}
 
             <Stack spacing={1} alignItems="center">
               <Box ref={googleBtnRef} sx={{ minHeight: 44 }} />
               {!googleReady && !googleError && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)' }}>
                     Đang tải Google Sign-In...
                   </Typography>
               )}
             </Stack>
 
-            <Typography variant="caption" color="text.secondary" textAlign="center">
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.3)' }} textAlign="center">
               Chỉ chấp nhận tài khoản @fpt.edu.vn
             </Typography>
           </Stack>
