@@ -104,4 +104,7 @@ public class Listing {
     @OneToMany(mappedBy = "listing", fetch = FetchType.LAZY)
     @OrderBy("displayOrder ASC")
     private List<ListingImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "listing", fetch = FetchType.LAZY)
+    private List<Offer> offers = new ArrayList<>();
 }
