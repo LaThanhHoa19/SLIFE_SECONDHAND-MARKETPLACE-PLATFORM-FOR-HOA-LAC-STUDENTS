@@ -35,7 +35,11 @@ public class CreateListingRequest {
 
     private String pickupLocationName;
 
+    /** Địa chỉ đầy đủ từ Vietmap (FE có thể gửi để tương thích; khi lưu DB ưu tiên pickupLocationName + supplement). */
     private String pickupAddressText;
+
+    /** Ghi chú không có trên bản đồ (vd: Phòng 102) — lưu vào addresses.address_text. */
+    private String pickupAddressSupplement;
 
     private BigDecimal pickupLat;
     private BigDecimal pickupLng;

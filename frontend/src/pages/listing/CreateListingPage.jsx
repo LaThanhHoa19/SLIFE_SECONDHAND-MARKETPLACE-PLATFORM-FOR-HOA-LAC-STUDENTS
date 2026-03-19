@@ -25,7 +25,8 @@ function buildPayload(values, isDraft = false) {
     purpose: values.isGiveaway ? 'GIVEAWAY' : (values.purpose || 'SALE'),
     pickupAddressId: values.pickupAddressId ? Number(values.pickupAddressId) : null,
     pickupLocationName: values.pickupLocationName?.trim() || values.location || null,
-    pickupAddressText: values.pickupAddressText?.trim() || null,
+    /** Chỉ ghi chú thêm (phòng/tầng); địa chỉ Vietmap nằm ở pickupLocationName */
+    pickupAddressSupplement: values.pickupAddressSupplement?.trim() || null,
     pickupLat: values.pickupLat ? Number(values.pickupLat) : null,
     pickupLng: values.pickupLng ? Number(values.pickupLng) : null,
   };
