@@ -8,7 +8,7 @@ import {
   Typography,
 } from '@mui/material';
 import { getAdminUsers } from '../../api/userApi';
-import AdminDataTable from '../../components/common/AdminDataTable';
+import ReusableTable from '../../components/common/ReusableTable';
 
 function formatDate(dateValue) {
   if (!dateValue) return '-';
@@ -139,7 +139,7 @@ export default function UserManagementPage() {
 
         {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
 
-        <AdminDataTable
+        <ReusableTable
             columns={columns}
             rows={users}
             isLoading={isLoading}
