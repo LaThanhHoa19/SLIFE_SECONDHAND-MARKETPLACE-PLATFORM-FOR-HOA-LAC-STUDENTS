@@ -23,12 +23,11 @@ import {
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
+    SuspenseReportPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
-    SuspenseNotificationsPage,
-    SuspenseMyListingsPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -93,19 +92,12 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+
                 <Route
-                    path="/notifications"
+                    path="/report"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseNotificationsPage />
-                        </RouteGuard>
-                    }
-                />
-                <Route
-                    path="/my-listings"
-                    element={
-                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseMyListingsPage />
+                            <SuspenseReportPage />
                         </RouteGuard>
                     }
                 />
