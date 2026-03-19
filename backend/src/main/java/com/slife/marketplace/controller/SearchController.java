@@ -6,6 +6,7 @@ import com.slife.marketplace.dto.response.ListingPageResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.service.SearchService;
+import com.slife.marketplace.util.AddressFormat;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -67,7 +68,8 @@ public class SearchController {
         res.setCreatedAt(listing.getCreatedAt());
 
         if (listing.getPickupAddress() != null) {
-            res.setLocation(listing.getPickupAddress().getLocationName());
+            var pa = listing.getPickupAddress();
+            res.setLocation(AddressFormat.pickupDisplayLine(pa.getLocationName(), pa.getAddressText()));
         }
 
         Map<String, Object> sellerSummary = new HashMap<>();
