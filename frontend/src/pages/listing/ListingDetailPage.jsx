@@ -60,6 +60,7 @@ import ListingDescription from '../../components/listing/ListingDescription';
 import ListingRightInfoBlock from '../../components/listing/ListingRightInfoBlock';
 import ListingSellerOtherListings from '../../components/listing/ListingSellerOtherListings';
 import ListingSimilar from '../../components/listing/ListingSimilar';
+import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
 
 // ─── Hằng số màu sắc đồng bộ với Feed ───────────────────────────────────────
 const DARK_BG = '#1C1B23';
@@ -305,7 +306,6 @@ export default function ListingDetailPage() {
       </Box>
     );
   }
-
   if (error || !listing) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -331,6 +331,7 @@ export default function ListingDetailPage() {
   const phoneNumber = isAuthenticated && showPhone
     ? (listing.sellerPhone || seller?.phoneNumber || 'Không có SĐT')
     : null;
+  const pickupAddress = listing?.pickupAddress;
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
@@ -453,6 +454,23 @@ export default function ListingDetailPage() {
         </Card>
         <Box /> {/* Ô trống để giữ grid 2 cột */}
       </Box>
+
+      {/* Xem trước vị trí hẹn (map Vietmap + nút mở Google Maps) */}
+      {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null && (
+        <Box sx={{ maxWidth: 1200, mx: 'auto', mb: 4 }}>
+          <Typography
+            variant="h6"
+            sx={{ mb: 1.5, color: TEXT_PRI, fontSize: 18, fontWeight: 600 }}
+          >
+            Vị trí điểm hẹn (xem trước)
+          </Typography>
+          <ListingPickupMapPreview
+            lat={pickupAddress.lat}
+            lng={pickupAddress.lng}
+            address={locationText}
+          />
+        </Box>
+      )}
 
       {/* Tin đăng tương tự – luôn hiện, grid 4 cột */}
       <ListingSimilar

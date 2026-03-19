@@ -64,7 +64,10 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                 ELSE a.addressText
             END,
             l.status,
-            (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1)
+            (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
+            l.seller.id,
+            l.seller.fullName,
+            l.seller.avatarUrl
         )
         FROM Listing l
         LEFT JOIN l.pickupAddress a
@@ -76,4 +79,4 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
             "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
     List<String> findDistinctPickupLocationNames();
-}
+}
