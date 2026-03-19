@@ -19,9 +19,7 @@ public class Offer {
     @Column(name = "offer_id", nullable = false)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "conversation_id")
+    @Transient
     private Conversation conversation;
 
     @NotNull

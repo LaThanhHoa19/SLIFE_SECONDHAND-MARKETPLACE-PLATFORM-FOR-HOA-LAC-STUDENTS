@@ -9,8 +9,6 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -55,9 +53,6 @@ public class Conversation {
 
     @Column(name = "last_message_at")
     private Instant lastMessageAt;
-
-    @OneToMany(mappedBy = "conversation", fetch = FetchType.LAZY)
-    private List<Offer> offers = new ArrayList<>();
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")

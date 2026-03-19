@@ -74,7 +74,7 @@ public class ChatController {
     }
 
     @PostMapping("/chats/session")
-    public ResponseEntity<ApiResponse<String>> getOrCreateSession(@RequestParam Long listingId) {
+    public ResponseEntity<ApiResponse<String>> getOrCreateSession(@RequestParam(name = "listingId") Long listingId) {
         User current = userService.getCurrentUser();
         var conv = chatService.getOrCreateSession(listingId, current);
         return ResponseEntity.ok(ApiResponse.success("OK", conv.getSessionUuid()));
