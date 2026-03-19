@@ -55,8 +55,14 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      */
     @Query("""
         SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
-            l.id, l.title, l.price, 
-            COALESCE(a.locationName, a.addressText), 
+            l.id, l.title, l.price,
+            CASE
+                WHEN a IS NULL THEN NULL
+                WHEN a.locationName IS NOT NULL AND a.locationName <> '' AND a.addressText IS NOT NULL AND a.addressText <> ''
+                    THEN CONCAT(a.locationName, ' — ', a.addressText)
+                WHEN a.locationName IS NOT NULL AND a.locationName <> '' THEN a.locationName
+                ELSE a.addressText
+            END,
             l.status,
             (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1)
         )
