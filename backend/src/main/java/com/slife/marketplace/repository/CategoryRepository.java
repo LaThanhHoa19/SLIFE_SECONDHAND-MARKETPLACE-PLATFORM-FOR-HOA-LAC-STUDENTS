@@ -16,4 +16,6 @@ import org.springframework.stereotype.Repository;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     boolean existsByNameIgnoreCase(String name);
+
+    java.util.Optional<Category> findByNameIgnoreCase(String name);
 }
