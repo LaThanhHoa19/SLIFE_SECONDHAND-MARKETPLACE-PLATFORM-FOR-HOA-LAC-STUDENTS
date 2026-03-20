@@ -118,6 +118,7 @@ function createPinElement() {
 export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft, submitting = false, savingDraft = false, mode = 'create' }) {
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
+    const imageSectionRef = useRef(null);
     const [categories, setCategories] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
     const [expandedCatId, setExpandedCatId] = useState(null);
@@ -161,6 +162,8 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
     const isGiveaway = watch('isGiveaway');
     const selectedCategoryName = watch('categoryName');
     const currentCondition = watch('condition');
+    const descriptionValue = watch('description') || '';
+    const titleValue = watch('title') || '';
     const pickupAddressText = watch('pickupAddressText');
     const pickupLat = watch('pickupLat');
     const pickupLng = watch('pickupLng');
@@ -286,7 +289,11 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
     const onFormSubmit = (e) => {
         e.preventDefault();
-        if (imageFiles.length === 0) setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+        if (imageFiles.length === 0) {
+            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
         handleSubmit(handleFormSubmit)(e);
     };
 
@@ -503,7 +510,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             setValue('pickupDistrict', admin.district?.name || '');
             setValue('pickupWard', admin.ward?.name || '');
         }
-        clearErrors('pickupLocationName');
+        clearErrors(['pickupLocationName', 'pickupLat']);
         // Chuyển marker pending → marker đỏ xác nhận
         if (pendingMarkerRef.current) {
             pendingMarkerRef.current.remove();
@@ -615,14 +622,14 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             component="form"
             onSubmit={onFormSubmit}
             sx={{
-                maxWidth: "1200px",
-                width: "90%",
+                maxWidth: "680px",
+                width: "100%",
                 mx: "auto",
-                mt: 6,
-                mb: 8,
-                p: 6,
-                border: "3px solid #201D26",
-                borderRadius: "14px",
+                mt: 4,
+                mb: 6,
+                p: 3.5,
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "12px",
                 backgroundColor: "#201D26",
                 color: "#FFFFFF",
 
@@ -637,7 +644,8 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             }}
         >
             {/* 1. HÌNH ẢNH */}
-            <Typography fontWeight={600} fontSize={20} mb={2}>
+            <Box ref={imageSectionRef}>
+            <Typography fontWeight={600} fontSize={16} mb={2}>
                 Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
             <Box mb={4}>
@@ -647,61 +655,86 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 />
 
                 {imageError && (
-                    <Typography color="error" sx={{ mt: 1 }}>
+                    <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
                         {imageError}
                     </Typography>
                 )}
             </Box>
+            </Box>
 
             {/* 2. MÔ TẢ */}
-            <Typography fontWeight={600} fontSize={20} mb={1.5}>
+            <Typography fontWeight={600} fontSize={16} mb={2.5}>
                 Mô tả chi tiết <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
-            <TextField
-                fullWidth
-                multiline
-                rows={5}
-                placeholder="Ví dụ: Máy còn mới 95%, đầy đủ phụ kiện, bảo hành 3 tháng..."
-                {...register("description", {
-                    required: "Vui lòng nhập mô tả",
-                    validate: (v) =>
-                        v.trim().split(/\s+/).filter(Boolean).length >= 10 || "Mô tả tối thiểu 10 từ"
-                })}
-                error={!!errors.description}
-                helperText={errors.description?.message}
-                sx={{
-                    mb: 4,
-                    "& .MuiInputBase-input": {
-                        fontSize: "20px"
-                    }
-                }}
-            />
+            <Box sx={{ mb: 4 }}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={5}
+                    placeholder="Ví dụ: Máy còn mới 95%, đầy đủ phụ kiện, bảo hành 3 tháng..."
+                    {...register("description", {
+                        required: "Vui lòng nhập mô tả",
+                        validate: (v) => {
+                            const words = (v || "").trim().split(/\s+/).filter(Boolean);
+                            if (words.length < 10) return "Mô tả tối thiểu 10 từ";
+                            if (words.length > 1500) return "Mô tả tối đa 1500 từ";
+                            return true;
+                        }
+                    })}
+                    error={!!errors.description}
+                    helperText={errors.description?.message}
+                    sx={{
+                        "& .MuiInputBase-input": {
+                            fontSize: "14px"
+                        }
+                    }}
+                />
+                <Typography
+                    fontSize={12}
+                    sx={{
+                        mt: 0.5,
+                        textAlign: 'right',
+                        color: descriptionValue.trim().split(/\s+/).filter(Boolean).length > 1500 ? 'error.main' : 'rgba(255,255,255,0.5)',
+                    }}
+                >
+                    {(descriptionValue.trim().split(/\s+/).filter(Boolean).length)} / 1500 từ
+                </Typography>
+            </Box>
 
             {/* 3. TIÊU ĐỀ & DANH MỤC */}
-            <Grid container spacing={3}>
+            <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Tiêu đề <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
-                    <TextField
-                        fullWidth
-                        placeholder="Tên sản phẩm của bạn"
-                        {...register("title", {
-                            required: "Nhập tiêu đề",
-                            minLength: { value: 2, message: "Tối thiểu 2 ký tự" }
-                        })}
-                        error={!!errors.title}
-                        helperText={errors.title?.message}
-                        sx={{
-                            "& .MuiInputBase-input": {
-                                fontSize: "20px"
-                            }
-                        }}
-                    />
+                    <Box>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Tên sản phẩm của bạn"
+                            inputProps={{ maxLength: 50 }}
+                            {...register("title", {
+                                required: "Nhập tiêu đề",
+                                minLength: { value: 2, message: "Tối thiểu 2 ký tự" },
+                                maxLength: { value: 50, message: "Tối đa 50 ký tự" }
+                            })}
+                            error={!!errors.title}
+                            helperText={errors.title?.message}
+                            sx={{
+                                "& .MuiInputBase-input": {
+                                    fontSize: "14px"
+                                }
+                            }}
+                        />
+                        <Typography fontSize={12} color="rgba(255,255,255,0.5)" sx={{ mt: 0.5, textAlign: 'right' }}>
+                            {titleValue.length} / 50 ký tự
+                        </Typography>
+                    </Box>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Danh mục <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <input
@@ -712,10 +745,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         onClick={() => setOpenCategory(true)}
                         sx={{
                             border: `1px solid ${errors.categoryId ? '#d32f2f' : 'transparent'}`,
-                            borderRadius: "10px",
-                            px: 2, py: 1.5,
+                            borderRadius: "8px",
+                            px: 1.5, py: 0.75,
                             cursor: "pointer",
-                            fontSize: "20px",
+                            fontSize: "13px",
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -732,7 +765,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         }}
                     >
                         {selectedCategoryName || "Chọn danh mục sản phẩm"}
-                        <ChevronRightIcon />
+                        <ChevronRightIcon sx={{ fontSize: 18 }} />
                     </Box>
                     {errors.categoryId && (
                         <Typography color="error" variant="caption" sx={{ ml: 2 }}>
@@ -742,20 +775,22 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 </Grid>
             </Grid>
 
-            {/* 4. GIÁ & ĐỊA ĐIỂM */}
-            <Grid container spacing={3} mt={1}>
+            {/* 4. GIÁ & TÌNH TRẠNG */}
+            <Grid container spacing={2} mt={1}>
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
                         Giá bán <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <TextField
                         fullWidth
+                        size="small"
                         {...register("price", {
                             validate: (v) => {
                                 if (isGiveaway) return true;
                                 const num = Number(String(v || "").replace(/\D/g, ""));
                                 if (!num) return "Vui lòng nhập giá";
                                 if (num < 1000) return "Giá tối thiểu 1.000đ";
+                                if (num >= 1000000000) return "Giá tối đa dưới 1 tỉ";
                                 return true;
                             }
                         })}
@@ -765,11 +800,11 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         error={!!errors.price}
                         helperText={errors.price?.message}
                         InputProps={{
-                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 20, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
+                            endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 14, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
                         }}
                         sx={{
                             "& .MuiInputBase-input": {
-                                fontSize: "20px"
+                                fontSize: "14px"
                             },
                             "& .MuiInputBase-input.Mui-disabled": {
                                 WebkitTextFillColor: "#fff"
@@ -782,7 +817,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         sx={{
                             mt: 1,
                             "& .MuiFormControlLabel-label": {
-                                fontSize: "18px",
+                                fontSize: "14px",
                                 fontWeight: 500
                             }
                         }}
@@ -790,164 +825,22 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
-                        Địa điểm giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
-                    </Typography>
-
-                    {/* hidden fields */}
-                    <input type="hidden" {...register('pickupLat')} />
-                    <input type="hidden" {...register('pickupLng')} />
-                    <input type="hidden" {...register('pickupAddressText')} />
-                    <input type="hidden" {...register('pickupProvince')} />
-                    <input type="hidden" {...register('pickupDistrict')} />
-                    <input type="hidden" {...register('pickupWard')} />
-
-                    {/* ── Sequential location picker (Tỉnh → Huyện → Xã) ── */}
-                    <LocationPicker
-                        onConfirm={(loc) => setAdminLocation(loc)}
-                        onSuggestionSelect={handleSuggestionSelect}
-                        value={adminLocation ? {
-                            province: adminLocation.province,
-                            district: adminLocation.district,
-                            ward: adminLocation.ward,
-                        } : undefined}
-                    />
-
-                    {/* ── Địa chỉ đã xác nhận ── */}
-                    {pickupAddressText?.trim() && (
-                        <Box
-                            sx={{
-                                mt: 2,
-                                px: 2, py: 1.25,
-                                borderRadius: 1.5,
-                                border: '1px solid rgba(74,222,128,0.35)',
-                                bgcolor: 'rgba(74,222,128,0.06)',
-                                display: 'flex', alignItems: 'flex-start', gap: 1,
-                            }}
-                        >
-                            <CheckCircleOutlineIcon sx={{ fontSize: 18, color: '#4ade80', mt: 0.2, flexShrink: 0 }} />
-                            <Box>
-                                <Typography fontSize={12} color="#4ade80" fontWeight={600} mb={0.3}>
-                                    Vị trí đã xác nhận
-                                </Typography>
-                                <Typography fontSize={13} color="#e5e7eb" sx={{ lineHeight: 1.4 }}>
-                                    {pickupAddressText}
-                                </Typography>
-                            </Box>
-                        </Box>
-                    )}
-
-                    {/* ── Pending pin: xác nhận / từ chối ── */}
-                    {pendingPin && pinStatus === 'valid' && (
-                        <Alert
-                            severity="success"
-                            sx={{
-                                mt: 1.5,
-                                bgcolor: 'rgba(74,222,128,0.1)',
-                                color: '#4ade80',
-                                border: '1px solid rgba(74,222,128,0.3)',
-                                borderRadius: 1.5,
-                                '& .MuiAlert-message': { width: '100%' },
-                            }}
-                            action={
-                                <Stack direction="row" gap={1} alignItems="center">
-                                    <Button size="small" onClick={handleRetryPin}
-                                        sx={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Bỏ</Button>
-                                    <Button size="small" variant="contained" onClick={handleConfirmPin}
-                                        sx={{ bgcolor: '#4ade80', color: '#111', fontWeight: 700, fontSize: 12, '&:hover': { bgcolor: '#22c55e' } }}>
-                                        Xác nhận
-                                    </Button>
-                                </Stack>
-                            }
-                        >
-                            Vị trí hợp lệ. Bấm <strong>Xác nhận</strong> để lưu.
-                        </Alert>
-                    )}
-                    {pendingPin && pinStatus === 'invalid' && (
-                        <Alert
-                            severity="error"
-                            sx={{
-                                mt: 1.5,
-                                bgcolor: 'rgba(248,113,113,0.1)',
-                                color: '#f87171',
-                                border: '1px solid rgba(248,113,113,0.3)',
-                                borderRadius: 1.5,
-                            }}
-                            action={
-                                <Button size="small" onClick={handleRetryPin}
-                                    sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
-                            }
-                        >
-                            Vị trí không thuộc khu vực đã chọn
-                            {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}.
-                            Vui lòng gim lại trong đúng khu vực.
-                        </Alert>
-                    )}
-
-                    <TextField
-                        fullWidth
-                        label="Ghi chú thêm (tuỳ chọn)"
-                        margin="normal"
-                        placeholder="VD: Phòng 102, tầng 3, toà nhà..."
-                        {...register('pickupAddressSupplement')}
-                        sx={{
-                            "& .MuiInputBase-input": { fontSize: "14px" }
-                        }}
-                    />
-
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" mt={0.5}>
-                        <Typography fontSize={13} color="rgba(255,255,255,0.45)">
-                            Chọn khu vực → bản đồ bay về → bấm trên bản đồ để gim vị trí → xác nhận.
-                        </Typography>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={handleGpsClick}
-                            disabled={gpsLoading}
-                            sx={{
-                                color: '#9D6EED', borderColor: 'rgba(157,110,237,0.5)',
-                                fontSize: 12, textTransform: 'none', py: 0.2, px: 1,
-                                '&:hover': { bgcolor: 'rgba(157,110,237,0.1)', borderColor: '#9D6EED' }
-                            }}
-                        >
-                            {gpsLoading ? 'Đang lấy...' : 'Vị trí của tôi'}
-                        </Button>
-                    </Stack>
-
-                    <Box
-                        id="vietmap-container"
-                        sx={{
-                            mt: 1.5,
-                            width: '100%',
-                            height: 340,
-                            borderRadius: 2,
-                            overflow: 'hidden',
-                            border: '1px solid rgba(148, 163, 184, 0.35)',
-                            bgcolor: '#020617',
-                        }}
-                    />
-                    <Typography fontSize={12} mt={0.5} color="#9ca3af">
-                        Nếu bản đồ không hiển thị: kiểm tra VITE_VIETMAP_TILE_KEY hoặc kết nối mạng.
-                    </Typography>
-                </Grid>
-            </Grid>
-
-            {/* 5. TÌNH TRẠNG & SUBMIT */}
-            <Grid container spacing={3} mt={2} alignItems="center">
-                <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
-                        Tình trạng sản phẩm
+                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
+                        Tình trạng sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
                     <ToggleButtonGroup
                         exclusive
                         value={currentCondition}
                         onChange={(_, val) => val && setValue('condition', val)}
+                        fullWidth
+                        sx={{ width: '100%' }}
                     >
                         <ToggleButton
                             value="USED_GOOD"
                             sx={{
-                                px: 4,
-                                py: 1.2,
+                                px: 2.5,
+                                py: 0.8,
+                                fontSize: "13px",
                                 borderRadius: "12px",
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
@@ -972,8 +865,9 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         <ToggleButton
                             value="NEW"
                             sx={{
-                                px: 4,
-                                py: 1.2,
+                                px: 2.5,
+                                py: 0.8,
+                                fontSize: "13px",
                                 borderRadius: "12px",
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
@@ -996,8 +890,190 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         </ToggleButton>
                     </ToggleButtonGroup>
                 </Grid>
+            </Grid>
 
-                <Grid item xs={12} md={6}>
+            {/* 5. ĐỊA ĐIỂM GIAO DỊCH */}
+            <Box mt={3}>
+                <Typography fontWeight={600} fontSize={16} mb={1.5}>
+                    Địa điểm giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                </Typography>
+
+                    {/* hidden fields */}
+                    <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
+                <input type="hidden" {...register('pickupLng')} />
+                <input type="hidden" {...register('pickupAddressText')} />
+                <input type="hidden" {...register('pickupProvince')} />
+                <input type="hidden" {...register('pickupDistrict')} />
+                <input type="hidden" {...register('pickupWard')} />
+
+                {/* ── Sequential location picker (Tỉnh → Huyện → Xã) ── */}
+                <LocationPicker
+                    onConfirm={(loc) => setAdminLocation(loc)}
+                    onSuggestionSelect={handleSuggestionSelect}
+                    value={adminLocation ? {
+                        province: adminLocation.province,
+                        district: adminLocation.district,
+                        ward: adminLocation.ward,
+                    } : undefined}
+                />
+
+                {/* ── Địa chỉ đã xác nhận ── */}
+                {pickupAddressText?.trim() && (
+                    <Box
+                        sx={{
+                            mt: 2,
+                            px: 2, py: 1.25,
+                            borderRadius: 1.5,
+                            border: '1px solid rgba(157,110,237,0.4)',
+                            bgcolor: 'rgba(157,110,237,0.08)',
+                            display: 'flex', alignItems: 'flex-start', gap: 1,
+                        }}
+                    >
+                        <CheckCircleOutlineIcon sx={{ fontSize: 18, color: '#9D6EED', mt: 0.2, flexShrink: 0 }} />
+                        <Box>
+                            <Typography fontSize={12} color="#B794F6" fontWeight={600} mb={0.3}>
+                                Vị trí đã xác nhận
+                            </Typography>
+                            <Typography fontSize={13} color="#e5e7eb" sx={{ lineHeight: 1.4 }}>
+                                {pickupAddressText}
+                            </Typography>
+                        </Box>
+                    </Box>
+                )}
+
+                {/* ── Pending pin: xác nhận / từ chối ── */}
+                {pendingPin && pinStatus === 'valid' && (
+                    <Alert
+                        severity="success"
+                        sx={{
+                            mt: 1.5,
+                            bgcolor: 'rgba(157,110,237,0.1)',
+                            color: '#B794F6',
+                            border: '1px solid rgba(157,110,237,0.4)',
+                            borderRadius: 1.5,
+                            '& .MuiAlert-message': { width: '100%' },
+                            '& .MuiAlert-icon': { color: '#9D6EED' },
+                        }}
+                        action={
+                            <Stack direction="row" gap={1} alignItems="center">
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={handleRetryPin}
+                                    sx={{
+                                        color: '#9D6EED',
+                                        borderColor: 'rgba(157,110,237,0.5)',
+                                        fontSize: 12,
+                                        py: 0.5,
+                                        '&:hover': {
+                                            borderColor: '#9D6EED',
+                                            bgcolor: 'rgba(157,110,237,0.1)',
+                                        },
+                                    }}
+                                >
+                                    Bỏ
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="contained"
+                                    onClick={handleConfirmPin}
+                                    sx={{
+                                        bgcolor: '#9D6EED',
+                                        color: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: 12,
+                                        py: 0.5,
+                                        px: 2,
+                                        minWidth: 90,
+                                        whiteSpace: 'nowrap',
+                                        '&:hover': { bgcolor: '#B794F6' },
+                                    }}
+                                >
+                                    Xác nhận
+                                </Button>
+                            </Stack>
+                        }
+                    >
+                        Vị trí hợp lệ. Bấm <strong>Xác nhận</strong> để lưu.
+                    </Alert>
+                )}
+                {pendingPin && pinStatus === 'invalid' && (
+                    <Alert
+                        severity="error"
+                        sx={{
+                            mt: 1.5,
+                            bgcolor: 'rgba(248,113,113,0.1)',
+                            color: '#f87171',
+                            border: '1px solid rgba(248,113,113,0.3)',
+                            borderRadius: 1.5,
+                        }}
+                        action={
+                            <Button size="small" onClick={handleRetryPin}
+                                sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
+                        }
+                    >
+                        Vị trí không thuộc khu vực đã chọn
+                        {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}.
+                        Vui lòng gim lại trong đúng khu vực.
+                    </Alert>
+                )}
+
+                <TextField
+                    fullWidth
+                    size="small"
+                    label="Ghi chú thêm (tuỳ chọn)"
+                    margin="normal"
+                    placeholder="VD: Phòng 102, tầng 3, toà nhà..."
+                    {...register('pickupAddressSupplement')}
+                    sx={{
+                        "& .MuiInputBase-input": { fontSize: "14px" }
+                    }}
+                />
+
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={0.5}>
+                    <Typography fontSize={13} color="rgba(255,255,255,0.45)">
+                        Chọn khu vực → bản đồ bay về → bấm trên bản đồ để ghim vị trí → xác nhận.
+                    </Typography>
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleGpsClick}
+                        disabled={gpsLoading}
+                        sx={{
+                            color: '#9D6EED', borderColor: 'rgba(157,110,237,0.5)',
+                            fontSize: 12, textTransform: 'none', py: 0.2, px: 1,
+                            '&:hover': { bgcolor: 'rgba(157,110,237,0.1)', borderColor: '#9D6EED' }
+                        }}
+                    >
+                        {gpsLoading ? 'Đang lấy...' : 'Vị trí của tôi'}
+                    </Button>
+                </Stack>
+
+                <Box
+                    id="vietmap-container"
+                    sx={{
+                        mt: 1.5,
+                        width: '100%',
+                        height: 340,
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        border: '1px solid rgba(148, 163, 184, 0.35)',
+                        bgcolor: '#020617',
+                    }}
+                />
+                {errors.pickupLat && (
+                    <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
+                        {errors.pickupLat.message}
+                    </Typography>
+                )}
+                {/* <Typography fontSize={12} mt={0.5} color="#9ca3af">
+                    Nếu bản đồ không hiển thị: kiểm tra VITE_VIETMAP_TILE_KEY hoặc kết nối mạng.
+                </Typography> */}
+            </Box>
+
+            {/* 6. SUBMIT */}
+            <Grid container spacing={3} mt={2} alignItems="center">
+                <Grid item xs={12}>
                     <Stack direction="row" gap={2}>
                         <Button
                             variant="outlined"
@@ -1007,10 +1083,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                             sx={{
                                 backgroundColor: "#E0E0E0",
                                 color: "#201D26",
-                                py: 1.6,
-                                fontSize: "18px",
+                                py: 1.1,
+                                fontSize: "14px",
                                 fontWeight: 600,
-                                borderRadius: "12px",
+                                borderRadius: "10px",
                                 border: "none",
                                 "&:hover": { backgroundColor: "#d5d5d5" },
                                 "&.Mui-disabled": { opacity: 0.6 },
@@ -1025,10 +1101,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                             disabled={submitting}
                             sx={{
                                 backgroundColor: "#9D6EED",
-                                py: 1.6,
-                                fontSize: "18px",
+                                py: 1.1,
+                                fontSize: "14px",
                                 fontWeight: 600,
-                                borderRadius: "12px",
+                                borderRadius: "10px",
 
                                 "&:hover": {
                                     backgroundColor: "#B794F6"
