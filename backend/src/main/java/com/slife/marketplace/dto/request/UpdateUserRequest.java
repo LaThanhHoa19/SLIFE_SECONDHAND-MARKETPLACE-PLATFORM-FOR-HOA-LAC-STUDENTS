@@ -12,7 +12,7 @@ public class UpdateUserRequest {
 
     @Size(max = 50, message = "Phone number must not exceed 50 characters")
     @Pattern(
-            regexp = "^(\\+?84|0)(3\\d{8}|5\\d{8}|7\\d{8}|8\\d{8}|9\\d{8})$",
+            regexp = "^$|^(\\+?84|0)(3\\d{8}|5\\d{8}|7\\d{8}|8\\d{8}|9\\d{8})$",
             message = "INVALID_PHONE_FORMAT"
     )
     private String phoneNumber;

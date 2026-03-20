@@ -40,6 +40,11 @@ public class User {
     @Column(name = "phone_number", length = 50)
     private String phoneNumber;
 
+    @NotNull
+    @ColumnDefault("false")
+    @Column(name = "phone_number_verified", nullable = false)
+    private boolean phoneNumberVerified;
+
     @Size(max = 1000)
     @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;

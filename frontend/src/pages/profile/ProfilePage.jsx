@@ -24,6 +24,8 @@ import { getListings } from '../../api/listingApi';
 import { createReport } from '../../api/reportApi';
 import Loading from '../../components/common/Loading';
 import { API_BASE_URL } from '../../utils/constants';
+import { isFirebaseConfigured, getFirebaseAuth } from '../../utils/firebaseClient';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -72,6 +74,13 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [phoneVerifyDialogOpen, setPhoneVerifyDialogOpen] = useState(false);
+  const [phoneVerifySubmitting, setPhoneVerifySubmitting] = useState(false);
+  const [phoneVerifyPhone, setPhoneVerifyPhone] = useState('');
+  const [phoneVerifyCode, setPhoneVerifyCode] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [firebaseSendingOtp, setFirebaseSendingOtp] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportEvidence, setReportEvidence] = useState('');
@@ -83,6 +92,16 @@ export default function ProfilePage() {
   const avatarInputRef = useRef(null);
 
   const isMe = id === 'me' || (currentUser && String(currentUser.id) === String(id));
+
+  const RECAPTCHA_CONTAINER_ID = 'phone-recaptcha-container';
+
+  function toE164ForFirebase(raw) {
+    if (!raw) return '';
+    const p = String(raw).trim().replaceAll(/[\\s-]/g, '');
+    if (p.startsWith('00')) return '+' + p.substring(2);
+    if (p.startsWith('0')) return '+84' + p.substring(1);
+    return p.startsWith('+') ? p : p;
+  }
 
   const loadUser = useCallback(async () => {
     if (!id) return;
@@ -146,7 +165,11 @@ export default function ProfilePage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await userApi.updateUser(editForm);
+      const payload = {
+        ...editForm,
+        phoneNumber: editForm.phoneNumber?.trim() ? editForm.phoneNumber.trim() : '',
+      };
+      const res = await userApi.updateUser(payload);
       const updated = getPayload(res) ?? editForm;
       setProfileUser((prev) => ({ ...prev, ...updated }));
       if (updateAuthUser) updateAuthUser(updated);
@@ -214,7 +237,9 @@ export default function ProfilePage() {
   const bio = user.bio || 'Người bán uy tín, chuyên đồ điện tử và gia dụng.';
   const reputationScore = user.reputationScore ?? user.reputation_score ?? 4.8;
   const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
+  const phoneVerified = isMe
+    ? !!(user.phoneNumberVerified ?? user.phone_number_verified ?? user.phoneNumber ?? user.phone_number)
+    : true;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
@@ -243,6 +268,24 @@ export default function ProfilePage() {
                 {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
                 <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
               </Box>
+
+              {isMe && !phoneVerified && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    const nextPhone = editForm?.phoneNumber || profileUser?.phoneNumber || profileUser?.phone_number || '';
+                    setPhoneVerifyPhone(nextPhone);
+                    setPhoneVerifyCode('');
+                    setConfirmationResult(null);
+                    setOtpSent(false);
+                    setPhoneVerifyDialogOpen(true);
+                  }}
+                  sx={{ mt: 0.5, alignSelf: 'flex-start' }}
+                >
+                  Xác minh SĐT
+                </Button>
+              )}
             </Box>
             {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
           </Box>
@@ -271,6 +314,144 @@ export default function ProfilePage() {
         <DialogActions>
           <Button onClick={() => setReportDialogOpen(false)}>Hủy</Button>
           <Button variant="contained" onClick={handleSubmitReport} disabled={reportSubmitting || !reportReason.trim()}>{reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={phoneVerifyDialogOpen}
+        onClose={() => {
+          if (phoneVerifySubmitting || firebaseSendingOtp) return;
+          setPhoneVerifyDialogOpen(false);
+          setConfirmationResult(null);
+          setOtpSent(false);
+          setPhoneVerifyCode('');
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Xác minh SĐT</DialogTitle>
+        <DialogContent dividers>
+          <Box id={RECAPTCHA_CONTAINER_ID} sx={{ position: 'absolute', left: '-9999px', width: 1, height: 1 }} />
+          <TextField
+            label="Số điện thoại"
+            value={phoneVerifyPhone}
+            onChange={(e) => setPhoneVerifyPhone(e.target.value)}
+            fullWidth
+            sx={{ mb: 2 }}
+            size="small"
+          />
+          <TextField
+            label="Mã OTP"
+            value={phoneVerifyCode}
+            onChange={(e) => setPhoneVerifyCode(e.target.value)}
+            fullWidth
+            size="small"
+          />
+          {!isFirebaseConfigured() && (
+            <Typography variant="caption" color="text.secondary">
+              Dev OTP: 12345
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPhoneVerifyDialogOpen(false)} disabled={phoneVerifySubmitting}>Hủy</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              setError(null);
+              if (!phoneVerifyPhone.trim()) return;
+
+              const phoneE164 = toE164ForFirebase(phoneVerifyPhone);
+              if (!phoneE164) return;
+
+              const firebaseAuth = getFirebaseAuth();
+              const firebaseEnabled = !!firebaseAuth && isFirebaseConfigured();
+
+              // Fallback dev OTP flow (không tốn SMS).
+              if (!firebaseEnabled) {
+                if (!phoneVerifyCode.trim()) return;
+                setPhoneVerifySubmitting(true);
+                try {
+                  const res = await userApi.verifyPhoneNumber({
+                    phoneNumber: phoneE164,
+                    verificationCode: phoneVerifyCode,
+                  });
+                  const updated = getPayload(res);
+                  if (updated) {
+                    setProfileUser((prev) => ({ ...prev, ...updated }));
+                    if (updateAuthUser) updateAuthUser(updated);
+                  }
+                  setPhoneVerifyDialogOpen(false);
+                  setSuccessMessage('Đã xác minh SĐT thành công.');
+                } catch (err) {
+                  setError(err?.message || err?.response?.data?.message || 'Xác minh thất bại.');
+                } finally {
+                  setPhoneVerifySubmitting(false);
+                }
+                return;
+              }
+
+              // Firebase mode:
+              // Step 1: send OTP (first click).
+              if (!confirmationResult) {
+                if (firebaseSendingOtp) return;
+                setFirebaseSendingOtp(true);
+                try {
+                  const phoneE164 = toE164ForFirebase(phoneVerifyPhone);
+                  const appVerifier = new RecaptchaVerifier(firebaseAuth, RECAPTCHA_CONTAINER_ID, {
+                    size: 'invisible',
+                  });
+                  const result = await signInWithPhoneNumber(firebaseAuth, phoneE164, appVerifier);
+                  setConfirmationResult(result);
+                  setOtpSent(true);
+                } finally {
+                  setFirebaseSendingOtp(false);
+                }
+                return;
+              }
+
+              // Step 2: confirm OTP.
+              if (!phoneVerifyCode.trim()) return;
+              setPhoneVerifySubmitting(true);
+              try {
+                const cred = await confirmationResult.confirm(phoneVerifyCode);
+                const idToken = await cred.user.getIdToken();
+                const res = await userApi.verifyPhoneNumber({
+                  phoneNumber: phoneE164,
+                  firebaseIdToken: idToken,
+                });
+                const updated = getPayload(res);
+                if (updated) {
+                  setProfileUser((prev) => ({ ...prev, ...updated }));
+                  if (updateAuthUser) updateAuthUser(updated);
+                }
+                setPhoneVerifyDialogOpen(false);
+                setSuccessMessage('Đã xác minh SĐT thành công.');
+              } catch (err) {
+                setError(err?.message || err?.response?.data?.message || 'Xác minh thất bại.');
+              } finally {
+                setPhoneVerifySubmitting(false);
+              }
+            }}
+            disabled={
+              phoneVerifySubmitting ||
+              firebaseSendingOtp ||
+              !phoneVerifyPhone.trim() ||
+              (isFirebaseConfigured()
+                ? (confirmationResult ? !phoneVerifyCode.trim() : false)
+                : !phoneVerifyCode.trim())
+            }
+          >
+            {phoneVerifySubmitting
+              ? 'Đang xác minh...'
+              : isFirebaseConfigured()
+                ? confirmationResult
+                  ? 'Xác minh'
+                  : firebaseSendingOtp
+                    ? 'Đang gửi OTP...'
+                    : 'Gửi OTP'
+                : 'Xác minh'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
