@@ -42,6 +42,12 @@ const ADMIN_ITEMS = [
         icon: SettingsIcon, 
         path: '/admin/settings' 
     },
+    {
+        label: 'Danh mục',
+        icon: CategoryIcon,
+        path: '/admin/categories',
+        allowedRoles: ['ADMIN'],
+    },
 ];
 
 export default function AdminSidebar() {
@@ -59,9 +65,10 @@ export default function AdminSidebar() {
     const visibleItems = ADMIN_ITEMS.filter(({ allowedRoles }) => {
         if (!allowedRoles || allowedRoles.length === 0) return true;
         const role = user?.role;
-        // Nếu chưa có user/role (chưa login hoặc đang test UI) thì cho hiện tất cả,
-        // role-based filter chỉ áp dụng khi đã có role rõ ràng.
-        if (!role) return true;
+        // Role-based menu:
+        // - Nếu role chưa xác định thì không hiển thị item admin để tránh user thường nhìn thấy UI không phù hợp.
+        // - Route admin đã được guard phía router, nhưng guard không ngăn 100% trường hợp state role null trên UI.
+        if (!role) return false;
         return allowedRoles.includes(role);
     });
 

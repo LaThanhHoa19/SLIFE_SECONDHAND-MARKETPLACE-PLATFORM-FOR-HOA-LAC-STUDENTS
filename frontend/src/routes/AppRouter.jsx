@@ -19,20 +19,21 @@ import {
     SuspenseListingsPage,
     SuspenseListingDetailPage,
     SuspenseCreateListingPage,
+    SuspenseMyListingsPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
+    SuspenseNotificationsPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
     SuspenseCategoryManagementPage,
     SuspenseConfigurationManagementPage,
     SuspenseAdminProfilePage,
+    SuspenseReportPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
-    SuspenseNotificationsPage,
-    SuspenseMyListingsPage,
     SuspenseAdminLoginPage,
 } from './LazyRoutes';
 
@@ -96,6 +97,14 @@ export default function AppRouter() {
                     }
                 />
                 <Route
+                    path="/my-listings"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseMyListingsPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
                     path="/profile/:id"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
@@ -111,6 +120,7 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+
                 <Route
                     path="/notifications"
                     element={
@@ -119,11 +129,12 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+
                 <Route
-                    path="/my-listings"
+                    path="/report"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseMyListingsPage />
+                            <SuspenseReportPage />
                         </RouteGuard>
                     }
                 />
@@ -132,19 +143,42 @@ export default function AppRouter() {
                 {/* <Route
                     path="/admin"
                     element={
-                        <SuspenseDashboardPage />
+                        <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
+                            <AdminLayout>
+                                <SuspenseDashboardPage />
+                            </AdminLayout>
+                        </RouteGuard>
                     }
                 />
                 <Route
                     path="/admin/reports"
                     element={
-                        <SuspenseReportManagementPage />
+                        <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
+                            <AdminLayout>
+                                <SuspenseReportManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
                     }
                 />
                 <Route
                     path="/admin/users"
                     element={
-                        <SuspenseUserManagementPage />
+                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+                            <AdminLayout>
+                                <SuspenseUserManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/admin/categories"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+                            <AdminLayout>
+                                <SuspenseCategoryManagementPage />
+                            </AdminLayout>
+                        </RouteGuard>
                     }
                 /> */}
 

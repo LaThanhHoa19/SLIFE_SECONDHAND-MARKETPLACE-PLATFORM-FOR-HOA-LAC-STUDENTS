@@ -21,7 +21,8 @@ public class NotificationService {
 
     public static final String TYPE_MESSAGE  = "MESSAGE";
     public static final String TYPE_DEAL     = "DEAL";
-    public static final String TYPE_OFFER    = "OFFER";
+    // DB enum currently does not include OFFER, reuse SYSTEM for compatibility.
+    public static final String TYPE_OFFER    = "SYSTEM";
     public static final String TYPE_REPORT   = "REPORT";
     // Comment notifications reuse MESSAGE type to match DB ENUM
     public static final String TYPE_COMMENT  = TYPE_MESSAGE;
