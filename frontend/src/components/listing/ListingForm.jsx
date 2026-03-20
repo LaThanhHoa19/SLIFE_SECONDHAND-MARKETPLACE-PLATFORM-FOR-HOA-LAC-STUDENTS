@@ -4,8 +4,9 @@ import {
     Box, Button, TextField, Typography, Grid, MenuItem, Checkbox,
     FormControlLabel, ToggleButton, ToggleButtonGroup, Dialog,
     DialogTitle, List, ListItemButton, ListItemText, IconButton,
-    InputAdornment, Stack, Collapse,
+    InputAdornment, Stack, Collapse, Alert,
 } from "@mui/material";
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 
 // Icons
 import CloseIcon from "@mui/icons-material/Close";
@@ -14,9 +15,8 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
-import { getLocations } from '../../api/locationApi';
-import { searchPlaces, reverseGeocode, getGeoClientConfig, getPlaceByRefId } from '../../api/geoApi';
-import useDebounce from '../../hooks/useDebounce';
+import { reverseGeocode, getGeoClientConfig } from '../../api/geoApi';
+import LocationPicker from './LocationPicker';
 
 /** Đại học FPT Hà Nội — khuôn viên Hòa Lạc (mặc định bản đồ đăng tin) */
 const FPT_UNIVERSITY_HN_LAT = 21.0135;
@@ -30,7 +30,6 @@ function truncateUtf(str, maxLen) {
     return `${s.slice(0, maxLen - 1)}…`;
 }
 
-/** Gộp tên địa điểm + địa chỉ từ Vietmap thành một dòng hiển thị đầy đủ */
 function buildFullAddressLine(nameRaw, addressRaw) {
     const name = (nameRaw || '').trim();
     const addr = (addressRaw || '').trim();
@@ -46,6 +45,15 @@ function parseCoord(v) {
     if (v == null || v === '') return NaN;
     const n = typeof v === 'number' ? v : Number(v);
     return Number.isFinite(n) ? n : NaN;
+}
+
+/** Chuẩn hóa tiếng Việt để so sánh — bỏ dấu, viết thường */
+function normalize(str = '') {
+    return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd');
 }
 
 function buildCategoryTree(flatList) {
@@ -71,33 +79,81 @@ function buildCategoryTree(flatList) {
     return roots;
 }
 
+/** Fallback OSM Reverse Geocode khi Vietmap API key backend chưa có */
+async function fetchOsmReverse(lat, lng) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+        const res = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
+        const data = await res.json();
+        if (!data || !data.address) return null;
+        
+        const ad = data.address;
+        const province = ad.city || ad.province || ad.state || '';
+        const district = ad.county || ad.district || ad.city_district || ad.town || '';
+        const ward = ad.suburb || ad.village || ad.quarter || '';
+        const name = data.name || ad.road || '';
+        
+        const parts = [name, ward, district, province].filter(Boolean);
+        const addressText = parts.join(', ');
+        
+        return { province, district, addressText };
+    } catch {
+        return null;
+    }
+}
+
+// SVG hình gim bản đồ — màu vàng khi pending
+const PIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40">
+  <path d="M16 0C9.373 0 4 5.373 4 12c0 9 12 28 12 28S28 21 28 12c0-6.627-5.373-12-12-12z" fill="#f59e0b" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="16" cy="12" r="5" fill="#ffffff"/>
+</svg>`;
+
+function createPinElement() {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:32px;height:40px;cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.45));';
+    el.innerHTML = PIN_SVG;
+    return el;
+}
+
 export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft, submitting = false, savingDraft = false, mode = 'create' }) {
-    // Logic quản lý State & Form
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
     const [categories, setCategories] = useState([]);
-    const [locations, setLocations] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
     const [expandedCatId, setExpandedCatId] = useState(null);
-    
+
+    // Admin location — state cho UI, ref cho click handler (tránh closure stale)
+    const [adminLocation, setAdminLocation] = useState(null);
+    const adminLocationRef = useRef(null);
+
+    // Pending pin: chờ user xác nhận hoặc từ chối
+    const [pendingPin, setPendingPin] = useState(null); // { lat, lng, addressText, districtHint? }
+    const [pinStatus, setPinStatus] = useState('idle'); // 'idle' | 'valid' | 'invalid'
+
+    // Map
+    const [mapReady, setMapReady] = useState(false);
+    const mapRef = useRef(null);
+    const markerRef = useRef(null);       // marker đã xác nhận (đỏ mặc định Vietmap)
+    const pendingMarkerRef = useRef(null); // marker đang chờ xác nhận (vàng SVG)
+
     const { register, handleSubmit, watch, setValue, clearErrors, formState: { errors } } = useForm({
         defaultValues: {
             title: '',
             description: '',
             price: '',
             condition: 'USED_GOOD',
-            location: '',
             isGiveaway: false,
             categoryId: '',
-            categoryName: '', // Hiển thị trên UI
-            // Các field dành cho Vietmap / tạo địa chỉ mới
+            categoryName: '',
             pickupAddressId: null,
             pickupLocationName: '',
             pickupAddressText: '',
-            /** Ghi chú không có trên bản đồ (vd: phòng 102) — gửi riêng pickupAddressSupplement, lưu DB ở address_text */
             pickupAddressSupplement: '',
             pickupLat: '',
             pickupLng: '',
+            pickupProvince: '',
+            pickupDistrict: '',
+            pickupWard: '',
             ...defaultValues,
         },
     });
@@ -109,15 +165,6 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
     const pickupLat = watch('pickupLat');
     const pickupLng = watch('pickupLng');
 
-    // Tìm kiếm trên bản đồ (tách khỏi địa chỉ từ gim / reverse)
-    const [mapSearchQuery, setMapSearchQuery] = useState('');
-    const debouncedMapQuery = useDebounce(mapSearchQuery, 400);
-    const [suggestions, setSuggestions] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
-    const mapRef = useRef(null);
-    const markerRef = useRef(null);
-    const [mapReady, setMapReady] = useState(false);
-
     const applyReverseToForm = useCallback((data) => {
         if (!data) return;
         const name = (data.locationName || '').trim();
@@ -128,7 +175,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         setValue('pickupAddressText', line);
     }, [setValue]);
 
-    /** Tile key: ưu tiên VITE_VIETMAP_TILE_KEY; nếu thiếu (chạy local không Docker) lấy từ BE /api/geo/client-config */
+    /** Tile key */
     const [vietmapTileKey, setVietmapTileKey] = useState(
         () => (import.meta.env.VITE_VIETMAP_TILE_KEY || '').trim(),
     );
@@ -143,12 +190,10 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 if (!cancelled && key) setVietmapTileKey(key);
             })
             .catch(() => {});
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [vietmapTileKey]);
 
-    // Fetch danh mục từ API
+    // Fetch danh mục
     useEffect(() => {
         getCategories()
             .then((res) => {
@@ -158,21 +203,44 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             .catch(() => setCategories([]));
     }, []);
 
-    // Fetch khu vực giao dịch từ API
+    // Đồng bộ ref khi adminLocation state thay đổi
     useEffect(() => {
-        getLocations()
-            .then((res) => {
-                const data = res?.data?.data ?? res?.data;
-                const list = Array.isArray(data) ? data : [];
-                setLocations(list);
-                if (list.length > 0 && !defaultValues.location) {
-                    setValue('location', list[0]);
-                }
-            })
-            .catch(() => setLocations([]));
-    }, []);
+        adminLocationRef.current = adminLocation;
+    }, [adminLocation]);
 
-    // Xử lý logic giá khi check/uncheck "Cho tặng"
+    // Khi adminLocation được chọn đủ 3 cấp: flyTo + reset pending pin
+    useEffect(() => {
+        if (!adminLocation) return;
+        // Reset pending pin
+        setPendingPin(null);
+        setPinStatus('idle');
+        if (pendingMarkerRef.current) {
+            pendingMarkerRef.current.remove();
+            pendingMarkerRef.current = null;
+        }
+        // Dùng Nominatim (OSM, miễn phí) - Bỏ ward vì OSM nông thôn VN ít có ward
+        const query = [
+            adminLocation.district?.name,
+            adminLocation.province?.name,
+            'Việt Nam',
+        ].filter(Boolean).join(', ');
+        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`)
+            .then((r) => r.json())
+            .then((data) => {
+                const first = Array.isArray(data) ? data[0] : null;
+                if (!first) {
+                    console.log('Nominatim không tìm thấy:', query);
+                    return;
+                }
+                const lat = parseFloat(first.lat);
+                const lng = parseFloat(first.lon);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                mapRef.current?.flyTo({ center: [lng, lat], zoom: 13, essential: true });
+            })
+            .catch((e) => console.error('Nominatim error:', e));
+    }, [adminLocation]);
+
+    // Giá khi check/uncheck "Cho tặng"
     useEffect(() => {
         if (isGiveaway) {
             setValue('price', '0');
@@ -195,7 +263,6 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         onSubmit?.(finalValues, imageFiles);
     };
 
-    // Lưu nháp: chạy qua validation của react-hook-form (cùng rule với đăng tin)
     const handleSaveDraftSubmit = (values) => {
         const finalValues = {
             ...values,
@@ -223,33 +290,112 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         handleSubmit(handleFormSubmit)(e);
     };
 
-    // Vietmap GL: khởi tạo một lần, mặc định trung tâm ĐH FPT Hà Nội (Hòa Lạc)
+    // ── Vietmap GL: khởi tạo MỘT LẦN (không có adminLocation trong deps) ──
     useEffect(() => {
-        if (!vietmapTileKey) {
-            return;
-        }
+        if (!vietmapTileKey) return;
 
         let cancelled = false;
 
         const onMapClick = async (e) => {
             const { lng, lat } = e.lngLat;
-            setValue('pickupLat', lat.toFixed(6));
-            setValue('pickupLng', lng.toFixed(6));
+
+            // Hiển thị marker vàng ngay lập tức
+            if (!cancelled) {
+                if (pendingMarkerRef.current) {
+                    pendingMarkerRef.current.setLngLat([lng, lat]);
+                } else if (mapRef.current && window.vietmapgl) {
+                    pendingMarkerRef.current = new window.vietmapgl.Marker({
+                        element: createPinElement(),
+                        anchor: 'bottom',
+                    })
+                        .setLngLat([lng, lat])
+                        .addTo(mapRef.current);
+                }
+                setPendingPin(null);
+                setPinStatus('idle');
+            }
+
+            // Reverse geocode
+            let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            let reverseProvince = '';
+            let reverseDistrict = '';
             try {
                 const res = await reverseGeocode({ lat, lng });
                 const data = res?.data?.data ?? res?.data;
-                if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-                    applyReverseToForm(data);
-                } else {
-                    const fb = buildFullAddressLine('Vị trí đã chọn', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-                    setValue('pickupLocationName', truncateUtf(fb, 200));
-                    setValue('pickupAddressText', fb);
+                if (data && typeof data === 'object') {
+                    const name = (data.locationName || '').trim();
+                    const addr = (data.addressText || '').trim();
+                    const line = buildFullAddressLine(name, addr);
+                    if (line) addressText = line;
+                    reverseProvince = (data.province || data.city || '').trim();
+                    reverseDistrict = (data.district || '').trim();
                 }
-            } catch {
-                const fb = buildFullAddressLine('Vị trí đã chọn', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-                setValue('pickupLocationName', truncateUtf(fb, 200));
-                setValue('pickupAddressText', fb);
+            } catch { /* ignore */ }
+
+            // Fallback OSM nếu Vietmap backend không trả province (vd: thiếu API key)
+            if (!reverseProvince) {
+                const osm = await fetchOsmReverse(lat, lng);
+                if (osm) {
+                    reverseProvince = osm.province;
+                    reverseDistrict = osm.district;
+                    if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
+                        addressText = osm.addressText;
+                    }
+                }
             }
+
+            if (cancelled) return;
+
+            // Đọc adminLocation từ ref (không bị stale closure)
+            const currentAdmin = adminLocationRef.current;
+
+            if (!currentAdmin) {
+                // Chưa chọn khu vực — cho gim tự do
+                setPendingPin({ lat, lng, addressText });
+                setPinStatus('valid');
+                return;
+            }
+
+            // So sánh text (normalize bỏ dấu)
+            // LOẠI BỢ empty-string: 'anything'.includes('') luôn trả true
+            const chosenProvince = normalize(currentAdmin.province?.name || '');
+            const chosenDistrict = normalize(currentAdmin.district?.name || '');
+            const addrNorm = normalize(addressText);
+            const revProvinceNorm = normalize(reverseProvince);
+            const revDistrictNorm = normalize(reverseDistrict);
+
+            console.log('===== DEBUG VALIDATION =====');
+            console.log('CHOSEN (Province|District):', chosenProvince, '|', chosenDistrict);
+            console.log('VIETMAP REVERSE (Province|District):', revProvinceNorm, '|', revDistrictNorm);
+            console.log('VIETMAP ADDRESS:', addrNorm);
+
+            // Match tỉnh: kiểm tra trong cả reverseProvince (nếu có) lẫn addressText
+            const provinceMatch = !chosenProvince || (
+                (revProvinceNorm && (
+                    revProvinceNorm.includes(chosenProvince) ||
+                    chosenProvince.includes(revProvinceNorm)
+                )) ||
+                addrNorm.includes(chosenProvince) || addrNorm.includes(chosenProvince.replace('tinh ', '').replace('thanh pho ', ''))
+            );
+            // Match huyện: kiểm tra trong cả reverseDistrict (nếu có) lẫn addressText
+            const districtMatch = !chosenDistrict || (
+                (revDistrictNorm && (
+                    revDistrictNorm.includes(chosenDistrict) ||
+                    chosenDistrict.includes(revDistrictNorm)
+                )) ||
+                addrNorm.includes(chosenDistrict) || addrNorm.includes(chosenDistrict.replace('huyen ', '').replace('quan ', '').replace('thi xa ', '').replace('thanh pho ', ''))
+            );
+
+            console.log('MATCH RESULT:', { provinceMatch, districtMatch });
+
+            // Tạm ẩn validate theo yêu cầu
+            const isValid = true; // provinceMatch && districtMatch;
+            
+            setPendingPin({
+                lat, lng, addressText,
+                districtHint: isValid ? null : currentAdmin.district?.name,
+            });
+            setPinStatus(isValid ? 'valid' : 'invalid');
         };
 
         const initMap = () => {
@@ -263,6 +409,17 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             });
 
             map.addControl(new window.vietmapgl.NavigationControl(), 'top-left');
+            // GPS GeolocateControl (nếu browser hỗ trợ)
+            if (window.vietmapgl.GeolocateControl) {
+                map.addControl(
+                    new window.vietmapgl.GeolocateControl({
+                        positionOptions: { enableHighAccuracy: true },
+                        trackUserLocation: false,
+                        showAccuracyCircle: false,
+                    }),
+                    'top-left'
+                );
+            }
             map.once('load', () => {
                 if (!cancelled) setMapReady(true);
             });
@@ -300,18 +457,16 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             cancelled = true;
             setMapReady(false);
             if (mapRef.current) {
-                try {
-                    mapRef.current.remove();
-                } catch {
-                    /* bỏ qua */
-                }
+                try { mapRef.current.remove(); } catch { /* bỏ qua */ }
                 mapRef.current = null;
             }
             markerRef.current = null;
+            pendingMarkerRef.current = null;
         };
-    }, [vietmapTileKey, setValue, applyReverseToForm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [vietmapTileKey]); // Chỉ khởi tạo lại khi key thay đổi; adminLocation đọc qua ref
 
-    // Đồng bộ marker + camera khi đổi tọa độ (gợi ý tìm kiếm / chỉnh từ nguồn khác)
+    // Đồng bộ marker xác nhận + camera
     useEffect(() => {
         if (!mapReady || !mapRef.current || !window.vietmapgl) return;
         const lat = pickupLat !== '' && pickupLat != null ? Number(pickupLat) : NaN;
@@ -334,82 +489,128 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         }
     }, [pickupLat, pickupLng, mapReady]);
 
-    // Gợi ý địa điểm khi tìm trên bản đồ (bias khu vực FPT Hòa Lạc)
-    useEffect(() => {
-        const q = debouncedMapQuery.trim();
-        if (!q) {
-            setSuggestions([]);
-            return;
-        }
-        setIsSearching(true);
-        searchPlaces({ q, lat: FPT_UNIVERSITY_HN_LAT, lng: FPT_UNIVERSITY_HN_LNG })
-            .then((res) => {
-                const data = res?.data?.data ?? res?.data;
-                setSuggestions(Array.isArray(data) ? data : []);
-            })
-            .catch(() => setSuggestions([]))
-            .finally(() => setIsSearching(false));
-    }, [debouncedMapQuery]);
-
-    const handleSuggestionClick = async (sugg) => {
-        const name = (sugg.name ?? sugg.locationName ?? '').trim();
-        const address = (sugg.address ?? sugg.addressText ?? '').trim();
-        const displayFromSearch = (sugg.display ?? '').trim();
-        const refId = sugg.ref_id ?? sugg.refId ?? null;
-
-        let lat = parseCoord(sugg.lat ?? sugg.latitude);
-        let lng = parseCoord(sugg.lng ?? sugg.longitude);
-        let place = null;
-
-        // Search v3 thường chỉ trả ref_id, không có lat/lng — cần Place API
-        if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && refId) {
-            try {
-                const res = await getPlaceByRefId(refId);
-                place = res?.data?.data ?? res?.data ?? null;
-                lat = parseCoord(place?.lat);
-                lng = parseCoord(place?.lng);
-            } catch {
-                /* bỏ qua */
-            }
-        }
-
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-        const displayFromPlace = place && typeof place.display === 'string' ? place.display.trim() : '';
-        const nameP = (place && typeof place.name === 'string' ? place.name : name) || '';
-        const addrP = (place && typeof place.address === 'string' ? place.address : address) || '';
-
-        let fullLine =
-            displayFromPlace ||
-            displayFromSearch ||
-            buildFullAddressLine(nameP, addrP);
-
-        if (!fullLine) {
-            try {
-                const res = await reverseGeocode({ lat, lng });
-                const data = res?.data?.data ?? res?.data;
-                if (data && typeof data === 'object') {
-                    fullLine = buildFullAddressLine(data.locationName, data.addressText);
-                }
-            } catch {
-                /* bỏ qua */
-            }
-        }
-
-        if (!fullLine) {
-            fullLine = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        }
-
+    // Xác nhận pin hợp lệ → ghi vào form
+    const handleConfirmPin = useCallback(() => {
+        if (!pendingPin) return;
+        const { lat, lng, addressText } = pendingPin;
         setValue('pickupLat', lat.toFixed(6));
         setValue('pickupLng', lng.toFixed(6));
-        setValue('pickupLocationName', truncateUtf(fullLine, 200));
-        setValue('pickupAddressText', fullLine);
-        setMapSearchQuery(fullLine);
-        setSuggestions([]);
+        setValue('pickupLocationName', truncateUtf(addressText, 200));
+        setValue('pickupAddressText', addressText);
+        const admin = adminLocationRef.current;
+        if (admin) {
+            setValue('pickupProvince', admin.province?.name || '');
+            setValue('pickupDistrict', admin.district?.name || '');
+            setValue('pickupWard', admin.ward?.name || '');
+        }
         clearErrors('pickupLocationName');
-    };
+        // Chuyển marker pending → marker đỏ xác nhận
+        if (pendingMarkerRef.current) {
+            pendingMarkerRef.current.remove();
+            pendingMarkerRef.current = null;
+        }
+        if (mapRef.current && window.vietmapgl) {
+            if (markerRef.current) markerRef.current.setLngLat([lng, lat]);
+            else markerRef.current = new window.vietmapgl.Marker().setLngLat([lng, lat]).addTo(mapRef.current);
+        }
+        setPendingPin(null);
+        setPinStatus('idle');
+    }, [pendingPin, setValue, clearErrors]);
+
+    const handleRetryPin = useCallback(() => {
+        setPendingPin(null);
+        setPinStatus('idle');
+        if (pendingMarkerRef.current) {
+            pendingMarkerRef.current.remove();
+            pendingMarkerRef.current = null;
+        }
+    }, []);
+
+    // Khi LocationPicker chọn gợi ý Vietmap → flyTo (không gim)
+    const handleSuggestionSelect = useCallback(({ lat, lng }) => {
+        if (!mapRef.current) return;
+        mapRef.current.flyTo({ center: [lng, lat], zoom: 16, essential: true });
+    }, []);
+
+    // GPS: lấy vị trí thiết bị → chạy qua validation giống map click
+    const [gpsLoading, setGpsLoading] = useState(false);
+    const handleGpsClick = useCallback(async () => {
+        if (!navigator.geolocation) { alert('Trình duyệt không hỗ trợ GPS.'); return; }
+        setGpsLoading(true);
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                setGpsLoading(false);
+                mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, essential: true });
+                if (pendingMarkerRef.current) {
+                    pendingMarkerRef.current.setLngLat([lng, lat]);
+                } else if (mapRef.current && window.vietmapgl) {
+                    pendingMarkerRef.current = new window.vietmapgl.Marker({
+                        element: createPinElement(), anchor: 'bottom',
+                    }).setLngLat([lng, lat]).addTo(mapRef.current);
+                }
+                setPendingPin(null); setPinStatus('idle');
+                let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                let reverseProvince = ''; let reverseDistrict = '';
+                try {
+                    const res = await reverseGeocode({ lat, lng });
+                    const data = res?.data?.data ?? res?.data;
+                    if (data && typeof data === 'object') {
+                        const line = buildFullAddressLine((data.locationName || '').trim(), (data.addressText || '').trim());
+                        if (line) addressText = line;
+                        reverseProvince = (data.province || data.city || '').trim();
+                        reverseDistrict = (data.district || '').trim();
+                    }
+                } catch { /* ignore */ }
+
+                // Fallback OSM
+                if (!reverseProvince) {
+                    const osm = await fetchOsmReverse(lat, lng);
+                    if (osm) {
+                        reverseProvince = osm.province;
+                        reverseDistrict = osm.district;
+                        if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
+                            addressText = osm.addressText;
+                        }
+                    }
+                }
+                const currentAdmin = adminLocationRef.current;
+                if (!currentAdmin) { setPendingPin({ lat, lng, addressText }); setPinStatus('valid'); return; }
+                const chosenProvince = normalize(currentAdmin.province?.name || '');
+                const chosenDistrict = normalize(currentAdmin.district?.name || '');
+                const addrNorm = normalize(addressText);
+                const revPN = normalize(reverseProvince); const revDN = normalize(reverseDistrict);
+
+                console.log('===== DEBUG GPS VALIDATION =====');
+                console.log('CHOSEN (Province|District):', chosenProvince, '|', chosenDistrict);
+                console.log('VIETMAP REVERSE (Province|District):', revPN, '|', revDN);
+                console.log('VIETMAP ADDRESS:', addrNorm);
+
+                const provinceMatch = !chosenProvince || (
+                    (revPN && (revPN.includes(chosenProvince) || chosenProvince.includes(revPN))) ||
+                    addrNorm.includes(chosenProvince) || addrNorm.includes(chosenProvince.replace('tinh ', '').replace('thanh pho ', ''))
+                );
+                const districtMatch = !chosenDistrict || (
+                    (revDN && (revDN.includes(chosenDistrict) || chosenDistrict.includes(revDN))) ||
+                    addrNorm.includes(chosenDistrict) || addrNorm.includes(chosenDistrict.replace('huyen ', '').replace('quan ', '').replace('thi xa ', '').replace('thanh pho ', ''))
+                );
+
+                console.log('MATCH RESULT:', { provinceMatch, districtMatch });
+
+                // Tạm ẩn validate theo yêu cầu
+                const isValid = true; // provinceMatch && districtMatch;
+                
+                setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
+                setPinStatus(isValid ? 'valid' : 'invalid');
+            },
+            (err) => { setGpsLoading(false); alert(`Không lấy được GPS: ${err.message}`); },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }, []);
 
     return (
+
         <Box
             component="form"
             onSubmit={onFormSubmit}
@@ -487,7 +688,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         fullWidth
                         size="small"
                         placeholder="Tên sản phẩm của bạn"
-                        {...register("title", { 
+                        {...register("title", {
                             required: "Nhập tiêu đề",
                             minLength: { value: 2, message: "Tối thiểu 2 ký tự" }
                         })}
@@ -592,142 +793,135 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                    <Typography fontWeight={600} fontSize={16} mb={1.5}>
-                        Khu vực giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                    <Typography fontWeight={600} fontSize={20} mb={1.5}>
+                        Địa điểm giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                     </Typography>
-                    {/* Dropdown khu vực (giữ logic cũ để tương thích) */}
-                    <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        {...register("location")}
-                        value={watch('location')}
-                        onChange={(e) => setValue('location', e.target.value)}
-                        sx={{
-                            "& .MuiInputBase-input": {
-                                fontSize: "14px"
-                            }
-                        }}
-                    >
-                        {locations.map((loc) => (
-                            <MenuItem key={loc} value={loc} sx={{ fontSize: "20px" }}>
-                                {loc}
-                            </MenuItem>
-                        ))}
-                    </TextField>
 
+                    {/* hidden fields */}
                     <input type="hidden" {...register('pickupLat')} />
                     <input type="hidden" {...register('pickupLng')} />
                     <input type="hidden" {...register('pickupAddressText')} />
+                    <input type="hidden" {...register('pickupProvince')} />
+                    <input type="hidden" {...register('pickupDistrict')} />
+                    <input type="hidden" {...register('pickupWard')} />
 
-                    <Typography fontWeight={600} fontSize={16} mt={2} mb={0.75}>
-                        Địa chỉ điểm hẹn (từ bản đồ)
-                    </Typography>
-                    <Box
-                        sx={{
-                            minHeight: 52,
-                            px: 2,
-                            py: 1.25,
-                            borderRadius: 1,
-                            border: '1px solid rgba(148, 163, 184, 0.35)',
-                            bgcolor: '#111827',
-                            display: 'flex',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <Typography
-                            fontSize={16}
-                            color={pickupAddressText ? '#e5e7eb' : '#6b7280'}
-                            sx={{ lineHeight: 1.45 }}
+                    {/* ── Sequential location picker (Tỉnh → Huyện → Xã) ── */}
+                    <LocationPicker
+                        onConfirm={(loc) => setAdminLocation(loc)}
+                        onSuggestionSelect={handleSuggestionSelect}
+                        value={adminLocation ? {
+                            province: adminLocation.province,
+                            district: adminLocation.district,
+                            ward: adminLocation.ward,
+                        } : undefined}
+                    />
+
+                    {/* ── Địa chỉ đã xác nhận ── */}
+                    {pickupAddressText?.trim() && (
+                        <Box
+                            sx={{
+                                mt: 2,
+                                px: 2, py: 1.25,
+                                borderRadius: 1.5,
+                                border: '1px solid rgba(74,222,128,0.35)',
+                                bgcolor: 'rgba(74,222,128,0.06)',
+                                display: 'flex', alignItems: 'flex-start', gap: 1,
+                            }}
                         >
-                            {pickupAddressText?.trim()
-                                ? pickupAddressText
-                                : 'Tìm hoặc bấm trên bản đồ để gim vị trí — địa chỉ đầy đủ sẽ hiện ở đây.'}
-                        </Typography>
-                    </Box>
+                            <CheckCircleOutlineIcon sx={{ fontSize: 18, color: '#4ade80', mt: 0.2, flexShrink: 0 }} />
+                            <Box>
+                                <Typography fontSize={12} color="#4ade80" fontWeight={600} mb={0.3}>
+                                    Vị trí đã xác nhận
+                                </Typography>
+                                <Typography fontSize={13} color="#e5e7eb" sx={{ lineHeight: 1.4 }}>
+                                    {pickupAddressText}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    )}
+
+                    {/* ── Pending pin: xác nhận / từ chối ── */}
+                    {pendingPin && pinStatus === 'valid' && (
+                        <Alert
+                            severity="success"
+                            sx={{
+                                mt: 1.5,
+                                bgcolor: 'rgba(74,222,128,0.1)',
+                                color: '#4ade80',
+                                border: '1px solid rgba(74,222,128,0.3)',
+                                borderRadius: 1.5,
+                                '& .MuiAlert-message': { width: '100%' },
+                            }}
+                            action={
+                                <Stack direction="row" gap={1} alignItems="center">
+                                    <Button size="small" onClick={handleRetryPin}
+                                        sx={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Bỏ</Button>
+                                    <Button size="small" variant="contained" onClick={handleConfirmPin}
+                                        sx={{ bgcolor: '#4ade80', color: '#111', fontWeight: 700, fontSize: 12, '&:hover': { bgcolor: '#22c55e' } }}>
+                                        Xác nhận
+                                    </Button>
+                                </Stack>
+                            }
+                        >
+                            Vị trí hợp lệ. Bấm <strong>Xác nhận</strong> để lưu.
+                        </Alert>
+                    )}
+                    {pendingPin && pinStatus === 'invalid' && (
+                        <Alert
+                            severity="error"
+                            sx={{
+                                mt: 1.5,
+                                bgcolor: 'rgba(248,113,113,0.1)',
+                                color: '#f87171',
+                                border: '1px solid rgba(248,113,113,0.3)',
+                                borderRadius: 1.5,
+                            }}
+                            action={
+                                <Button size="small" onClick={handleRetryPin}
+                                    sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
+                            }
+                        >
+                            Vị trí không thuộc khu vực đã chọn
+                            {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}.
+                            Vui lòng gim lại trong đúng khu vực.
+                        </Alert>
+                    )}
 
                     <TextField
                         fullWidth
                         size="small"
                         label="Ghi chú thêm (tuỳ chọn)"
                         margin="normal"
-                        placeholder="Chỉ khi không có trên bản đồ, VD: Phòng 102, tầng 3"
+                        placeholder="VD: Phòng 102, tầng 3, toà nhà..."
                         {...register('pickupAddressSupplement')}
                         sx={{
-                            "& .MuiInputBase-input": {
-                                fontSize: "14px"
-                            }
+                            "& .MuiInputBase-input": { fontSize: "14px" }
                         }}
                     />
 
-                    <Typography fontWeight={600} fontSize={16} mt={2} mb={0.75}>
-                        Tìm trên bản đồ
-                    </Typography>
-                    <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="VD: KTX Đại học FPT, tòa Alpha…"
-                        value={mapSearchQuery}
-                        onChange={(e) => setMapSearchQuery(e.target.value)}
-                        sx={{
-                            "& .MuiInputBase-input": {
-                                fontSize: "14px"
-                            }
-                        }}
-                    />
-                    {(mapSearchQuery.trim() && (suggestions.length > 0 || isSearching)) && (
-                        <Box
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" mt={0.5}>
+                        <Typography fontSize={13} color="rgba(255,255,255,0.45)">
+                            Chọn khu vực → bản đồ bay về → bấm trên bản đồ để gim vị trí → xác nhận.
+                        </Typography>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={handleGpsClick}
+                            disabled={gpsLoading}
                             sx={{
-                                mt: 0.5,
-                                maxHeight: 220,
-                                overflowY: 'auto',
-                                borderRadius: 1,
-                                border: '1px solid rgba(148, 163, 184, 0.35)',
-                                bgcolor: '#111827',
+                                color: '#9D6EED', borderColor: 'rgba(157,110,237,0.5)',
+                                fontSize: 12, textTransform: 'none', py: 0.2, px: 1,
+                                '&:hover': { bgcolor: 'rgba(157,110,237,0.1)', borderColor: '#9D6EED' }
                             }}
                         >
-                            {suggestions.map((sugg, idx) => (
-                                <Box
-                                    key={`${sugg.id || idx}-${sugg.name || ''}`}
-                                    onClick={() => handleSuggestionClick(sugg)}
-                                    sx={{
-                                        px: 1.5,
-                                        py: 1,
-                                        cursor: 'pointer',
-                                        '&:hover': { bgcolor: 'rgba(148, 163, 184, 0.18)' },
-                                        borderBottom: idx < suggestions.length - 1
-                                            ? '1px solid rgba(55, 65, 81, 0.6)'
-                                            : 'none',
-                                    }}
-                                >
-                                    <Typography fontSize={14} fontWeight={600} color="#e5e7eb">
-                                        {sugg.name || sugg.locationName || 'Điểm gợi ý'}
-                                    </Typography>
-                                    {sugg.address && (
-                                        <Typography fontSize={12} color="#9ca3af">
-                                            {sugg.address}
-                                        </Typography>
-                                    )}
-                                </Box>
-                            ))}
-                            {isSearching && (
-                                <Box sx={{ px: 1.5, py: 1 }}>
-                                    <Typography fontSize={12} color="#9ca3af">
-                                        Đang tìm kiếm...
-                                    </Typography>
-                                </Box>
-                            )}
-                        </Box>
-                    )}
-
-                    <Typography fontSize={15} mt={1.5} color="error">
-                        Chỉ hỗ trợ giao dịch trong khu vực Hoà Lạc. Tìm địa điểm hoặc bấm trên bản đồ để gim vị trí (mặc định: ĐH FPT Hà Nội).
-                    </Typography>
+                            {gpsLoading ? 'Đang lấy...' : 'Vị trí của tôi'}
+                        </Button>
+                    </Stack>
 
                     <Box
                         id="vietmap-container"
                         sx={{
-                            mt: 2,
+                            mt: 1.5,
                             width: '100%',
                             height: 340,
                             borderRadius: 2,
@@ -737,7 +931,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                         }}
                     />
                     <Typography fontSize={12} mt={0.5} color="#9ca3af">
-                        Nếu bản đồ không hiển thị: kiểm tra VITE_VIETMAP_TILE_KEY, backend dev (vietmap.tileKey / GET /api/geo/client-config), hoặc kết nối mạng.
+                        Nếu bản đồ không hiển thị: kiểm tra VITE_VIETMAP_TILE_KEY hoặc kết nối mạng.
                     </Typography>
                 </Grid>
             </Grid>
@@ -893,7 +1087,6 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
                         return (
                             <Box key={parentId}>
-                                {/* Hàng danh mục cha */}
                                 <ListItemButton
                                     onClick={() => {
                                         if (hasChildren) {
@@ -934,7 +1127,6 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                                     )}
                                 </ListItemButton>
 
-                                {/* Danh mục con — accordion */}
                                 {hasChildren && (
                                     <Collapse in={isExpanded} timeout={200}>
                                         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
