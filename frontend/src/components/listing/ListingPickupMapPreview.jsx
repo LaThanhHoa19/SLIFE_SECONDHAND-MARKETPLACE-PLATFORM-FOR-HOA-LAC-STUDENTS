@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { getGeoClientConfig } from '../../api/geoApi';
 
 const MAP_DEFAULT_ZOOM = 15;
+const VIETMAP_CDN_JS = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.js';
+const VIETMAP_CDN_CSS = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.css';
 
 function buildGoogleMapsDirectionsUrl(lat, lng) {
   if (lat == null || lng == null) return null;
@@ -12,15 +14,33 @@ function buildGoogleMapsDirectionsUrl(lat, lng) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
 }
 
+function ensureVietmapCss() {
+  if (document.querySelector('link[data-vietmap-css]')) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = VIETMAP_CDN_CSS;
+  link.dataset.vietmapCss = 'true';
+  document.head.appendChild(link);
+}
+
+function loadVietmapScript() {
+  return new Promise((resolve) => {
+    const existing = document.querySelector('script[data-vietmap-gl]');
+    if (existing) {
+      if (window.vietmapgl) return resolve(window.vietmapgl);
+      existing.addEventListener('load', () => resolve(window.vietmapgl));
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = VIETMAP_CDN_JS;
+    script.dataset.vietmapGl = 'true';
+    script.onload = () => resolve(window.vietmapgl);
+    document.body.appendChild(script);
+  });
+}
+
 /**
  * Xem trước điểm hẹn: Vietmap + nút mở Google Maps.
- *
- * Props:
- *  - lat, lng: toạ độ điểm hẹn (bắt buộc để hiện map/route có ý nghĩa)
- *  - address: chuỗi địa chỉ hiển thị (optional)
- *  - vietmapTileKey: key Vietmap tile (nếu null thì không render map, chỉ hiện nút Google Maps)
- *
- * Component này độc lập, chưa được gắn vào UI hiện tại.
  */
 export default function ListingPickupMapPreview({
   lat,
@@ -30,13 +50,11 @@ export default function ListingPickupMapPreview({
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const markerRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
   const [vietmapTileKey, setVietmapTileKey] = useState(
     () => (propTileKey || import.meta.env.VITE_VIETMAP_TILE_KEY || '').trim(),
   );
 
-  // Fallback: nếu không có env/key truyền vào, gọi BE /api/geo/client-config giống form đăng tin
   useEffect(() => {
     if (vietmapTileKey) return;
     let cancelled = false;
@@ -47,83 +65,96 @@ export default function ListingPickupMapPreview({
         if (!cancelled && key) setVietmapTileKey(key);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [vietmapTileKey]);
 
   const gmapsUrl = buildGoogleMapsDirectionsUrl(lat, lng);
 
-  // Khởi tạo Vietmap GL (nếu có tileKey + toạ độ)
   useEffect(() => {
-    if (!vietmapTileKey || typeof window === 'undefined') return;
+    if (!vietmapTileKey) return;
 
     const latNum = Number(lat);
     const lngNum = Number(lng);
     if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return;
 
     let cancelled = false;
+    const origin = window.location.origin;
 
-    const initMap = () => {
-      if (cancelled || mapRef.current || !window.vietmapgl || !containerRef.current) return;
+    ensureVietmapCss();
+    loadVietmapScript().then((vietmapgl) => {
+      if (cancelled || !vietmapgl || !containerRef.current) return;
+      if (mapRef.current) return;
 
-      const map = new window.vietmapgl.Map({
-        container: containerRef.current,
-        style: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${vietmapTileKey}`,
-        center: [lngNum, latNum],
-        zoom: MAP_DEFAULT_ZOOM,
-      });
+      // Ensure container has dimensions before initializing
+      const container = containerRef.current;
+      const rect = container.getBoundingClientRect();
+      const hasSize = rect.width > 0 && rect.height > 0;
 
-      map.addControl(new window.vietmapgl.NavigationControl(), 'top-left');
+      const initMap = () => {
+        if (cancelled || mapRef.current || !container.getBoundingClientRect().width) return;
 
-      map.once('load', () => {
-        if (!cancelled) setMapReady(true);
-      });
+        const map = new vietmapgl.Map({
+          container,
+          style: `${origin}/maps/styles/tm/style.json?apikey=${vietmapTileKey}`,
+          center: [lngNum, latNum],
+          zoom: MAP_DEFAULT_ZOOM,
+          transformRequest: (url) => {
+            if (typeof url !== 'string') return { url };
+            const prefix = 'https://maps.vietmap.vn';
+            if (url.startsWith(prefix + '/')) {
+              let rewritten = url.replace(prefix, '');
+              if (rewritten.includes('apikey=') && !rewritten.includes(`apikey=${vietmapTileKey}`)) {
+                rewritten = rewritten.replace(/apikey=[^&]*/, `apikey=${vietmapTileKey}`);
+              }
+              return { url: `${origin}${rewritten}` };
+            }
+            if (url === prefix) return { url: `${origin}/` };
+            return { url };
+          }
+        });
 
-      const marker = new window.vietmapgl.Marker().setLngLat([lngNum, latNum]).addTo(map);
+        map.addControl(new vietmapgl.NavigationControl(), 'top-left');
 
-      mapRef.current = map;
-      markerRef.current = marker;
-    };
+        map.once('load', () => {
+          if (cancelled) return;
+          try {
+            const src = map.getSource('openmaptiles');
+            if (src && src.tiles && src.tiles.length > 0) {
+              src.tiles = src.tiles.map((t) =>
+                t.replace(/apikey=[^&]*/, `apikey=${vietmapTileKey}`)
+              );
+              map.style.sourceCaches['openmaptiles'].clearTiles();
+              map.style.sourceCaches['openmaptiles'].update(map.transform);
+            }
+          } catch { /* ignore */ }
+          setMapReady(true);
+          // Force multiple resizes to ensure canvas size is correct
+          [0, 100, 300, 600].forEach(delay =>
+            setTimeout(() => { try { map.resize(); } catch { /* */ } }, delay)
+          );
+        });
 
-    const ensureCss = () => {
-      if (document.querySelector('link[data-vietmap-gl-css]')) return;
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.css';
-      link.dataset.vietmapGlCss = 'true';
-      document.head.appendChild(link);
-    };
+        new vietmapgl.Marker().setLngLat([lngNum, latNum]).addTo(map);
+        mapRef.current = map;
+      };
 
-    ensureCss();
-
-    let script = document.querySelector('script[data-vietmap-gl]');
-    if (!script) {
-      script = document.createElement('script');
-      script.src = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.js';
-      script.async = true;
-      script.defer = true;
-      script.dataset.vietmapGl = 'true';
-      script.addEventListener('load', initMap);
-      document.body.appendChild(script);
-    } else if (window.vietmapgl) {
-      initMap();
-    } else {
-      script.addEventListener('load', initMap);
-    }
+      if (hasSize) {
+        initMap();
+      } else {
+        // Wait for next frame when container renders
+        requestAnimationFrame(() => {
+          if (!cancelled) initMap();
+        });
+      }
+    });
 
     return () => {
       cancelled = true;
       setMapReady(false);
       if (mapRef.current) {
-        try {
-          mapRef.current.remove();
-        } catch {
-          // ignore
-        }
+        try { mapRef.current.remove(); } catch { /* */ }
         mapRef.current = null;
       }
-      markerRef.current = null;
     };
   }, [lat, lng, vietmapTileKey]);
 
@@ -185,4 +216,3 @@ export default function ListingPickupMapPreview({
     </div>
   );
 }
-
