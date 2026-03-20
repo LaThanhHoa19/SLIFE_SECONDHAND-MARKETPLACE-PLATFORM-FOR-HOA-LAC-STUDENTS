@@ -4,6 +4,16 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    global: 'globalThis'
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
+  },
   server: {
     host: true,
     port: 5173,
@@ -14,6 +24,12 @@ export default defineConfig({
     hmr: {
       host: "localhost",
       protocol: "ws"
+    },
+    proxy: {
+      '/maps': {
+        target: 'https://maps.vietmap.vn',
+        changeOrigin: true
+      }
     }
   }
 })
