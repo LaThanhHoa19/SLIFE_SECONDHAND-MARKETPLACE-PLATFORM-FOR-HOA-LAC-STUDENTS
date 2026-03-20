@@ -25,7 +25,6 @@ const ADMIN_ITEMS = [
         label: 'Báo cáo',
         icon: FlagIcon,
         path: '/admin/reports',
-        allowedRoles: ['ADMIN', 'MODERATOR'],
     },
     { 
         label: 'Quản lý danh mục', 
