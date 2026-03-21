@@ -12,6 +12,8 @@ const sanitizeQueryParams = (params = {}) => Object.fromEntries(
 
 export const getListings = (params, config = {}) =>
     axiosClient.get('/api/listings', { params: sanitizeQueryParams(params), ...config });
+export const searchListings = (params, config = {}) =>
+    axiosClient.get('/api/search', { params: sanitizeQueryParams(params), ...config });
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);

@@ -68,7 +68,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
             l.seller.id,
             l.seller.fullName,
-            l.seller.avatarUrl
+            l.seller.avatarUrl,
+            l.createdAt
         )
         FROM Listing l
         LEFT JOIN l.pickupAddress a
