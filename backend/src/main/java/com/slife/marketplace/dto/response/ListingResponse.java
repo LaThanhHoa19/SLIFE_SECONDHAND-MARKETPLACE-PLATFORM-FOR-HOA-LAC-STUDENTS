@@ -15,5 +15,5 @@ public class ListingResponse {
     private java.util.List<String> images;
     private Object sellerSummary;
     private Boolean isSaved;
-    private Boolean isFollowed; // From 'Hoa' - Seller follow status
+    private Boolean isFollowed;
 }
