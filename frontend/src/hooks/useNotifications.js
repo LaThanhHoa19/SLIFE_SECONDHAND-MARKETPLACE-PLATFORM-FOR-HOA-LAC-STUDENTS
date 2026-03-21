@@ -10,6 +10,18 @@ import { Client } from '@stomp/stompjs';
 import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
 import { useAuth } from './useAuth';
 
+/** Giống ChatPage: WS ở /chat, không nằm dưới /api */
+function getChatSockJsUrl(token) {
+  const base =
+    import.meta.env.VITE_WS_URL ||
+    (typeof window !== 'undefined'
+      ? `${window.location.origin}/chat`
+      : 'http://localhost:8080/chat');
+  if (!token) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}token=${encodeURIComponent(token)}`;
+}
+
 export default function useNotifications() {
   const [notifications, setNotifications] = useState([]);
   const { token } = useAuth();
@@ -36,11 +48,11 @@ export default function useNotifications() {
 
     if (token) {
       // Backend WebSocket: Spring STOMP + SockJS endpoint `/chat`
-      // Token gửi qua query: `/chat?token=JWT`
+      // JwtHandshakeHandler chỉ đọc JWT từ query ?token= (không phải header SockJS GET)
       // NotificationService push unread count to: `/user/queue/notifications`
       stompClient = new Client({
         // SockJS is used because backend registers with `.withSockJS()`.
-        webSocketFactory: () => new SockJS(`${API_BASE_URL}/chat?token=${encodeURIComponent(token)}`),
+        webSocketFactory: () => new SockJS(getChatSockJsUrl(token)),
         reconnectDelay: 5000,
         debug: () => {},
         onConnect: () => {
