@@ -2,8 +2,7 @@ package com.slife.marketplace.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -11,8 +10,7 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-@Getter
-@Setter
+@Data
 @Entity
 @Table(name = "offers")
 public class Offer {
@@ -21,9 +19,7 @@ public class Offer {
     @Column(name = "offer_id", nullable = false)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @OnDelete(action = OnDeleteAction.SET_NULL)
-    @JoinColumn(name = "conversation_id")
+    @Transient
     private Conversation conversation;
 
     @NotNull
@@ -44,7 +40,6 @@ public class Offer {
 
     @NotNull
     @ColumnDefault("'PENDING'")
-    @Lob
     @Column(name = "status", nullable = false)
     private String status;
 
@@ -58,5 +53,27 @@ public class Offer {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    /** Compatibility for APIs using proposedPrice name. */
+    @Transient
+    public BigDecimal getProposedPrice() {
+        return amount;
+    }
 
+    /** Compatibility for APIs using proposedPrice name. */
+    @Transient
+    public void setProposedPrice(BigDecimal proposedPrice) {
+        this.amount = proposedPrice;
+    }
+
+    /** Current schema has no message column yet. */
+    @Transient
+    public String getMessage() {
+        return null;
+    }
+
+    /** Current schema has no message column yet. */
+    @Transient
+    public void setMessage(String ignored) {
+        // no-op until message column exists
+    }
 }
