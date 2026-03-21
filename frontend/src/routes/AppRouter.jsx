@@ -9,6 +9,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../components/layout/MainLayout';
 import LandingLayout from '../components/layout/LandingLayout';
 import AdminLayout from '../components/layout/AdminLayout';
+import AuthLayout from '../components/layout/AuthLayout';
 import RouteGuard, { GUARD_PRESETS } from './RouteGuard';
 
 // Lazy loaded components
@@ -26,11 +27,14 @@ import {
     SuspenseReportManagementPage,
     SuspenseUserManagementPage,
     SuspenseCategoryManagementPage,
+    SuspenseConfigurationManagementPage,
+    SuspenseAdminProfilePage,
     SuspenseReportPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
+    SuspenseAdminLoginPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -42,17 +46,8 @@ export default function AppRouter() {
                 <Route path="/landing" element={<SuspenseStitchLandingPage />} />
             </Route>
 
-            <Route element={<MainLayout />}>
-                {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
-                <Route path="/feed" element={<SuspenseListingsPage />} />
-                <Route path="/search" element={<SuspenseSearchPage />} />
-                <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
-                <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
-
-                {/* Google OAuth2 redirect callback — no guard, no layout needed */}
-                <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
-
-                {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
+            {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
+            <Route element={<AuthLayout />}>
                 <Route
                     path="/login"
                     element={
@@ -69,6 +64,28 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+                <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
+            </Route>
+
+            {/* ===== ADMIN ROUTES - Dùng AdminLayout (header + sidebar) ===== */}
+            <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<SuspenseDashboardPage />} />
+                <Route path="reports" element={<SuspenseReportManagementPage />} />
+                <Route path="users" element={<SuspenseUserManagementPage />} />
+                <Route path="categories" element={<SuspenseCategoryManagementPage />} />
+                <Route path="settings" element={<SuspenseConfigurationManagementPage />} />
+                <Route path="profile" element={<SuspenseAdminProfilePage />} />
+            </Route>
+
+            <Route element={<MainLayout />}>
+                {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
+                <Route path="/feed" element={<SuspenseListingsPage />} />
+                <Route path="/search" element={<SuspenseSearchPage />} />
+                <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+                <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
+
+                {/* Google OAuth2 redirect callback — no guard, no layout needed */}
+                <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
 
                 {/* ===== PROTECTED ROUTES - Cần đăng nhập ===== */}
                 <Route
@@ -123,7 +140,7 @@ export default function AppRouter() {
                 />
 
                 {/* Admin routes (tạm thời không cần login để test UI) */}
-                <Route
+                {/* <Route
                     path="/admin"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.MODERATOR_PLUS}>
@@ -163,7 +180,7 @@ export default function AppRouter() {
                             </AdminLayout>
                         </RouteGuard>
                     }
-                />
+                /> */}
 
                 {/* Dev/test route */}
                 <Route path="/backend-test" element={<SuspenseBackendTestPage />} />

@@ -89,7 +89,7 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
                         bgcolor: disabled ? 'rgba(255,255,255,0.04)' : '#312F37',
                         color: '#fff',
                         fontSize: 14,
-                        borderRadius: 1.5,
+                        borderRadius: 1,
                     },
                     '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
                     '& .MuiOutlinedInput-notchedOutline': {
@@ -343,7 +343,7 @@ export default function LocationPicker({ onConfirm, onSuggestionSelect, value })
                         endAdornment: isSearching ? <CircularProgress size={14} sx={{ color: '#9D6EED' }} /> : null,
                     }}
                     sx={{
-                        '& .MuiInputBase-root': { bgcolor: '#312F37', color: '#fff', fontSize: 14, borderRadius: 1.5 },
+                        '& .MuiInputBase-root': { bgcolor: '#312F37', color: '#fff', fontSize: 14, borderRadius: 1 },
                         '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.15)' },
                         '& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#9D6EED' },
                         '& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#9D6EED' },
@@ -403,10 +403,7 @@ export default function LocationPicker({ onConfirm, onSuggestionSelect, value })
             </Box>
 
             {/* ── 3-level dropdowns ── */}
-            <Typography fontSize={12} color="rgba(255,255,255,0.45)" mb={1}>
-                Tỉnh / Thành phố
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1.5 }}>
                 <AdminDropdown
                     label="Tỉnh / Thành phố"
                     options={provinces}

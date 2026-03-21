@@ -1,3 +1,4 @@
+/** Mục đích: Quản lý danh mục. API: GET/POST/PATCH/DELETE /api/admin/categories. */
 import { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
@@ -499,4 +500,3 @@ export default function CategoryManagementPage() {
         </Box>
     );
 }
-

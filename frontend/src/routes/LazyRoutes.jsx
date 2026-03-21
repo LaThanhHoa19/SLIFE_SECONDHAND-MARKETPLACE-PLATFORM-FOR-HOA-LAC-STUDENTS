@@ -34,11 +34,14 @@ export const LazyNotificationsPage = lazy(() => import('../pages/notification/No
 export const LazyDashboardPage = lazy(() => import('../pages/admin/DashboardPage'));
 export const LazyReportManagementPage = lazy(() => import('../pages/admin/ReportManagementPage'));
 export const LazyUserManagementPage = lazy(() => import('../pages/admin/UserManagementPage'));
-export const LazyReportPage = lazy(() => import('../pages/report/ReportPage'));
 export const LazyCategoryManagementPage = lazy(() => import('../pages/admin/CategoryManagementPage'));
+export const LazyConfigurationManagementPage = lazy(() => import('../pages/admin/ConfigurationManagementPage'));
+export const LazyAdminProfilePage = lazy(() => import('../pages/admin/AdminProfilePage'));
 export const LazyBackendTestPage = lazy(() => import('../pages/BackendTestPage'));
 export const LazyGoogleCallbackPage = lazy(() => import('../pages/auth/GoogleCallbackPage'));
 export const LazyStitchLandingPage = lazy(() => import('../landing_page/StitchLandingPage.jsx'));
+export const LazyAdminLoginPage = lazy(() => import('../pages/admin/AdminLoginPage'));
+export const LazyReportPage = lazy(() => import('../pages/report/ReportPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -62,7 +65,10 @@ export const SuspenseDashboardPage = withSuspense(LazyDashboardPage, "Đang tả
 export const SuspenseReportManagementPage = withSuspense(LazyReportManagementPage, "Đang tải quản lý báo cáo...");
 export const SuspenseUserManagementPage = withSuspense(LazyUserManagementPage, "Đang tải quản lý người dùng...");
 export const SuspenseCategoryManagementPage = withSuspense(LazyCategoryManagementPage, "Đang tải quản lý danh mục...");
-export const SuspenseReportPage = withSuspense(LazyReportPage, "Đang tải trang báo cáo...");
+export const SuspenseConfigurationManagementPage = withSuspense(LazyConfigurationManagementPage, "Đang tải cấu hình hệ thống...");
+export const SuspenseAdminProfilePage = withSuspense(LazyAdminProfilePage, "Đang tải hồ sơ admin...");
 export const SuspenseBackendTestPage = withSuspense(LazyBackendTestPage, "Đang tải trang backend test...");
 export const SuspenseGoogleCallbackPage = withSuspense(LazyGoogleCallbackPage, "Đang xử lý đăng nhập...");
 export const SuspenseStitchLandingPage = withSuspense(LazyStitchLandingPage, "Đang tải trang giới thiệu...");
+export const SuspenseAdminLoginPage = withSuspense(LazyAdminLoginPage, "Đang tải trang đăng nhập admin...");
+export const SuspenseReportPage = withSuspense(LazyReportPage, "Đang tải trang báo cáo...");
