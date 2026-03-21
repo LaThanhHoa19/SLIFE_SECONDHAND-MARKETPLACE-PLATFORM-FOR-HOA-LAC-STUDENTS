@@ -53,20 +53,6 @@ const getLocationText = (listing) => {
 const getConditionText = (listing) =>
     listing?.itemCondition || listing?.condition || listing?.status || '';
 
-const parseImages = (imagesData) => {
-    if (Array.isArray(imagesData)) return imagesData;
-    if (typeof imagesData === 'string') {
-        if (imagesData.startsWith('[')) {
-            try {
-                const parsed = JSON.parse(imagesData);
-                if (Array.isArray(parsed)) return parsed;
-            } catch { }
-        }
-        return imagesData.split(',').map(s => s.trim()).filter(Boolean);
-    }
-    return [];
-};
-
 
 export default function ListingCard({
                                         listing,
@@ -77,7 +63,7 @@ export default function ListingCard({
                                     }) {
     const navigate = useNavigate();
     const id = listing?.id ?? listing?.listingId;
-    const images = parseImages(listing?.images);
+    const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
     const contentInsetLeft = '62px';
 
@@ -129,39 +115,36 @@ export default function ListingCard({
                 tabIndex={0}
                 sx={{ cursor: 'pointer', outline: 'none' }}
             >
-                {(!!images.length || !!listing?.thumbnailUrl) && (() => {
-                    const firstImage = images[0];
-                    const urlString = firstImage ? (typeof firstImage === 'string' ? firstImage : firstImage?.imageUrl || firstImage?.url) : listing?.thumbnailUrl;
-                    return urlString ? (
+                {/* Images */}
+                {!!images.length && (
+                    <Box
+                        sx={{
+                            width: '100%',
+                            position: 'relative',
+                            pt:
+                                layout === 'grid'
+                                    ? '65%'
+                                    : imageAspect === 'compactList'
+                                        ? '45%'
+                                        : '65%',
+                            overflow: 'hidden',
+                        }}
+                    >
                         <Box
+                            component="img"
+                            src={fullImageUrl(images[0])}
+                            alt={listing?.title}
                             sx={{
+                                position: 'absolute',
+                                inset: 0,
                                 width: '100%',
-                                position: 'relative',
-                                pt:
-                                    layout === 'grid'
-                                        ? '65%'
-                                        : imageAspect === 'compactList'
-                                            ? '45%'
-                                            : '65%',
-                                overflow: 'hidden',
+                                height: '100%',
+                                objectFit: 'cover',
+                                display: 'block',
                             }}
-                        >
-                            <Box
-                                component="img"
-                                src={fullImageUrl(urlString)}
-                                alt={listing?.title}
-                                sx={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                    display: 'block',
-                                }}
-                            />
-                        </Box>
-                    ) : null;
-                })()}
+                        />
+                    </Box>
+                )}
 
                 {/* Content */}
                 <CardContent sx={{ pt: 2, pb: 1, px: 2, flexGrow: 1 }}>
