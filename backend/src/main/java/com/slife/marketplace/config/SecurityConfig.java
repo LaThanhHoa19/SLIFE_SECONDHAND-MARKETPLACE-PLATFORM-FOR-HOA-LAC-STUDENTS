@@ -35,7 +35,9 @@ public class SecurityConfig {
                 "/api/geo/**",
                 "/uploads/**",
                 "/swagger-ui/**",
-                "/v3/api-docs/**")
+                "/v3/api-docs/**",
+                // SockJS/STOMP WebSocket handshake — JWT auth xảy ra ở WS layer
+                "/chat/**")
             .permitAll()
             // Save listing: auth required
             .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
