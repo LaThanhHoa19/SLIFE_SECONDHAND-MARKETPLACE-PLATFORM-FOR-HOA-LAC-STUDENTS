@@ -1,0 +1,40 @@
+# Hướng dẫn chạy GitNexus
+
+GitNexus là một công cụ giúp các AI agent (như tôi) hiểu sâu hơn về mã nguồn của bạn bằng cách xây dựng một đồ thị tri thức (Knowledge Graph) từ codebase qua giao thức MCP (Model Context Protocol).
+
+Dưới đây là các bước để chạy GitNexus trên máy tính của bạn:
+
+## 1. Yêu cầu hệ thống
+- Máy tính đã cài đặt **Node.js** và **npm**.
+- Bạn nên ở trong thư mục gốc của dự án (trong trường hợp của dự án hiện tại là `e:\SLIFE_SECONDHAND-MARKETPLACE-PLATFORM-FOR-HOA-LAC-STUDENTS`).
+
+## 2. Các lệnh chạy chính (Sử dụng npx)
+
+Bạn không cần cài đặt vĩnh viễn, có thể chạy trực tiếp bằng các lệnh sau:
+
+### Phân tích codebase (Indexing)
+Lệnh này sẽ quét mã nguồn của bạn để tạo ra tri thức AI có thể hiểu:
+```powershell
+npx gitnexus analyze
+```
+
+### Chạy dưới dạng MCP Server
+Nếu bạn muốn tích hợp GitNexus với các công cụ AI như Cursor, Claude Code, hoặc Windsurf:
+```powershell
+npx -y gitnexus@latest mcp
+```
+
+### Cài đặt cấu hình tự động (Setup)
+Để tự động thiết lập MCP cho các trình soạn thảo code phổ biến:
+```powershell
+npx gitnexus setup
+```
+
+---
+
+> [!TIP]
+> **Chú ý quan trọng**: 
+> - Nếu bạn đang tìm kiếm ứng dụng **GitNexus (Android client cho Gitea)**, hãy tìm trên Google Play Store. 
+> - Tuy nhiên, vì bạn đang làm việc với dự án lập trình và hỏi về cách "chạy", nhiều khả năng bạn đang muốn sử dụng công cụ AI của `yuv-ai` như trên.
+
+Nếu có bất kỳ lỗi nào xảy ra trong quá trình chạy (ví dụ như "command not found"), hãy gửi cho tôi thông báo lỗi đầy đủ để tôi hỗ trợ thêm. 
