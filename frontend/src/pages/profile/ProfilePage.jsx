@@ -14,7 +14,6 @@ import {
   Typography,
   Button
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 import { useAuth } from '../../hooks/useAuth';
@@ -74,11 +73,11 @@ export default function ProfilePage() {
     const date = new Date(dateString);
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays < 30) return `${diffDays} ngày`;
     const months = Math.floor(diffDays / 30);
     const remainingDays = diffDays % 30;
-    
+
     return months > 0 ? `${months} tháng ${remainingDays} ngày` : `${remainingDays} ngày`;
   };
   const [profileUser, setProfileUser] = useState(null);
@@ -128,11 +127,11 @@ export default function ProfilePage() {
       const list = Array.isArray(data) ? data : data?.content ?? [];
       const name = profileUser?.fullName ?? profileUser?.full_name;
       const filtered = name
-          ? list.filter((item) => {
-            const sellerName = item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
-            return sellerName === name;
-          })
-          : list;
+        ? list.filter((item) => {
+          const sellerName = item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
+          return sellerName === name;
+        })
+        : list;
       setListings(filtered);
     } catch {
       setListings([]);
@@ -251,10 +250,6 @@ export default function ProfilePage() {
             <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: TEXT_PRI }}>Xác minh thông tin</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 4 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <CheckCircleIcon fontSize="small" sx={{ color: PURPLE }} />
-                <Typography variant="body2" color={TEXT_PRI}>Email đã xác minh</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 {phoneVerified ? <CheckCircleIcon fontSize="small" sx={{ color: PURPLE }} /> : <WarningAmberIcon fontSize="small" color="warning" />}
                 <Typography variant="body2" color={TEXT_PRI}>{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
               </Box>
@@ -263,11 +258,11 @@ export default function ProfilePage() {
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Tabs 
-              value={tab} 
-              onChange={(_, v) => setTab(v)} 
-              sx={{ 
-                px: 3, 
+            <Tabs
+              value={tab}
+              onChange={(_, v) => setTab(v)}
+              sx={{
+                px: 3,
                 borderBottom: `1px solid ${BORDER}`,
                 '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0', bgcolor: PURPLE },
                 '& .MuiTab-root': {
