@@ -623,7 +623,7 @@ export default function MyListingsPage() {
             setTotalElements(payload?.totalElements ?? list.length);
         } catch (err) {
             if (err?.name === 'CanceledError' || ctrl.signal.aborted) return;
-            setError(err?.message || 'Không thể tải danh sách bài đăng. Vui lòng thử lại.');
+            setError('Không thể tải danh sách bài đăng. Vui lòng thử lại.');
         } finally {
             if (!ctrl.signal.aborted) setLoading(false);
         }

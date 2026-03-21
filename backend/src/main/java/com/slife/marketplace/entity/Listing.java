@@ -62,16 +62,19 @@ public class Listing {
 
     @NotNull
     @ColumnDefault("'USED_GOOD'")
+    @Lob
     @Column(name = "item_condition", nullable = false)
     private String itemCondition;
 
     @NotNull
     @ColumnDefault("'DRAFT'")
+    @Lob
     @Column(name = "status", nullable = false)
     private String status;
 
     @NotNull
     @ColumnDefault("'SALE'")
+    @Lob
     @Column(name = "purpose", nullable = false)
     private String purpose;
 
@@ -104,7 +107,4 @@ public class Listing {
     @OneToMany(mappedBy = "listing", fetch = FetchType.LAZY)
     @OrderBy("displayOrder ASC")
     private List<ListingImage> images = new ArrayList<>();
-
-    @OneToMany(mappedBy = "listing", fetch = FetchType.LAZY)
-    private List<Offer> offers = new ArrayList<>();
 }

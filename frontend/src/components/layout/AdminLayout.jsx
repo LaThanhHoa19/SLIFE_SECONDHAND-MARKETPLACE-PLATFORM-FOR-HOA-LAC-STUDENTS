@@ -1,16 +1,15 @@
 import { Box, Typography, Paper } from '@mui/material';
-import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import { CONTENT_MAX_WIDTH } from '../../utils/layoutConstants';
 
-export default function AdminLayout({ title, subtitle, rightSlot }) {
+export default function AdminLayout({ title, subtitle, children, rightSlot }) {
     return (
         <Box
             sx={{
                 display: 'flex',
                 minHeight: '100vh',
-                bgcolor: '#1C1B23',
+                bgcolor: '#f3f4f6',
                 overflow: 'hidden',
             }}
         >
@@ -19,7 +18,7 @@ export default function AdminLayout({ title, subtitle, rightSlot }) {
             <Box
                 sx={{
                     flex: 1,
-                    bgcolor: '#1C1B23',
+                    bgcolor: '#f9fafb',
                     p: { xs: 0, md: 0 },
                     overflow: 'auto',
                 }}
@@ -69,14 +68,14 @@ export default function AdminLayout({ title, subtitle, rightSlot }) {
 
                     <Paper
                         sx={{
-                            background: '#1E1B24',
+                            background: '#ffffff',
                             borderRadius: 2,
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 30px rgba(15,23,42,0.06)',
                             p: { xs: 2, md: 2.5 },
                         }}
                     >
-                        <Outlet />
+                        {children}
                     </Paper>
                 </Box>
             </Box>

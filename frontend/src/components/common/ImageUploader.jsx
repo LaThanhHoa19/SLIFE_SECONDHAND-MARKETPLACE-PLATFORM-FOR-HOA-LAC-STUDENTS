@@ -76,7 +76,7 @@ export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, max
         <label htmlFor="upload-image-input" style={{ display: "block" }}>
           <Box
             sx={{
-              height: 160,
+              height: 200,
               borderRadius: "14px",
               background: "#392D4D",
               display: "flex",
@@ -89,7 +89,7 @@ export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, max
             }}
           >
             <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 50, color: "#9D6EED" }} />
-            <Typography fontWeight={600} fontSize={16}>
+            <Typography fontWeight={600} fontSize={18}>
               Thêm ảnh
             </Typography>
           </Box>

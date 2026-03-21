@@ -2,7 +2,8 @@ package com.slife.marketplace.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
@@ -10,7 +11,8 @@ import org.hibernate.annotations.OnDeleteAction;
 import java.time.Instant;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "conversations")
 public class Conversation {
@@ -62,41 +64,5 @@ public class Conversation {
         if (sessionUuid == null || sessionUuid.isBlank()) {
             sessionUuid = UUID.randomUUID().toString();
         }
-    }
-
-    /**
-     * SCRUM-83 semantic alias:
-     * in current schema user_id1 is treated as buyer.
-     */
-    @Transient
-    public User getBuyer() {
-        return userId1;
-    }
-
-    /**
-     * SCRUM-83 semantic alias:
-     * in current schema user_id1 is treated as buyer.
-     */
-    @Transient
-    public void setBuyer(User buyer) {
-        this.userId1 = buyer;
-    }
-
-    /**
-     * SCRUM-83 semantic alias:
-     * in current schema user_id2 is treated as seller.
-     */
-    @Transient
-    public User getSeller() {
-        return userId2;
-    }
-
-    /**
-     * SCRUM-83 semantic alias:
-     * in current schema user_id2 is treated as seller.
-     */
-    @Transient
-    public void setSeller(User seller) {
-        this.userId2 = seller;
     }
 }

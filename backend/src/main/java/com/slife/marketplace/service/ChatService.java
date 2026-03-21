@@ -308,7 +308,7 @@ public class ChatService {
         offer.setListing(listing);
         offer.setBuyer(buyer);
         offer.setAmount(amount);
-        offer.setStatus(OfferService.STATUS_PENDING);
+        offer.setStatus("PENDING");
         offer.setCreatedAt(Instant.now());
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
@@ -344,21 +344,11 @@ public class ChatService {
     public ChatMessageResponse respondToOffer(Long offerId, String action, User seller) {
         Offer offer = offerRepository.findById(offerId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));
-        if (!OfferService.STATUS_PENDING.equals(offer.getStatus())) {
+        if (!"PENDING".equals(offer.getStatus())) {
             throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
         }
         Conversation conv = offer.getConversation();
-        if (conv == null) {
-            Long listingId = offer.getListing() != null ? offer.getListing().getId() : null;
-            Long buyerId = offer.getBuyer() != null ? offer.getBuyer().getId() : null;
-            Long sellerId = offer.getListing() != null && offer.getListing().getSeller() != null
-                    ? offer.getListing().getSeller().getId() : null;
-            if (listingId == null || buyerId == null || sellerId == null) {
-                throw new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND);
-            }
-            conv = conversationRepository.findActiveByListingBuyerSeller(listingId, buyerId, sellerId)
-                    .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
-        }
+        if (conv == null) throw new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND);
         ensureParticipant(conv, seller);
         // Seller must not be the buyer
         if (offer.getBuyer().getId().equals(seller.getId())) {
@@ -366,7 +356,7 @@ public class ChatService {
         }
 
         boolean accepted = "ACCEPTED".equalsIgnoreCase(action);
-        offer.setStatus(accepted ? OfferService.STATUS_ACCEPTED : OfferService.STATUS_REJECTED);
+        offer.setStatus(accepted ? "ACCEPTED" : "REJECTED");
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
 

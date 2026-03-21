@@ -1,4 +1,4 @@
-import { Box, Button, InputBase, Stack, Typography } from '@mui/material';
+import { Avatar, Box, Button, Chip, InputBase, Stack, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -14,8 +14,8 @@ export default function AdminHeader() {
                 px: 3,
                 py: 1.5,
                 borderRadius: 0,
-                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                bgcolor: '#1E1B24',
+                borderBottom: '1px solid #e5e7eb',
+                bgcolor: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -31,28 +31,28 @@ export default function AdminHeader() {
                     maxWidth: 520,
                     display: { xs: 'none', sm: 'flex' },
                     alignItems: 'center',
-                    bgcolor: 'rgba(255,255,255,0.08)',
+                    bgcolor: '#f3f4f6',
                     borderRadius: 999,
                     px: 2,
                     py: 0.75,
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    border: '1px solid #e5e7eb',
                 }}
             >
-                <SearchIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', mr: 1 }} />
+                <SearchIcon sx={{ fontSize: 18, color: '#9ca3af', mr: 1 }} />
                 <InputBase
                     placeholder="Tìm kiếm tài liệu, người dùng..."
                     sx={{
                         fontSize: 13,
                         flex: 1,
-                        color: '#ffffff',
-                        '& input::placeholder': { color: 'rgba(255,255,255,0.5)', opacity: 1 },
+                        color: '#111827',
+                        '& input::placeholder': { color: '#9ca3af', opacity: 1 },
                     }}
                 />
             </Box>
 
             <Stack direction="row" spacing={1.5} alignItems="center">
                 {displayName && (
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', display: { xs: 'none', sm: 'block' } }}>
+                    <Typography variant="body2" sx={{ color: '#4b5563', display: { xs: 'none', sm: 'block' } }}>
                         {displayName}
                     </Typography>
                 )}
@@ -63,14 +63,25 @@ export default function AdminHeader() {
                         textTransform: 'none',
                         fontSize: 12,
                         borderRadius: 999,
-                        borderColor: 'rgba(255,255,255,0.2)',
-                        color: 'rgba(255,255,255,0.9)',
+                        borderColor: '#e5e7eb',
+                        color: '#374151',
                         px: 1.8,
                         display: { xs: 'none', sm: 'inline-flex' },
                     }}
                 >
                     Đăng xuất
                 </Button>
+                <Avatar
+                    sx={{
+                        width: 30,
+                        height: 30,
+                        bgcolor: '#2563eb',
+                        fontSize: 14,
+                        fontWeight: 600,
+                    }}
+                >
+                    {initial}
+                </Avatar>
             </Stack>
         </Box>
     );

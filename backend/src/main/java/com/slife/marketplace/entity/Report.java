@@ -28,6 +28,7 @@ public class Report {
     private User reporter;
 
     @NotNull
+    @Lob
     @Column(name = "target_type", nullable = false)
     private String targetType;
 
@@ -41,6 +42,7 @@ public class Report {
 
     @NotNull
     @ColumnDefault("'PENDING'")
+    @Lob
     @Column(name = "status", nullable = false)
     private String status;
 

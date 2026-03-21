@@ -96,9 +96,9 @@ public class ListingController {
      */
     @GetMapping("/my")
     public ResponseEntity<ApiResponse<PagedResponse<MyListingResponse>>> getMyListings(
-            @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "10") int size
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
         User currentUser = userService.getCurrentUser();
         PagedResponse<MyListingResponse> listings = listingService.getMyListings(status, page, size, currentUser);

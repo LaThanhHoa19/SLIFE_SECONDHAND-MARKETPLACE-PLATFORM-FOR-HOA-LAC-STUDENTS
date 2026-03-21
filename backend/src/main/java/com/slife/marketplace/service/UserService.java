@@ -43,7 +43,7 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> {
                     log.warn("getCurrentUser - user not found for email: {}", email);
-                    return new SlifeException(ErrorCode.UNAUTHORIZED, "Session invalid. Please login again.");
+                    return new SlifeException(ErrorCode.USER_NOT_FOUND);
                 });
         log.debug("getCurrentUser - found userId={}", user.getId());
         return user;

@@ -2,18 +2,18 @@ package com.slife.marketplace.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 
-@Data
+@Getter
+@Setter
 @Entity
-@Table(name = "messages", indexes = {
-        @Index(name = "idx_messages_conversation_sent", columnList = "conversation_id, sent_at")
-})
+@Table(name = "messages")
 public class Message {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -55,11 +55,5 @@ public class Message {
 
     @Column(name = "file_url", length = 1000)
     private String fileUrl;
-
-    @Column(name = "updated_at")
-    private Instant updatedAt;
-
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
 
 }

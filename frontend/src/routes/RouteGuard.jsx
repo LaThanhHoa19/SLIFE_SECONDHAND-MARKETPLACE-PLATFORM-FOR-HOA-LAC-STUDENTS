@@ -70,24 +70,14 @@ export default function RouteGuard({
                 alignItems="center"
                 justifyContent="center"
                 minHeight="100vh"
-                bgcolor="#1C1B23"
+                bgcolor="grey.50"
             >
-                <Paper
-                    elevation={0}
-                    sx={{
-                        p: 5,
-                        borderRadius: 3,
-                        textAlign: 'center',
-                        bgcolor: '#1F1D25',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
-                    }}
-                >
-                    <CircularProgress size={48} sx={{ mb: 2.5, color: '#a78bfa' }} />
-                    <Typography variant="h6" fontWeight={600} sx={{ color: '#fff' }}>
+                <Paper elevation={2} sx={{ p: 4, borderRadius: 2, textAlign: 'center' }}>
+                    <CircularProgress size={48} sx={{ mb: 2 }} />
+                    <Typography variant="h6" gutterBottom>
                         Đang kiểm tra quyền truy cập...
                     </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', mt: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">
                         Vui lòng chờ trong giây lát
                     </Typography>
                 </Paper>

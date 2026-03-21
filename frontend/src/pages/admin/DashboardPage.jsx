@@ -18,6 +18,8 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CategoryIcon from '@mui/icons-material/Category';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import InsightsIcon from '@mui/icons-material/Insights';
+import SettingsInputComponentIcon from '@mui/icons-material/SettingsInputComponent';
 
 export default function DashboardPage() {
     return (
@@ -29,9 +31,8 @@ export default function DashboardPage() {
                         sx={{
                             p: 2.5,
                             borderRadius: 3,
-                            bgcolor: '#19191B',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 25px rgba(15,23,42,0.05)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1,
@@ -61,10 +62,10 @@ export default function DashboardPage() {
                                 }}
                             />
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                             Bài đăng
                         </Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
                             1,245
                         </Typography>
                     </Paper>
@@ -75,9 +76,8 @@ export default function DashboardPage() {
                         sx={{
                             p: 2.5,
                             borderRadius: 3,
-                            bgcolor: '#19191B',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 25px rgba(15,23,42,0.05)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1,
@@ -107,10 +107,10 @@ export default function DashboardPage() {
                                 }}
                             />
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                             Danh mục
                         </Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
                             32
                         </Typography>
                     </Paper>
@@ -121,9 +121,8 @@ export default function DashboardPage() {
                         sx={{
                             p: 2.5,
                             borderRadius: 3,
-                            bgcolor: '#19191B',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 25px rgba(15,23,42,0.05)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1,
@@ -153,10 +152,10 @@ export default function DashboardPage() {
                                 }}
                             />
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                             Người dùng
                         </Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
                             4,560
                         </Typography>
                     </Paper>
@@ -167,9 +166,8 @@ export default function DashboardPage() {
                         sx={{
                             p: 2.5,
                             borderRadius: 3,
-                            bgcolor: '#19191B',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 25px rgba(15,23,42,0.05)',
                             display: 'flex',
                             flexDirection: 'column',
                             gap: 1,
@@ -199,10 +197,10 @@ export default function DashboardPage() {
                                 }}
                             />
                         </Box>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                        <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                             Báo cáo
                         </Typography>
-                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 800, color: '#111827' }}>
                             18
                         </Typography>
                     </Paper>
@@ -215,9 +213,8 @@ export default function DashboardPage() {
                     <Paper
                         sx={{
                             borderRadius: 3,
-                            bgcolor: '#19191B',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 25px rgba(15,23,42,0.04)',
                             overflow: 'hidden',
                         }}
                     >
@@ -225,11 +222,11 @@ export default function DashboardPage() {
                             sx={{
                                 px: 2.5,
                                 py: 2,
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                borderBottom: '1px solid #e5e7eb',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                bgcolor: '#19191B',
+                                bgcolor: '#f9fafb',
                             }}
                         >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -237,7 +234,7 @@ export default function DashboardPage() {
                                     variant="h6"
                                     sx={{
                                         fontWeight: 700,
-                                        color: '#ffffff',
+                                        color: '#111827',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: 1,
@@ -253,7 +250,7 @@ export default function DashboardPage() {
                                     textTransform: 'none',
                                     fontSize: 12,
                                     fontWeight: 700,
-                                    color: '#60a5fa',
+                                    color: '#2563eb',
                                 }}
                             >
                                 Xem chi tiết
@@ -280,11 +277,11 @@ export default function DashboardPage() {
                                             bgcolor: '#10b981',
                                         }}
                                     />
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Bài viết đang hiển thị
                                     </Typography>
                                 </Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                                     1,120
                                 </Typography>
                             </Box>
@@ -296,7 +293,7 @@ export default function DashboardPage() {
                                     justifyContent: 'space-between',
                                     p: 1.75,
                                     borderRadius: 2,
-                                    bgcolor: '#19191B',
+                                    bgcolor: '#f3f4f6',
                                 }}
                             >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -308,11 +305,11 @@ export default function DashboardPage() {
                                             bgcolor: '#9ca3af',
                                         }}
                                     />
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Bài viết đang ẩn
                                     </Typography>
                                 </Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                                     125
                                 </Typography>
                             </Box>
@@ -324,7 +321,7 @@ export default function DashboardPage() {
                                     justifyContent: 'space-between',
                                     p: 1.75,
                                     borderRadius: 2,
-                                    bgcolor: '#19191B',
+                                    bgcolor: '#f3f4f6',
                                 }}
                             >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -336,11 +333,11 @@ export default function DashboardPage() {
                                             bgcolor: '#f59e0b',
                                         }}
                                     />
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Bài viết chờ duyệt
                                     </Typography>
                                 </Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                                     42
                                 </Typography>
                             </Box>
@@ -352,9 +349,8 @@ export default function DashboardPage() {
                     <Paper
                         sx={{
                             borderRadius: 3,
-                            bgcolor: '#19191B',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
+                            border: '1px solid #e5e7eb',
+                            boxShadow: '0 10px 25px rgba(15,23,42,0.04)',
                             overflow: 'hidden',
                         }}
                     >
@@ -362,18 +358,18 @@ export default function DashboardPage() {
                             sx={{
                                 px: 2.5,
                                 py: 2,
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                borderBottom: '1px solid #e5e7eb',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                bgcolor: '#19191B',
+                                bgcolor: '#f9fafb',
                             }}
                         >
                             <Typography
                                 variant="h6"
                                 sx={{
                                     fontWeight: 700,
-                                    color: '#ffffff',
+                                    color: '#111827',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 1,
@@ -402,8 +398,8 @@ export default function DashboardPage() {
                                         border: '1px solid transparent',
                                         cursor: 'pointer',
                                         '&:hover': {
-                                            bgcolor: 'rgba(255,255,255,0.06)',
-                                            borderColor: 'rgba(255,255,255,0.08)',
+                                            bgcolor: '#f9fafb',
+                                            borderColor: '#e5e7eb',
                                         },
                                     }}
                                 >
@@ -423,10 +419,10 @@ export default function DashboardPage() {
                                         <FlagIcon sx={{ fontSize: 18 }} />
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827' }}>
                                             Báo cáo vi phạm (3 bài viết)
                                         </Typography>
-                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                                        <Typography variant="caption" sx={{ color: '#6b7280' }}>
                                             Yêu cầu kiểm tra nội dung phản cảm.
                                         </Typography>
                                     </Box>
@@ -436,8 +432,8 @@ export default function DashboardPage() {
                                         sx={{
                                             fontSize: 10,
                                             fontWeight: 700,
-                                            bgcolor: 'rgba(255,255,255,0.1)',
-                                            color: 'rgba(255,255,255,0.8)',
+                                            bgcolor: '#f3f4f6',
+                                            color: '#4b5563',
                                             borderRadius: 1.5,
                                         }}
                                     />
@@ -453,8 +449,8 @@ export default function DashboardPage() {
                                         border: '1px solid transparent',
                                         cursor: 'pointer',
                                         '&:hover': {
-                                            bgcolor: 'rgba(255,255,255,0.06)',
-                                            borderColor: 'rgba(255,255,255,0.08)',
+                                            bgcolor: '#f9fafb',
+                                            borderColor: '#e5e7eb',
                                         },
                                     }}
                                 >
@@ -474,10 +470,10 @@ export default function DashboardPage() {
                                         <PersonAddDisabledIcon sx={{ fontSize: 18 }} />
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827' }}>
                                             Xác minh tài khoản (12)
                                         </Typography>
-                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                                        <Typography variant="caption" sx={{ color: '#6b7280' }}>
                                             Người dùng mới đăng ký chờ phê duyệt.
                                         </Typography>
                                     </Box>
@@ -487,8 +483,8 @@ export default function DashboardPage() {
                                         sx={{
                                             fontSize: 10,
                                             fontWeight: 700,
-                                            bgcolor: 'rgba(255,255,255,0.1)',
-                                            color: 'rgba(255,255,255,0.8)',
+                                            bgcolor: '#f3f4f6',
+                                            color: '#4b5563',
                                             borderRadius: 1.5,
                                         }}
                                     />
@@ -504,8 +500,8 @@ export default function DashboardPage() {
                                         border: '1px solid transparent',
                                         cursor: 'pointer',
                                         '&:hover': {
-                                            bgcolor: 'rgba(255,255,255,0.06)',
-                                            borderColor: 'rgba(255,255,255,0.08)',
+                                            bgcolor: '#f9fafb',
+                                            borderColor: '#e5e7eb',
                                         },
                                     }}
                                 >
@@ -525,10 +521,10 @@ export default function DashboardPage() {
                                         <SupportAgentIcon sx={{ fontSize: 18 }} />
                                     </Box>
                                     <Box sx={{ flex: 1 }}>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827' }}>
                                             Yêu cầu hỗ trợ (5)
                                         </Typography>
-                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                                        <Typography variant="caption" sx={{ color: '#6b7280' }}>
                                             Khách hàng cần trợ giúp cài đặt tài khoản.
                                         </Typography>
                                     </Box>
@@ -538,8 +534,8 @@ export default function DashboardPage() {
                                         sx={{
                                             fontSize: 10,
                                             fontWeight: 700,
-                                            bgcolor: 'rgba(255,255,255,0.1)',
-                                            color: 'rgba(255,255,255,0.8)',
+                                            bgcolor: '#f3f4f6',
+                                            color: '#4b5563',
                                             borderRadius: 1.5,
                                         }}
                                     />
@@ -550,13 +546,132 @@ export default function DashboardPage() {
                 </Grid>
             </Grid>
 
+            {/* Quick Actions */}
+            <Box sx={{ mb: 3 }}>
+                <Typography
+                    variant="h6"
+                    sx={{
+                        fontWeight: 700,
+                        color: '#111827',
+                        mb: 1.5,
+                        fontSize: { xs: 16, md: 18 },
+                    }}
+                >
+                    Thao tác nhanh
+                </Typography>
+                <Grid container spacing={2}>
+                    <Grid item xs={6} md={3}>
+                        <Paper
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1.5,
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    borderColor: '#2563eb55',
+                                    bgcolor: 'rgba(37,99,235,0.03)',
+                                },
+                            }}
+                        >
+                            <CategoryIcon sx={{ fontSize: 30, color: '#9ca3af' }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827', textAlign: 'center' }}>
+                                Quản lý danh mục
+                            </Typography>
+                        </Paper>
+                    </Grid>
+
+                    <Grid item xs={6} md={3}>
+                        <Paper
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1.5,
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    borderColor: '#2563eb55',
+                                    bgcolor: 'rgba(37,99,235,0.03)',
+                                },
+                            }}
+                        >
+                            <ManageAccountsIcon sx={{ fontSize: 30, color: '#9ca3af' }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827', textAlign: 'center' }}>
+                                Quản lý người dùng
+                            </Typography>
+                        </Paper>
+                    </Grid>
+
+                    <Grid item xs={6} md={3}>
+                        <Paper
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1.5,
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    borderColor: '#2563eb55',
+                                    bgcolor: 'rgba(37,99,235,0.03)',
+                                },
+                            }}
+                        >
+                            <InsightsIcon sx={{ fontSize: 30, color: '#9ca3af' }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827', textAlign: 'center' }}>
+                                Xem báo cáo
+                            </Typography>
+                        </Paper>
+                    </Grid>
+
+                    <Grid item xs={6} md={3}>
+                        <Paper
+                            sx={{
+                                p: 2.5,
+                                borderRadius: 3,
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 1.5,
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    borderColor: '#2563eb55',
+                                    bgcolor: 'rgba(37,99,235,0.03)',
+                                },
+                            }}
+                        >
+                            <SettingsInputComponentIcon sx={{ fontSize: 30, color: '#9ca3af' }} />
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#111827', textAlign: 'center' }}>
+                                Cấu hình hệ thống
+                            </Typography>
+                        </Paper>
+                    </Grid>
+                </Grid>
+            </Box>
+
             {/* Recent Activity */}
             <Paper
                 sx={{
                     borderRadius: 3,
-                    bgcolor: '#19191B',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: 'none',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 10px 25px rgba(15,23,42,0.04)',
                     overflow: 'hidden',
                 }}
             >
@@ -564,47 +679,37 @@ export default function DashboardPage() {
                     sx={{
                         px: 2.5,
                         py: 2,
-                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid #e5e7eb',
                     }}
                 >
-                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ffffff' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#111827' }}>
                         Hoạt động gần đây
                     </Typography>
                 </Box>
 
                 <Box sx={{ overflowX: 'auto' }}>
-                    <Table
-                        size="small"
-                        sx={{
-                            '& .MuiTableRow-root:hover': {
-                                bgcolor: 'rgba(255,255,255,0.04)',
-                            },
-                            '& .MuiTableCell-root': {
-                                borderColor: 'rgba(255,255,255,0.08)',
-                            },
-                        }}
-                    >
+                    <Table size="small">
                         <TableHead
                             sx={{
-                                bgcolor: '#19191B',
+                                bgcolor: '#f9fafb',
                             }}
                         >
                             <TableRow>
-                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Thời gian</TableCell>
-                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Hành động</TableCell>
-                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Người thực hiện</TableCell>
-                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>Trạng thái</TableCell>
+                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: '#6b7280' }}>Thời gian</TableCell>
+                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: '#6b7280' }}>Hành động</TableCell>
+                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: '#6b7280' }}>Người thực hiện</TableCell>
+                                <TableCell sx={{ fontSize: 11, fontWeight: 700, color: '#6b7280' }}>Trạng thái</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             <TableRow hover>
-                                <TableCell sx={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>10:45 - 24/05/2024</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#6b7280' }}>10:45 - 24/05/2024</TableCell>
                                 <TableCell>
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#ffffff' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Tạo danh mục mới "Công nghệ 4.0"
                                     </Typography>
                                 </TableCell>
-                                <TableCell sx={{ fontSize: 13, color: '#ffffff' }}>Admin</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#111827' }}>Admin</TableCell>
                                 <TableCell>
                                     <Chip
                                         label="Thành công"
@@ -620,9 +725,9 @@ export default function DashboardPage() {
                                 </TableCell>
                             </TableRow>
                             <TableRow hover>
-                                <TableCell sx={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>09:12 - 24/05/2024</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#6b7280' }}>09:12 - 24/05/2024</TableCell>
                                 <TableCell>
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#ffffff' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Khóa tài khoản người dùng ID: #4402
                                     </Typography>
                                 </TableCell>
@@ -642,13 +747,13 @@ export default function DashboardPage() {
                                 </TableCell>
                             </TableRow>
                             <TableRow hover>
-                                <TableCell sx={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>23:55 - 23/05/2024</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#6b7280' }}>23:55 - 23/05/2024</TableCell>
                                 <TableCell>
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#ffffff' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Cập nhật hệ thống v2.4.1
                                     </Typography>
                                 </TableCell>
-                                <TableCell sx={{ fontSize: 13, color: '#ffffff' }}>System</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#111827' }}>System</TableCell>
                                 <TableCell>
                                     <Chip
                                         label="Đã hoàn tất"
@@ -664,13 +769,13 @@ export default function DashboardPage() {
                                 </TableCell>
                             </TableRow>
                             <TableRow hover>
-                                <TableCell sx={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>18:30 - 23/05/2024</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#6b7280' }}>18:30 - 23/05/2024</TableCell>
                                 <TableCell>
-                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#ffffff' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827' }}>
                                         Thay đổi phân quyền User ID: #1105
                                     </Typography>
                                 </TableCell>
-                                <TableCell sx={{ fontSize: 13, color: '#ffffff' }}>Admin</TableCell>
+                                <TableCell sx={{ fontSize: 13, color: '#111827' }}>Admin</TableCell>
                                 <TableCell>
                                     <Chip
                                         label="Chờ xử lý"

@@ -93,7 +93,7 @@ export default function CreateListingPage() {
   return (
     <Box>
       {error && (
-        <Box sx={{ maxWidth: "680px", width: "100%", mx: "auto", mt: 2 }}>
+        <Box sx={{ maxWidth: "1200px", width: "90%", mx: "auto", mt: 2 }}>
           <Alert severity="error" onClose={() => setError('')}>
             {error}
           </Alert>
