@@ -13,11 +13,27 @@ export const RED = '#FF4757';
 export const toCurrency = (value) =>
   value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
 
+const parseImages = (imagesData) => {
+  if (Array.isArray(imagesData)) return imagesData;
+  if (typeof imagesData === 'string') {
+    if (imagesData.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(imagesData);
+        if (Array.isArray(parsed)) return parsed;
+      } catch { }
+    }
+    return imagesData.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+};
+
 export default function MiniListingCard({ listing }) {
   const navigate = useNavigate();
   const id = listing?.id ?? listing?.listingId;
-  const images = Array.isArray(listing?.images) ? listing.images : [];
-  const thumbSrc = images[0] ? fullImageUrl(images[0]) : null;
+  const images = parseImages(listing?.images);
+  const firstImage = images[0];
+  const urlString = typeof firstImage === 'string' ? firstImage : firstImage?.imageUrl || firstImage?.url;
+  const thumbSrc = urlString ? fullImageUrl(urlString) : (listing?.thumbnailUrl ? fullImageUrl(listing.thumbnailUrl) : null);
 
   return (
     <Card
