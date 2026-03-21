@@ -34,7 +34,7 @@ import {
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
-    SuspenseAdminLoginPage,
+    SuspenseEditProfilePage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -46,8 +46,18 @@ export default function AppRouter() {
                 <Route path="/landing" element={<SuspenseStitchLandingPage />} />
             </Route>
 
-            {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
-            <Route element={<AuthLayout />}>
+            <Route element={<MainLayout />}>
+                {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
+                <Route path="/feed" element={<SuspenseListingsPage />} />
+                <Route path="/search" element={<SuspenseSearchPage />} />
+                <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+                <Route path="/profile/:id" element={<SuspenseProfilePage />} />
+                <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
+
+                {/* Google OAuth2 redirect callback — no guard, no layout needed */}
+                <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />
+
+                {/* ===== AUTH ROUTES - Chỉ cho chưa đăng nhập ===== */}
                 <Route
                     path="/login"
                     element={
@@ -96,6 +106,7 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+
                 <Route
                     path="/my-listings"
                     element={
@@ -108,7 +119,7 @@ export default function AppRouter() {
                     path="/profile/:id"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseProfilePage />
+                            <SuspenseEditProfilePage />
                         </RouteGuard>
                     }
                 />

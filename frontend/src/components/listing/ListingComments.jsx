@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Avatar, Box, IconButton, InputAdornment, TextField, Typography } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import { useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 
@@ -14,6 +15,7 @@ const MOCK_COMMENTS = [
   {
     id: 1,
     content: "Bạn ơi cho mình hỏi máy còn bảo hành không ạ? Mình là sinh viên năm nhất đang cần tìm máy học viza.",
+    userId: 11,
     userFullName: "Nguyễn Văn Đạt",
     userAvatar: "https://i.pravatar.cc/150?img=11",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
@@ -21,6 +23,7 @@ const MOCK_COMMENTS = [
   {
     id: 2,
     content: "Fix giá 500k mình lấy luôn trong ngày nhé, mình ở khu Dom E ngay gần đây.",
+    userId: 5,
     userFullName: "Trần Mai Anh",
     userAvatar: "https://i.pravatar.cc/150?img=5",
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
@@ -28,6 +31,7 @@ const MOCK_COMMENTS = [
   {
     id: 3,
     content: "Sản phẩm chất quá, tiếc là mình vừa mua cái khác rồi hic. Up bài cho bạn mau bay nhé!",
+    userId: 60,
     userFullName: "Lê Quốc Bảo",
     userAvatar: "https://i.pravatar.cc/150?img=60",
     createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
@@ -35,6 +39,7 @@ const MOCK_COMMENTS = [
 ];
 
 export default function ListingComments({ listingId, currentUser }) {
+  const navigate = useNavigate();
   const [comments, setComments] = useState(MOCK_COMMENTS);
   const [text, setText] = useState('');
 
@@ -55,6 +60,10 @@ export default function ListingComments({ listingId, currentUser }) {
     setText('');
   };
 
+  const handleUserClick = (userId) => {
+    if (userId) navigate(`/profile/${userId}`);
+  };
+
   return (
     <Box>
       {/* Tiêu đề */}
@@ -66,7 +75,13 @@ export default function ListingComments({ listingId, currentUser }) {
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 3 }}>
         <Avatar
           src={fullImageUrl(currentUser?.avatarUrl)}
-          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}` }}
+          onClick={() => handleUserClick(currentUser?.id)}
+          sx={{
+            width: 38, height: 38, border: `1px solid ${BORDER}`,
+            cursor: currentUser?.id ? 'pointer' : 'default',
+            transition: 'opacity 0.2s',
+            '&:hover': currentUser?.id ? { opacity: 0.8 } : {},
+          }}
         />
         <TextField
           fullWidth
@@ -125,7 +140,13 @@ export default function ListingComments({ listingId, currentUser }) {
             <Box key={c.id} sx={{ display: 'flex', gap: 1.5 }}>
               <Avatar
                 src={fullImageUrl(c.userAvatar)}
-                sx={{ width: 36, height: 36, mt: 0.3 }}
+                onClick={() => handleUserClick(c.userId)}
+                sx={{
+                  width: 36, height: 36, mt: 0.3,
+                  cursor: c.userId ? 'pointer' : 'default',
+                  transition: 'opacity 0.2s',
+                  '&:hover': c.userId ? { opacity: 0.8 } : {},
+                }}
               />
               <Box sx={{ flex: 1 }}>
                 <Box
@@ -134,7 +155,19 @@ export default function ListingComments({ listingId, currentUser }) {
                     border: `1px solid ${BORDER}`, display: 'inline-block', maxWidth: '100%'
                   }}
                 >
-                  <Typography fontSize={14} fontWeight={700} color={TEXT_PRI} sx={{ mb: 0.3 }}>
+                  <Typography
+                    fontSize={14}
+                    fontWeight={700}
+                    color={TEXT_PRI}
+                    onClick={() => handleUserClick(c.userId)}
+                    sx={{
+                      mb: 0.3,
+                      cursor: c.userId ? 'pointer' : 'default',
+                      display: 'inline-block',
+                      transition: 'color 0.2s',
+                      '&:hover': c.userId ? { color: PURPLE } : {},
+                    }}
+                  >
                     {c.userFullName}
                   </Typography>
                   <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word' }}>

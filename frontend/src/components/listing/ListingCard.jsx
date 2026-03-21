@@ -15,10 +15,10 @@ import {
     Send as SendIcon,
     Share as ShareIcon,
 } from '@mui/icons-material';
-import {useNavigate} from 'react-router-dom';
-import {fullImageUrl} from '../../utils/constants';
-import {formatPickupDisplayLine} from '../../utils/addressDisplay';
-import {formatDate} from '../../utils/formatDate';
+import { useNavigate } from 'react-router-dom';
+import { fullImageUrl } from '../../utils/constants';
+import { formatPickupDisplayLine } from '../../utils/addressDisplay';
+import { formatDate } from '../../utils/formatDate';
 
 const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
 
@@ -55,12 +55,12 @@ const getConditionText = (listing) =>
 
 
 export default function ListingCard({
-                                        listing,
-                                        onClick,
-                                        cardVariant = 'default',
-                                        layout = 'list',
-                                        imageAspect,
-                                    }) {
+    listing,
+    onClick,
+    cardVariant = 'default',
+    layout = 'list',
+    imageAspect,
+}) {
     const navigate = useNavigate();
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
@@ -70,6 +70,12 @@ export default function ListingCard({
     const handleClick = () => {
         if (onClick) onClick(listing);
         else if (id) navigate(`/listings/${id}`);
+    };
+
+    const sellerId = seller?.userId ?? seller?.id ?? listing?.sellerId;
+    const handleSellerClick = (e) => {
+        e.stopPropagation();
+        if (sellerId) navigate(`/profile/${sellerId}`);
     };
 
     const conditionText = getConditionText(listing);
@@ -93,9 +99,20 @@ export default function ListingCard({
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar src={fullImageUrl(seller?.avatarUrl)} alt={seller?.fullName || 'seller'} sx={{ width: 40, height: 40 }} />
+                    <Avatar
+                        src={fullImageUrl(seller?.avatarUrl)}
+                        alt={seller?.fullName || 'seller'}
+                        onClick={handleSellerClick}
+                        sx={{ width: 40, height: 40, cursor: sellerId ? 'pointer' : 'default', transition: 'opacity 0.2s', '&:hover': sellerId ? { opacity: 0.8 } : {} }}
+                    />
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        <Typography fontSize={14.5} fontWeight={600} color="#FFF">
+                        <Typography
+                            fontSize={14.5}
+                            fontWeight={600}
+                            color="#FFF"
+                            onClick={handleSellerClick}
+                            sx={{ cursor: sellerId ? 'pointer' : 'default', '&:hover': sellerId ? { color: '#9D6EED' } : {}, transition: 'color 0.2s' }}
+                        >
                             {seller?.fullName || 'Người bán'}
                         </Typography>
                         <Typography fontSize={13} color="rgba(255,255,255,0.5)">

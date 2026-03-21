@@ -478,24 +478,35 @@ export default function ListingDetailPage() {
         loadingRelated={loadingRelated}
       />
 
-      {/* Banner Quảng Cáo */}
       <Box
         sx={{
-          mt: 6, mb: 2,
-          borderRadius: '16px',
+          mt: 8, mb: 2,
+          borderRadius: '20px',
           overflow: 'hidden',
           width: '100%',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          maxHeight: '30vh', // Chiều cao không quá 30% màn hình
+          boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
           cursor: 'pointer',
-          transition: 'transform 0.3s',
-          '&:hover': { transform: 'scale(1.01)' }
+          transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          border: `1px solid ${BORDER}`,
+          '&:hover': { 
+            transform: 'translateY(-4px) scale(1.002)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            borderColor: 'rgba(157, 110, 237, 0.3)'
+          }
         }}
       >
         <Box
           component="img"
-          src="/brand_advertisement_banner_1773584721978.png" // Since I cannot move it easily, I'll refer to it (Agent should assume it's moved or accessible)
+          src="/brand_advertisement_banner_v3.png"
           alt="Brand Advertisement"
-          sx={{ width: '100%', display: 'block' }}
+          sx={{ 
+            width: '100%', 
+            height: '100%', 
+            maxHeight: '30vh',
+            display: 'block',
+            objectFit: 'cover' // Tránh vỡ/méo ảnh
+          }}
         />
       </Box>
 
@@ -510,7 +521,7 @@ export default function ListingDetailPage() {
           onClose={() => setSnackMsg('')}
           severity={snackType}
           variant="filled"
-          sx={{ 
+          sx={{
             borderRadius: '12px',
             bgcolor: snackType === 'warning' ? '#FF9F43' : undefined,
             color: '#fff',

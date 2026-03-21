@@ -181,7 +181,7 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleProfile = () => {
-        navigate('/profile');
+        navigate('/profile/me');
     };
 
     const handleCreatePost = () => {

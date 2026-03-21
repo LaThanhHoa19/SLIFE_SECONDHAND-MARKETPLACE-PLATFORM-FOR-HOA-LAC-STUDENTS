@@ -65,6 +65,22 @@ export const MOCK_SOLD = [
   { id: 202, title: 'iPad Air 4 64GB Wifi', price: 8900000, category: 'Máy tính bảng', createdAt: '2024-02-10', imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400', location: 'Thạch Thất, Hà Nội' },
 ];
 
+export const MOCK_ME = {
+  id: 'me',
+  fullName: 'Đặng Quang Huy',
+  avatarUrl: 'https://i.pravatar.cc/150?u=me',
+  coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200&q=80',
+  reputationScore: 5.0,
+  createdAt: '2026-01-21T00:00:00Z', // 1 month 24 days before 2026-03-17
+  soldCount: 12,
+  followers: '85',
+  address: 'Sơn Tây, Hà Nội',
+  bio: 'Sinh viên FPT, thích mua bán đồ cũ công nghệ.',
+  isOnline: true,
+  emailVerified: true,
+  phoneVerified: true
+};
+
 export const mockSeller = (id) => ({
   id: id,
   fullName: 'Hoàng Anh Tài',
@@ -72,7 +88,7 @@ export const mockSeller = (id) => ({
   coverImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1200&q=80',
   reputationScore: 4.8,
   createdAt: '2022-05-15T00:00:00Z',
-  responseRate: '98%',
+  soldCount: 45,
   followers: '1.2k',
   address: 'Hầu Lâu, Thạch Thất, Hà Nội',
   bio: 'Chuyên cung cấp đồ công nghệ cũ và mới tại khu vực Hòa Lạc. Cam kết bảo hành chu đáo, giao dịch nhanh gọn.',

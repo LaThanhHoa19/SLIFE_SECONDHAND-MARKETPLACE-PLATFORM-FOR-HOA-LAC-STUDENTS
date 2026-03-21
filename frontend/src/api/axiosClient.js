@@ -9,7 +9,7 @@
  * Tests cần viết: attach token, bắt 401, mapping error response.
  */
 import axios from 'axios';
-import {API_BASE_URL} from '../utils/constants';
+import { API_BASE_URL } from '../utils/constants';
 
 function normalizeApiBaseUrl(baseUrl) {
     return (baseUrl || '').replace(/\/api\/?$/, '');

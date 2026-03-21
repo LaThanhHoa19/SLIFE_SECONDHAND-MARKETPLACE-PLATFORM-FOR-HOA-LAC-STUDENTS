@@ -12,6 +12,11 @@ function formatPrice(value) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
 }
 
+const PAGE_BG = '#1C1B23';
+const CARD_BG = '#201D26';
+const BORDER = 'rgba(255, 255, 255, 0.07)';
+const TEXT_PRI = 'rgba(255, 255, 255, 0.95)';
+const TEXT_SEC = 'rgba(255, 255, 255, 0.55)';
 const PURPLE = '#9D6EED';
 
 export default function ProfileListingCard({ listing, onClick }) {
@@ -25,16 +30,17 @@ export default function ProfileListingCard({ listing, onClick }) {
     <Card
       elevation={0}
       sx={{
-        borderRadius: 3,
+        borderRadius: 4,
         overflow: 'hidden',
-        transition: 'all 0.3s ease',
-        background: 'rgba(255, 255, 255, 0.7)',
+        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        background: CARD_BG,
         backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.3)',
+        border: `1px solid ${BORDER}`,
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 12px 24px rgba(157, 110, 237, 0.15)',
-          borderColor: PURPLE,
+          transform: 'translateY(-6px)',
+          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
+          borderColor: 'rgba(157, 110, 237, 0.4)',
+          background: '#252230',
         },
       }}
     >
@@ -79,28 +85,28 @@ export default function ProfileListingCard({ listing, onClick }) {
             </Box>
           )}
         </Box>
-        <Box sx={{ p: 1.5 }}>
+        <Box sx={{ p: 2 }}>
           <Typography
             variant="body2"
             fontWeight={700}
             sx={{
-              color: '#1d1d1f',
+              color: TEXT_PRI,
               height: '2.8em',
               lineHeight: '1.4em',
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              mb: 0.5
+              mb: 1
             }}
           >
             {title}
           </Typography>
-          <Typography variant="body2" sx={{ color: PURPLE, fontWeight: 800, fontSize: '0.95rem' }}>
+          <Typography variant="body2" sx={{ color: PURPLE, fontWeight: 800, fontSize: '1rem' }}>
             {listing?.isGiveaway ? 'Cho tặng' : formatPrice(price)}
           </Typography>
           {listing.location && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, opacity: 0.7 }}>
+            <Typography variant="caption" sx={{ color: TEXT_SEC, display: 'block', mt: 0.8, opacity: 0.8 }}>
               {listing.location}
             </Typography>
           )}

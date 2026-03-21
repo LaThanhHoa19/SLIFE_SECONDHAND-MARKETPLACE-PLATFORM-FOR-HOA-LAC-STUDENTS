@@ -1,12 +1,17 @@
 import { Box, Chip, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 
+const PAGE_BG = '#1C1B23';
+const CARD_BG = '#201D26';
+const BORDER = 'rgba(255, 255, 255, 0.07)';
+const TEXT_PRI = 'rgba(255, 255, 255, 0.95)';
+const TEXT_SEC = 'rgba(255, 255, 255, 0.55)';
 const PURPLE = '#9D6EED';
 
 export default function RatingSection({ reputationScore, ratingCount }) {
   return (
     <>
-      <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: '#1d1d1f' }}>
+      <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: TEXT_PRI }}>
         Đánh giá từ người mua
       </Typography>
       <Box sx={{ mb: 3 }}>
@@ -18,7 +23,7 @@ export default function RatingSection({ reputationScore, ratingCount }) {
                 <StarIcon key={s} sx={{ fontSize: 18, color: s <= Math.floor(reputationScore) ? '#FFC107' : '#e0e0e0' }} />
               ))}
             </Box>
-            <Typography variant="caption" color="text.secondary">{ratingCount} đánh giá • Rất hài lòng</Typography>
+            <Typography variant="caption" color={TEXT_SEC}>{ratingCount} đánh giá • Rất hài lòng</Typography>
           </Box>
         </Box>
       </Box>
@@ -30,11 +35,12 @@ export default function RatingSection({ reputationScore, ratingCount }) {
             label={tag}
             size="small"
             sx={{
-              bgcolor: 'white',
-              border: '1px solid #e0e0e0',
-              fontWeight: 500,
+              bgcolor: 'rgba(255, 255, 255, 0.04)',
+              border: `1px solid ${BORDER}`,
+              color: TEXT_SEC,
+              fontWeight: 600,
               fontSize: 12,
-              '&:hover': { bgcolor: 'rgba(157, 110, 237, 0.05)', borderColor: PURPLE }
+              '&:hover': { bgcolor: 'rgba(157, 110, 237, 0.1)', borderColor: PURPLE, color: '#fff' }
             }}
           />
         ))}

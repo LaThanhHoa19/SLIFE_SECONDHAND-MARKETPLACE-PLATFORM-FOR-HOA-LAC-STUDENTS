@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../../hooks/useAuth';
 
 const GOOGLE_CLIENT_ID_FALLBACK =
-    '318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com';
+  '318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   const { login, googleLogin, authError } = useAuth();
   const GOOGLE_CLIENT_ID =
-      import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
+    import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
   const getRedirectTarget = () => {
     const params = new URLSearchParams(window.location.search);
@@ -105,8 +105,8 @@ export default function LoginPage() {
           }
           setGoogleReady(false);
           setGoogleError(
-              `Google Sign-In chưa được cấu hình cho ${window.location.origin}. ` +
-              'Hãy thêm origin này vào Authorized JavaScript origins trong Google Cloud Console.',
+            `Google Sign-In chưa được cấu hình cho ${window.location.origin}. ` +
+            'Hãy thêm origin này vào Authorized JavaScript origins trong Google Cloud Console.',
           );
         }, 1200);
       } catch (error) {
@@ -234,12 +234,18 @@ export default function LoginPage() {
                   </Typography>
               )}
             </Stack>
+          </Box>
 
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.3)' }} textAlign="center">
               Chỉ chấp nhận tài khoản @fpt.edu.vn
             </Typography>
           </Stack>
-        </Paper>
-      </Box>
+
+          <Typography variant="caption" color="text.secondary" textAlign="center">
+            Chỉ chấp nhận tài khoản @fpt.edu.vn
+          </Typography>
+        </Stack>
+      </Paper>
+    </Box>
   );
 }
