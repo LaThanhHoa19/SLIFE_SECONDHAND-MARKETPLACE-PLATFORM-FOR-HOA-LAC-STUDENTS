@@ -18,6 +18,7 @@ public class SearchService {
 
     private static final Set<String> VALID_PURPOSE   = Set.of("SALE", "GIVEAWAY", "FLASH");
     private static final Set<String> VALID_CONDITION = Set.of("NEW", "USED_LIKE_NEW", "USED_GOOD", "USED_FAIR");
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
 
     private final ListingRepository listingRepository;
 
@@ -35,7 +36,7 @@ public class SearchService {
         else if (requestedSize > 20)     pageSize = 20;
         else                             pageSize = requestedSize;
 
-        Pageable pageable = PageRequest.of(pageIndex, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(pageIndex, pageSize, parseSort(request.getSort()));
 
         String q        = normalize(request.getQ());
         String location = normalize(request.getLocation());
@@ -57,5 +58,24 @@ public class SearchService {
         if (s == null || s.isBlank()) return null;
         String upper = s.trim().toUpperCase();
         return whitelist.contains(upper) ? upper : null;
+    }
+
+    private Sort parseSort(String sort) {
+        if (sort == null || sort.isBlank()) {
+            return Sort.by(Sort.Direction.DESC, "createdAt");
+        }
+
+        String[] parts = sort.split(",");
+        String field = parts[0].trim();
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            field = "createdAt";
+        }
+
+        Sort.Direction direction = Sort.Direction.DESC;
+        if (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())) {
+            direction = Sort.Direction.ASC;
+        }
+
+        return Sort.by(direction, field);
     }
 }

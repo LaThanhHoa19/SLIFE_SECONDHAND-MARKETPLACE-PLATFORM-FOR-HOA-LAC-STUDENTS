@@ -4,7 +4,7 @@
  * Expose: data, meta, isLoading, error, refetch, params, setParams.
  */
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {getListings} from '../api/listingApi';
+import {getListings, searchListings} from '../api/listingApi';
 import {formatPickupDisplayLine} from '../utils/addressDisplay';
 import useDebounce from './useDebounce';
 
@@ -123,10 +123,24 @@ export default function useListings(initialParams = {}) {
         setLoading(true);
         setError(null);
         try {
-            const {data: res} = await getListings(
-                normalizeParams(currentParams, query),
-                {signal: controller.signal},
-            );
+            const p = normalizeParams(currentParams, query);
+            const hasFilters = Object.keys(p).some(k => 
+                ['q', 'category', 'location', 'condition', 'minPrice', 'maxPrice'].includes(k) && p[k] !== '' && p[k] != null
+            ) || (p.sort && p.sort !== 'createdAt,desc');
+
+            const requestPromise = hasFilters ? searchListings({
+                q: p.q,
+                categoryId: p.category,
+                location: p.location,
+                itemCondition: p.condition,
+                priceMin: p.minPrice,
+                priceMax: p.maxPrice,
+                sort: p.sort,
+                page: p.page,
+                size: p.size
+            }, {signal: controller.signal}) : getListings(p, {signal: controller.signal});
+
+            const {data: res} = await requestPromise;
             if (controller.signal.aborted) return;
 
             // Backend current contract: { code, message, data: { content, totalPages, totalElements, ... } }

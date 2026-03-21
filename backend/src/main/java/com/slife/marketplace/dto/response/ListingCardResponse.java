@@ -23,4 +23,5 @@ public class ListingCardResponse {
     private Long sellerId;
     private String sellerName;
     private String sellerAvatarUrl;
+    private java.time.Instant createdAt;
 }
