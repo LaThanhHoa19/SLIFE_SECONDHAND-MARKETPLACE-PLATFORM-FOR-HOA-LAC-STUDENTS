@@ -72,8 +72,10 @@ export default function ListingComments({ listingId, currentUser }) {
           component={RouterLink}
           to={(currentUser?.id || currentUser?.user_id) ? `/profile/${currentUser.id || currentUser.user_id}` : '#'}
           src={fullImageUrl(currentUser?.avatarUrl)}
-          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}`, cursor: 'pointer', textDecoration: 'none' }}
-        />
+          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}`, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
+        >
+          {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
+        </Avatar>
         <TextField
           fullWidth
           size="small"
@@ -133,8 +135,10 @@ export default function ListingComments({ listingId, currentUser }) {
                 component={RouterLink}
                 to={(c.userId || c.user_id) ? `/profile/${c.userId || c.user_id}` : '#'}
                 src={fullImageUrl(c.userAvatar)}
-                sx={{ width: 36, height: 36, mt: 0.3, cursor: 'pointer', textDecoration: 'none' }}
-              />
+                sx={{ width: 36, height: 36, mt: 0.3, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
+              >
+                {c.userFullName ? c.userFullName.charAt(0).toUpperCase() : 'U'}
+              </Avatar>
               <Box sx={{ flex: 1 }}>
                 <Box
                   sx={{
