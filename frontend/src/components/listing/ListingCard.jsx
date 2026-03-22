@@ -15,7 +15,7 @@ import {
     Send as SendIcon,
     Share as ShareIcon,
 } from '@mui/icons-material';
-import {useNavigate} from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
@@ -65,6 +65,7 @@ export default function ListingCard({
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
+    const sellerId = seller?.id || seller?.userId || seller?.user_id;
     const contentInsetLeft = '62px';
 
     const handleClick = () => {
@@ -93,9 +94,24 @@ export default function ListingCard({
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar src={fullImageUrl(seller?.avatarUrl)} alt={seller?.fullName || 'seller'} sx={{ width: 40, height: 40 }} />
+                    <Avatar 
+                        component={RouterLink}
+                        to={sellerId ? `/profile/${sellerId}` : '#'}
+                        src={fullImageUrl(seller?.avatarUrl)} 
+                        alt={seller?.fullName || 'seller'} 
+                        sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none' }} 
+                        onClick={(e) => { e.stopPropagation(); }}
+                    />
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        <Typography fontSize={14.5} fontWeight={600} color="#FFF">
+                        <Typography 
+                            component={RouterLink}
+                            to={sellerId ? `/profile/${sellerId}` : '#'}
+                            fontSize={14.5} 
+                            fontWeight={600} 
+                            color="#FFF"
+                            sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                            onClick={(e) => { e.stopPropagation(); }}
+                        >
                             {seller?.fullName || 'Người bán'}
                         </Typography>
                         <Typography fontSize={13} color="rgba(255,255,255,0.5)">
