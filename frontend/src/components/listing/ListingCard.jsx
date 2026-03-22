@@ -99,9 +99,11 @@ export default function ListingCard({
                         to={sellerId ? `/profile/${sellerId}` : '#'}
                         src={fullImageUrl(seller?.avatarUrl)} 
                         alt={seller?.fullName || 'seller'} 
-                        sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none' }} 
+                        sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }} 
                         onClick={(e) => { e.stopPropagation(); }}
-                    />
+                    >
+                        {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
+                    </Avatar>
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                         <Typography 
                             component={RouterLink}

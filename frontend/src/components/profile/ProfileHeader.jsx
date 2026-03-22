@@ -176,11 +176,11 @@ export default function ProfileHeader({
                     border: 4,
                     borderColor: 'white',
                     boxShadow: '0 8px 24px rgba(157, 110, 237, 0.25)',
-                    bgcolor: PURPLE,
+                    bgcolor: '#9D6EED',
                     fontSize: '3rem',
                   }}
                 >
-                  {fullName.charAt(0).toUpperCase()}
+                  {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
                 </Avatar>
                 {user.isOnline && (
                   <Box sx={{

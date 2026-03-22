@@ -16,8 +16,10 @@ export default function ListingSellerInfo({ seller, sellerId }) {
           to={sellerId ? `/profile/${sellerId}` : '#'}
           src={fullImageUrl(seller?.avatarUrl)}
           alt={seller?.fullName}
-          sx={{ width: 52, height: 52, cursor: 'pointer', border: `2px solid ${PURPLE}`, textDecoration: 'none' }}
-        />
+          sx={{ width: 52, height: 52, cursor: 'pointer', border: `2px solid ${PURPLE}`, textDecoration: 'none', bgcolor: PURPLE }}
+        >
+          {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
+        </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             component={RouterLink}
