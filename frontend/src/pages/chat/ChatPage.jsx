@@ -2,7 +2,7 @@
  * Trang tin nhắn: danh sách hội thoại hoặc một cuộc hội thoại (sessionId từ URL).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link as RouterLink } from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import { Client as StompClient } from '@stomp/stompjs';
 import {
@@ -518,6 +518,7 @@ export default function ChatPage() {
   };
 
   const activeSession = sessions.find(s => s.sessionId === activeSessionId);
+  const otherParticipantId = activeSession ? (activeSession.buyerId === currentUserId ? activeSession.sellerId : activeSession.buyerId) : null;
 
   // ── render ────────────────────────────────────────────────────────────────────
 
@@ -562,7 +563,13 @@ export default function ChatPage() {
         ) : (
           <>
             <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography variant="subtitle1" fontWeight={600}>
+              <Typography 
+                component={RouterLink}
+                to={otherParticipantId ? `/profile/${otherParticipantId}` : '#'}
+                variant="subtitle1" 
+                fontWeight={600}
+                sx={{ textDecoration: 'none', color: 'inherit', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+              >
                 {activeSession?.otherParticipantName || activeSession?.listingTitle || 'Chat'}
               </Typography>
               {activeSession?.listingTitle && (
@@ -597,7 +604,14 @@ export default function ChatPage() {
                       }}
                     >
                       {!isMe && m.senderName && (
-                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mb: 0.5 }}>
+                        <Typography 
+                          component={RouterLink}
+                          to={m.senderId ? `/profile/${m.senderId}` : '#'}
+                          variant="caption" 
+                          display="block" 
+                          color="text.secondary" 
+                          sx={{ mb: 0.5, textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+                        >
                           {m.senderName}
                         </Typography>
                       )}
