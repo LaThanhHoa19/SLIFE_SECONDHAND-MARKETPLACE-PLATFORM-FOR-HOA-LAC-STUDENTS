@@ -49,8 +49,11 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
             .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
             .requestMatchers("/api/me/**").authenticated()
+            .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
+
             // Guest access
             .requestMatchers("/api/listings/**").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
             // Admin-only
             .requestMatchers("/api/admin/**").hasRole("ADMIN")
             // Everything else requires authentication
