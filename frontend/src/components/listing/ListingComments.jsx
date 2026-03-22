@@ -3,6 +3,7 @@ import { Avatar, Box, IconButton, InputAdornment, TextField, Typography } from '
 import SendIcon from '@mui/icons-material/Send';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
+import { Link as RouterLink } from 'react-router-dom';
 
 export const CARD_BG2 = '#252230';
 export const BORDER = 'rgba(255,255,255,0.07)';
@@ -17,6 +18,7 @@ const MOCK_COMMENTS = [
     userFullName: "Nguyễn Văn Đạt",
     userAvatar: "https://i.pravatar.cc/150?img=11",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+    userId: 11
   },
   {
     id: 2,
@@ -24,6 +26,7 @@ const MOCK_COMMENTS = [
     userFullName: "Trần Mai Anh",
     userAvatar: "https://i.pravatar.cc/150?img=5",
     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+    userId: 5
   },
   {
     id: 3,
@@ -31,6 +34,7 @@ const MOCK_COMMENTS = [
     userFullName: "Lê Quốc Bảo",
     userAvatar: "https://i.pravatar.cc/150?img=60",
     createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+    userId: 60
   }
 ];
 
@@ -65,8 +69,10 @@ export default function ListingComments({ listingId, currentUser }) {
       {/* Input bình luận (đẩy lên trên để dễ tương tác hơn) */}
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 3 }}>
         <Avatar
+          component={RouterLink}
+          to={(currentUser?.id || currentUser?.user_id) ? `/profile/${currentUser.id || currentUser.user_id}` : '#'}
           src={fullImageUrl(currentUser?.avatarUrl)}
-          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}` }}
+          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}`, cursor: 'pointer', textDecoration: 'none' }}
         />
         <TextField
           fullWidth
@@ -124,8 +130,10 @@ export default function ListingComments({ listingId, currentUser }) {
           {comments.map((c) => (
             <Box key={c.id} sx={{ display: 'flex', gap: 1.5 }}>
               <Avatar
+                component={RouterLink}
+                to={(c.userId || c.user_id) ? `/profile/${c.userId || c.user_id}` : '#'}
                 src={fullImageUrl(c.userAvatar)}
-                sx={{ width: 36, height: 36, mt: 0.3 }}
+                sx={{ width: 36, height: 36, mt: 0.3, cursor: 'pointer', textDecoration: 'none' }}
               />
               <Box sx={{ flex: 1 }}>
                 <Box
@@ -134,7 +142,14 @@ export default function ListingComments({ listingId, currentUser }) {
                     border: `1px solid ${BORDER}`, display: 'inline-block', maxWidth: '100%'
                   }}
                 >
-                  <Typography fontSize={14} fontWeight={700} color={TEXT_PRI} sx={{ mb: 0.3 }}>
+                  <Typography 
+                    component={RouterLink}
+                    to={(c.userId || c.user_id) ? `/profile/${c.userId || c.user_id}` : '#'}
+                    fontSize={14} 
+                    fontWeight={700} 
+                    color={TEXT_PRI} 
+                    sx={{ mb: 0.3, textDecoration: 'none', cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: PURPLE } }}
+                  >
                     {c.userFullName}
                   </Typography>
                   <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
