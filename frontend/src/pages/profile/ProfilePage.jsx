@@ -123,10 +123,10 @@ export default function ProfilePage() {
       const targetId = profileUser?.id;
       const filtered = targetId
           ? list.filter((item) => {
-            const sellerId = item.seller?.id ?? item.seller?.userId ?? item.seller?.user_id;
+            const sellerId = item.sellerId ?? item.seller?.id ?? item.seller?.userId ?? item.seller?.user_id;
             // fall back to name filter if ID is not available in the listing's seller object
             if (sellerId != null && targetId != null) return String(sellerId) === String(targetId);
-            const sellerName = item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
+            const sellerName = item.sellerName ?? item.sellerSummary?.fullName ?? item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
             const name = profileUser?.fullName ?? profileUser?.full_name;
             return name && sellerName === name;
           })
