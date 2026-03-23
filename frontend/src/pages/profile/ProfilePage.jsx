@@ -19,6 +19,7 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 import { useAuth } from '../../hooks/useAuth';
 import * as userApi from '../../api/userApi';
+import * as followApi from '../../api/followApi';
 import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
 import { createReport } from '../../api/reportApi';
@@ -77,6 +78,7 @@ export default function ProfilePage() {
   const [reportEvidence, setReportEvidence] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const [showAllListings, setShowAllListings] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const coverInputRef = useRef(null);
@@ -97,6 +99,9 @@ export default function ProfilePage() {
         } catch {
           setProfileUser(currentUser);
         }
+      } else if (/^\d+$/.test(String(id))) {
+        const res = await userApi.getUserById(id);
+        setProfileUser(getPayload(res));
       } else {
         setProfileUser(mockSeller(id));
       }
@@ -181,6 +186,34 @@ export default function ProfilePage() {
     }
   };
 
+  const handleToggleFollow = async () => {
+    if (!profileUser?.id || isMe) return;
+    setFollowLoading(true);
+    setError(null);
+    try {
+      const following = profileUser.isFollowedByViewer === true;
+      if (following) {
+        await followApi.unfollowUser(profileUser.id);
+        setProfileUser((p) => ({
+          ...p,
+          isFollowedByViewer: false,
+          followerCount: Math.max(0, (p.followerCount ?? 0) - 1),
+        }));
+      } else {
+        await followApi.followUser(profileUser.id);
+        setProfileUser((p) => ({
+          ...p,
+          isFollowedByViewer: true,
+          followerCount: (p.followerCount ?? 0) + 1,
+        }));
+      }
+    } catch (err) {
+      setError(err?.message || 'Không thể cập nhật trạng thái theo dõi.');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
   const handleChat = async () => {
     const firstListing = listings[0];
     if (!firstListing?.id) return;
@@ -217,62 +250,67 @@ export default function ProfilePage() {
   const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
-      <ProfileHeader
-        user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
-        handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
-        avatarUrl={avatarUrl} displayCoverUrl={displayCoverUrl} fullName={fullName}
-        joinDate={joinDate} reputationScore={reputationScore} ratingCount={137}
-        chatLoading={chatLoading} handleOpenReportDialog={() => setReportDialogOpen(true)}
-        handleCoverChange={(e) => handleFileChange(e.target.files[0], 'cover')}
-        handleAvatarChange={(e) => handleFileChange(e.target.files[0], 'avatar')}
-        coverInputRef={coverInputRef} avatarInputRef={avatarInputRef}
-        uploadingCover={uploadingCover} uploadingAvatar={uploadingAvatar}
-        handleChat={handleChat} error={error}
-      />
+      <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
+        <ProfileHeader
+            user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
+            handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
+            avatarUrl={avatarUrl} displayCoverUrl={displayCoverUrl} fullName={fullName}
+            joinDate={joinDate} reputationScore={reputationScore} ratingCount={137}
+            chatLoading={chatLoading} handleOpenReportDialog={() => setReportDialogOpen(true)}
+            handleCoverChange={(e) => handleFileChange(e.target.files[0], 'cover')}
+            handleAvatarChange={(e) => handleFileChange(e.target.files[0], 'avatar')}
+            coverInputRef={coverInputRef} avatarInputRef={avatarInputRef}
+            uploadingCover={uploadingCover} uploadingAvatar={uploadingAvatar}
+            handleChat={handleChat} error={error}
+            isFollowing={!!user.isFollowedByViewer}
+            followLoading={followLoading}
+            onToggleFollow={handleToggleFollow}
+            loggedIn={!!currentUser}
+            onRequireLogin={() => navigate('/login')}
+        />
 
-      <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, mt: 2 }}>
-          <Box sx={{ p: 4, bgcolor: 'rgba(0,0,0,0.01)', borderRight: { md: '1px solid rgba(0,0,0,0.06)' } }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Giới thiệu</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><CheckCircleIcon fontSize="small" color="success" /><Typography variant="body2">Email đã xác minh</Typography></Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
-                <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
+        <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, mt: 2 }}>
+            <Box sx={{ p: 4, bgcolor: 'rgba(0,0,0,0.01)', borderRight: { md: '1px solid rgba(0,0,0,0.06)' } }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Giới thiệu</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><CheckCircleIcon fontSize="small" color="success" /><Typography variant="body2">Email đã xác minh</Typography></Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
+                  <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
+                </Box>
               </Box>
+              {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
             </Box>
-            {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
-          </Box>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
-            </Tabs>
-            <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? MOCK_SELLING : MOCK_SELLING.slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} listings={MOCK_SOLD} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} />}
-              {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
+              </Tabs>
+              <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
+                {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? MOCK_SELLING : MOCK_SELLING.slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} emptyMessage="Chưa có tin đăng nào." />}
+                {tab === 1 && <ListingSection isMe={isMe} listings={MOCK_SOLD} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} />}
+                {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+              </Box>
             </Box>
           </Box>
         </Box>
-      </Box>
 
-      <Snackbar open={!!successMessage} autoHideDuration={4000} onClose={() => setSuccessMessage('')} message={successMessage} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
-      <Dialog open={reportDialogOpen} onClose={() => !reportSubmitting && setReportDialogOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Báo cáo người dùng</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 2 }}>Mô tả lý do bạn báo cáo người dùng này.</Typography>
-          <TextField label="Lý do báo cáo" value={reportReason} onChange={(e) => setReportReason(e.target.value)} fullWidth multiline minRows={3} sx={{ mb: 2 }} autoFocus />
-          <TextField label="Link bằng chứng (tùy chọn)" value={reportEvidence} onChange={(e) => setReportEvidence(e.target.value)} fullWidth placeholder="Ví dụ: link ảnh, đoạn chat..." />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReportDialogOpen(false)}>Hủy</Button>
-          <Button variant="contained" onClick={handleSubmitReport} disabled={reportSubmitting || !reportReason.trim()}>{reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        <Snackbar open={!!successMessage} autoHideDuration={4000} onClose={() => setSuccessMessage('')} message={successMessage} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
+        <Dialog open={reportDialogOpen} onClose={() => !reportSubmitting && setReportDialogOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>Báo cáo người dùng</DialogTitle>
+          <DialogContent dividers>
+            <Typography variant="body2" sx={{ mb: 2 }}>Mô tả lý do bạn báo cáo người dùng này.</Typography>
+            <TextField label="Lý do báo cáo" value={reportReason} onChange={(e) => setReportReason(e.target.value)} fullWidth multiline minRows={3} sx={{ mb: 2 }} autoFocus />
+            <TextField label="Link bằng chứng (tùy chọn)" value={reportEvidence} onChange={(e) => setReportEvidence(e.target.value)} fullWidth placeholder="Ví dụ: link ảnh, đoạn chat..." />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setReportDialogOpen(false)}>Hủy</Button>
+            <Button variant="contained" onClick={handleSubmitReport} disabled={reportSubmitting || !reportReason.trim()}>{reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}</Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
   );
 }
