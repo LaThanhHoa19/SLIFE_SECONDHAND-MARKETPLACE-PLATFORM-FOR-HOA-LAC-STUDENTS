@@ -7,6 +7,8 @@ public final class Constants {
     public static final String MSG01 = "No search results";
     /** Profile/status update success */
     public static final String MSG10 = "Cập nhật thành công";
+    /** System configuration update success */
+    public static final String MSG19 = "System configuration updated successfully";
     /** Unauthorized access */
     public static final String MSG23 = "You do not have permission";
 

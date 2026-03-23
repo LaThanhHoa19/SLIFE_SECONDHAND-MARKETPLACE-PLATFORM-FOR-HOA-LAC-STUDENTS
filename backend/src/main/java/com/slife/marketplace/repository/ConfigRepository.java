@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface ConfigRepository extends JpaRepository<Configuration, Long> {
     List<Configuration> findAllByOrderByUpdatedAtDesc();
+    List<Configuration> findByConfigNameIn(List<String> configNames);
 }
