@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -111,6 +112,29 @@ public class ReportService {
         return ReportResponse.from(saved);
     }
 
+    @Transactional
+    public String processReport(Long reportId, String action, String note, User admin) {
+        String normalizedAction = normalizeAction(action);
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.setAdminNote(note);
+        report.setHandledBy(admin);
+        report.setUpdatedAt(Instant.now());
+
+        if ("APPROVE".equals(normalizedAction)) {
+            report.setStatus("PROCESSED");
+        } else {
+            report.setStatus("REJECTED");
+        }
+
+        Report savedReport = reportRepository.save(report);
+        if ("APPROVE".equals(normalizedAction)) {
+            applyApproveSideEffects(savedReport);
+        }
+        return "Report processed successfully";
+    }
+
     private ReportResponse createListingReport(User reporter, ReportRequest request, String targetType) {
         Listing listing = listingRepository.findById(request.getTargetId())
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
@@ -153,6 +177,40 @@ public class ReportService {
         report.setCreatedAt(Instant.now());
         report.setUpdatedAt(Instant.now());
         return report;
+    }
+
+    private String normalizeAction(String action) {
+        if (action == null || action.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "action is required");
+        }
+        String normalized = action.trim().toUpperCase(Locale.ROOT);
+        if (!"APPROVE".equals(normalized) && !"REJECT".equals(normalized)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "action must be APPROVE or REJECT");
+        }
+        return normalized;
+    }
+
+    private void applyApproveSideEffects(Report report) {
+        if ("LISTING".equals(report.getTargetType())) {
+            Listing listing = listingRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+            listing.setStatus("HIDDEN");
+            listing.setUpdatedAt(Instant.now());
+            listingRepository.save(listing);
+            return;
+        }
+
+        if ("USER".equals(report.getTargetType())) {
+            User user = userRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
+            long approvedCount = reportRepository.countByTargetTypeAndTargetIdAndStatus("USER", user.getId(), "PROCESSED");
+            if (approvedCount >= 3) {
+                user.setStatus("BANNED");
+                user.setUpdatedAt(java.time.LocalDateTime.now());
+                userRepository.save(user);
+                log.warn("User auto-banned due to approved reports. userId={}, approvedReports={}", user.getId(), approvedCount);
+            }
+        }
     }
 
     private ReportResponseDTO toReportResponseDTO(Report report) {
