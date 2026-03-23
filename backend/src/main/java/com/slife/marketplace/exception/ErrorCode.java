@@ -37,6 +37,7 @@ public enum ErrorCode {
     FOLLOW_SELF("FOLLOW_SELF", "You cannot follow yourself", HttpStatus.BAD_REQUEST),
     FOLLOW_ALREADY("FOLLOW_ALREADY", "Already following this user", HttpStatus.CONFLICT),
     FOLLOW_NOT_FOLLOWING("FOLLOW_NOT_FOLLOWING", "You are not following this user", HttpStatus.NOT_FOUND),
+    FOLLOW_BLOCKED("FOLLOW_BLOCKED", "Cannot follow this user due to a block", HttpStatus.FORBIDDEN),
 
     // Upload
     FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "Upload failed", HttpStatus.INTERNAL_SERVER_ERROR),

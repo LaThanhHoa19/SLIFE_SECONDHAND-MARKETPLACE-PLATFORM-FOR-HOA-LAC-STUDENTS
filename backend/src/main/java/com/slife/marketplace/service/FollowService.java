@@ -6,6 +6,7 @@ import com.slife.marketplace.entity.FollowId;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.BlockRepository;
 import com.slife.marketplace.repository.FollowRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -22,15 +23,27 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
+    private final BlockRepository blockRepository;
+    private final NotificationService notificationService;
 
-    public FollowService(FollowRepository followRepository, UserRepository userRepository) {
+    public FollowService(FollowRepository followRepository,
+                         UserRepository userRepository,
+                         BlockRepository blockRepository,
+                         NotificationService notificationService) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
+        this.blockRepository = blockRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
     public long countFollowers(Long userId) {
         return followRepository.countByFollowed_Id(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public long countFollowing(Long userId) {
+        return followRepository.countByFollower_Id(userId);
     }
 
     @Transactional(readOnly = true)
@@ -52,6 +65,13 @@ public class FollowService {
         return followRepository.findFollowedIdsAmong(followerId, candidateFollowedIds);
     }
 
+    private void assertNotBlocked(Long followerId, Long followedId) {
+        if (blockRepository.existsByBlocker_IdAndBlocked_Id(followerId, followedId)
+                || blockRepository.existsByBlocker_IdAndBlocked_Id(followedId, followerId)) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED);
+        }
+    }
+
     @Transactional
     public void follow(User follower, Long followedUserId) {
         Objects.requireNonNull(follower, "follower");
@@ -61,6 +81,7 @@ public class FollowService {
         if (follower.getId().equals(followedUserId)) {
             throw new SlifeException(ErrorCode.FOLLOW_SELF);
         }
+        assertNotBlocked(follower.getId(), followedUserId);
         User followed = userRepository.findById(followedUserId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
         if (followRepository.existsByFollower_IdAndFollowed_Id(follower.getId(), followed.getId())) {
@@ -75,6 +96,7 @@ public class FollowService {
         row.setFollowed(followed);
         row.setCreatedAt(Instant.now());
         followRepository.save(row);
+        notificationService.notifyNewFollower(followed, follower);
     }
 
     @Transactional
@@ -93,6 +115,7 @@ public class FollowService {
     public UserProfileResponse buildProfileForViewer(User profileUser, Long viewerUserId) {
         UserProfileResponse dto = UserProfileResponse.fromUser(profileUser);
         dto.setFollowerCount(countFollowers(profileUser.getId()));
+        dto.setFollowingCount(countFollowing(profileUser.getId()));
         if (viewerUserId != null && !viewerUserId.equals(profileUser.getId())) {
             dto.setIsFollowedByViewer(isFollowing(viewerUserId, profileUser.getId()));
         } else {
