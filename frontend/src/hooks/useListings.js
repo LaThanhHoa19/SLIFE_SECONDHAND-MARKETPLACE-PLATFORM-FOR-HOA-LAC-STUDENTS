@@ -83,6 +83,13 @@ const normalizeParams = (params = {}, query = '') => ({
     q: query,
 });
 
+const normalizeConditionParam = (condition) => {
+    if (!condition) return undefined;
+    const upper = String(condition).trim().toUpperCase();
+    if (upper === 'USED') return 'USED_GOOD';
+    return upper;
+};
+
 
 const MIN_LOADING_MS = 320;
 
@@ -106,13 +113,17 @@ export default function useListings(initialParams = {}) {
                 location: initialParams?.location ?? prev.location,
                 sort: initialParams?.sort ?? prev.sort,
                 q: initialParams?.q ?? prev.q,
+                condition: initialParams?.condition ?? prev.condition,
+                minPrice: initialParams?.minPrice ?? prev.minPrice,
+                maxPrice: initialParams?.maxPrice ?? prev.maxPrice,
             };
             const same =
                 next.page === prev.page && next.size === prev.size && next.category === prev.category &&
-                next.location === prev.location && next.sort === prev.sort && next.q === prev.q;
+                next.location === prev.location && next.sort === prev.sort && next.q === prev.q &&
+                next.condition === prev.condition && next.minPrice === prev.minPrice && next.maxPrice === prev.maxPrice;
             return same ? prev : next;
         });
-    }, [initialParams?.category, initialParams?.location, initialParams?.sort, initialParams?.page, initialParams?.size, initialParams?.q]);
+    }, [initialParams?.category, initialParams?.location, initialParams?.sort, initialParams?.page, initialParams?.size, initialParams?.q, initialParams?.condition, initialParams?.minPrice, initialParams?.maxPrice]);
 
     const fetchData = useCallback(async (currentParams, query) => {
         if (abortRef.current) abortRef.current.abort();
@@ -132,7 +143,7 @@ export default function useListings(initialParams = {}) {
                 q: p.q,
                 categoryId: p.category,
                 location: p.location,
-                itemCondition: p.condition,
+                itemCondition: normalizeConditionParam(p.condition),
                 priceMin: p.minPrice,
                 priceMax: p.maxPrice,
                 sort: p.sort,
@@ -176,7 +187,7 @@ export default function useListings(initialParams = {}) {
 
     useEffect(() => {
         fetchData(params, debouncedQuery);
-    }, [params.page, params.size, params.category, params.location, params.sort, debouncedQuery, fetchData]);
+    }, [params.page, params.size, params.category, params.location, params.sort, params.condition, params.minPrice, params.maxPrice, debouncedQuery, fetchData]);
 
     const refetch = useCallback(() => {
         fetchData(params, debouncedQuery);
