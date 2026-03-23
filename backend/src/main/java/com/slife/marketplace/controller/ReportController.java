@@ -1,5 +1,6 @@
 package com.slife.marketplace.controller;
 
+import com.slife.marketplace.dto.request.AdminProcessReportRequest;
 import com.slife.marketplace.dto.request.ReportRequest;
 import com.slife.marketplace.dto.request.ResolveReportRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
@@ -39,6 +40,15 @@ public class ReportController {
     public ResponseEntity<BaseResponse<List<ReportResponseDTO>>> getPendingReports() {
         List<ReportResponseDTO> reports = reportService.getPendingReports();
         return ResponseEntity.ok(BaseResponse.success("OK", reports));
+    }
+
+    @PatchMapping("/api/admin/reports/{id}")
+    public ResponseEntity<BaseResponse<String>> processReport(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminProcessReportRequest request) {
+        User admin = userService.getCurrentUser();
+        String message = reportService.processReport(id, request.action(), request.note(), admin);
+        return ResponseEntity.ok(BaseResponse.success(message, message));
     }
 
     @PutMapping("/api/admin/reports/{id}/resolve")
