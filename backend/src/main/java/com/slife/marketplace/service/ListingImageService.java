@@ -6,6 +6,7 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,17 +26,21 @@ public class ListingImageService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingImageService.class);
     private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final int DEFAULT_MAX_IMAGES_PER_POST = 8;
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
+    private final ConfigService configService;
     private final Path uploadBasePath;
 
     public ListingImageService(ListingRepository listingRepository,
                                ListingImageRepository listingImageRepository,
+                               ConfigService configService,
                                Path uploadBasePath) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
+        this.configService = configService;
         this.uploadBasePath = uploadBasePath;
     }
 
@@ -49,6 +54,10 @@ public class ListingImageService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 
         int existingCount = listingImageRepository.countByListing_Id(listingId);
+        int maxImagesPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        if (existingCount + files.size() > maxImagesPerPost) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
+        }
         int displayOrder = existingCount + 1;
 
         for (MultipartFile file : files) {

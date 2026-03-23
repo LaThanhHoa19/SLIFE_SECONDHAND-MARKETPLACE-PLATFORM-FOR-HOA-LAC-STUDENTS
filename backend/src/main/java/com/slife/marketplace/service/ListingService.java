@@ -94,7 +94,7 @@ public class ListingService {
         );
 
         Set<Long> savedIds = currentUser != null
-                ? new java.util.HashSet<>(savedListingRepository.findListingIdsByUserId(currentUser.getId()))
+                ? new HashSet<>(savedListingRepository.findListingIdsByUserId(currentUser.getId()))
                 : Set.of();
 
         List<Listing> listings = pageResult.getContent();
@@ -104,7 +104,7 @@ public class ListingService {
                 .map(listing -> toListingResponse(
                         listing,
                         currentUser,
-                        savedIds.contains(listing.getId()),
+                        listing.getId() != null && savedIds.contains(listing.getId()),
                         isFollowedForListing(listing, currentUser, followedSellerIds)))
                 .toList();
 
@@ -131,7 +131,7 @@ public class ListingService {
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
                 listingRepository.findAllActiveListingCards(pageable);
 
-        java.util.List<com.slife.marketplace.dto.response.ListingCardResponse> content =
+        List<com.slife.marketplace.dto.response.ListingCardResponse> content =
                 new java.util.ArrayList<>(pageResult.getContent());
         if (currentUser != null && !content.isEmpty()) {
             Set<Long> sellerIds = content.stream()
@@ -172,12 +172,6 @@ public class ListingService {
     // Create listing
     // ----------------------------------------------------------------
 
-    /**
-     * Tạo listing mới từ request + user hiện tại.
-     *  - Nếu pickupAddressId != null: dùng address có sẵn của user.
-     *  - Nếu có pickupLocationName + lat/lng: tạo Address mới.
-     *  - Status mặc định: ACTIVE hoặc DRAFT.
-     */
     @Transactional
     public ListingResponse createListing(User seller, CreateListingRequest request) {
         if (seller == null) {
@@ -186,7 +180,6 @@ public class ListingService {
 
         boolean isDraft = request.isDraftMode();
 
-        // Validate bắt buộc cho cả đăng tin lẫn lưu nháp
         if (request.getTitle() == null || request.getTitle().isBlank()) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
         }
@@ -363,18 +356,14 @@ public class ListingService {
         return normalized.isEmpty() ? null : normalized;
     }
 
-    /**
-     * Ánh xạ giá trị condition từ FE về ENUM hợp lệ của DB:
-     * DB enum: NEW, USED_LIKE_NEW, USED_GOOD, USED_FAIR
-     */
     private String normalizeCondition(String condition) {
         if (condition == null || condition.isBlank()) return "USED_GOOD";
         return switch (condition.trim().toUpperCase()) {
-            case "NEW"           -> "NEW";
+            case "NEW" -> "NEW";
             case "USED_LIKE_NEW" -> "USED_LIKE_NEW";
-            case "USED_FAIR"     -> "USED_FAIR";
+            case "USED_FAIR" -> "USED_FAIR";
             case "USED_GOOD", "USED", "SECOND_HAND" -> "USED_GOOD";
-            default              -> "USED_GOOD";
+            default -> "USED_GOOD";
         };
     }
 
