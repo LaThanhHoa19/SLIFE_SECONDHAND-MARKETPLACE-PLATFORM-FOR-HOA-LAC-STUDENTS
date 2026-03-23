@@ -320,6 +320,6 @@ export default function ProfilePage() {
             <Button variant="contained" onClick={handleSubmitReport} disabled={reportSubmitting || !reportReason.trim()}>{reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}</Button>
           </DialogActions>
         </Dialog>
-      </Box>
+      </Box></Box>
   );
 }
