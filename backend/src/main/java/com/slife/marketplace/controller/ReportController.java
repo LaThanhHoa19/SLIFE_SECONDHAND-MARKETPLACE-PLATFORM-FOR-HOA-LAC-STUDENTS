@@ -13,6 +13,7 @@ import com.slife.marketplace.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,12 +38,14 @@ public class ReportController {
     }
 
     @GetMapping("/api/admin/reports")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<List<ReportResponseDTO>>> getPendingReports() {
         List<ReportResponseDTO> reports = reportService.getPendingReports();
         return ResponseEntity.ok(BaseResponse.success("OK", reports));
     }
 
     @PatchMapping("/api/admin/reports/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<String>> processReport(
             @PathVariable Long id,
             @Valid @RequestBody AdminProcessReportRequest request) {
@@ -52,6 +55,7 @@ public class ReportController {
     }
 
     @PutMapping("/api/admin/reports/{id}/resolve")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ReportResponse>> resolveReport(
             @PathVariable Long id,
             @Valid @RequestBody ResolveReportRequest request) {
