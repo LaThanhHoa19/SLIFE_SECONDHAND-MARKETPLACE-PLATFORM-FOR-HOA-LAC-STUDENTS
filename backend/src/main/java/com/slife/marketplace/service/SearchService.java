@@ -17,7 +17,7 @@ import java.util.Set;
 @Service
 public class SearchService {
 
-    private static final Set<String> VALID_PURPOSE   = Set.of("SALE", "GIVEAWAY", "FLASH");
+    private static final Set<String> VALID_PURPOSE = Set.of("SALE", "GIVEAWAY", "FLASH");
     private static final Set<String> VALID_CONDITION = Set.of("NEW", "USED", "USED_LIKE_NEW", "USED_GOOD", "USED_FAIR");
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
 
@@ -32,23 +32,31 @@ public class SearchService {
         int pageIndex = request.getPage() != null && request.getPage() >= 0 ? request.getPage() : 0;
         Integer requestedSize = request.getSize();
         int pageSize;
-        if (requestedSize == null)       pageSize = 20;
-        else if (requestedSize < 10)     pageSize = 10;
-        else if (requestedSize > 20)     pageSize = 20;
-        else                             pageSize = requestedSize;
+        if (requestedSize == null) pageSize = 20;
+        else if (requestedSize < 10) pageSize = 10;
+        else if (requestedSize > 20) pageSize = 20;
+        else pageSize = requestedSize;
 
         Pageable pageable = PageRequest.of(pageIndex, pageSize, parseSort(request.getSort()));
 
-        String q        = normalize(request.getQ());
+        String q = normalize(request.getQ());
         String location = normalize(request.getLocation());
-        String purpose  = toUpperOrNull(request.getPurpose(), VALID_PURPOSE);
+        String purpose = toUpperOrNull(request.getPurpose(), VALID_PURPOSE);
         String itemCond = toUpperOrNull(request.getItemCondition(), VALID_CONDITION);
 
         BigDecimal priceMin = request.getPriceMin();
         BigDecimal priceMax = request.getPriceMax();
 
-        return listingRepository.findByFilters(q, request.getCategoryId(), location,
-                purpose, itemCond, priceMin, priceMax, pageable);
+        return listingRepository.findByFilters(
+                q,
+                request.getCategoryId(),
+                location,
+                purpose,
+                itemCond,
+                priceMin,
+                priceMax,
+                pageable
+        );
     }
 
     private static String normalize(String s) {
