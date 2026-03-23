@@ -12,6 +12,7 @@ export default function ListingsPage() {
         q: searchParams.get('q') || '',
         category: searchParams.get('category') || '',
         location: searchParams.get('location') || '',
+        condition: searchParams.get('condition') || '',
         sort: searchParams.get('sort') || 'createdAt,desc',
         page: Number(searchParams.get('page') || 0),
         size: Number(searchParams.get('size') || 10),

@@ -263,7 +263,7 @@ export default function RightPanel() {
                     sx={{ gap: 1 }}
                 >
                     <ToggleButton
-                        value="price_asc"
+                        value="price,asc"
                         sx={{
                             flex: 1,
                             py: 0.8,
@@ -284,7 +284,7 @@ export default function RightPanel() {
                         Giá thấp → cao
                     </ToggleButton>
                     <ToggleButton
-                        value="price_desc"
+                        value="price,desc"
                         sx={{
                             flex: 1,
                             py: 0.8,

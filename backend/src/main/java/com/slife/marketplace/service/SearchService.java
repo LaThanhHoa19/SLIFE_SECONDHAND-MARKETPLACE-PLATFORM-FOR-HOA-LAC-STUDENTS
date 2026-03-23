@@ -3,6 +3,7 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.SearchRequest;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.repository.ListingRepository;
+import org.springframework.lang.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,7 @@ import java.util.Set;
 public class SearchService {
 
     private static final Set<String> VALID_PURPOSE   = Set.of("SALE", "GIVEAWAY", "FLASH");
-    private static final Set<String> VALID_CONDITION = Set.of("NEW", "USED_LIKE_NEW", "USED_GOOD", "USED_FAIR");
+    private static final Set<String> VALID_CONDITION = Set.of("NEW", "USED", "USED_LIKE_NEW", "USED_GOOD", "USED_FAIR");
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
 
     private final ListingRepository listingRepository;
@@ -60,6 +61,7 @@ public class SearchService {
         return whitelist.contains(upper) ? upper : null;
     }
 
+    @NonNull
     private Sort parseSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return Sort.by(Sort.Direction.DESC, "createdAt");

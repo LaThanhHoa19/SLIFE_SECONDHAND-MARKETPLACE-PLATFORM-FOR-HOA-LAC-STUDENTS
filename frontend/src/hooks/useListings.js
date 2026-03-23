@@ -85,9 +85,7 @@ const normalizeParams = (params = {}, query = '') => ({
 
 const normalizeConditionParam = (condition) => {
     if (!condition) return undefined;
-    const upper = String(condition).trim().toUpperCase();
-    if (upper === 'USED') return 'USED_GOOD';
-    return upper;
+    return String(condition).trim().toUpperCase();
 };
 
 
