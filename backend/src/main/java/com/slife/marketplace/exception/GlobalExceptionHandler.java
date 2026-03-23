@@ -1,5 +1,6 @@
 package com.slife.marketplace.exception;
 
+import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.util.Constants;
 import org.springframework.http.HttpStatus;
@@ -70,8 +71,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
-        ApiResponse<Object> body = ApiResponse.error("MSG23", Constants.MSG23);
+    public ResponseEntity<BaseResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        BaseResponse<Object> body = new BaseResponse<>("FORBIDDEN", "Bạn không có quyền truy cập tính năng này", null);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
