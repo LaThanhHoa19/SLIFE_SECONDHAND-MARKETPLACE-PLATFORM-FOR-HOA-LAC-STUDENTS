@@ -11,6 +11,7 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.ReportRequest;
 import com.slife.marketplace.dto.request.ResolveReportRequest;
 import com.slife.marketplace.dto.response.ReportResponse;
+import com.slife.marketplace.dto.response.ReportResponseDTO;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.Report;
 import com.slife.marketplace.entity.User;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -79,6 +81,14 @@ public class ReportService {
                 normalizedType, normalizedStatus, PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50)));
 
         return reports.map(ReportResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReportResponseDTO> getPendingReports() {
+        return reportRepository.findPendingReportsWithReporter()
+                .stream()
+                .map(this::toReportResponseDTO)
+                .toList();
     }
 
     @Transactional
@@ -143,5 +153,15 @@ public class ReportService {
         report.setCreatedAt(Instant.now());
         report.setUpdatedAt(Instant.now());
         return report;
+    }
+
+    private ReportResponseDTO toReportResponseDTO(Report report) {
+        String reporterName = report.getReporter() != null ? report.getReporter().getFullName() : null;
+        return new ReportResponseDTO(
+                report.getId(),
+                reporterName,
+                report.getTargetType(),
+                report.getReason(),
+                report.getCreatedAt());
     }
 }
