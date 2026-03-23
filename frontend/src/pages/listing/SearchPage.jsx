@@ -500,7 +500,14 @@ export default function SearchPage() {
                             <ToggleButtonGroup
                                 exclusive
                                 value={draft.sort}
-                                onChange={(_, val) => setDraft((prev) => ({ ...prev, sort: val || 'createdAt,desc' }))}
+                                onChange={(_, val) => {
+                                    const nextSort = val || 'createdAt,desc';
+                                    setDraft((prev) => {
+                                        const next = { ...prev, sort: nextSort };
+                                        applyDraft(next);
+                                        return next;
+                                    });
+                                }}
                                 size="small"
                                 sx={{
                                     '& .MuiToggleButton-root': {
