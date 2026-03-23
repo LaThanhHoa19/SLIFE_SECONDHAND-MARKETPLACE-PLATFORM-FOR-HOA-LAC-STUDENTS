@@ -121,7 +121,7 @@ public class ListingService {
      * Optimized method for Listing Cards (UC-ListingCard-Performance)
      */
     @Transactional(readOnly = true)
-    public PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> getActiveListingCards(int page, int size) {
+    public PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> getActiveListingCards(int page, int size, User currentUser) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,
@@ -131,8 +131,31 @@ public class ListingService {
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
                 listingRepository.findAllActiveListingCards(pageable);
 
+        java.util.List<com.slife.marketplace.dto.response.ListingCardResponse> content =
+                new java.util.ArrayList<>(pageResult.getContent());
+        if (currentUser != null && !content.isEmpty()) {
+            Set<Long> sellerIds = content.stream()
+                    .map(com.slife.marketplace.dto.response.ListingCardResponse::getSellerId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Set<Long> followed = sellerIds.isEmpty()
+                    ? Set.of()
+                    : new HashSet<>(followService.findFollowedIdsAmong(currentUser.getId(), sellerIds));
+            for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
+                Long sid = card.getSellerId();
+                boolean f = sid != null
+                        && !sid.equals(currentUser.getId())
+                        && followed.contains(sid);
+                card.setIsFollowed(f);
+            }
+        } else {
+            for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
+                card.setIsFollowed(false);
+            }
+        }
+
         return new PagedResponse<>(
-                pageResult.getContent(),
+                content,
                 pageResult.getNumber(),
                 pageResult.getSize(),
                 pageResult.getTotalElements(),
