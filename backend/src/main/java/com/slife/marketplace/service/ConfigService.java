@@ -1,5 +1,6 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.config.CacheConfig;
 import com.slife.marketplace.dto.request.ConfigUpdateRequest;
 import com.slife.marketplace.dto.response.ConfigResponseDTO;
 import com.slife.marketplace.entity.Configuration;
@@ -8,6 +9,8 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ConfigRepository;
 import com.slife.marketplace.util.Constants;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +40,26 @@ public class ConfigService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, key = "#key.trim().toUpperCase()")
+    public String getConfigValue(String key) {
+        String normalizedKey = normalizeKey(key);
+        return configRepository.findByConfigName(normalizedKey)
+                .map(Configuration::getConfigValue)
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, key = "#key.trim().toUpperCase()")
+    public String getConfigValueByKey(String key) {
+        String normalizedKey = normalizeKey(key);
+        return configRepository.findByConfigName(normalizedKey)
+                .map(Configuration::getConfigValue)
+                .orElse(null);
+    }
+
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, allEntries = true)
     public String updateConfigurations(List<ConfigUpdateRequest> requests, User admin) {
         if (requests == null || requests.isEmpty()) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "configuration list must not be empty");
