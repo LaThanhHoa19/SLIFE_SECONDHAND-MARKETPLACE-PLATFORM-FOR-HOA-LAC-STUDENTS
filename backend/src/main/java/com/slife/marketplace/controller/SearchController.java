@@ -5,18 +5,27 @@ import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ListingPageResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.User;
+import com.slife.marketplace.service.FollowService;
 import com.slife.marketplace.service.SearchService;
+import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.util.AddressFormat;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * SCRUM-43: Basic keyword search endpoint.
@@ -26,9 +35,15 @@ import java.util.Map;
 public class SearchController {
 
     private final SearchService searchService;
+    private final UserService userService;
+    private final FollowService followService;
 
-    public SearchController(SearchService searchService) {
+    public SearchController(SearchService searchService,
+                            UserService userService,
+                            FollowService followService) {
         this.searchService = searchService;
+        this.userService = userService;
+        this.followService = followService;
     }
 
     /**
@@ -36,6 +51,7 @@ public class SearchController {
      * Query params: q, categoryId, location, page, size.
      */
     @GetMapping("/search")
+    @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<ListingPageResponse>> search(@Valid SearchRequest request) {
         Page<Listing> pageResult = searchService.search(request);
 
@@ -43,8 +59,11 @@ public class SearchController {
             return ResponseEntity.ok(ApiResponse.error("MSG01", "No search results"));
         }
 
+        Optional<User> viewer = userService.getCurrentUserOptional();
+        Set<Long> followedSellerIds = resolveFollowedSellerIds(viewer.orElse(null), pageResult.getContent());
+
         List<ListingResponse> content = pageResult.getContent().stream()
-                .map(this::toListingResponse)
+                .map(listing -> toListingResponse(listing, viewer.orElse(null), followedSellerIds))
                 .toList();
 
         ListingPageResponse body = new ListingPageResponse();
@@ -57,7 +76,21 @@ public class SearchController {
         return ResponseEntity.ok(ApiResponse.success("OK", body));
     }
 
-    private ListingResponse toListingResponse(Listing listing) {
+    private Set<Long> resolveFollowedSellerIds(User viewer, List<Listing> listings) {
+        if (viewer == null || listings == null || listings.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> sellerIds = listings.stream()
+                .map(l -> l.getSeller() != null ? l.getSeller().getId() : null)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (sellerIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(followService.findFollowedIdsAmong(viewer.getId(), sellerIds));
+    }
+
+    private ListingResponse toListingResponse(Listing listing, User viewer, Set<Long> followedSellerIds) {
         ListingResponse res = new ListingResponse();
         res.setId(listing.getId());
         res.setTitle(listing.getTitle());
@@ -74,6 +107,7 @@ public class SearchController {
 
         Map<String, Object> sellerSummary = new HashMap<>();
         if (listing.getSeller() != null) {
+            sellerSummary.put("userId", listing.getSeller().getId());
             sellerSummary.put("fullName", listing.getSeller().getFullName());
             sellerSummary.put("avatarUrl", listing.getSeller().getAvatarUrl());
             sellerSummary.put("reputation", listing.getSeller().getReputationScore());
@@ -84,7 +118,13 @@ public class SearchController {
                 .map(img -> img.getImageUrl())
                 .toList());
         res.setIsSaved(false);
-        res.setIsFollowed(false);
+
+        boolean isFollowed = false;
+        if (viewer != null && listing.getSeller() != null
+                && !listing.getSeller().getId().equals(viewer.getId())) {
+            isFollowed = followedSellerIds.contains(listing.getSeller().getId());
+        }
+        res.setIsFollowed(isFollowed);
 
         return res;
     }

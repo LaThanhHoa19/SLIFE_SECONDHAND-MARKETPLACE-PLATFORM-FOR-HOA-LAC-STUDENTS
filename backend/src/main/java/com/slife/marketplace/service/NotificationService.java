@@ -19,16 +19,15 @@ public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
-    /** Giữ đúng ENUM cột `type` trong DB (V1): MESSAGE, DEAL, FOLLOW, SYSTEM, REPORT — không thêm giá trị mới. */
-    public static final String TYPE_MESSAGE = "MESSAGE";
-    public static final String TYPE_DEAL    = "DEAL";
-    public static final String TYPE_REPORT  = "REPORT";
-    public static final String TYPE_SYSTEM  = "SYSTEM";
-
-    /** Phân nhánh UI qua ref_type (VARCHAR, không cần migration). */
-    public static final String REF_CONVERSATION       = "CONVERSATION";
-    public static final String REF_LISTING          = "LISTING";
-    public static final String REF_LISTING_PUBLISHED = "LISTING_PUBLISHED";
+    public static final String TYPE_MESSAGE  = "MESSAGE";
+    public static final String TYPE_DEAL     = "DEAL";
+    // DB enum currently does not include OFFER, reuse SYSTEM for compatibility.
+    public static final String TYPE_OFFER    = "SYSTEM";
+    public static final String TYPE_REPORT   = "REPORT";
+    // Comment notifications reuse MESSAGE type to match DB ENUM
+    public static final String TYPE_COMMENT  = TYPE_MESSAGE;
+    public static final String TYPE_SYSTEM   = "SYSTEM";
+    public static final String TYPE_FOLLOW   = "FOLLOW";
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -46,7 +45,7 @@ public class NotificationService {
     public void notifyNewMessage(User recipient, ChatMessageResponse msg, String sessionId) {
         try {
             Notification n = buildNotification(recipient, TYPE_MESSAGE,
-                    REF_CONVERSATION, null,
+                    "CONVERSATION", null,
                     msg.getSenderName() + ": " + truncate(msg.getContent(), 60));
             notificationRepository.save(n);
             pushToUser(recipient.getEmail(), "/queue/messages", msg);
@@ -61,8 +60,8 @@ public class NotificationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyOfferProposal(User seller, User buyer, Long listingId, java.math.BigDecimal amount) {
         try {
-            Notification n = buildNotification(seller, TYPE_SYSTEM,
-                    REF_LISTING, listingId,
+            Notification n = buildNotification(seller, TYPE_OFFER,
+                    "LISTING", listingId,
                     buyer.getFullName() + " đề xuất giá " + amount.toPlainString() + "đ");
             notificationRepository.save(n);
             pushNotificationCount(seller);
@@ -77,7 +76,7 @@ public class NotificationService {
         try {
             String text = "Deal đã được xác nhận cho: " + listingTitle;
             for (User u : List.of(buyer, seller)) {
-                Notification n = buildNotification(u, TYPE_DEAL, REF_LISTING, listingId, text);
+                Notification n = buildNotification(u, TYPE_DEAL, "LISTING", listingId, text);
                 notificationRepository.save(n);
                 pushNotificationCount(u);
             }
@@ -91,7 +90,7 @@ public class NotificationService {
     public void notifyListingReported(User listingOwner, User reporter, Long listingId, String listingTitle) {
         try {
             Notification n = buildNotification(listingOwner, TYPE_REPORT,
-                    REF_LISTING, listingId,
+                    "LISTING", listingId,
                     "Tin đăng \"" + truncate(listingTitle, 40) + "\" của bạn đã bị báo cáo bởi " + reporter.getFullName());
             notificationRepository.save(n);
             pushNotificationCount(listingOwner);
@@ -100,31 +99,33 @@ public class NotificationService {
         }
     }
 
+    /** Notify user when someone starts following them. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyNewFollower(User followed, User follower) {
+        try {
+            String name = follower.getFullName() != null && !follower.getFullName().isBlank()
+                    ? follower.getFullName()
+                    : follower.getEmail();
+            Notification n = buildNotification(followed, TYPE_FOLLOW, "USER", follower.getId(),
+                    name + " đã bắt đầu theo dõi bạn.");
+            notificationRepository.save(n);
+            pushNotificationCount(followed);
+        } catch (Exception ex) {
+            log.error("notifyNewFollower failed followedId={}", followed.getId(), ex);
+        }
+    }
+
     /** Notify listing owner when a new comment is posted on their listing. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyListingCommented(User listingOwner, User commenter, Long listingId, String listingTitle) {
         try {
-            Notification n = buildNotification(listingOwner, TYPE_MESSAGE,
-                    REF_LISTING, listingId,
+            Notification n = buildNotification(listingOwner, TYPE_COMMENT,
+                    "LISTING", listingId,
                     commenter.getFullName() + " đã bình luận trên tin \"" + truncate(listingTitle, 40) + "\"");
             notificationRepository.save(n);
             pushNotificationCount(listingOwner);
         } catch (Exception ex) {
             log.error("notifyListingCommented failed listingId={}", listingId, ex);
-        }
-    }
-
-    /** Tin đăng đã xuất bản / hiển thị (SYSTEM + ref LISTING_PUBLISHED — tách khỏi offer: SYSTEM + LISTING). */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyListingPublished(User seller, Long listingId, String listingTitle) {
-        try {
-            Notification n = buildNotification(seller, TYPE_SYSTEM,
-                    REF_LISTING_PUBLISHED, listingId,
-                    "Tin \"" + truncate(listingTitle, 50) + "\" đã được đăng và hiển thị trên SLife.");
-            notificationRepository.save(n);
-            pushNotificationCount(seller);
-        } catch (Exception ex) {
-            log.error("notifyListingPublished failed listingId={}", listingId, ex);
         }
     }
 

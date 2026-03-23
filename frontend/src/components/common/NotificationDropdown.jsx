@@ -1,25 +1,26 @@
-/**
- * Popover thông báo trên Header — cùng logic/chip lọc với /notifications, deep link ?tab=
- */
-import { Avatar, Box, Button, Chip, List, ListItem, ListItemAvatar, Popover, Typography } from '@mui/material';
+import {
+    Avatar,
+    Badge,
+    Box,
+    Button,
+    IconButton,
+    List,
+    ListItem,
+    ListItemAvatar,
+    ListItemText,
+    Popover,
+    Typography,
+} from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import ChatIcon from '@mui/icons-material/Chat';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
+import FlagIcon from '@mui/icons-material/Flag';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
-import NotificationTypeIcon from './NotificationTypeIcon';
-import {
-    NOTIF_TAB,
-    NOTIF_TAB_LABELS,
-    NOTIF_TABS_ORDER,
-    deriveNotificationTab,
-    notificationsForTab,
-    countForTab,
-} from '../../utils/notificationCategory';
-
-const PURPLE = '#9D6EED';
-const BORDER = 'rgba(255,255,255,0.08)';
-const CARD_BG = '#201D26';
 
 const formatTime = (createdAt) => {
     if (!createdAt) return '';
@@ -33,34 +34,48 @@ const formatTime = (createdAt) => {
     return d.toLocaleDateString('vi-VN');
 };
 
-const tabLabelForItem = (n) => NOTIF_TAB_LABELS[deriveNotificationTab(n)] || 'Khác';
+const getIconForType = (type) => {
+    switch (type) {
+        case 'MESSAGE':
+        case 'COMMENT':
+            return <ChatIcon sx={{ fontSize: 18 }} />;
+        case 'OFFER':
+            return <LocalOfferIcon sx={{ fontSize: 18 }} />;
+        case 'REPORT':
+            return <FlagIcon sx={{ fontSize: 18 }} />;
+        case 'DEAL':
+            return <CheckCircleIcon sx={{ fontSize: 18 }} />;
+        case 'FOLLOW':
+            return <PersonAddIcon sx={{ fontSize: 18 }} />;
+        default:
+            return <NotificationsIcon sx={{ fontSize: 18 }} />;
+    }
+};
 
 export default function NotificationDropdown({ anchorEl, open, onClose }) {
-    const { notifications, unreadCount, markRead, markAllRead } = useContext(NotificationContext);
+    const { notifications, unreadCount, markRead, markAllRead } =
+        useContext(NotificationContext);
     const navigate = useNavigate();
-    const [tab, setTab] = useState(NOTIF_TAB.ALL);
-
-    useEffect(() => {
-        if (!open) setTab(NOTIF_TAB.ALL);
-    }, [open]);
-
-    const filtered = useMemo(() => notificationsForTab(notifications, tab), [notifications, tab]);
-    const topNotifications = useMemo(() => filtered.slice(0, 5), [filtered]);
 
     const handleItemClick = async (n) => {
-        if (!n.isRead) await markRead(n.id);
+        if (!n.isRead) {
+            await markRead(n.id);
+        }
         onClose?.();
-        const ref = String(n.refType || '').toUpperCase();
-        if (n.refId && (ref === 'LISTING' || ref === 'LISTING_PUBLISHED')) {
+        // Điều hướng đơn giản theo refType nếu sau này cần mở rộng.
+        if (n.refType === 'LISTING' && n.refId) {
             navigate(`/listings/${n.refId}`);
+        } else if (n.refType === 'USER' && n.refId) {
+            navigate(`/profile/${n.refId}`);
         }
     };
 
     const handleViewAll = () => {
         onClose?.();
-        const q = tab !== NOTIF_TAB.ALL ? `?tab=${tab}` : '';
-        navigate(`/notifications${q}`);
+        navigate('/notifications');
     };
+
+    const topNotifications = notifications.slice(0, 5);
 
     return (
         <Popover
@@ -72,101 +87,49 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
             PaperProps={{
                 sx: {
                     mt: 1,
-                    width: { xs: 'min(100vw - 24px, 360px)', sm: 380 },
-                    maxHeight: 480,
-                    borderRadius: 2,
-                    boxShadow: '0 18px 45px rgba(0,0,0,0.45)',
-                    border: `1px solid ${BORDER}`,
-                    bgcolor: CARD_BG,
+                    width: 340,
+                    maxHeight: 420,
+                    borderRadius: 3,
+                    boxShadow: '0 18px 45px rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    bgcolor: '#201D26',
                     overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
                 },
             }}
         >
             <Box
                 sx={{
-                    px: 1.5,
-                    pt: 1.5,
-                    pb: 1,
-                    borderBottom: `1px solid ${BORDER}`,
+                    px: 2,
+                    py: 1.5,
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: 1,
-                    flexShrink: 0,
+                    bgcolor: '#201D26',
                 }}
             >
-                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#FFFFFF' }}>
                     Thông báo
                 </Typography>
                 {unreadCount > 0 && (
                     <Button
                         size="small"
                         startIcon={<DoneAllIcon sx={{ fontSize: 16 }} />}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            markAllRead();
-                        }}
+                        onClick={markAllRead}
                         sx={{
                             textTransform: 'none',
                             fontSize: 11,
-                            borderRadius: 2,
-                            px: 1.25,
-                            py: 0.25,
-                            minWidth: 0,
-                            border: `1px solid rgba(157,110,237,0.45)`,
-                            color: PURPLE,
-                            '&:hover': { bgcolor: 'rgba(157,110,237,0.15)' },
+                            borderRadius: 999,
+                            px: 1.5,
+                            py: 0.2,
+                            bgcolor: 'rgba(157,110,237,0.2)',
+                            color: '#9D6EED',
+                            '&:hover': { bgcolor: 'rgba(157,110,237,0.3)' },
                         }}
                     >
                         Đọc hết
                     </Button>
                 )}
-            </Box>
-
-            <Box
-                sx={{
-                    display: 'flex',
-                    gap: 0.75,
-                    overflowX: 'auto',
-                    px: 1.5,
-                    py: 1,
-                    flexShrink: 0,
-                    borderBottom: `1px solid ${BORDER}`,
-                    '&::-webkit-scrollbar': { height: 4 },
-                    '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 2 },
-                }}
-            >
-                {NOTIF_TABS_ORDER.map((key) => {
-                    const count = key === NOTIF_TAB.ALL ? notifications.length : countForTab(notifications, key);
-                    const selected = tab === key;
-                    return (
-                        <Chip
-                            key={key}
-                            size="small"
-                            label={
-                                key === NOTIF_TAB.ALL
-                                    ? NOTIF_TAB_LABELS[key]
-                                    : `${NOTIF_TAB_LABELS[key]}${count > 0 ? ` ·${count}` : ''}`
-                            }
-                            onClick={() => setTab(key)}
-                            variant={selected ? 'filled' : 'outlined'}
-                            sx={{
-                                flexShrink: 0,
-                                height: 28,
-                                fontSize: 11,
-                                fontWeight: selected ? 700 : 500,
-                                bgcolor: selected ? PURPLE : 'transparent',
-                                color: selected ? '#fff' : 'rgba(255,255,255,0.55)',
-                                borderColor: selected ? PURPLE : BORDER,
-                                '&:hover': {
-                                    bgcolor: selected ? '#8b5cf6' : 'rgba(255,255,255,0.06)',
-                                },
-                            }}
-                        />
-                    );
-                })}
             </Box>
 
             {notifications.length === 0 ? (
@@ -178,6 +141,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: 1,
+                        bgcolor: '#201D26',
                     }}
                 >
                     <Avatar
@@ -190,14 +154,8 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                     >
                         <NotificationsIcon />
                     </Avatar>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.55)', textAlign: 'center' }}>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)' }}>
                         Chưa có thông báo mới
-                    </Typography>
-                </Box>
-            ) : topNotifications.length === 0 ? (
-                <Box sx={{ px: 2, py: 3, textAlign: 'center' }}>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                        Không có mục trong &quot;{NOTIF_TAB_LABELS[tab]}&quot;
                     </Typography>
                 </Box>
             ) : (
@@ -205,10 +163,9 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                     dense
                     disablePadding
                     sx={{
-                        flex: 1,
-                        minHeight: 0,
+                        maxHeight: 320,
                         overflowY: 'auto',
-                        maxHeight: 300,
+                        bgcolor: '#201D26',
                         '&::-webkit-scrollbar': { width: 4 },
                         '&::-webkit-scrollbar-thumb': {
                             bgcolor: 'rgba(255,255,255,0.15)',
@@ -216,127 +173,90 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                         },
                     }}
                 >
-                    {topNotifications.map((n) => {
-                        const unread = !n.isRead;
-                        return (
-                            <ListItem
-                                key={n.id}
-                                onClick={() => handleItemClick(n)}
-                                sx={{
-                                    alignItems: 'flex-start',
-                                    px: 1.5,
-                                    py: 1.25,
-                                    cursor: 'pointer',
-                                    bgcolor: unread ? 'rgba(157,110,237,0.12)' : 'transparent',
-                                    borderBottom: `1px solid ${BORDER}`,
-                                    '&:last-of-type': { borderBottom: 'none' },
-                                    '&:hover': {
-                                        bgcolor: unread ? 'rgba(157,110,237,0.18)' : 'rgba(255,255,255,0.05)',
-                                    },
-                                }}
-                            >
-                                <ListItemAvatar sx={{ minWidth: 48, mt: 0.25 }}>
-                                    <Box sx={{ position: 'relative' }}>
-                                        {unread && (
-                                            <Box
-                                                sx={{
-                                                    position: 'absolute',
-                                                    top: -2,
-                                                    left: -2,
-                                                    width: 8,
-                                                    height: 8,
-                                                    borderRadius: '50%',
-                                                    bgcolor: PURPLE,
-                                                    zIndex: 1,
-                                                    border: '2px solid #201D26',
-                                                }}
-                                            />
-                                        )}
-                                        <Avatar
-                                            sx={{
-                                                width: 40,
-                                                height: 40,
-                                                bgcolor: unread ? 'rgba(157,110,237,0.3)' : 'rgba(255,255,255,0.08)',
-                                                color: unread ? '#e9d5ff' : 'rgba(255,255,255,0.55)',
-                                            }}
-                                        >
-                                            <NotificationTypeIcon notification={n} fontSize={20} />
-                                        </Avatar>
-                                    </Box>
-                                </ListItemAvatar>
-                                <Box sx={{ flex: 1, minWidth: 0, pt: 0.125 }}>
-                                    <Chip
-                                        size="small"
-                                        label={tabLabelForItem(n)}
-                                        sx={{
-                                            height: 20,
-                                            fontSize: 10,
-                                            fontWeight: 600,
-                                            maxWidth: '100%',
-                                            mb: 0.5,
-                                            bgcolor: 'rgba(255,255,255,0.08)',
-                                            color: 'rgba(255,255,255,0.65)',
-                                            '& .MuiChip-label': { px: 0.75 },
-                                        }}
-                                    />
+                    {topNotifications.map((n) => (
+                        <ListItem
+                            key={n.id}
+                            onClick={() => handleItemClick(n)}
+                            sx={{
+                                px: 2,
+                                py: 1.25,
+                                cursor: 'pointer',
+                                bgcolor: n.isRead ? 'transparent' : 'rgba(157,110,237,0.12)',
+                                '&:hover': {
+                                    bgcolor: n.isRead ? 'rgba(255,255,255,0.06)' : 'rgba(157,110,237,0.18)',
+                                },
+                            }}
+                        >
+                            <ListItemAvatar>
+                                <Avatar
+                                    sx={{
+                                        width: 30,
+                                        height: 30,
+                                        bgcolor: n.isRead ? 'rgba(255,255,255,0.08)' : 'rgba(157,110,237,0.25)',
+                                        color: n.isRead ? 'rgba(255,255,255,0.6)' : '#9D6EED',
+                                    }}
+                                >
+                                    {getIconForType(n.type)}
+                                </Avatar>
+                            </ListItemAvatar>
+                            <ListItemText
+                                primary={
                                     <Typography
                                         sx={{
                                             fontSize: 13,
-                                            fontWeight: unread ? 600 : 400,
-                                            color: 'rgba(255,255,255,0.92)',
-                                            lineHeight: 1.4,
-                                            display: '-webkit-box',
-                                            WebkitLineClamp: 3,
-                                            WebkitBoxOrient: 'vertical',
-                                            overflow: 'hidden',
+                                            fontWeight: n.isRead ? 400 : 600,
+                                            color: 'rgba(255,255,255,0.9)',
                                         }}
                                     >
                                         {n.content}
                                     </Typography>
+                                }
+                                secondary={
                                     <Typography
                                         sx={{
                                             fontSize: 11,
-                                            color: PURPLE,
-                                            mt: 0.35,
-                                            opacity: 0.85,
+                                            color: 'rgba(255,255,255,0.5)',
+                                            mt: 0.25,
                                         }}
                                     >
                                         {formatTime(n.createdAt)}
                                     </Typography>
-                                </Box>
-                            </ListItem>
-                        );
-                    })}
+                                }
+                            />
+                        </ListItem>
+                    ))}
                 </List>
             )}
 
             <Box
                 sx={{
-                    px: 1.5,
+                    px: 2,
                     py: 1,
-                    borderTop: `1px solid ${BORDER}`,
-                    flexShrink: 0,
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    bgcolor: '#201D26',
                 }}
             >
                 <Button
-                    fullWidth
                     size="small"
                     onClick={handleViewAll}
                     sx={{
                         textTransform: 'none',
                         fontSize: 13,
                         fontWeight: 600,
-                        color: '#fff',
-                        borderRadius: 2,
-                        bgcolor: 'rgba(157,110,237,0.28)',
-                        '&:hover': { bgcolor: 'rgba(157,110,237,0.42)', color: '#fff' },
+                        color: '#FFFFFF',
+                        bgcolor: 'rgba(157,110,237,0.25)',
+                        '&:hover': {
+                            bgcolor: 'rgba(157,110,237,0.4)',
+                            color: '#FFFFFF',
+                        },
                     }}
                 >
-                    {tab === NOTIF_TAB.ALL
-                        ? 'Xem tất cả thông báo'
-                        : `Mở trang thông báo · ${NOTIF_TAB_LABELS[tab]}`}
+                    Xem tất cả thông báo
                 </Button>
             </Box>
         </Popover>
     );
 }
+
