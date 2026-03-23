@@ -123,7 +123,7 @@ public class ReportService {
         report.setUpdatedAt(Instant.now());
 
         if ("APPROVE".equals(normalizedAction)) {
-            report.setStatus("PROCESSED");
+            report.setStatus("RESOLVED");
         } else {
             report.setStatus("REJECTED");
         }
@@ -203,7 +203,7 @@ public class ReportService {
         if ("USER".equals(report.getTargetType())) {
             User user = userRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
-            long approvedCount = reportRepository.countByTargetTypeAndTargetIdAndStatus("USER", user.getId(), "PROCESSED");
+            long approvedCount = reportRepository.countByTargetTypeAndTargetIdAndStatus("USER", user.getId(), "RESOLVED");
             if (approvedCount >= 3) {
                 user.setStatus("BANNED");
                 user.setUpdatedAt(java.time.LocalDateTime.now());
