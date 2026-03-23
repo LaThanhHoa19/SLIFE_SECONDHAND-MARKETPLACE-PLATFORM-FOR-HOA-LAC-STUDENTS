@@ -85,34 +85,128 @@ export default function ProfileHeader({
                     boxShadow: 'inset 0 0 100px rgba(0,0,0,0.2)',
                 }}
             >
-                {isMe ? (
-                    <>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            ref={coverInputRef}
-                            style={{ display: 'none' }}
-                            onChange={handleCoverChange}
-                        />
-                        <Button
-                            startIcon={uploadingCover ? <CircularProgress size={18} color="inherit" /> : <PhotoCameraIcon />}
-                            onClick={() => coverInputRef.current?.click()}
-                            disabled={uploadingCover}
-                            variant="contained"
-                            size="small"
-                            sx={{
-                                position: 'absolute',
-                                bottom: 16,
-                                right: 16,
-                                textTransform: 'none',
-                                borderRadius: 2,
-                                fontWeight: 600,
-                                bgcolor: 'rgba(255,255,255,0.9)',
-                                backdropFilter: 'blur(10px)',
-                                color: 'grey.900',
-                                border: '1px solid rgba(255,255,255,0.3)',
-                                '&:hover': { bgcolor: '#fff' },
-                            }}
+              <MenuItem onClick={() => { handleMenuClose(); handleOpenReportDialog(); }} sx={{ color: '#ff5252', gap: 1 }}>
+                <ReportIcon sx={{ fontSize: 18 }} /> Báo cáo
+              </MenuItem>
+            </Menu>
+          </Box>
+        )}
+      </Box>
+
+      <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, sm: 2 }, mt: -10, position: 'relative', zIndex: 1 }}>
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 4,
+            overflow: 'hidden',
+            bgcolor: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+          }}
+        >
+          {/* Avatar + tên, ngày tham gia, rating, Chat/Báo cáo */}
+          <Box sx={{ px: { xs: 2, sm: 4 }, pt: 4, pb: 4 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 3 }}>
+              <Box sx={{ position: 'relative' }}>
+                <Avatar
+                  src={avatarUrl}
+                  sx={{
+                    width: 120,
+                    height: 120,
+                    border: 4,
+                    borderColor: 'white',
+                    boxShadow: '0 8px 24px rgba(157, 110, 237, 0.25)',
+                    bgcolor: '#9D6EED',
+                    fontSize: '3rem',
+                  }}
+                >
+                  {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
+                </Avatar>
+                {user.isOnline && (
+                  <Box sx={{
+                    position: 'absolute',
+                    bottom: 5,
+                    right: 15,
+                    width: 18,
+                    height: 18,
+                    bgcolor: '#4caf50',
+                    borderRadius: '50%',
+                    border: '3px solid white',
+                    zIndex: 2
+                  }} />
+                )}
+                {isMe && (
+                  <>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={avatarInputRef}
+                      style={{ display: 'none' }}
+                      onChange={handleAvatarChange}
+                    />
+                    <Button
+                      size="small"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        right: 0,
+                        minWidth: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        bgcolor: PURPLE,
+                        color: 'white',
+                        '&:hover': { bgcolor: '#835cd4' },
+                        boxShadow: 3,
+                      }}
+                      title="Đổi avatar"
+                    >
+                      {uploadingAvatar ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        <PhotoCameraIcon sx={{ fontSize: 18 }} />
+                      )}
+                    </Button>
+                  </>
+                )}
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 280 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Typography variant="h4" fontWeight={800} sx={{ color: '#1d1d1f', letterSpacing: '-0.02em' }}>
+                        {fullName}
+                      </Typography>
+                      {user.isOnline && !isMe && (
+                        <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 600, display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                          ● Đang hoạt động
+                        </Typography>
+                      )}
+                    </Box>
+                    {joinDate && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, color: 'text.secondary' }}>
+                        <AccessTimeIcon sx={{ fontSize: 16 }} />
+                        <Typography variant="body2">{joinDate}</Typography>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1.5 }}>
+                    {!isMe ? (
+                      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                        <IconButton
+                          sx={{
+                            bgcolor: 'rgba(157, 110, 237, 0.1)',
+                            color: PURPLE,
+                            width: 40,
+                            height: 40,
+                            borderRadius: 2,
+                            '&:hover': { bgcolor: PURPLE, color: 'white' },
+                            transition: 'all 0.2s ease'
+                          }}
+                          title="Chia sẻ"
                         >
                             {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
                         </Button>
