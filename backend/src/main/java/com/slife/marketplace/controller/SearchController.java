@@ -1,3 +1,4 @@
+// backend/src/main/java/com/slife/marketplace/controller/SearchController.java
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.SearchRequest;
@@ -27,9 +28,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * SCRUM-43: Basic keyword search endpoint.
- */
 @RestController
 @RequestMapping("/api")
 public class SearchController {
@@ -46,18 +44,10 @@ public class SearchController {
         this.followService = followService;
     }
 
-    /**
-     * GET /api/search
-     * Query params: q, categoryId, location, page, size.
-     */
     @GetMapping("/search")
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<ListingPageResponse>> search(@Valid SearchRequest request) {
         Page<Listing> pageResult = searchService.search(request);
-
-        if (pageResult.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error("MSG01", "No search results"));
-        }
 
         Optional<User> viewer = userService.getCurrentUserOptional();
         Set<Long> followedSellerIds = resolveFollowedSellerIds(viewer.orElse(null), pageResult.getContent());
