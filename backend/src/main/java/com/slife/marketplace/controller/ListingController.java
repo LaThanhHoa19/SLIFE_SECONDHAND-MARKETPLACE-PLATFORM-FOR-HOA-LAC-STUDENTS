@@ -87,8 +87,9 @@ public class ListingController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
+        User viewer = userService.getCurrentUserOptional().orElse(null);
         PagedResponse<ListingCardResponse> listings =
-                listingService.getActiveListingCards(page, size);
+                listingService.getActiveListingCards(page, size, viewer);
 
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }

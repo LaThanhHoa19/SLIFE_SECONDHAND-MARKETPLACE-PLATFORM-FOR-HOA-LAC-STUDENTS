@@ -30,6 +30,9 @@ public class UserProfileResponse {
     /** Number of users following this profile. */
     private long followerCount;
 
+    /** How many users this profile is following. */
+    private long followingCount;
+
     /**
      * Whether the authenticated viewer follows this user.
      * Null when viewing own profile or when viewer is unknown.
