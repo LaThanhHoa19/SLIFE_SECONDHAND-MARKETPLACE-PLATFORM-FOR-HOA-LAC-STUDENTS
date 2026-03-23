@@ -92,7 +92,10 @@ public class ListingService {
                 : Set.of();
 
         List<ListingResponse> content = pageResult.getContent().stream()
-                .map(listing -> toListingResponse(listing, currentUser, savedIds.contains(listing.getId())))
+                .map(listing -> toListingResponse(
+                        listing,
+                        currentUser,
+                        listing.getId() != null && savedIds.contains(listing.getId())))
                 .toList();
 
         return new PagedResponse<>(
@@ -275,7 +278,7 @@ public class ListingService {
         String[] parts = sort.split(",");
         String field = parts[0].trim();
         if (!ALLOWED_SORT_FIELDS.contains(field)) {
-            field = "createdAt";
+            return Sort.by(Sort.Direction.DESC, "createdAt");
         }
 
         Sort.Direction direction = Sort.Direction.DESC;
