@@ -1,9 +1,13 @@
 package com.slife.marketplace.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,9 +20,11 @@ import org.springframework.security.config.Customizer;
 public class SecurityConfig {
 
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final ObjectMapper objectMapper;
 
-  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+  public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
     this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    this.objectMapper = objectMapper;
   }
 
   @Bean
@@ -58,6 +64,13 @@ public class SecurityConfig {
             // Everything else requires authentication
             .anyRequest()
             .authenticated())
+        .exceptionHandling(e -> e.accessDeniedHandler((request, response, ex) -> {
+          response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+          response.setCharacterEncoding("UTF-8");
+          response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+          BaseResponse<Object> body = new BaseResponse<>("FORBIDDEN", "Bạn không có quyền truy cập tính năng này", null);
+          response.getWriter().write(objectMapper.writeValueAsString(body));
+        }))
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
