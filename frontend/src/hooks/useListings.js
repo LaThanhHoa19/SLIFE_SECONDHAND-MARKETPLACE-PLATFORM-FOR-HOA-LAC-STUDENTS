@@ -3,9 +3,9 @@
  * API dùng: GET /api/listings?q=&category=&sort=&page=&size=.
  * Expose: data, meta, isLoading, error, refetch, params, setParams.
  */
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {getListings, searchListings} from '../api/listingApi';
-import {formatPickupDisplayLine} from '../utils/addressDisplay';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getListings, searchListings } from '../api/listingApi';
+import { formatPickupDisplayLine } from '../utils/addressDisplay';
 import useDebounce from './useDebounce';
 
 const toBoolean = (value) => value === true || value === 1 || value === '1';
@@ -20,9 +20,9 @@ const normalizeSeller = (item) => {
     const fallbackName = sellerSummary || item?.sellerName || item?.seller_name;
     const avatar = item?.sellerAvatarUrl ?? item?.seller_avatar_url;
     return fallbackName
-        ? {fullName: fallbackName, avatarUrl: avatar}
+        ? { fullName: fallbackName, avatarUrl: avatar }
         : avatar
-            ? {avatarUrl: avatar}
+            ? { avatarUrl: avatar }
             : {};
 };
 
@@ -88,13 +88,12 @@ const normalizeConditionParam = (condition) => {
     return String(condition).trim().toUpperCase();
 };
 
-
 const MIN_LOADING_MS = 320;
 
 export default function useListings(initialParams = {}) {
-    const [params, setParams] = useState({page: 0, size: 10, ...initialParams});
+    const [params, setParams] = useState({ page: 0, size: 10, ...initialParams });
     const [data, setData] = useState([]);
-    const [meta, setMeta] = useState({totalPages: 0, totalElements: 0});
+    const [meta, setMeta] = useState({ totalPages: 0, totalElements: 0 });
     const [isLoading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const debouncedQuery = useDebounce(params.q);
@@ -121,7 +120,17 @@ export default function useListings(initialParams = {}) {
                 next.condition === prev.condition && next.minPrice === prev.minPrice && next.maxPrice === prev.maxPrice;
             return same ? prev : next;
         });
-    }, [initialParams?.category, initialParams?.location, initialParams?.sort, initialParams?.page, initialParams?.size, initialParams?.q, initialParams?.condition, initialParams?.minPrice, initialParams?.maxPrice]);
+    }, [
+        initialParams?.category,
+        initialParams?.location,
+        initialParams?.sort,
+        initialParams?.page,
+        initialParams?.size,
+        initialParams?.q,
+        initialParams?.condition,
+        initialParams?.minPrice,
+        initialParams?.maxPrice,
+    ]);
 
     const fetchData = useCallback(async (currentParams, query) => {
         if (abortRef.current) abortRef.current.abort();
@@ -131,35 +140,43 @@ export default function useListings(initialParams = {}) {
         const loadingStarted = Date.now();
         setLoading(true);
         setError(null);
+
         try {
             const p = normalizeParams(currentParams, query);
-            const hasFilters = Object.keys(p).some(k => 
-                ['q', 'category', 'location', 'condition', 'minPrice', 'maxPrice'].includes(k) && p[k] !== '' && p[k] != null
-            ) || (p.sort && p.sort !== 'createdAt,desc');
+            const hasFilters =
+                Object.keys(p).some((k) =>
+                    ['q', 'category', 'location', 'condition', 'minPrice', 'maxPrice'].includes(k) &&
+                    p[k] !== '' &&
+                    p[k] != null
+                ) || (p.sort && p.sort !== 'createdAt,desc');
 
-            const requestPromise = hasFilters ? searchListings({
-                q: p.q,
-                categoryId: p.category,
-                location: p.location,
-                itemCondition: normalizeConditionParam(p.condition),
-                priceMin: p.minPrice,
-                priceMax: p.maxPrice,
-                sort: p.sort,
-                page: p.page,
-                size: p.size
-            }, {signal: controller.signal}) : getListings(p, {signal: controller.signal});
+            const requestPromise = hasFilters
+                ? searchListings(
+                    {
+                        q: p.q,
+                        categoryId: p.category,
+                        location: p.location,
+                        itemCondition: normalizeConditionParam(p.condition),
+                        priceMin: p.minPrice,
+                        priceMax: p.maxPrice,
+                        sort: p.sort,
+                        page: p.page,
+                        size: p.size,
+                    },
+                    { signal: controller.signal }
+                )
+                : getListings(p, { signal: controller.signal });
 
-            const {data: res} = await requestPromise;
+            const { data: res } = await requestPromise;
             if (controller.signal.aborted) return;
 
-            // Backend current contract: { code, message, data: { content, totalPages, totalElements, ... } }
-            // Fallback to legacy payloads for compatibility.
             const payload = res?.data ?? res;
             const list = Array.isArray(payload?.content)
                 ? payload.content
                 : Array.isArray(payload)
                     ? payload
                     : [];
+
             setData(list.map(normalizeListing));
             setMeta({
                 totalPages: payload?.totalPages ?? 1,
@@ -185,11 +202,22 @@ export default function useListings(initialParams = {}) {
 
     useEffect(() => {
         fetchData(params, debouncedQuery);
-    }, [params.page, params.size, params.category, params.location, params.sort, params.condition, params.minPrice, params.maxPrice, debouncedQuery, fetchData]);
+    }, [
+        params.page,
+        params.size,
+        params.category,
+        params.location,
+        params.sort,
+        params.condition,
+        params.minPrice,
+        params.maxPrice,
+        debouncedQuery,
+        fetchData,
+    ]);
 
     const refetch = useCallback(() => {
         fetchData(params, debouncedQuery);
     }, [fetchData, params, debouncedQuery]);
 
-    return {data, meta, isLoading, error, refetch, params, setParams};
+    return { data, meta, isLoading, error, refetch, params, setParams };
 }

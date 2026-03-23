@@ -23,5 +23,7 @@ public class ListingCardResponse {
     private Long sellerId;
     private String sellerName;
     private String sellerAvatarUrl;
-    private java.time.Instant createdAt;
+
+    /** True if the current viewer follows the seller (false when anonymous or self). */
+    private Boolean isFollowed;
 }
