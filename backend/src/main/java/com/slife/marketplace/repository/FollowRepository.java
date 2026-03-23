@@ -1,12 +1,24 @@
-/**
- * Mục đích: Repository FollowRepository
- * Endpoints liên quan: service
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.repository;
+
 import com.slife.marketplace.entity.Follow;
-import org.springframework.data.jpa.repository.JpaRepository;import org.springframework.stereotype.Repository;
-@Repository public interface FollowRepository extends JpaRepository<Follow,Long> { }// TODO query methods.
+import com.slife.marketplace.entity.FollowId;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
+import java.util.Set;
+
+@Repository
+public interface FollowRepository extends JpaRepository<Follow, FollowId> {
+
+    boolean existsByFollower_IdAndFollowed_Id(Long followerId, Long followedId);
+
+    void deleteByFollower_IdAndFollowed_Id(Long followerId, Long followedId);
+
+    long countByFollowed_Id(Long followedId);
+
+    @Query("SELECT f.followed.id FROM Follow f WHERE f.follower.id = :followerId AND f.followed.id IN :ids")
+    Set<Long> findFollowedIdsAmong(@Param("followerId") Long followerId, @Param("ids") Collection<Long> ids);
+}
