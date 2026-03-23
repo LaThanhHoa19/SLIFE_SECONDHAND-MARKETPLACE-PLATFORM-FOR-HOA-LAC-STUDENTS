@@ -25,7 +25,12 @@ import java.util.Set;
 @Service
 public class ConfigService {
 
-    private static final Set<String> NUMERIC_CONFIG_KEYS = Set.of("MAX_IMAGES", "LISTING_EXPIRATION");
+    private static final Set<String> NUMERIC_CONFIG_KEYS = Set.of(
+            "MAX_IMAGES",
+            "LISTING_EXPIRATION",
+            "MAX_IMAGES_PER_POST",
+            "DEAL_TIMEOUT_DAYS",
+            "REPORT_THRESHOLD");
     private final ConfigRepository configRepository;
 
     public ConfigService(ConfigRepository configRepository) {
@@ -56,6 +61,19 @@ public class ConfigService {
         return configRepository.findByConfigName(normalizedKey)
                 .map(Configuration::getConfigValue)
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public int getIntConfigValue(String key, int defaultValue) {
+        String raw = getConfigValueByKey(key);
+        if (raw == null || raw.isBlank()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException ex) {
+            return defaultValue;
+        }
     }
 
     @Transactional
