@@ -33,7 +33,7 @@ import ReviewList from '../../components/profile/ReviewList';
 import ListingSection from '../../components/profile/ListingSection';
 
 // Mock Data
-import { MOCK_REVIEWS, MOCK_SELLING, MOCK_SOLD, mockSeller } from './mockData';
+import { MOCK_REVIEWS } from './mockData';
 
 function getPayload(res) {
   const body = res?.data;
@@ -103,7 +103,13 @@ export default function ProfilePage() {
         const res = await userApi.getUserById(id);
         setProfileUser(getPayload(res));
       } else {
-        setProfileUser(mockSeller(id));
+        try {
+          const res = await userApi.getUserById(id);
+          const data = getPayload(res);
+          setProfileUser(data);
+        } catch(err) {
+          setError('Không tải được thông tin người dùng.');
+        }
       }
     } catch (err) {
       setError(err?.message || 'Không tải được thông tin người dùng.');
@@ -119,11 +125,15 @@ export default function ProfilePage() {
       const res = await getListings();
       const data = getPayload(res);
       const list = Array.isArray(data) ? data : data?.content ?? [];
-      const name = profileUser?.fullName ?? profileUser?.full_name;
-      const filtered = name
+      const targetId = profileUser?.id;
+      const filtered = targetId
           ? list.filter((item) => {
-            const sellerName = item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
-            return sellerName === name;
+            const sellerId = item.sellerId ?? item.seller?.id ?? item.seller?.userId ?? item.seller?.user_id;
+            // fall back to name filter if ID is not available in the listing's seller object
+            if (sellerId != null && targetId != null) return String(sellerId) === String(targetId);
+            const sellerName = item.sellerName ?? item.sellerSummary?.fullName ?? item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
+            const name = profileUser?.fullName ?? profileUser?.full_name;
+            return name && sellerName === name;
           })
           : list;
       setListings(filtered);
@@ -132,7 +142,7 @@ export default function ProfilePage() {
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser?.fullName, profileUser?.full_name]);
+  }, [profileUser]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser) loadListings(); }, [profileUser, loadListings]);
@@ -285,15 +295,14 @@ export default function ProfilePage() {
               {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
             </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-                <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
-              </Tabs>
-              <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-                {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? MOCK_SELLING : MOCK_SELLING.slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} emptyMessage="Chưa có tin đăng nào." />}
-                {tab === 1 && <ListingSection isMe={isMe} listings={MOCK_SOLD} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} />}
-                {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
-              </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+              <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
+            </Tabs>
+            <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
+              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {tab === 1 && <ListingSection isMe={isMe} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
             </Box>
           </Box>
         </Box>
