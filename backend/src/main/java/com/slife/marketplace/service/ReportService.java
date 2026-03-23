@@ -38,20 +38,24 @@ public class ReportService {
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "USER");
     private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "DISMISSED");
+    private static final int DEFAULT_REPORT_THRESHOLD = 3;
 
     private final ReportRepository reportRepository;
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ConfigService configService;
 
     public ReportService(ReportRepository reportRepository,
                          ListingRepository listingRepository,
                          UserRepository userRepository,
-                         NotificationService notificationService) {
+                         NotificationService notificationService,
+                         ConfigService configService) {
         this.reportRepository = reportRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.configService = configService;
     }
 
     @Transactional
@@ -204,11 +208,13 @@ public class ReportService {
             User user = userRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
             long approvedCount = reportRepository.countByTargetTypeAndTargetIdAndStatus("USER", user.getId(), "RESOLVED");
-            if (approvedCount >= 3) {
+            int reportThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
+            if (approvedCount >= reportThreshold) {
                 user.setStatus("BANNED");
                 user.setUpdatedAt(java.time.LocalDateTime.now());
                 userRepository.save(user);
-                log.warn("User auto-banned due to approved reports. userId={}, approvedReports={}", user.getId(), approvedCount);
+                log.warn("User auto-banned due to approved reports. userId={}, approvedReports={}, threshold={}",
+                        user.getId(), approvedCount, reportThreshold);
             }
         }
     }
