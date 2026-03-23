@@ -43,17 +43,20 @@ public class ListingService {
     private final SavedListingRepository savedListingRepository;
     private final CategoryRepository categoryRepository;
     private final AddressRepository addressRepository;
+    private final NotificationService notificationService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
                           SavedListingRepository savedListingRepository,
                           CategoryRepository categoryRepository,
-                          AddressRepository addressRepository) {
+                          AddressRepository addressRepository,
+                          NotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
         this.categoryRepository = categoryRepository;
         this.addressRepository = addressRepository;
+        this.notificationService = notificationService;
     }
 
     // ----------------------------------------------------------------
@@ -187,6 +190,10 @@ public class ListingService {
 
         Listing saved = listingRepository.save(listing);
         log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
+
+        if (!isDraft) {
+            notificationService.notifyListingPublished(seller, saved.getId(), saved.getTitle());
+        }
 
         return toListingResponse(saved, seller, false);
     }
