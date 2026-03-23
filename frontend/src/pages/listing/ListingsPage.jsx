@@ -7,7 +7,7 @@ import Pagination from '../../components/common/Pagination';
 import useListings from '../../hooks/useListings';
 
 export default function ListingsPage() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { data, isLoading, meta } = useListings({
         q: searchParams.get('q') || '',
         category: searchParams.get('category') || '',
@@ -25,6 +25,11 @@ export default function ListingsPage() {
                 <Pagination
                     page={Number(searchParams.get('page') || 0)}
                     totalPages={meta.totalPages}
+                    onChange={(nextPage) => {
+                        const params = new URLSearchParams(searchParams);
+                        params.set('page', String(nextPage));
+                        setSearchParams(params);
+                    }}
                 />
             </Box>
 

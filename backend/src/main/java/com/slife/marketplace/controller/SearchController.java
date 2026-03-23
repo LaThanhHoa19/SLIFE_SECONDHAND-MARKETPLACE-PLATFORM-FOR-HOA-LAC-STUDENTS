@@ -39,10 +39,6 @@ public class SearchController {
     public ResponseEntity<ApiResponse<ListingPageResponse>> search(@Valid SearchRequest request) {
         Page<Listing> pageResult = searchService.search(request);
 
-        if (pageResult.isEmpty()) {
-            return ResponseEntity.ok(ApiResponse.error("MSG01", "No search results"));
-        }
-
         List<ListingResponse> content = pageResult.getContent().stream()
                 .map(this::toListingResponse)
                 .toList();
