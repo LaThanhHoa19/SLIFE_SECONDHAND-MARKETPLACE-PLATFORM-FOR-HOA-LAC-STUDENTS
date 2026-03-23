@@ -33,5 +33,11 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
                                @Param("status") String status,
                                Pageable pageable);
 
+    @Query("SELECT r FROM Report r " +
+            "JOIN FETCH r.reporter reporter " +
+            "WHERE r.status = 'PENDING' " +
+            "ORDER BY r.createdAt DESC")
+    List<Report> findPendingReportsWithReporter();
+
     long countByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);
 }
