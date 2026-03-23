@@ -1,11 +1,14 @@
 /** Card hiển thị listing theo layout feed (header + content + media + actions). */
+import { useEffect, useState } from 'react';
 import {
     Avatar,
     Box,
     Card,
     CardContent,
+    CircularProgress,
     IconButton,
     Stack,
+    Tooltip,
     Typography,
 } from '@mui/material';
 import {
@@ -14,11 +17,15 @@ import {
     MoreHoriz as MoreIcon,
     Send as SendIcon,
     Share as ShareIcon,
+    PersonAdd as PersonAddIcon,
+    PersonRemove as PersonRemoveIcon,
 } from '@mui/icons-material';
 import {useNavigate} from 'react-router-dom';
 import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
+import {useAuth} from '../../hooks/useAuth';
+import * as followApi from '../../api/followApi';
 
 const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
 
@@ -62,18 +69,51 @@ export default function ListingCard({
                                         imageAspect,
                                     }) {
     const navigate = useNavigate();
+    const { user, isAuthenticated } = useAuth();
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
-    const contentInsetLeft = '62px';
+    const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
+    const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
+    const [followed, setFollowed] = useState(!!listing?.isFollowed);
+    const [followLoading, setFollowLoading] = useState(false);
+
+    useEffect(() => {
+        setFollowed(!!listing?.isFollowed);
+    }, [listing?.id, listing?.isFollowed]);
 
     const handleClick = () => {
         if (onClick) onClick(listing);
         else if (id) navigate(`/listings/${id}`);
     };
 
+    const handleFollowClick = async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!sellerId || isMe) return;
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+        setFollowLoading(true);
+        try {
+            if (followed) {
+                await followApi.unfollowUser(sellerId);
+                setFollowed(false);
+            } else {
+                await followApi.followUser(sellerId);
+                setFollowed(true);
+            }
+        } catch {
+            /* silent — optional toast at feed level */
+        } finally {
+            setFollowLoading(false);
+        }
+    };
+
     const conditionText = getConditionText(listing);
     const locationText = getLocationText(listing);
+    const showFollowBtn = sellerId && !isMe;
 
     return (
         <Card
@@ -103,9 +143,34 @@ export default function ListingCard({
                         </Typography>
                     </Box>
                 </Stack>
-                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                    <MoreIcon />
-                </IconButton>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {showFollowBtn && (
+                        <Tooltip title={followed ? 'Bỏ theo dõi' : 'Theo dõi người bán'}>
+                            <span>
+                                <IconButton
+                                    size="small"
+                                    disabled={followLoading}
+                                    onClick={handleFollowClick}
+                                    sx={{
+                                        color: followed ? '#9D6EED' : 'rgba(255,255,255,0.5)',
+                                        '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.12)' },
+                                    }}
+                                >
+                                    {followLoading ? (
+                                        <CircularProgress size={18} color="inherit" />
+                                    ) : followed ? (
+                                        <PersonRemoveIcon fontSize="small" />
+                                    ) : (
+                                        <PersonAddIcon fontSize="small" />
+                                    )}
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    )}
+                    <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                        <MoreIcon />
+                    </IconButton>
+                </Box>
             </Box>
 
             <Box

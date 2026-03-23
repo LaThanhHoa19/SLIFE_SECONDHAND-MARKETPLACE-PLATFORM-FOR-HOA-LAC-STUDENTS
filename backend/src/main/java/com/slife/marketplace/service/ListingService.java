@@ -28,9 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -43,17 +46,20 @@ public class ListingService {
     private final SavedListingRepository savedListingRepository;
     private final CategoryRepository categoryRepository;
     private final AddressRepository addressRepository;
+    private final FollowService followService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
                           SavedListingRepository savedListingRepository,
                           CategoryRepository categoryRepository,
-                          AddressRepository addressRepository) {
+                          AddressRepository addressRepository,
+                          FollowService followService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
         this.categoryRepository = categoryRepository;
         this.addressRepository = addressRepository;
+        this.followService = followService;
     }
 
     // ----------------------------------------------------------------
@@ -91,8 +97,15 @@ public class ListingService {
                 ? new java.util.HashSet<>(savedListingRepository.findListingIdsByUserId(currentUser.getId()))
                 : Set.of();
 
-        List<ListingResponse> content = pageResult.getContent().stream()
-                .map(listing -> toListingResponse(listing, currentUser, savedIds.contains(listing.getId())))
+        List<Listing> listings = pageResult.getContent();
+        Set<Long> followedSellerIds = resolveFollowedSellerIds(currentUser, listings);
+
+        List<ListingResponse> content = listings.stream()
+                .map(listing -> toListingResponse(
+                        listing,
+                        currentUser,
+                        savedIds.contains(listing.getId()),
+                        isFollowedForListing(listing, currentUser, followedSellerIds)))
                 .toList();
 
         return new PagedResponse<>(
@@ -108,7 +121,7 @@ public class ListingService {
      * Optimized method for Listing Cards (UC-ListingCard-Performance)
      */
     @Transactional(readOnly = true)
-    public PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> getActiveListingCards(int page, int size) {
+    public PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> getActiveListingCards(int page, int size, User currentUser) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,
@@ -118,8 +131,31 @@ public class ListingService {
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
                 listingRepository.findAllActiveListingCards(pageable);
 
+        java.util.List<com.slife.marketplace.dto.response.ListingCardResponse> content =
+                new java.util.ArrayList<>(pageResult.getContent());
+        if (currentUser != null && !content.isEmpty()) {
+            Set<Long> sellerIds = content.stream()
+                    .map(com.slife.marketplace.dto.response.ListingCardResponse::getSellerId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Set<Long> followed = sellerIds.isEmpty()
+                    ? Set.of()
+                    : new HashSet<>(followService.findFollowedIdsAmong(currentUser.getId(), sellerIds));
+            for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
+                Long sid = card.getSellerId();
+                boolean f = sid != null
+                        && !sid.equals(currentUser.getId())
+                        && followed.contains(sid);
+                card.setIsFollowed(f);
+            }
+        } else {
+            for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
+                card.setIsFollowed(false);
+            }
+        }
+
         return new PagedResponse<>(
-                pageResult.getContent(),
+                content,
                 pageResult.getNumber(),
                 pageResult.getSize(),
                 pageResult.getTotalElements(),
@@ -129,7 +165,7 @@ public class ListingService {
 
     /** Public for use by SavedListingService when building saved list. */
     public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
-        return toListingResponse(listing, currentUser, isSaved);
+        return toListingResponse(listing, currentUser, isSaved, computeIsFollowed(listing, currentUser));
     }
 
     // ----------------------------------------------------------------
@@ -188,7 +224,7 @@ public class ListingService {
         Listing saved = listingRepository.save(listing);
         log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
-        return toListingResponse(saved, seller, false);
+        return toListingResponse(saved, seller, false, false);
     }
 
     private Address resolvePickupAddress(User seller, CreateListingRequest request) {
@@ -222,7 +258,7 @@ public class ListingService {
         return addressRepository.save(addr);
     }
 
-    private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved) {
+    private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved, boolean isFollowed) {
         ListingResponse response = new ListingResponse();
 
         response.setId(listing.getId());
@@ -236,9 +272,43 @@ public class ListingService {
         response.setSellerSummary(buildSellerSummary(listing));
 
         response.setIsSaved(isSaved);
-        response.setIsFollowed(false);
+        response.setIsFollowed(isFollowed);
 
         return response;
+    }
+
+    private Set<Long> resolveFollowedSellerIds(User currentUser, List<Listing> listings) {
+        if (currentUser == null || listings == null || listings.isEmpty()) {
+            return Set.of();
+        }
+        Set<Long> sellerIds = listings.stream()
+                .map(l -> l.getSeller() != null ? l.getSeller().getId() : null)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (sellerIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(followService.findFollowedIdsAmong(currentUser.getId(), sellerIds));
+    }
+
+    private boolean isFollowedForListing(Listing listing, User currentUser, Set<Long> followedSellerIds) {
+        if (currentUser == null || listing.getSeller() == null) {
+            return false;
+        }
+        if (listing.getSeller().getId().equals(currentUser.getId())) {
+            return false;
+        }
+        return followedSellerIds.contains(listing.getSeller().getId());
+    }
+
+    private boolean computeIsFollowed(Listing listing, User currentUser) {
+        if (currentUser == null || listing.getSeller() == null) {
+            return false;
+        }
+        if (listing.getSeller().getId().equals(currentUser.getId())) {
+            return false;
+        }
+        return followService.isFollowing(currentUser.getId(), listing.getSeller().getId());
     }
 
     private Object buildSellerSummary(Listing listing) {
@@ -273,13 +343,12 @@ public class ListingService {
         }
 
         String[] parts = sort.split(",");
-        String field = parts[0].trim();
-        if (!ALLOWED_SORT_FIELDS.contains(field)) {
-            field = "createdAt";
-        }
+        String rawField = parts[0].trim();
+        boolean fieldInvalid = !ALLOWED_SORT_FIELDS.contains(rawField);
+        String field = fieldInvalid ? "createdAt" : rawField;
 
         Sort.Direction direction = Sort.Direction.DESC;
-        if (parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())) {
+        if (!fieldInvalid && parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())) {
             direction = Sort.Direction.ASC;
         }
 
