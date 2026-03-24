@@ -115,7 +115,16 @@ function createPinElement() {
     return el;
 }
 
-export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft, submitting = false, savingDraft = false, mode = 'create' }) {
+export default function ListingForm({
+    defaultValues = {},
+    onSubmit,
+    onSaveDraft,
+    submitting = false,
+    savingDraft = false,
+    mode = 'create',
+    /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
+    existingImageUrls = [],
+}) {
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
@@ -243,19 +252,39 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             .catch((e) => console.error('Nominatim error:', e));
     }, [adminLocation]);
 
-    // Giá khi check/uncheck "Cho tặng"
+    // Giá khi bật/tắt "Cho tặng" — không xóa giá lần đầu trên trang sửa (giá đã load từ API)
+    const prevGiveawayRef = useRef(null);
     useEffect(() => {
+        if (mode === 'edit') {
+            if (prevGiveawayRef.current === null) {
+                prevGiveawayRef.current = isGiveaway;
+                return;
+            }
+            if (prevGiveawayRef.current !== isGiveaway) {
+                if (isGiveaway) {
+                    setValue('price', '0');
+                    clearErrors('price');
+                } else {
+                    setValue('price', '');
+                }
+                prevGiveawayRef.current = isGiveaway;
+            }
+            return;
+        }
         if (isGiveaway) {
             setValue('price', '0');
             clearErrors('price');
         } else {
             setValue('price', '');
         }
-    }, [isGiveaway, setValue, clearErrors]);
+    }, [isGiveaway, setValue, clearErrors, mode]);
 
     const formatPrice = (value) => {
-        if (!value || value === "0") return value;
-        return Number(value.toString().replace(/\D/g, "")).toLocaleString("vi-VN");
+        if (value == null || value === '') return '';
+        if (value === '0' || value === 0) return '0';
+        const digits = String(value).replace(/\D/g, '');
+        if (!digits) return '';
+        return Number(digits).toLocaleString('vi-VN');
     };
 
     const handleFormSubmit = (values) => {
@@ -276,11 +305,15 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
     const handleSaveDraftClick = (e) => {
         e.preventDefault();
+        if (mode !== 'create') return;
         if (imageFiles.length === 0) {
             setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
         }
         handleSubmit(handleSaveDraftSubmit)(e);
     };
+
+    const hasAtLeastOneImage =
+        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
 
     const handleFilesChange = useCallback((files) => {
         setImageFiles(files);
@@ -289,12 +322,21 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
     const onFormSubmit = (e) => {
         e.preventDefault();
-        if (imageFiles.length === 0) {
-            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
-            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-        }
-        handleSubmit(handleFormSubmit)(e);
+        handleSubmit(
+            (values) => {
+                if (!hasAtLeastOneImage) {
+                    setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+                    imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    return;
+                }
+                handleFormSubmit(values);
+            },
+            () => {
+                if (!hasAtLeastOneImage) {
+                    setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+                }
+            }
+        )(e);
     };
 
     // ── Vietmap GL: khởi tạo MỘT LẦN (không có adminLocation trong deps) ──
@@ -651,7 +693,8 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             <Box mb={4}>
                 <ImageUploader
                     onFilesChange={handleFilesChange}
-                    error={imageError}
+                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
+                    existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
                 />
 
                 {imageError && (
@@ -1075,25 +1118,27 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             <Grid container spacing={3} mt={2} alignItems="center">
                 <Grid item xs={12}>
                     <Stack direction="row" gap={2}>
-                        <Button
-                            variant="outlined"
-                            fullWidth
-                            onClick={handleSaveDraftClick}
-                            disabled={savingDraft || submitting}
-                            sx={{
-                                backgroundColor: "#E0E0E0",
-                                color: "#201D26",
-                                py: 1.1,
-                                fontSize: "14px",
-                                fontWeight: 600,
-                                borderRadius: "10px",
-                                border: "none",
-                                "&:hover": { backgroundColor: "#d5d5d5" },
-                                "&.Mui-disabled": { opacity: 0.6 },
-                            }}
-                        >
-                            {savingDraft ? 'ĐANG LƯU...' : 'LƯU NHÁP'}
-                        </Button>
+                        {mode === 'create' && (
+                            <Button
+                                variant="outlined"
+                                fullWidth
+                                onClick={handleSaveDraftClick}
+                                disabled={savingDraft || submitting}
+                                sx={{
+                                    backgroundColor: "#E0E0E0",
+                                    color: "#201D26",
+                                    py: 1.1,
+                                    fontSize: "14px",
+                                    fontWeight: 600,
+                                    borderRadius: "10px",
+                                    border: "none",
+                                    "&:hover": { backgroundColor: "#d5d5d5" },
+                                    "&.Mui-disabled": { opacity: 0.6 },
+                                }}
+                            >
+                                {savingDraft ? 'ĐANG LƯU...' : 'LƯU NHÁP'}
+                            </Button>
+                        )}
                         <Button
                             type="submit"
                             variant="contained"

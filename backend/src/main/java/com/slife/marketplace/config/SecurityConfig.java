@@ -22,6 +22,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final ObjectMapper objectMapper;
 
+    // Constructor bắt buộc để khởi tạo các tham số final
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.objectMapper = objectMapper;
@@ -43,30 +44,32 @@ public class SecurityConfig {
                                 "/api/geo/**",
                                 "/uploads/**",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**")
+                                "/v3/api-docs/**",
+                                "/chat/**") // Cho phép Websocket nếu có tính năng chat
                         .permitAll()
-                        // Save listing: auth required
+                        
+                        // Các chức năng yêu cầu đăng nhập
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
-                        // Delete draft listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/draft").authenticated()
-                        // Repost / Renew listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/repost").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/renew").authenticated()
-                        // Hide / Unhide listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
                         .requestMatchers("/api/me/**").authenticated()
-                        // /api/users/me must be checked before wildcard
+                        
+                        // Kiểm tra /me trước khi kiểm tra wildcard /*
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+                        
+                        // Public truy cập (khách xem được)
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
-                        // Guest access
                         .requestMatchers("/api/listings/**").permitAll()
-                        // Public read for listing comments
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/*/comments").permitAll()
+                        
                         // Admin-only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Everything else requires authentication
+                        
+                        // Mọi request còn lại yêu cầu đăng nhập
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.accessDeniedHandler((request, response, ex) -> {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
