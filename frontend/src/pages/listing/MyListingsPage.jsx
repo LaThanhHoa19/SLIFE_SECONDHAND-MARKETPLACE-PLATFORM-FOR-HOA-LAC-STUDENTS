@@ -187,7 +187,7 @@ function ActionButton({ icon, label, onClick, color, borderColor, bgColor, hover
 
 function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost, onDeleteDraft }) {
     const navigate = useNavigate();
-    const id = listing?.id;
+    const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const thumb = images[0];
     const statusColor = STATUS_COLORS[listing?.status] || STATUS_COLORS.DRAFT;
@@ -298,12 +298,14 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost
                                         hoverBg="rgba(255,165,0,0.16)"
                                     />
                                 </Tooltip>
-                                <Tooltip title="Chỉnh sửa (đang phát triển)" arrow>
-                                    <span>
-                                        <IconButton size="small" disabled sx={{ color: 'rgba(255,255,255,0.2)', p: '4px' }}>
-                                            <EditIcon sx={{ fontSize: 15 }} />
-                                        </IconButton>
-                                    </span>
+                                <Tooltip title="Chỉnh sửa tin đăng" arrow>
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => id && navigate(`/listings/${id}/edit`)}
+                                        sx={{ color: '#fff', p: '4px' }}
+                                    >
+                                        <EditIcon sx={{ fontSize: 15, color: '#fff' }} />
+                                    </IconButton>
                                 </Tooltip>
                             </>
                         )}
@@ -312,7 +314,7 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost
                             <>
                                 <Tooltip title="Tiếp tục chỉnh sửa và đăng bài" arrow>
                                     <ActionButton
-                                        icon={<EditIcon sx={{ fontSize: 12, color: '#9D6EED' }} />}
+                                        icon={<EditIcon sx={{ fontSize: 12, color: '#fff' }} />}
                                         label="Chỉnh sửa &amp; Đăng"
                                         onClick={() => navigate('/listings/new')}
                                         color="#9D6EED"
@@ -373,12 +375,14 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost
                         )}
 
                         {(activeTab === 'PENDING' || activeTab === 'REJECTED' || activeTab === 'REPORTED') && (
-                            <Tooltip title="Chỉnh sửa (đang phát triển)" arrow>
-                                <span>
-                                    <IconButton size="small" disabled sx={{ color: 'rgba(255,255,255,0.2)', p: '4px' }}>
-                                        <EditIcon sx={{ fontSize: 15 }} />
-                                    </IconButton>
-                                </span>
+                            <Tooltip title="Chỉnh sửa tin đăng" arrow>
+                                <IconButton
+                                    size="small"
+                                    onClick={() => id && navigate(`/listings/${id}/edit`)}
+                                    sx={{ color: '#fff', p: '4px' }}
+                                >
+                                    <EditIcon sx={{ fontSize: 15, color: '#fff' }} />
+                                </IconButton>
                             </Tooltip>
                         )}
                     </Stack>
