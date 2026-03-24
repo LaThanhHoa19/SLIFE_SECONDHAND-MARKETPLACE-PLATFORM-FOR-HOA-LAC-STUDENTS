@@ -37,9 +37,6 @@ import * as chatApi from '../../api/chatApi';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const WS_URL = `${API_BASE}/chat`;
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-const WS_URL   = `${API_BASE}/chat`;
-
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function getData(res) {
@@ -305,34 +302,8 @@ export default function ChatPage() {
 
   // ── Typing ────────────────────────────────────────────────────────────────
 
-  const sendTypingSignal = (isTyping) => {
-    if (!wsConnected || !stompClientRef.current || !activeSessionId) return;
-    stompClientRef.current.publish({
-      destination: '/app/chat.typing',
-      body: JSON.stringify({ sessionId: activeSessionId, isTyping }),
-    });
-  };
-
-  const stopTypingSignal = () => {
-    if (typingSentRef.current) {
-      sendTypingSignal(false);
-      typingSentRef.current = false;
-    }
-    clearTimeout(typingTimeoutRef.current);
-  };
-
-  const handleInputChange = (e) => {
-    setInputText(e.target.value);
-    if (!typingSentRef.current) {
-      sendTypingSignal(true);
-      typingSentRef.current = true;
-    }
-    clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      sendTypingSignal(false);
-      typingSentRef.current = false;
-    }, 2500);
-  };
+// handleInputChange was duplicated, keeping the more complete one below or merging.
+// Actually, let's keep the one at line 468 which is more integrated with WS.
 
   // ── Offer ─────────────────────────────────────────────────────────────────
 
@@ -565,7 +536,7 @@ export default function ChatPage() {
             <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
               <Typography 
                 component={RouterLink}
-                to={otherParticipantId ? `/profile/${otherParticipantId}` : '#'}
+                to={otherParticipantId === currentUserId ? '/profile' : (otherParticipantId ? `/profile/${otherParticipantId}` : '#')}
                 variant="subtitle1" 
                 fontWeight={600}
                 sx={{ textDecoration: 'none', color: 'inherit', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
@@ -606,7 +577,7 @@ export default function ChatPage() {
                       {!isMe && m.senderName && (
                         <Typography 
                           component={RouterLink}
-                          to={m.senderId ? `/profile/${m.senderId}` : '#'}
+                          to={m.senderId === currentUserId ? '/profile' : (m.senderId ? `/profile/${m.senderId}` : '#')}
                           variant="caption" 
                           display="block" 
                           color="text.secondary" 
