@@ -277,7 +277,7 @@ public class ListingService {
         Listing saved = listingRepository.save(listing);
         log.info("updateListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
-        return toListingResponse(saved, seller, false);
+        return toListingResponse(saved, seller, false, false);
     }
 
     private Address resolvePickupAddress(User seller, CreateListingRequest request) {
