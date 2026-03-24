@@ -17,6 +17,7 @@ const MAX_SIZE_MB = 5;
 export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, maxSizeMB = MAX_SIZE_MB }) {
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
+  const cap = Math.max(0, Math.min(maxFiles, MAX_FILES));
 
   // Xử lý tạo và thu hồi (cleanup) URL preview để tránh rò rỉ bộ nhớ
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, max
     );
 
     // Hợp nhất với danh sách cũ và giới hạn số lượng
-    setFiles(prev => [...prev, ...validFiles].slice(0, maxFiles));
+    setFiles(prev => [...prev, ...validFiles].slice(0, cap));
 
     // Reset value để có thể chọn lại cùng 1 file nếu cần
     e.target.value = '';
@@ -58,7 +59,7 @@ export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, max
   return (
       <Box>
         <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-          Ảnh sản phẩm (Tối đa {maxFiles} ảnh, mỗi ảnh ≤ {maxSizeMB}MB)
+          Ảnh sản phẩm (Tối đa {cap} ảnh, mỗi ảnh ≤ {maxSizeMB}MB)
         </Typography>
 
         {/* INPUT HIDDEN */}
@@ -71,8 +72,8 @@ export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, max
             onChange={handleAddImages}
         />
 
-      {/* KHUNG UPLOAD LỚN – chỉ hiện khi chưa có ảnh */}
-      {files.length === 0 && (
+      {/* KHUNG UPLOAD LỚN – chỉ hiện khi chưa có ảnh và còn slot */}
+      {cap > 0 && files.length === 0 && (
         <label htmlFor="upload-image-input" style={{ display: "block" }}>
           <Box
             sx={{
@@ -101,7 +102,7 @@ export default function ImageUploader({ onFilesChange, maxFiles = MAX_FILES, max
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
 
           {/* NÚT THÊM NHỎ */}
-          {files.length < MAX_FILES && (
+          {files.length < cap && (
             <label htmlFor="upload-image-input">
               <Box
                 sx={{
