@@ -21,3 +21,9 @@ export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`)
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
 export const uploadImages = (id, formData, onUploadProgress) =>
   axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
+
+// Comments
+export const getComments = (listingId) => axiosClient.get(`/api/v1/listings/${listingId}/comments`);
+export const createComment = (payload) => axiosClient.post('/api/v1/comments', payload);
+export const replyToComment = (id, payload) => axiosClient.post(`/api/v1/comments/${id}/reply`, payload);
+export const deleteComment = (id) => axiosClient.delete(`/api/v1/comments/${id}`);
