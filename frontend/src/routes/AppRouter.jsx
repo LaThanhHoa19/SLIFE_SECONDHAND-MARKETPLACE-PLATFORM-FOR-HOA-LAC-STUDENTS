@@ -19,12 +19,14 @@ import {
     SuspenseListingsPage,
     SuspenseListingDetailPage,
     SuspenseCreateListingPage,
+    SuspenseEditListingPage,
     SuspenseMyListingsPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
     SuspenseNotificationsPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
+    SuspenseReportDetailPage,
     SuspenseUserManagementPage,
     SuspenseCategoryManagementPage,
     SuspenseConfigurationManagementPage,
@@ -64,12 +66,15 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-                <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
             </Route>
+
+            {/* Đăng nhập admin: full page, không AuthLayout / không MainLayout */}
+            <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
 
             {/* ===== ADMIN ROUTES - Dùng AdminLayout (header + sidebar) ===== */}
             <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<SuspenseDashboardPage />} />
+                <Route path="reports/:reportId" element={<SuspenseReportDetailPage />} />
                 <Route path="reports" element={<SuspenseReportManagementPage />} />
                 <Route path="users" element={<SuspenseUserManagementPage />} />
                 <Route path="categories" element={<SuspenseCategoryManagementPage />} />
@@ -82,6 +87,7 @@ export default function AppRouter() {
                 <Route path="/feed" element={<SuspenseListingsPage />} />
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+                <Route path="/profile/:id" element={<SuspenseProfilePage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
                 {/* Google OAuth2 redirect callback — no guard, no layout needed */}
@@ -97,6 +103,14 @@ export default function AppRouter() {
                     }
                 />
                 <Route
+                    path="/listings/:id/edit"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseEditListingPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
                     path="/my-listings"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
@@ -104,14 +118,7 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-                <Route
-                    path="/profile/:id"
-                    element={
-                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseProfilePage />
-                        </RouteGuard>
-                    }
-                />
+
                 <Route
                     path="/deals/:id"
                     element={
