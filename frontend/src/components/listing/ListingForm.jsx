@@ -115,7 +115,16 @@ function createPinElement() {
     return el;
 }
 
-export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft, submitting = false, savingDraft = false, mode = 'create' }) {
+export default function ListingForm({
+    defaultValues = {},
+    onSubmit,
+    onSaveDraft,
+    submitting = false,
+    savingDraft = false,
+    mode = 'create',
+    /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
+    existingImageUrls = [],
+}) {
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
@@ -276,11 +285,15 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
     const handleSaveDraftClick = (e) => {
         e.preventDefault();
+        if (mode !== 'create') return;
         if (imageFiles.length === 0) {
             setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
         }
         handleSubmit(handleSaveDraftSubmit)(e);
     };
+
+    const hasAtLeastOneImage =
+        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
 
     const handleFilesChange = useCallback((files) => {
         setImageFiles(files);
@@ -291,7 +304,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
         e.preventDefault();
         handleSubmit(
             (values) => {
-                if (imageFiles.length === 0) {
+                if (!hasAtLeastOneImage) {
                     setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
                     imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     return;
@@ -299,7 +312,7 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
                 handleFormSubmit(values);
             },
             () => {
-                if (imageFiles.length === 0) {
+                if (!hasAtLeastOneImage) {
                     setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
                 }
             }
@@ -657,9 +670,37 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             <Typography fontWeight={600} fontSize={16} mb={2}>
                 Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
+            {mode === 'edit' && existingImageUrls?.length > 0 && (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                    {existingImageUrls.map((url) => (
+                        <Box
+                            key={url}
+                            sx={{
+                                width: 110,
+                                height: 110,
+                                borderRadius: '10px',
+                                overflow: 'hidden',
+                                flexShrink: 0,
+                            }}
+                        >
+                            <img
+                                src={url}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        </Box>
+                    ))}
+                </Box>
+            )}
+            {mode === 'edit' && existingImageUrls?.length > 0 && (
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
+                    Thêm ảnh mới (tùy chọn)
+                </Typography>
+            )}
             <Box mb={4}>
                 <ImageUploader
                     onFilesChange={handleFilesChange}
+                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
                     error={imageError}
                 />
 
@@ -1084,25 +1125,27 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
             <Grid container spacing={3} mt={2} alignItems="center">
                 <Grid item xs={12}>
                     <Stack direction="row" gap={2}>
-                        <Button
-                            variant="outlined"
-                            fullWidth
-                            onClick={handleSaveDraftClick}
-                            disabled={savingDraft || submitting}
-                            sx={{
-                                backgroundColor: "#E0E0E0",
-                                color: "#201D26",
-                                py: 1.1,
-                                fontSize: "14px",
-                                fontWeight: 600,
-                                borderRadius: "10px",
-                                border: "none",
-                                "&:hover": { backgroundColor: "#d5d5d5" },
-                                "&.Mui-disabled": { opacity: 0.6 },
-                            }}
-                        >
-                            {savingDraft ? 'ĐANG LƯU...' : 'LƯU NHÁP'}
-                        </Button>
+                        {mode === 'create' && (
+                            <Button
+                                variant="outlined"
+                                fullWidth
+                                onClick={handleSaveDraftClick}
+                                disabled={savingDraft || submitting}
+                                sx={{
+                                    backgroundColor: "#E0E0E0",
+                                    color: "#201D26",
+                                    py: 1.1,
+                                    fontSize: "14px",
+                                    fontWeight: 600,
+                                    borderRadius: "10px",
+                                    border: "none",
+                                    "&:hover": { backgroundColor: "#d5d5d5" },
+                                    "&.Mui-disabled": { opacity: 0.6 },
+                                }}
+                            >
+                                {savingDraft ? 'ĐANG LƯU...' : 'LƯU NHÁP'}
+                            </Button>
+                        )}
                         <Button
                             type="submit"
                             variant="contained"

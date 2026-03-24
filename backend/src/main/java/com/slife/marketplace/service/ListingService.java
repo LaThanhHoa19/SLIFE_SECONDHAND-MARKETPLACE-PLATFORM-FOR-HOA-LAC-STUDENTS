@@ -191,6 +191,66 @@ public class ListingService {
         return toListingResponse(saved, seller, false);
     }
 
+    /**
+     * Cập nhật listing hiện có (payload cùng dạng {@link CreateListingRequest} như tạo mới).
+     */
+    @Transactional
+    public ListingResponse updateListing(Long listingId, User seller, CreateListingRequest request) {
+        if (seller == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(seller.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+
+        boolean isDraft = request.isDraftMode();
+
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
+        }
+        if (request.getCategoryId() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không được để trống");
+        }
+        if (request.getPrice() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá không được để trống");
+        }
+
+        Category category = categoryRepository.findById(request.getCategoryId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+
+        Address pickup = resolvePickupAddress(seller, request);
+
+        listing.setCategory(category);
+        listing.setPickupAddress(pickup);
+        listing.setTitle(request.getTitle().trim());
+        listing.setDescription(request.getDescription());
+        listing.setPrice(request.normalizedPrice() != null ? request.normalizedPrice() : java.math.BigDecimal.ZERO);
+        listing.setItemCondition(normalizeCondition(request.getCondition()));
+        listing.setPurpose(
+                request.getPurpose() != null && !request.getPurpose().isBlank()
+                        ? request.getPurpose()
+                        : "SALE"
+        );
+        listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
+
+        if (isDraft) {
+            listing.setStatus("DRAFT");
+        } else if ("DRAFT".equals(listing.getStatus())) {
+            listing.setStatus("ACTIVE");
+        }
+
+        listing.setUpdatedAt(Instant.now());
+
+        Listing saved = listingRepository.save(listing);
+        log.info("updateListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
+
+        return toListingResponse(saved, seller, false);
+    }
+
     private Address resolvePickupAddress(User seller, CreateListingRequest request) {
         if (request.getPickupAddressId() != null) {
             return addressRepository.findByIdAndUser_Id(request.getPickupAddressId(), seller.getId())
