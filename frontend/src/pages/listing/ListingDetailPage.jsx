@@ -114,7 +114,7 @@ const getLocation = (listing) => {
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user: currentUser, isAuthenticated } = useAuth();
+    const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
 
     const [listing, setListing] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -266,11 +266,21 @@ export default function ListingDetailPage() {
                 await followApi.unfollowUser(sid);
                 setSellerFollowed(false);
                 setListing((prev) => (prev ? { ...prev, isFollowed: false } : prev));
+                if (currentUser?.id && updateAuthUser) {
+                    updateAuthUser({
+                        followingCount: Math.max(0, (currentUser.followingCount ?? 0) - 1),
+                    });
+                }
                 showSnack('Đã bỏ theo dõi người bán.');
             } else {
                 await followApi.followUser(sid);
                 setSellerFollowed(true);
                 setListing((prev) => (prev ? { ...prev, isFollowed: true } : prev));
+                if (currentUser?.id && updateAuthUser) {
+                    updateAuthUser({
+                        followingCount: (currentUser.followingCount ?? 0) + 1,
+                    });
+                }
                 showSnack('Đã theo dõi người bán.');
             }
         } catch (e) {
@@ -278,7 +288,7 @@ export default function ListingDetailPage() {
         } finally {
             setSellerFollowLoading(false);
         }
-    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack]);
+    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, currentUser, updateAuthUser]);
 
     const handleOffer = async () => {
         if (!isAuthenticated) {
