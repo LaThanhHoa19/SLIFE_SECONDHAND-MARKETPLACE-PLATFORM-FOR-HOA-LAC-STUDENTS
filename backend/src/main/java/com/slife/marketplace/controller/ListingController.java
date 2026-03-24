@@ -11,6 +11,7 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.service.FollowService;
 import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.ListingImageService;
 import com.slife.marketplace.service.SavedListingService;
@@ -33,6 +34,7 @@ public class ListingController {
     private final ListingRepository listingRepository;
     private final SavedListingService savedListingService;
     private final ListingImageService listingImageService;
+    private final FollowService followService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -41,12 +43,14 @@ public class ListingController {
                              UserService userService,
                              ListingRepository listingRepository,
                              SavedListingService savedListingService,
-                             ListingImageService listingImageService) {
+                             ListingImageService listingImageService,
+                             FollowService followService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
         this.savedListingService = savedListingService;
         this.listingImageService = listingImageService;
+        this.followService = followService;
     }
 
     /**
@@ -62,6 +66,19 @@ public class ListingController {
             @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * PUT /api/listings/{id}
+     * Cập nhật tin đăng (chỉ chủ tin).
+     */
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<ListingResponse>> updateListing(
+            @PathVariable("id") Long id,
+            @RequestBody CreateListingRequest request) {
+        User seller = userService.getCurrentUser();
+        ListingResponse response = listingService.updateListing(id, seller, request);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
     }
 
@@ -83,8 +100,9 @@ public class ListingController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
 
+        User viewer = userService.getCurrentUserOptional().orElse(null);
         PagedResponse<ListingCardResponse> listings =
-            listingService.getActiveListingCards(page, size);
+                listingService.getActiveListingCards(page, size, viewer);
 
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
@@ -127,10 +145,16 @@ public class ListingController {
         data.put("isGiveaway", listing.getIsGiveaway());
         data.put("createdAt", listing.getCreatedAt());
 
+        if (listing.getCategory() != null) {
+            data.put("categoryId", listing.getCategory().getId());
+            data.put("categoryName", listing.getCategory().getName());
+        }
+
         if (listing.getPickupAddress() != null) {
             var pa = listing.getPickupAddress();
             data.put("location", AddressFormat.pickupDisplayLine(pa.getLocationName(), pa.getAddressText()));
             Map<String, Object> pickup = new HashMap<>();
+            pickup.put("id", pa.getId());
             pickup.put("locationName", pa.getLocationName());
             pickup.put("addressText", pa.getAddressText());
             pickup.put("lat", pa.getLat());
@@ -152,7 +176,12 @@ public class ListingController {
 
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
         data.put("isSaved", isSaved);
-        data.put("isFollowed", false);
+        boolean isFollowed = false;
+        if (currentUser != null && listing.getSeller() != null
+                && !listing.getSeller().getId().equals(currentUser.getId())) {
+            isFollowed = followService.isFollowing(currentUser.getId(), listing.getSeller().getId());
+        }
+        data.put("isFollowed", isFollowed);
 
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }

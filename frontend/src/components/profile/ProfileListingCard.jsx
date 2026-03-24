@@ -18,7 +18,7 @@ export default function ProfileListingCard({ listing, onClick }) {
   const title = listing?.title || 'Không có tên';
   const price = listing?.price ?? listing?.priceDisplay;
   const imgList = listing?.images;
-  const thumbPath = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : (listing?.imageUrl || null);
+  const thumbPath = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : (listing?.thumbnailUrl || listing?.imageUrl || null);
   const thumb = thumbPath ? (thumbPath.startsWith('http') ? thumbPath : fullImageUrl(thumbPath)) : null;
 
   return (
