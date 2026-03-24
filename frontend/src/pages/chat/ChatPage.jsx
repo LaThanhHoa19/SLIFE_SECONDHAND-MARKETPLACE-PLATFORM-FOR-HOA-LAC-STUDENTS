@@ -82,6 +82,31 @@ function makeTempId() {
   return `tmp_${Date.now()}_${Math.random()}`;
 }
 
+function isMessageFromCurrentUser(msg, currentUserId) {
+  // Ưu tiên senderId vì isFromCurrentUser từ WS được tính theo ngữ cảnh phía server sender.
+  if (currentUserId != null && msg?.senderId != null) {
+    return Number(msg.senderId) === Number(currentUserId);
+  }
+  return msg?.isFromCurrentUser === true;
+}
+
+function upsertMessages(prev, incoming, { dropPending = false } = {}) {
+  const list = Array.isArray(prev) ? [...prev] : [];
+  const source = dropPending ? list.filter((m) => !m?._pending) : list;
+  const add = Array.isArray(incoming) ? incoming : [incoming];
+  const byId = new Map();
+
+  for (const m of source) {
+    if (m == null) continue;
+    byId.set(String(m.id ?? makeTempId()), m);
+  }
+  for (const m of add) {
+    if (m == null) continue;
+    byId.set(String(m.id ?? makeTempId()), m);
+  }
+  return Array.from(byId.values());
+}
+
 /** Gợi ý khi API lỗi — ưu tiên theo vai (mua/bán). */
 const LOCAL_BUYER_CHIPS = [
   'Cho mình hỏi sản phẩm còn không ạ?',
@@ -566,9 +591,7 @@ export default function ChatPage() {
               return;
             }
             setMessages((prev) => {
-              const cleaned = prev.filter((m) => !m._pending);
-              if (cleaned.some((m) => m.id === msg.id)) return cleaned;
-              return [...cleaned, msg];
+              return upsertMessages(prev, msg, { dropPending: true });
             });
           } catch {
             // ignore parse errors
@@ -726,8 +749,8 @@ export default function ChatPage() {
       const msg = getData(msgRes);
 
       setMessages((prev) => {
-        const cleaned = prev.filter((m) => !m._pending);
-        return msg?.id ? [...cleaned, msg] : cleaned;
+        if (!msg?.id) return prev.filter((m) => !m._pending);
+        return upsertMessages(prev, msg, { dropPending: true });
       });
       fetchSessions();
     } catch (err) {
@@ -753,7 +776,7 @@ export default function ChatPage() {
     try {
       const res = await chatApi.makeOffer(activeSessionId, amount);
       const msg = getData(res);
-      if (msg?.id) setMessages((prev) => [...prev, msg]);
+      if (msg?.id) setMessages((prev) => upsertMessages(prev, msg));
       fetchSessions();
     } catch (err) {
       const detail = err?.response?.data?.message || 'Lỗi không xác định';
@@ -1049,9 +1072,7 @@ export default function ChatPage() {
                 </Box>
               ) : (
                 messages.map((m, idx) => {
-                  const msgIsMe =
-                    m.isFromCurrentUser === true ||
-                    (currentUserId != null && m.senderId === currentUserId);
+                  const msgIsMe = isMessageFromCurrentUser(m, currentUserId);
                   const prev = idx > 0 ? messages[idx - 1] : null;
                   const showDay =
                     idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
