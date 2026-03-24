@@ -28,12 +28,13 @@ import { API_BASE_URL } from '../../utils/constants';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
+import FollowListDialog from '../../components/profile/FollowListDialog';
 import RatingSection from '../../components/profile/RatingSection';
 import ReviewList from '../../components/profile/ReviewList';
 import ListingSection from '../../components/profile/ListingSection';
 
 // Mock Data
-import { MOCK_REVIEWS } from './mockData';
+import { MOCK_REVIEWS, MOCK_SELLING, MOCK_SOLD, mockSeller } from './mockData';
 
 function getPayload(res) {
   const body = res?.data;
@@ -79,6 +80,8 @@ export default function ProfilePage() {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [followListOpen, setFollowListOpen] = useState(false);
+  const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const coverInputRef = useRef(null);
@@ -103,13 +106,7 @@ export default function ProfilePage() {
         const res = await userApi.getUserById(id);
         setProfileUser(getPayload(res));
       } else {
-        try {
-          const res = await userApi.getUserById(id);
-          const data = getPayload(res);
-          setProfileUser(data);
-        } catch(err) {
-          setError('Không tải được thông tin người dùng.');
-        }
+        setProfileUser(mockSeller(id));
       }
     } catch (err) {
       setError(err?.message || 'Không tải được thông tin người dùng.');
@@ -125,15 +122,11 @@ export default function ProfilePage() {
       const res = await getListings();
       const data = getPayload(res);
       const list = Array.isArray(data) ? data : data?.content ?? [];
-      const targetId = profileUser?.id;
-      const filtered = targetId
+      const name = profileUser?.fullName ?? profileUser?.full_name;
+      const filtered = name
           ? list.filter((item) => {
-            const sellerId = item.sellerId ?? item.seller?.id ?? item.seller?.userId ?? item.seller?.user_id;
-            // fall back to name filter if ID is not available in the listing's seller object
-            if (sellerId != null && targetId != null) return String(sellerId) === String(targetId);
-            const sellerName = item.sellerName ?? item.sellerSummary?.fullName ?? item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
-            const name = profileUser?.fullName ?? profileUser?.full_name;
-            return name && sellerName === name;
+            const sellerName = item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
+            return sellerName === name;
           })
           : list;
       setListings(filtered);
@@ -142,7 +135,7 @@ export default function ProfilePage() {
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser]);
+  }, [profileUser?.fullName, profileUser?.full_name]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser) loadListings(); }, [profileUser, loadListings]);
@@ -209,6 +202,11 @@ export default function ProfilePage() {
           isFollowedByViewer: false,
           followerCount: Math.max(0, (p.followerCount ?? 0) - 1),
         }));
+        if (currentUser?.id && updateAuthUser) {
+          updateAuthUser({
+            followingCount: Math.max(0, (currentUser.followingCount ?? 0) - 1),
+          });
+        }
       } else {
         await followApi.followUser(profileUser.id);
         setProfileUser((p) => ({
@@ -216,6 +214,11 @@ export default function ProfilePage() {
           isFollowedByViewer: true,
           followerCount: (p.followerCount ?? 0) + 1,
         }));
+        if (currentUser?.id && updateAuthUser) {
+          updateAuthUser({
+            followingCount: (currentUser.followingCount ?? 0) + 1,
+          });
+        }
       }
     } catch (err) {
       setError(err?.message || 'Không thể cập nhật trạng thái theo dõi.');
@@ -251,6 +254,16 @@ export default function ProfilePage() {
   if (!profileUser) return <Box p={3} textAlign="center"><Typography>{isMe ? 'Bạn cần đăng nhập.' : 'Không tìm thấy người dùng.'}</Typography><Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(isMe ? '/login' : '/')}>{isMe ? 'Đăng nhập' : 'Về trang chủ'}</Button></Box>;
 
   const user = isMe ? (profileUser ?? currentUser) : profileUser;
+  const rawProfileId = user?.id;
+  const followListUserId =
+      rawProfileId != null && /^\d+$/.test(String(rawProfileId)) ? Number(rawProfileId) : null;
+
+  const handleOpenFollowList = (mode) => {
+    if (followListUserId == null) return;
+    setFollowListMode(mode);
+    setFollowListOpen(true);
+  };
+
   const avatarUrl = fullImageUrl(user.avatarUrl ?? user.avatar_url) || user.avatarUrl;
   const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl ?? user.cover_image_url) || user.coverImageUrl);
   const fullName = user.fullName ?? user.full_name ?? 'Người dùng';
@@ -277,6 +290,15 @@ export default function ProfilePage() {
             onToggleFollow={handleToggleFollow}
             loggedIn={!!currentUser}
             onRequireLogin={() => navigate('/login')}
+            followListUserId={followListUserId}
+            onOpenFollowList={handleOpenFollowList}
+        />
+
+        <FollowListDialog
+            open={followListOpen}
+            onClose={() => setFollowListOpen(false)}
+            mode={followListMode}
+            userId={followListUserId}
         />
 
         <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
@@ -295,14 +317,15 @@ export default function ProfilePage() {
               {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
             </Box>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
-            </Tabs>
-            <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
-              {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
+              </Tabs>
+              <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
+                {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? MOCK_SELLING : MOCK_SELLING.slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} emptyMessage="Chưa có tin đăng nào." />}
+                {tab === 1 && <ListingSection isMe={isMe} listings={MOCK_SOLD} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id}`)} />}
+                {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+              </Box>
             </Box>
           </Box>
         </Box>
@@ -320,6 +343,6 @@ export default function ProfilePage() {
             <Button variant="contained" onClick={handleSubmitReport} disabled={reportSubmitting || !reportReason.trim()}>{reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}</Button>
           </DialogActions>
         </Dialog>
-      </Box></Box>
+      </Box>
   );
 }
