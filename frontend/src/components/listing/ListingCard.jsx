@@ -135,7 +135,7 @@ export default function ListingCard({
                 <Stack direction="row" spacing={1.5} alignItems="center">
                     <Avatar 
                         component={RouterLink}
-                        to={sellerId ? `/profile/${sellerId}` : '#'}
+                        to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                         src={fullImageUrl(seller?.avatarUrl)} 
                         alt={seller?.fullName || 'seller'} 
                         sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }} 
@@ -146,7 +146,7 @@ export default function ListingCard({
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                         <Typography 
                             component={RouterLink}
-                            to={sellerId ? `/profile/${sellerId}` : '#'}
+                            to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                             fontSize={14.5} 
                             fontWeight={600} 
                             color="#FFF"
