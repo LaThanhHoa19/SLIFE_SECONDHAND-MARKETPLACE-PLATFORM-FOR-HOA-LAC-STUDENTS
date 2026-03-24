@@ -84,7 +84,7 @@ export default function ProfileHeader({
                     }}
                 >
                     {isMe ? (
-                        <Box sx={{position: 'absolute', bottom: 16, right: 16}}>
+                        <Box sx={{position: 'absolute', top: 16, right: 16}}>
                             <input
                                 type="file"
                                 accept="image/*"
@@ -100,13 +100,14 @@ export default function ProfileHeader({
                                 onClick={() => coverInputRef.current?.click()}
                                 disabled={uploadingCover}
                                 sx={{
-                                    bgcolor: 'rgba(255,255,255,0.9)',
-                                    color: '#1d1d1f',
-                                    '&:hover': {bgcolor: 'white'},
+                                    bgcolor: 'rgba(0,0,0,0.3)',
+                                    color: 'white',
+                                    '&:hover': {bgcolor: 'rgba(0,0,0,0.5)'},
                                     backdropFilter: 'blur(10px)',
                                     textTransform: 'none',
                                     fontWeight: 600,
                                     borderRadius: '8px',
+                                    border: '1px solid rgba(255,255,255,0.2)'
                                 }}
                             >
                                 {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
@@ -262,15 +263,29 @@ export default function ProfileHeader({
                                                     </IconButton>
                                                 </>
                                             ) : (
-                                                <Button
-                                                    variant="outlined"
-                                                    startIcon={editing ? <CloseIcon/> : <EditIcon/>}
-                                                    onClick={() => setEditing(!editing)}
-                                                    sx={{borderRadius: 2, borderColor: PURPLE, color: PURPLE}}
-                                                >
-                                                    {editing ? 'Hủy' : 'Chỉnh sửa'}
-                                                </Button>
-                                            )}
+                                                 <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                                     <Button
+                                                         variant="contained"
+                                                         onClick={() => window.location.href = '/my-listings'}
+                                                         sx={{
+                                                             borderRadius: 2,
+                                                             bgcolor: PURPLE,
+                                                             color: 'white',
+                                                             '&:hover': { bgcolor: '#835cd4' }
+                                                         }}
+                                                     >
+                                                         Quản lý bài đăng
+                                                     </Button>
+                                                     <Button
+                                                         variant="outlined"
+                                                         startIcon={editing ? <CloseIcon/> : <EditIcon/>}
+                                                         onClick={() => setEditing(!editing)}
+                                                         sx={{borderRadius: 2, borderColor: PURPLE, color: PURPLE}}
+                                                     >
+                                                         {editing ? 'Hủy' : 'Chỉnh sửa hồ sơ'}
+                                                     </Button>
+                                                 </Box>
+                                             )}
                                         </Box>
                                     </Box>
 
