@@ -25,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -50,6 +51,7 @@ public class ListingService {
     private final AddressRepository addressRepository;
     private final FollowService followService;
     private final ListingLikeRepository listingLikeRepository;
+    private final ListingImageService listingImageService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -57,7 +59,8 @@ public class ListingService {
                           CategoryRepository categoryRepository,
                           AddressRepository addressRepository,
                           FollowService followService,
-                          ListingLikeRepository listingLikeRepository) {
+                          ListingLikeRepository listingLikeRepository,
+                          ListingImageService listingImageService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -65,6 +68,7 @@ public class ListingService {
         this.addressRepository = addressRepository;
         this.followService = followService;
         this.listingLikeRepository = listingLikeRepository;
+        this.listingImageService = listingImageService;
     }
 
     // ----------------------------------------------------------------
@@ -257,6 +261,19 @@ public class ListingService {
 
         ListingResponse created = toListingResponse(saved, seller, false, false);
         enrichSingleListingResponseWithLikes(created, seller);
+        return created;
+    }
+
+    /**
+     * Tạo tin + upload ảnh (nếu có) trong một transaction, để tránh đã lưu listing khi vượt MAX_IMAGES_PER_POST.
+     */
+    @Transactional
+    public ListingResponse createListingWithOptionalImages(User seller, CreateListingRequest request, List<MultipartFile> imageFiles) {
+        listingImageService.assertImageBatchWithinLimit(0, imageFiles);
+        ListingResponse created = createListing(seller, request);
+        if (imageFiles != null && imageFiles.stream().anyMatch(f -> f != null && !f.isEmpty())) {
+            listingImageService.uploadListingImages(created.getId(), imageFiles);
+        }
         return created;
     }
 

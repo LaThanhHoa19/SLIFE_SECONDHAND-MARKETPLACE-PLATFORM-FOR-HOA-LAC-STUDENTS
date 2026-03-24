@@ -26,7 +26,7 @@ public class ListingImageService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingImageService.class);
     private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-    private static final int DEFAULT_MAX_IMAGES_PER_POST = 8;
+    private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final ListingRepository listingRepository;
@@ -44,6 +44,27 @@ public class ListingImageService {
         this.uploadBasePath = uploadBasePath;
     }
 
+    private static long countNonEmptyFiles(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return 0;
+        }
+        return files.stream().filter(f -> f != null && !f.isEmpty()).count();
+    }
+
+    /**
+     * Giới hạn ảnh theo cấu hình, đếm theo file thực sự có dữ liệu (tránh lệch so với multipart part rỗng).
+     */
+    public void assertImageBatchWithinLimit(int existingCount, List<MultipartFile> files) {
+        long incoming = countNonEmptyFiles(files);
+        if (incoming == 0) {
+            return;
+        }
+        int maxImagesPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        if (existingCount + incoming > maxImagesPerPost) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
+        }
+    }
+
     @Transactional
     public void uploadListingImages(Long listingId, List<MultipartFile> files) {
         if (files == null || files.isEmpty()) {
@@ -54,9 +75,9 @@ public class ListingImageService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 
         int existingCount = listingImageRepository.countByListing_Id(listingId);
-        int maxImagesPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
-        if (existingCount + files.size() > maxImagesPerPost) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
+        assertImageBatchWithinLimit(existingCount, files);
+        if (countNonEmptyFiles(files) == 0) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "No images uploaded");
         }
         int displayOrder = existingCount + 1;
 

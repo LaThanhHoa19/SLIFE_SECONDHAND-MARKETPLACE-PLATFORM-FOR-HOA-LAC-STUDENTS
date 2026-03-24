@@ -21,8 +21,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -66,6 +68,19 @@ public class ListingController {
             @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * POST /api/listings (multipart)
+     * Tạo tin kèm ảnh trong một giao dịch — khi vượt MAX_IMAGES_PER_POST không lưu listing.
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ListingResponse>> createListingMultipart(
+            @RequestPart("payload") CreateListingRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        User seller = userService.getCurrentUser();
+        ListingResponse response = listingService.createListingWithOptionalImages(seller, request, images);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
     }
 
