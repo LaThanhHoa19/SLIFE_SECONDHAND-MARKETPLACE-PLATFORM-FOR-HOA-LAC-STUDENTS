@@ -17,7 +17,6 @@ import {
     KeyboardArrowDown as ArrowDownIcon,
     KeyboardArrowRight as ArrowRightIcon,
     Refresh as RefreshIcon,
-    ChevronRight as ChevronRightIcon,
     ExpandMore as ExpandMoreIcon,
     Folder as FolderIcon,
     FolderOpen as FolderOpenIcon,
@@ -263,7 +262,7 @@ export default function RightPanel() {
                     sx={{ gap: 1 }}
                 >
                     <ToggleButton
-                        value="price_asc"
+                        value="price,asc"
                         sx={{
                             flex: 1,
                             py: 0.8,
@@ -284,7 +283,7 @@ export default function RightPanel() {
                         Giá thấp → cao
                     </ToggleButton>
                     <ToggleButton
-                        value="price_desc"
+                        value="price,desc"
                         sx={{
                             flex: 1,
                             py: 0.8,
@@ -573,13 +572,6 @@ export default function RightPanel() {
                                                     sx={{ fontSize: 16, color: '#B794F6', flexShrink: 0, ml: 0.5 }}
                                                 />
                                             )}
-                                            {!isCategorySelected &&
-                                                !hasSelectedChild &&
-                                                hasChildren && (
-                                                    <ChevronRightIcon
-                                                        sx={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', flexShrink: 0 }}
-                                                    />
-                                                )}
                                         </Box>
                                     </Box>
                                     {/* Danh mục con */}

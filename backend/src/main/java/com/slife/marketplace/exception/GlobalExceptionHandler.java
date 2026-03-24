@@ -1,7 +1,10 @@
 package com.slife.marketplace.exception;
 
+import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.util.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     public ResponseEntity<ApiResponse<Object>> handleValidationExceptions(Exception ex) {
@@ -70,13 +74,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
-        ApiResponse<Object> body = ApiResponse.error("MSG23", Constants.MSG23);
+    public ResponseEntity<BaseResponse<Object>> handleAccessDenied(AccessDeniedException ex) {
+        BaseResponse<Object> body = new BaseResponse<>("FORBIDDEN", "Bạn không có quyền truy cập tính năng này", null);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
+        log.error("Unexpected exception", ex);
         ApiResponse<Object> body = ApiResponse.error(
                 ErrorCode.INTERNAL_ERROR.getCode(),
                 ErrorCode.INTERNAL_ERROR.getMessage()
