@@ -70,7 +70,7 @@ export default function ListingComments({ listingId, currentUser }) {
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 3 }}>
         <Avatar
           component={RouterLink}
-          to={(currentUser?.id || currentUser?.user_id) ? `/profile/${currentUser.id || currentUser.user_id}` : '#'}
+          to={currentUser?.id === (currentUser?.id || currentUser?.user_id) ? '/profile' : `/profile/${currentUser?.id || currentUser?.user_id || ''}`}
           src={fullImageUrl(currentUser?.avatarUrl)}
           sx={{ width: 38, height: 38, border: `1px solid ${BORDER}`, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
         >
@@ -133,7 +133,7 @@ export default function ListingComments({ listingId, currentUser }) {
             <Box key={c.id} sx={{ display: 'flex', gap: 1.5 }}>
               <Avatar
                 component={RouterLink}
-                to={(c.userId || c.user_id) ? `/profile/${c.userId || c.user_id}` : '#'}
+                to={c.userId === (currentUser?.id || currentUser?.user_id) ? '/profile' : `/profile/${c.userId || c.user_id || ''}`}
                 src={fullImageUrl(c.userAvatar)}
                 sx={{ width: 36, height: 36, mt: 0.3, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
               >
@@ -148,7 +148,7 @@ export default function ListingComments({ listingId, currentUser }) {
                 >
                   <Typography 
                     component={RouterLink}
-                    to={(c.userId || c.user_id) ? `/profile/${c.userId || c.user_id}` : '#'}
+                    to={c.userId === (currentUser?.id || currentUser?.user_id) ? '/profile' : `/profile/${c.userId || c.user_id || ''}`}
                     fontSize={14} 
                     fontWeight={700} 
                     color={TEXT_PRI} 
