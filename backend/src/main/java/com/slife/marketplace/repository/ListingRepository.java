@@ -31,7 +31,14 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
               AND (:categoryId IS NULL OR c.id           = :categoryId)
               AND (:location   IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
               AND (:purpose    IS NULL OR :purpose = ''  OR l.purpose      = :purpose)
-              AND (:itemCond   IS NULL OR :itemCond = '' OR l.itemCondition = :itemCond)
+              AND (
+                  :itemCond IS NULL OR :itemCond = ''
+                  OR l.itemCondition = :itemCond
+                  OR (
+                      :itemCond = 'USED'
+                      AND l.itemCondition IN ('USED_LIKE_NEW', 'USED_GOOD', 'USED_FAIR')
+                  )
+              )
               AND (:priceMin   IS NULL OR l.price >= :priceMin)
               AND (:priceMax   IS NULL OR l.price <= :priceMax)
               AND (
@@ -68,7 +75,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
             l.seller.id,
             l.seller.fullName,
-            l.seller.avatarUrl
+            l.seller.avatarUrl,
+            false
         )
         FROM Listing l
         LEFT JOIN l.pickupAddress a

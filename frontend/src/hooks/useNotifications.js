@@ -9,6 +9,7 @@ import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
 import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
 import { useAuth } from './useAuth';
+import { API_BASE_URL } from '../utils/constants';
 
 /** Giống ChatPage: WS ở /chat, không nằm dưới /api */
 function getChatSockJsUrl(token) {

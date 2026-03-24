@@ -27,6 +27,7 @@ public class NotificationService {
     // Comment notifications reuse MESSAGE type to match DB ENUM
     public static final String TYPE_COMMENT  = TYPE_MESSAGE;
     public static final String TYPE_SYSTEM   = "SYSTEM";
+    public static final String TYPE_FOLLOW   = "FOLLOW";
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -95,6 +96,22 @@ public class NotificationService {
             pushNotificationCount(listingOwner);
         } catch (Exception ex) {
             log.error("notifyListingReported failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify user when someone starts following them. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyNewFollower(User followed, User follower) {
+        try {
+            String name = follower.getFullName() != null && !follower.getFullName().isBlank()
+                    ? follower.getFullName()
+                    : follower.getEmail();
+            Notification n = buildNotification(followed, TYPE_FOLLOW, "USER", follower.getId(),
+                    name + " đã bắt đầu theo dõi bạn.");
+            notificationRepository.save(n);
+            pushNotificationCount(followed);
+        } catch (Exception ex) {
+            log.error("notifyNewFollower failed followedId={}", followed.getId(), ex);
         }
     }
 
