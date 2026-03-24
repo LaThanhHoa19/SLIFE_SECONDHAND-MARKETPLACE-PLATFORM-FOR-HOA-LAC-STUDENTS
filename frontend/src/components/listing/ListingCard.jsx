@@ -20,7 +20,7 @@ import {
     PersonAdd as PersonAddIcon,
     PersonRemove as PersonRemoveIcon,
 } from '@mui/icons-material';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
@@ -69,7 +69,7 @@ export default function ListingCard({
                                         imageAspect,
                                     }) {
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
@@ -100,9 +100,19 @@ export default function ListingCard({
             if (followed) {
                 await followApi.unfollowUser(sellerId);
                 setFollowed(false);
+                if (user?.id && updateAuthUser) {
+                    updateAuthUser({
+                        followingCount: Math.max(0, (user.followingCount ?? 0) - 1),
+                    });
+                }
             } else {
                 await followApi.followUser(sellerId);
                 setFollowed(true);
+                if (user?.id && updateAuthUser) {
+                    updateAuthUser({
+                        followingCount: (user.followingCount ?? 0) + 1,
+                    });
+                }
             }
         } catch {
             /* silent — optional toast at feed level */
@@ -133,26 +143,9 @@ export default function ListingCard({
             {/* Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar 
-                        component={RouterLink}
-                        to={sellerId ? `/profile/${sellerId}` : '#'}
-                        src={fullImageUrl(seller?.avatarUrl)} 
-                        alt={seller?.fullName || 'seller'} 
-                        sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }} 
-                        onClick={(e) => { e.stopPropagation(); }}
-                    >
-                        {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
-                    </Avatar>
+                    <Avatar src={fullImageUrl(seller?.avatarUrl)} alt={seller?.fullName || 'seller'} sx={{ width: 40, height: 40 }} />
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        <Typography 
-                            component={RouterLink}
-                            to={sellerId ? `/profile/${sellerId}` : '#'}
-                            fontSize={14.5} 
-                            fontWeight={600} 
-                            color="#FFF"
-                            sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                            onClick={(e) => { e.stopPropagation(); }}
-                        >
+                        <Typography fontSize={14.5} fontWeight={600} color="#FFF">
                             {seller?.fullName || 'Người bán'}
                         </Typography>
                         <Typography fontSize={13} color="rgba(255,255,255,0.5)">
