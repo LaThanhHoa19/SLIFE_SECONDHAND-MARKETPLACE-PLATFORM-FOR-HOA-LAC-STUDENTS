@@ -176,6 +176,16 @@ export default function UserManagementPage() {
       render: (row) => row.reputationScore ?? '-',
     },
     {
+      id: 'violationCount',
+      label: 'Vi phạm',
+      width: 96,
+      align: 'right',
+      render: (row) => {
+        const v = row.violationCount ?? row.violation_count;
+        return v != null && v !== '' ? v : '-';
+      },
+    },
+    {
       id: 'createdAt',
       label: 'Ngày tạo',
       width: 180,
