@@ -17,6 +17,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import FlagIcon from '@mui/icons-material/Flag';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
@@ -44,6 +45,8 @@ const getIconForType = (type) => {
             return <FlagIcon sx={{ fontSize: 18 }} />;
         case 'DEAL':
             return <CheckCircleIcon sx={{ fontSize: 18 }} />;
+        case 'FOLLOW':
+            return <PersonAddIcon sx={{ fontSize: 18 }} />;
         default:
             return <NotificationsIcon sx={{ fontSize: 18 }} />;
     }
@@ -62,6 +65,8 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
         // Điều hướng đơn giản theo refType nếu sau này cần mở rộng.
         if (n.refType === 'LISTING' && n.refId) {
             navigate(`/listings/${n.refId}`);
+        } else if (n.refType === 'USER' && n.refId) {
+            navigate(`/profile/${n.refId}`);
         }
     };
 
