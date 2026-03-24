@@ -1,73 +1,33 @@
-/** Mục đích: Quản lý báo cáo. Lý do chỉ xem trong dialog Xem xét. API: GET/PATCH /api/admin/reports. */
-import { useCallback, useEffect, useState } from 'react';
+/** Danh sách báo cáo admin. Chi tiết: /admin/reports/:reportId */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Snackbar,
   Stack,
-  TextField,
+  Tab,
+  Tabs,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { getReports, processReport } from '../../api/reportApi';
+import { useNavigate } from 'react-router-dom';
+import { getReports } from '../../api/reportApi';
 import ReusableTable from '../../components/common/ReusableTable';
-
-function formatDate(dateValue) {
-  if (!dateValue) return '-';
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('vi-VN');
-}
+import {
+  buildMergedReportList,
+  formatReportDate,
+  reportedDisplay,
+  reportRowId,
+  reportTargetType,
+  statusLabel,
+  statusChipSx,
+} from './ReportDetailPage';
 
 function extractReportList(response) {
   const payload = response?.data?.data ?? response?.data;
   if (Array.isArray(payload)) return payload;
   return [];
-}
-
-function reportedDisplay(row) {
-  return row.reportedDisplayName ?? row.reported_display_name ?? '-';
-}
-
-function statusLabel(status) {
-  const s = (status || '').toUpperCase();
-  if (s === 'PENDING') return 'Chờ xử lý';
-  if (s === 'RESOLVED') return 'Đã xử lý';
-  if (s === 'REJECTED') return 'Từ chối';
-  if (s === 'DISMISSED') return 'Đã bỏ qua';
-  return status || '-';
-}
-
-function statusChipSx(status) {
-  const s = (status || '').toUpperCase();
-  if (s === 'PENDING') {
-    return { bgcolor: 'rgba(234,179,8,0.12)', color: '#facc15' };
-  }
-  if (s === 'RESOLVED') {
-    return { bgcolor: 'rgba(34,197,94,0.12)', color: '#4ade80' };
-  }
-  if (s === 'REJECTED') {
-    return { bgcolor: 'rgba(248,113,113,0.12)', color: '#f87171' };
-  }
-  if (s === 'DISMISSED') {
-    return { bgcolor: 'rgba(148,163,184,0.12)', color: '#94a3b8' };
-  }
-  return { bgcolor: 'rgba(148,163,184,0.12)', color: '#cbd5e1' };
-}
-
-function isPendingRow(row) {
-  const s = (row.status || 'PENDING').toUpperCase();
-  return s === 'PENDING';
-}
-
-function reportRowId(row) {
-  return row?.reportId ?? row?.id;
 }
 
 const REPORT_TABLE_SURFACE = '#19191B';
@@ -111,24 +71,23 @@ const reportManagementTableSx = {
 };
 
 export default function ReportManagementPage() {
+  const navigate = useNavigate();
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [processingId, setProcessingId] = useState(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogAction, setDialogAction] = useState('APPROVE');
-  const [activeReport, setActiveReport] = useState(null);
-  const [adminNote, setAdminNote] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  /** Tab: báo cáo tin đăng vs báo cáo tài khoản */
+  const [reportCategoryTab, setReportCategoryTab] = useState('LISTING');
 
   const loadReports = useCallback(async () => {
     try {
       setIsLoading(true);
       setErrorMessage('');
       const response = await getReports();
-      setReports(extractReportList(response));
+      const fromApi = extractReportList(response);
+      setReports(buildMergedReportList(fromApi));
     } catch (error) {
       setErrorMessage(error?.message || 'Không tải được danh sách báo cáo.');
+      setReports(buildMergedReportList([]));
     } finally {
       setIsLoading(false);
     }
@@ -138,53 +97,30 @@ export default function ReportManagementPage() {
     loadReports();
   }, [loadReports]);
 
-  const openProcessDialog = (row, action) => {
-    setActiveReport(row);
-    setDialogAction(action);
-    setAdminNote('');
-    setDialogOpen(true);
-  };
-
-  const handleCloseDialog = () => {
-    if (processingId != null) return;
-    setDialogOpen(false);
-    setActiveReport(null);
-    setAdminNote('');
-  };
-
-  const handleConfirmProcess = async () => {
-    const id = reportRowId(activeReport);
+  const goToDetail = (row) => {
+    const id = reportRowId(row);
     if (id == null) return;
-    try {
-      setProcessingId(id);
-      await processReport(id, {
-        action: dialogAction,
-        note: adminNote.trim() || undefined,
-      });
-      setSnackbar({
-        open: true,
-        message:
-          dialogAction === 'APPROVE'
-            ? 'Đã duyệt báo cáo.'
-            : 'Đã từ chối báo cáo.',
-        severity: 'success',
-      });
-      setDialogOpen(false);
-      setActiveReport(null);
-      setAdminNote('');
-      await loadReports();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: error?.message || 'Không xử lý được báo cáo.',
-        severity: 'error',
-      });
-    } finally {
-      setProcessingId(null);
-    }
+    navigate(`/admin/reports/${id}`, { state: { report: row } });
   };
 
-  const columns = [
+  const tabCounts = useMemo(() => {
+    let listing = 0;
+    let user = 0;
+    reports.forEach((r) => {
+      const t = reportTargetType(r);
+      if (t === 'LISTING') listing += 1;
+      else if (t === 'USER') user += 1;
+    });
+    return { listing, user };
+  }, [reports]);
+
+  const filteredReports = useMemo(
+    () => reports.filter((r) => reportTargetType(r) === reportCategoryTab),
+    [reports, reportCategoryTab],
+  );
+
+  const columns = useMemo(
+    () => [
     {
       id: 'reportId',
       label: 'ID',
@@ -199,7 +135,7 @@ export default function ReportManagementPage() {
     },
     {
       id: 'reportedDisplayName',
-      label: 'Người bị báo cáo',
+      label: reportCategoryTab === 'LISTING' ? 'Bài đăng bị báo cáo' : 'Người bị báo cáo',
       width: 200,
       render: (row) => {
         const text = String(reportedDisplay(row));
@@ -265,37 +201,40 @@ export default function ReportManagementPage() {
       id: 'createdAt',
       label: 'Thời gian',
       width: 168,
-      render: (row) => formatDate(row.createdAt),
+      render: (row) => formatReportDate(row.createdAt),
     },
     {
       id: 'actions',
       label: 'Thao tác',
       width: 120,
       align: 'center',
-      render: (row) => {
-        const id = reportRowId(row);
-        const busy = processingId === id;
-        return (
-          <Button
-            size="small"
-            variant="outlined"
-            disabled={busy || isLoading}
-            onClick={() => openReviewDialog(row)}
-            sx={{
-              textTransform: 'none',
-              borderRadius: 999,
-              minWidth: 100,
-              borderColor: 'rgba(139,92,246,0.55)',
-              color: '#c4b5fd',
-              '&:hover': { borderColor: '#a78bfa', bgcolor: 'rgba(139,92,246,0.08)' },
-            }}
-          >
-            Xem xét
-          </Button>
-        );
-      },
+      render: (row) => (
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={isLoading}
+          onClick={() => goToDetail(row)}
+          sx={{
+            textTransform: 'none',
+            borderRadius: 999,
+            minWidth: 100,
+            borderColor: 'rgba(139,92,246,0.55)',
+            color: '#c4b5fd',
+            '&:hover': { borderColor: '#a78bfa', bgcolor: 'rgba(139,92,246,0.08)' },
+          }}
+        >
+          Xem xét
+        </Button>
+      ),
     },
-  ];
+    ],
+    [reportCategoryTab],
+  );
+
+  const emptyMessage =
+    reportCategoryTab === 'LISTING'
+      ? 'Không có báo cáo nào về bài đăng.'
+      : 'Không có báo cáo nào về người dùng.';
 
   return (
     <Box>
@@ -305,7 +244,7 @@ export default function ReportManagementPage() {
             Quản lý báo cáo
           </Typography>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-            Xử lý các báo cáo vi phạm đang chờ (tin đăng, người dùng).
+            Chọn tab để xem báo cáo theo bài đăng hoặc theo người dùng.
           </Typography>
         </Box>
         <Button
@@ -324,116 +263,43 @@ export default function ReportManagementPage() {
         </Alert>
       )}
 
+      <Tabs
+        value={reportCategoryTab}
+        onChange={(_, v) => setReportCategoryTab(v)}
+        sx={{
+          minHeight: 44,
+          mb: 2,
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          '& .MuiTab-root': {
+            color: 'rgba(255,255,255,0.55)',
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: 14,
+            minHeight: 44,
+          },
+          '& .Mui-selected': {
+            color: '#c4b5fd !important',
+          },
+          '& .MuiTabs-indicator': {
+            bgcolor: '#8B5CF6',
+            height: 3,
+            borderRadius: '3px 3px 0 0',
+          },
+        }}
+      >
+        <Tab label={`Báo cáo bài đăng (${tabCounts.listing})`} value="LISTING" />
+        <Tab label={`Báo cáo người dùng (${tabCounts.user})`} value="USER" />
+      </Tabs>
+
       <ReusableTable
         columns={columns}
-        rows={reports}
+        rows={filteredReports}
         getRowId={(row) => String(reportRowId(row) ?? '')}
         isLoading={isLoading}
-        emptyMessage="Không có báo cáo đang chờ xử lý."
+        emptyMessage={emptyMessage}
         paperSx={reportManagementPaperSx}
         tableSx={reportManagementTableSx}
       />
-
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#fff', bgcolor: '#1e1b24' }}>
-          Xem xét báo cáo
-          {activeReport && reportRowId(activeReport) != null ? ` #${reportRowId(activeReport)}` : ''}
-        </DialogTitle>
-        <DialogContent sx={{ bgcolor: '#1e1b24', pt: 1 }}>
-          {activeReport && (
-            <Stack spacing={1.5} sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Người báo cáo: </Box>
-                {activeReport.reporterName || '-'}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Người bị báo cáo: </Box>
-                {reportedDisplay(activeReport)}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Trạng thái: </Box>
-                {statusLabel(activeReport.status)}
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-                <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Thời gian: </Box>
-                {formatDate(activeReport.createdAt)}
-              </Typography>
-              <Box>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 0.5 }}>
-                  Lý do
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'rgba(255,255,255,0.92)',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    p: 1.5,
-                    borderRadius: 1,
-                    bgcolor: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
-                >
-                  {(activeReport.reason && String(activeReport.reason).trim()) || '—'}
-                </Typography>
-              </Box>
-            </Stack>
-          )}
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 1 }}>
-            Duyệt: ghi nhận vi phạm và áp dụng xử lý theo quy định. Từ chối: báo cáo không được chấp nhận.
-          </Typography>
-          <TextField
-            label="Ghi chú nội bộ (tùy chọn)"
-            value={adminNote}
-            onChange={(e) => setAdminNote(e.target.value)}
-            fullWidth
-            multiline
-            minRows={2}
-            placeholder="Ghi chú cho hồ sơ xử lý..."
-            sx={{
-              '& .MuiOutlinedInput-root': { color: '#fff' },
-              '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-            }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ bgcolor: '#1e1b24', px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={handleCloseDialog} disabled={processingId != null} sx={{ color: 'rgba(255,255,255,0.8)' }}>
-            Đóng
-          </Button>
-          <Box sx={{ flexGrow: 1 }} />
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={() => submitProcess('REJECT')}
-            disabled={processingId != null || (activeReport && !isPendingRow(activeReport))}
-          >
-            {processingId != null ? 'Đang xử lý...' : 'Từ chối'}
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={() => submitProcess('APPROVE')}
-            disabled={processingId != null || (activeReport && !isPendingRow(activeReport))}
-          >
-            Duyệt
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
