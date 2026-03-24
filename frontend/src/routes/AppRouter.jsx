@@ -19,6 +19,7 @@ import {
     SuspenseListingsPage,
     SuspenseListingDetailPage,
     SuspenseCreateListingPage,
+    SuspenseEditListingPage,
     SuspenseMyListingsPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
@@ -93,6 +94,14 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseCreateListingPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/listings/:id/edit"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseEditListingPage />
                         </RouteGuard>
                     }
                 />
