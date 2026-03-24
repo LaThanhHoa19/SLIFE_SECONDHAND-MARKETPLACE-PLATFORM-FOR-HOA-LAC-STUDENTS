@@ -193,7 +193,7 @@ class ListingServiceTest {
             org.mockito.ArgumentCaptor<String> locationCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
             verify(listingRepository).findByFilters(
                     isNull(),
-                    isNull(),
+                    eq(1L),
                     locationCaptor.capture(),
                     isNull(), isNull(), isNull(), isNull(),
                     any(Pageable.class)

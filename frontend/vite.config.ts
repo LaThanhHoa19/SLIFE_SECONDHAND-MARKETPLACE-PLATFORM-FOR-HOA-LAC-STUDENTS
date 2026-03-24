@@ -29,6 +29,15 @@ export default defineConfig({
       '/maps': {
         target: 'https://maps.vietmap.vn',
         changeOrigin: true
+      },
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/chat': {
+        target: 'http://localhost:8080',
+        ws: true,
+        changeOrigin: true,
       }
     }
   }
