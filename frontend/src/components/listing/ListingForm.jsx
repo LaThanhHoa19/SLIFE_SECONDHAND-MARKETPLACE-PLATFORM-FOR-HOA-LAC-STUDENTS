@@ -14,6 +14,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ImageUploader from '../common/ImageUploader';
+import { MAX_IMAGES_PER_LISTING } from '../../constants/listingLimits';
 import { getCategories } from '../../api/categoryApi';
 import { reverseGeocode, getGeoClientConfig } from '../../api/geoApi';
 import LocationPicker from './LocationPicker';
@@ -126,6 +127,8 @@ export default function ListingForm({
     existingImageUrls = [],
 }) {
     const [imageFiles, setImageFiles] = useState([]);
+    /** Luôn khớp mảng File mới nhất từ ImageUploader — dùng khi submit để tránh race với setState bất đồng bộ. */
+    const imageFilesRef = useRef([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
     const [categories, setCategories] = useState([]);
@@ -292,7 +295,7 @@ export default function ListingForm({
             ...values,
             price: Number(values.price.toString().replace(/\D/g, ""))
         };
-        onSubmit?.(finalValues, imageFiles);
+        onSubmit?.(finalValues, imageFilesRef.current);
     };
 
     const handleSaveDraftSubmit = (values) => {
@@ -300,25 +303,46 @@ export default function ListingForm({
             ...values,
             price: Number(values.price.toString().replace(/\D/g, "")),
         };
-        onSaveDraft?.(finalValues, imageFiles);
+        onSaveDraft?.(finalValues, imageFilesRef.current);
     };
+
+    const hasAtLeastOneImage =
+        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
+
+    const existingImageCount = Array.isArray(existingImageUrls) ? existingImageUrls.length : 0;
+    const totalListingImages = imageFiles.length + existingImageCount;
+    const imageOverLimit = totalListingImages > MAX_IMAGES_PER_LISTING;
 
     const handleSaveDraftClick = (e) => {
         e.preventDefault();
         if (mode !== 'create') return;
         if (imageFiles.length === 0) {
             setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+        const totalNow = imageFilesRef.current.length + existingImageCount;
+        if (totalNow > MAX_IMAGES_PER_LISTING) {
+            setImageError(
+                `Vui lòng không quá ${MAX_IMAGES_PER_LISTING} ảnh (hiện ${totalNow}). Xóa bớt ảnh trước khi lưu.`,
+            );
+            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
         }
         handleSubmit(handleSaveDraftSubmit)(e);
     };
 
-    const hasAtLeastOneImage =
-        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
-
-    const handleFilesChange = useCallback((files) => {
-        setImageFiles(files);
-        if (files.length > 0) setImageError('');
-    }, []);
+    const handleFilesChange = useCallback(
+        (files) => {
+            imageFilesRef.current = files;
+            setImageFiles(files);
+            const ex = Array.isArray(existingImageUrls) ? existingImageUrls.length : 0;
+            if (files.length + ex <= MAX_IMAGES_PER_LISTING) {
+                setImageError('');
+            }
+        },
+        [existingImageUrls],
+    );
 
     const onFormSubmit = (e) => {
         e.preventDefault();
@@ -329,11 +353,24 @@ export default function ListingForm({
                     imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     return;
                 }
+                const totalNow = imageFilesRef.current.length + existingImageCount;
+                if (totalNow > MAX_IMAGES_PER_LISTING) {
+                    setImageError(
+                        `Vui lòng không quá ${MAX_IMAGES_PER_LISTING} ảnh (hiện ${totalNow}). Xóa bớt ảnh trước khi đăng.`,
+                    );
+                    imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    return;
+                }
                 handleFormSubmit(values);
             },
             () => {
                 if (!hasAtLeastOneImage) {
                     setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+                } else if (imageFilesRef.current.length + existingImageCount > MAX_IMAGES_PER_LISTING) {
+                    const totalNow = imageFilesRef.current.length + existingImageCount;
+                    setImageError(
+                        `Vui lòng không quá ${MAX_IMAGES_PER_LISTING} ảnh (hiện ${totalNow}). Xóa bớt ảnh trước khi đăng.`,
+                    );
                 }
             }
         )(e);
@@ -693,7 +730,6 @@ export default function ListingForm({
             <Box mb={4}>
                 <ImageUploader
                     onFilesChange={handleFilesChange}
-                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
                     existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
                 />
 
@@ -1123,7 +1159,7 @@ export default function ListingForm({
                                 variant="outlined"
                                 fullWidth
                                 onClick={handleSaveDraftClick}
-                                disabled={savingDraft || submitting}
+                                disabled={savingDraft || submitting || imageOverLimit}
                                 sx={{
                                     backgroundColor: "#E0E0E0",
                                     color: "#201D26",
@@ -1143,7 +1179,7 @@ export default function ListingForm({
                             type="submit"
                             variant="contained"
                             fullWidth
-                            disabled={submitting}
+                            disabled={submitting || imageOverLimit}
                             sx={{
                                 backgroundColor: "#9D6EED",
                                 py: 1.1,
