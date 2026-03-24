@@ -66,8 +66,10 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-                <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
             </Route>
+
+            {/* Đăng nhập admin: full page, không AuthLayout / không MainLayout */}
+            <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
 
             {/* ===== ADMIN ROUTES - Dùng AdminLayout (header + sidebar) ===== */}
             <Route path="/admin" element={<AdminLayout />}>
