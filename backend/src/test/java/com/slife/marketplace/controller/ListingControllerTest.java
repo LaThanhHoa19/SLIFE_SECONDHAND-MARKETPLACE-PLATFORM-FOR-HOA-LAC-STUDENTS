@@ -7,6 +7,7 @@ package com.slife.marketplace.controller;
 import com.slife.marketplace.config.SecurityConfig;
 import com.slife.marketplace.dto.response.ListingCardResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.ListingImageService;
@@ -25,6 +26,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -90,7 +92,7 @@ class ListingControllerTest {
         response.setPage(0);
         response.setSize(20);
 
-        when(listingService.getActiveListingCards(eq(0), eq(10)))
+        when(listingService.getActiveListingCards(eq(0), eq(10), nullable(User.class)))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/listings")
@@ -114,7 +116,7 @@ class ListingControllerTest {
 
     @Test
     void getListings_whenServiceThrows_shouldReturn500WithErrorPayloadNot403() throws Exception {
-        when(listingService.getActiveListingCards(eq(0), eq(10)))
+        when(listingService.getActiveListingCards(eq(0), eq(10), nullable(User.class)))
                 .thenThrow(new RuntimeException("Simulated DB failure"));
 
         mockMvc.perform(get("/api/listings")
