@@ -295,7 +295,7 @@ export default function ProfileHeader({
                                         gridTemplateColumns: {
                                             xs: 'repeat(2, 1fr)',
                                             sm: 'repeat(3, 1fr)',
-                                            md: 'repeat(5, 1fr)'
+                                            md: 'repeat(3, 1fr)'
                                         },
                                         gap: 2,
                                         mt: 3,
@@ -319,11 +319,6 @@ export default function ProfileHeader({
                                             <Typography variant="caption" color="text.secondary">Following</Typography>
                                             <Typography variant="h6"
                                                         fontWeight={700}>{user.followingCount ?? 0}</Typography>
-                                        </Box>
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary">Địa chỉ</Typography>
-                                            <Typography variant="body2" fontWeight={600}
-                                                        noWrap>{user.address || 'Hòa Lạc'}</Typography>
                                         </Box>
                                     </Box>
                                 </Box>
