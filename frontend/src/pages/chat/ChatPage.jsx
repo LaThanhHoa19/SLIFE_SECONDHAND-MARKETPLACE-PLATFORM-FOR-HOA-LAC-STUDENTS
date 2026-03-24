@@ -2,7 +2,15 @@
  * Trang tin nhắn: danh sách hội thoại và khung chat thời gian thực.
  * UX kiểu marketplace: gợi ý nhanh, tin đang trao đổi, nhóm theo ngày.
  */
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import { Client as StompClient } from '@stomp/stompjs';
@@ -376,10 +384,22 @@ export default function ChatPage() {
   const lastAutoSuggestSessionRef = useRef(null);
   const bottomRef = useRef(null);
   const messagesScrollRef = useRef(null);
+  const messagesRef = useRef(messages);
+  /** Snapshot danh sách tin để diff tin mới từ đối phương khi không ở đáy */
+  const prevMessagesForDiffRef = useRef([]);
+  /** Bỏ qua một lần diff sau khi mình vừa gửi (fetchHistory / setMessages) để không cộng nhầm */
+  const suppressOpponentDiffRef = useRef(false);
+  /** Sau đổi session: cuộn đáy đồng bộ trong layout (trước khi đếm tin mới — tránh scrollTop=0 nhầm là đang xem lịch sử) */
+  const didInitialScrollForSessionRef = useRef(false);
   const typingTimerRef = useRef(null);
   const typingSentRef = useRef(false);
 
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const [newOpponentMsgCount, setNewOpponentMsgCount] = useState(0);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const scrollToBottom = useCallback((behavior = 'smooth') => {
     requestAnimationFrame(() => {
@@ -389,21 +409,83 @@ export default function ChatPage() {
 
   const updateJumpToLatestVisibility = useCallback(() => {
     const el = messagesScrollRef.current;
-    if (!el || messages.length === 0) {
+    const list = messagesRef.current;
+    if (!el || list.length === 0) {
       setShowJumpToLatest(false);
       return;
     }
     const { scrollTop, scrollHeight, clientHeight } = el;
     const distFromBottom = scrollHeight - scrollTop - clientHeight;
-    setShowJumpToLatest(distFromBottom > CHAT_NEAR_BOTTOM_PX);
-  }, [messages.length]);
+    const nearBottom = distFromBottom <= CHAT_NEAR_BOTTOM_PX;
+    setShowJumpToLatest(!nearBottom);
+    if (nearBottom) {
+      setNewOpponentMsgCount(0);
+      prevMessagesForDiffRef.current = list.slice();
+    }
+  }, []);
 
-  // Chỉ cuộn xuống đáy khi vừa chọn hội thoại (danh sách bên trái / URL) và đã load xong lịch sử — không cuộn mỗi khi tin nhắn đổi (WS/poll).
   useEffect(() => {
+    setNewOpponentMsgCount(0);
+    prevMessagesForDiffRef.current = [];
+    didInitialScrollForSessionRef.current = false;
+  }, [activeSessionId]);
+
+  // Lần đầu có lịch sử sau đổi session: cuộn đáy ngay trong layout; sau đó mới đếm tin đối phương khi không ở đáy.
+  useLayoutEffect(() => {
+    messagesRef.current = messages;
     if (!activeSessionId || historyLoading) return;
-    scrollToBottom('auto');
-    requestAnimationFrame(updateJumpToLatestVisibility);
-  }, [activeSessionId, historyLoading, scrollToBottom, updateJumpToLatestVisibility]);
+
+    const el = messagesScrollRef.current;
+
+    if (!didInitialScrollForSessionRef.current) {
+      if (messages.length === 0) {
+        prevMessagesForDiffRef.current = [];
+        return;
+      }
+      didInitialScrollForSessionRef.current = true;
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+      setNewOpponentMsgCount(0);
+      prevMessagesForDiffRef.current = messages.slice();
+      updateJumpToLatestVisibility();
+      return;
+    }
+
+    if (suppressOpponentDiffRef.current) {
+      suppressOpponentDiffRef.current = false;
+      prevMessagesForDiffRef.current = messages.slice();
+      return;
+    }
+
+    if (!el || messages.length === 0) {
+      prevMessagesForDiffRef.current = [];
+      setNewOpponentMsgCount(0);
+      return;
+    }
+
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const nearBottom = scrollHeight - scrollTop - clientHeight <= CHAT_NEAR_BOTTOM_PX;
+    if (nearBottom) {
+      setNewOpponentMsgCount(0);
+      prevMessagesForDiffRef.current = messages.slice();
+      return;
+    }
+
+    const prev = prevMessagesForDiffRef.current;
+    const prevIds = new Set(prev.map((m) => String(m.id)));
+    let addedFromOther = 0;
+    for (const m of messages) {
+      const id = String(m.id);
+      if (prevIds.has(id)) continue;
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      addedFromOther += 1;
+    }
+    if (addedFromOther > 0) {
+      setNewOpponentMsgCount((c) => c + addedFromOther);
+    }
+    prevMessagesForDiffRef.current = messages.slice();
+  }, [messages, activeSessionId, historyLoading, currentUserId, updateJumpToLatestVisibility]);
 
   // Cập nhật nút “Mới nhất” khi nội dung đổi (không tự cuộn).
   useEffect(() => {
@@ -698,9 +780,12 @@ export default function ChatPage() {
     setInputText('');
     stopTyping();
     try {
+      suppressOpponentDiffRef.current = true;
       await chatApi.sendMessage(activeSessionId, text);
       await fetchHistory();
       fetchSessions();
+      scrollToBottom('smooth');
+      setNewOpponentMsgCount(0);
     } catch (e) {
       console.error('[Chat] send failed', e);
       const detail =
@@ -780,11 +865,14 @@ export default function ChatPage() {
       );
       const msg = getData(msgRes);
 
+      suppressOpponentDiffRef.current = true;
       setMessages((prev) => {
         if (!msg?.id) return prev.filter((m) => !m._pending);
         return upsertMessages(prev, msg, { dropPending: true });
       });
       fetchSessions();
+      scrollToBottom('smooth');
+      setNewOpponentMsgCount(0);
     } catch (err) {
       setMessages((prev) => prev.filter((m) => !m._pending));
       const detail =
@@ -806,10 +894,13 @@ export default function ChatPage() {
     setOfferOpen(false);
     setOfferAmount('');
     try {
+      suppressOpponentDiffRef.current = true;
       const res = await chatApi.makeOffer(activeSessionId, amount);
       const msg = getData(res);
       if (msg?.id) setMessages((prev) => upsertMessages(prev, msg));
       fetchSessions();
+      scrollToBottom('smooth');
+      setNewOpponentMsgCount(0);
     } catch (err) {
       const detail = err?.response?.data?.message || 'Lỗi không xác định';
       alert(`Đề xuất thất bại: ${detail}`);
@@ -854,14 +945,15 @@ export default function ChatPage() {
       sx={{
         display: 'flex',
         flexDirection: { xs: 'column', md: 'row' },
-        height: { xs: 'auto', md: 'calc(100vh - 120px)' },
-        minHeight: { xs: '70vh', md: undefined },
+        height: { xs: 'calc(100dvh - 88px)', md: 'calc(100vh - 120px)' },
+        minHeight: { xs: 'calc(100dvh - 88px)', md: undefined },
         maxWidth: 1120,
         mx: 'auto',
         pt: 2,
         px: { xs: 0.5, sm: 1 },
         gap: 2,
         alignItems: 'stretch',
+        overflow: 'hidden',
         bgcolor:
           theme.palette.mode === 'dark'
             ? alpha(theme.palette.common.black, 0.15)
@@ -876,6 +968,7 @@ export default function ChatPage() {
           width: { xs: '100%', sm: 300 },
           maxWidth: { xs: 320, sm: 300 },
           flexShrink: 0,
+          maxHeight: { xs: '35dvh', md: 'none' },
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -969,6 +1062,7 @@ export default function ChatPage() {
           display: 'flex',
           flexDirection: 'column',
           minWidth: 0,
+          minHeight: 0,
           borderRadius: 3,
           overflow: 'hidden',
         }}
@@ -1091,6 +1185,7 @@ export default function ChatPage() {
                 sx={{
                   flex: 1,
                   overflow: 'auto',
+                  overscrollBehavior: 'contain',
                   p: 2,
                   bgcolor:
                     theme.palette.mode === 'dark'
@@ -1162,23 +1257,65 @@ export default function ChatPage() {
                 <div ref={bottomRef} />
               </Box>
 
-              {showJumpToLatest && !historyLoading && messages.length > 0 && (
-                <Tooltip title="Xuống tin mới nhất" placement="left">
-                  <Fab
-                    size="small"
+              {newOpponentMsgCount > 0 && showJumpToLatest && !historyLoading && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    bottom: 58,
+                    zIndex: 2,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <Chip
+                    label="Tin nhắn mới!"
                     color="primary"
-                    aria-label="Xuống tin mới nhất"
-                    onClick={() => scrollToBottom('smooth')}
+                    size="small"
+                    sx={{ fontWeight: 700, boxShadow: 2 }}
+                  />
+                </Box>
+              )}
+
+              {showJumpToLatest && !historyLoading && messages.length > 0 && (
+                <Tooltip
+                  title={
+                    newOpponentMsgCount > 0
+                      ? `${newOpponentMsgCount} tin mới từ đối phương`
+                      : 'Xuống tin mới nhất'
+                  }
+                  placement="left"
+                >
+                  <Badge
+                    badgeContent={newOpponentMsgCount > 0 ? newOpponentMsgCount : 0}
+                    color="error"
+                    overlap="circular"
+                    invisible={newOpponentMsgCount === 0}
                     sx={{
                       position: 'absolute',
                       bottom: 12,
                       right: 16,
-                      zIndex: 2,
-                      boxShadow: 3,
+                      zIndex: 5,
+                      '& .MuiBadge-badge': {
+                        fontWeight: 700,
+                        minWidth: 18,
+                        zIndex: 6,
+                        top: 6,
+                        right: 6,
+                        boxShadow: (t) => `0 0 0 2px ${t.palette.background.paper}`,
+                      },
                     }}
                   >
-                    <KeyboardArrowDownIcon />
-                  </Fab>
+                    <Fab
+                      size="small"
+                      color="primary"
+                      aria-label="Xuống tin mới nhất"
+                      onClick={() => scrollToBottom('smooth')}
+                      sx={{ boxShadow: 3, zIndex: 4 }}
+                    >
+                      <KeyboardArrowDownIcon />
+                    </Fab>
+                  </Badge>
                 </Tooltip>
               )}
             </Box>
