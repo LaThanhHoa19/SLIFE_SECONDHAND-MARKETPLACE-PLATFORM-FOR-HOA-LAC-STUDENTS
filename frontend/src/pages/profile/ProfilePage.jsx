@@ -84,20 +84,28 @@ export default function ProfilePage() {
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
 
-  const isMe = id === 'me' || (currentUser && String(currentUser.id) === String(id));
+  const isMe = !id || id === 'me' || (currentUser && String(currentUser.id) === String(id));
 
   const loadUser = useCallback(async () => {
-    if (!id) return;
+    if (!id && !currentUser) return;
     setLoading(true);
     setError(null);
     try {
-      if (id === 'me') {
+      if (!id || id === 'me') {
+        const cachedUser = currentUser;
+        if (cachedUser) {
+          setProfileUser(cachedUser);
+        }
         try {
           const res = await userApi.getUser();
           const data = getPayload(res);
-          setProfileUser(data ?? currentUser);
-        } catch {
-          setProfileUser(currentUser);
+          if (data) {
+            setProfileUser(data);
+          }
+        } catch (err) {
+          console.error("Failed to load current user:", err);
+          if (cachedUser) setProfileUser(cachedUser);
+          else setError('Không tải được thông tin cá nhân.');
         }
       } else if (/^\d+$/.test(String(id))) {
         const res = await userApi.getUserById(id);
@@ -286,7 +294,6 @@ export default function ProfilePage() {
               <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><CheckCircleIcon fontSize="small" color="success" /><Typography variant="body2">Email đã xác minh</Typography></Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
                   <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
@@ -297,12 +304,14 @@ export default function ProfilePage() {
 
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
+              {!isMe && <Tab label="Đang bán" />}
+              {!isMe && <Tab label="Đã bán" />}
+              <Tab label="Đánh giá" />
             </Tabs>
             <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
-              {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+              {!isMe && tab === 0 && <ListingSection isMe={false} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {!isMe && tab === 1 && <ListingSection isMe={false} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {((!isMe && tab === 2) || (isMe && tab === 0)) && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
             </Box>
           </Box>
         </Box>
