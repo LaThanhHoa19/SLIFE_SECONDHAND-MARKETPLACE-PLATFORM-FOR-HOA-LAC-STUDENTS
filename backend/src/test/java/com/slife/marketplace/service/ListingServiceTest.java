@@ -54,6 +54,9 @@ class ListingServiceTest {
     @Mock
     private AddressRepository addressRepository;
 
+    @Mock
+    private FollowService followService;
+
     private ListingService listingService;
 
     @BeforeEach
@@ -63,7 +66,8 @@ class ListingServiceTest {
                 listingImageRepository,
                 savedListingRepository,
                 categoryRepository,
-                addressRepository
+                addressRepository,
+                followService
         );
     }
 
