@@ -66,6 +66,19 @@ public class ListingController {
     }
 
     /**
+     * PUT /api/listings/{id}
+     * Cập nhật tin đăng (chỉ chủ tin).
+     */
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<ListingResponse>> updateListing(
+            @PathVariable("id") Long id,
+            @RequestBody CreateListingRequest request) {
+        User seller = userService.getCurrentUser();
+        ListingResponse response = listingService.updateListing(id, seller, request);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
      * POST /api/listings/{id}/images
      * Upload danh sách ảnh cho listing đã tồn tại.
      * Body: multipart/form-data với images[].
@@ -127,10 +140,16 @@ public class ListingController {
         data.put("isGiveaway", listing.getIsGiveaway());
         data.put("createdAt", listing.getCreatedAt());
 
+        if (listing.getCategory() != null) {
+            data.put("categoryId", listing.getCategory().getId());
+            data.put("categoryName", listing.getCategory().getName());
+        }
+
         if (listing.getPickupAddress() != null) {
             var pa = listing.getPickupAddress();
             data.put("location", AddressFormat.pickupDisplayLine(pa.getLocationName(), pa.getAddressText()));
             Map<String, Object> pickup = new HashMap<>();
+            pickup.put("id", pa.getId());
             pickup.put("locationName", pa.getLocationName());
             pickup.put("addressText", pa.getAddressText());
             pickup.put("lat", pa.getLat());
