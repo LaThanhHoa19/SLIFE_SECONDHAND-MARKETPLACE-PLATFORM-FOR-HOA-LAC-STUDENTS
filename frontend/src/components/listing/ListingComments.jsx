@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Avatar, Box, IconButton, InputAdornment, TextField, Typography } from '@mui/material';
+import { useState, useEffect, useCallback } from 'react';
+import { Avatar, Box, IconButton, InputAdornment, TextField, Typography, CircularProgress } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import CloseIcon from '@mui/icons-material/Close';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
 import { Link as RouterLink } from 'react-router-dom';
+import * as listingApi from '../../api/listingApi';
 
 export const CARD_BG2 = '#252230';
 export const BORDER = 'rgba(255,255,255,0.07)';
@@ -11,157 +13,132 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const PURPLE = '#9D6EED';
 
-const MOCK_COMMENTS = [
-  {
-    id: 1,
-    content: "Bạn ơi cho mình hỏi máy còn bảo hành không ạ? Mình là sinh viên năm nhất đang cần tìm máy học viza.",
-    userFullName: "Nguyễn Văn Đạt",
-    userAvatar: "https://i.pravatar.cc/150?img=11",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    userId: 11,
-    replies: [
-      {
-        id: 101,
-        content: "Máy còn bảo hành 3 tháng chính hãng FPT nha bạn!",
-        userFullName: "Người bán",
-        userAvatar: "https://i.pravatar.cc/150?img=2",
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-        userId: 1,
-        replies: []
-      }
-    ]
-  },
-  {
-    id: 2,
-    content: "Fix giá 500k mình lấy luôn trong ngày nhé, mình ở khu Dom E ngay gần đây.",
-    userFullName: "Trần Mai Anh",
-    userAvatar: "https://i.pravatar.cc/150?img=5",
-    createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    userId: 5,
-    replies: []
-  }
-];
-
-export default function ListingComments({ listingId, currentUser }) {
-  const [comments, setComments] = useState(MOCK_COMMENTS);
+export default function ListingComments({ listingId, currentUser, onNotify }) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [text, setText] = useState('');
   const [replyingTo, setReplyingTo] = useState(null); // { id, name }
 
-  const handleSubmit = () => {
-    if (!text.trim()) return;
-    
-    const newComment = {
-      id: Date.now(),
-      content: text,
-      userId: currentUser?.id,
-      userFullName: currentUser?.fullName || 'Bạn',
-      userAvatar: currentUser?.avatarUrl,
-      createdAt: new Date().toISOString(),
-      replies: []
-    };
-
-    if (replyingTo) {
-      // Logic để chèn reply vào đúng parent (đệ quy)
-      const addReply = (list) => {
-        return list.map(c => {
-          if (c.id === replyingTo.id) {
-            return { ...c, replies: [...c.replies, newComment] };
-          }
-          if (c.replies.length > 0) {
-            return { ...c, replies: addReply(c.replies) };
-          }
-          return c;
-        });
-      };
-      setComments(addReply(comments));
-      setReplyingTo(null);
-    } else {
-      setComments((prev) => [...prev, newComment]);
+  const fetchComments = useCallback(async () => {
+    if (!listingId) return;
+    setLoading(true);
+    try {
+      const res = await listingApi.getComments(listingId);
+      const data = res?.data?.data || res?.data || [];
+      setComments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch comments:', err);
+    } finally {
+      setLoading(false);
     }
-    setText('');
+  }, [listingId]);
+
+  useEffect(() => {
+    fetchComments();
+  }, [fetchComments]);
+
+  const handleSubmit = async () => {
+    if (!text.trim() || submitting) return;
+
+    setSubmitting(true);
+    try {
+      if (replyingTo) {
+        await listingApi.replyToComment(replyingTo.id, { content: text.trim() });
+      } else {
+        await listingApi.createComment({ listingId, content: text.trim() });
+      }
+      setText('');
+      setReplyingTo(null);
+      await fetchComments(); // Reload all comments
+      if (onNotify) onNotify(replyingTo ? 'Đã gửi phản hồi!' : 'Đã gửi bình luận!');
+    } catch (err) {
+      if (onNotify) onNotify(err?.response?.data?.message || 'Không gửi được bình luận.', 'error');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const CommentItem = ({ comment, depth = 0 }) => (
-    <Box sx={{ mb: 2.5 }}>
-      <Box sx={{ display: 'flex', gap: 1.5 }}>
-        <Avatar
-          component={RouterLink}
-          to={comment.userId === (currentUser?.id || currentUser?.user_id) ? '/profile' : `/profile/${comment.userId || comment.user_id || ''}`}
-          src={fullImageUrl(comment.userAvatar)}
-          sx={{ width: 36, height: 36, mt: 0.3, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
-        >
-          {comment.userFullName ? comment.userFullName.charAt(0).toUpperCase() : 'U'}
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Box
-            sx={{
-              bgcolor: CARD_BG2, borderRadius: '14px', px: 2, py: 1.2,
-              border: `1px solid ${BORDER}`, display: 'inline-block', maxWidth: '100%'
-            }}
+  const CommentItem = ({ comment, depth = 0 }) => {
+    const author = comment.author || {};
+    const authorId = author.userId || author.id;
+
+    return (
+      <Box sx={{ mb: 2.5 }}>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Avatar
+            component={RouterLink}
+            to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
+            src={fullImageUrl(author.avatarUrl)}
+            sx={{ width: 36, height: 36, mt: 0.3, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
           >
-            <Typography 
-              component={RouterLink}
-              to={comment.userId === (currentUser?.id || currentUser?.user_id) ? '/profile' : `/profile/${comment.userId || comment.user_id || ''}`}
-              fontSize={14} 
-              fontWeight={700} 
-              color={TEXT_PRI} 
-              sx={{ mb: 0.3, textDecoration: 'none', cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: PURPLE } }}
-            >
-              {comment.userFullName}
-            </Typography>
-            <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
-              {comment.content}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 0.5, pl: 1 }}>
-            <Typography fontSize={12} color={TEXT_SEC}>
-              {formatDate(comment.createdAt)}
-            </Typography>
-            <Typography fontSize={12} fontWeight={600} color={TEXT_SEC} sx={{ cursor: 'pointer', '&:hover': { color: PURPLE } }}>
-              Thích
-            </Typography>
-            <Typography 
-              fontSize={12} 
-              fontWeight={600} 
-              color={TEXT_SEC} 
-              sx={{ cursor: 'pointer', '&:hover': { color: PURPLE } }}
-              onClick={() => {
-                setReplyingTo({ id: comment.id, name: comment.userFullName });
-                // Focus vào input (optional but good UX)
-                document.getElementById('comment-input')?.focus();
+            {author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
+          </Avatar>
+          <Box sx={{ flex: 1 }}>
+            <Box
+              sx={{
+                bgcolor: CARD_BG2, borderRadius: '14px', px: 2, py: 1.2,
+                border: `1px solid ${BORDER}`, display: 'inline-block', maxWidth: '100%'
               }}
             >
-              Phản hồi
-            </Typography>
+              <Typography 
+                component={RouterLink}
+                to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
+                fontSize={14} 
+                fontWeight={700} 
+                color={TEXT_PRI} 
+                sx={{ mb: 0.3, textDecoration: 'none', cursor: 'pointer', '&:hover': { textDecoration: 'underline', color: PURPLE } }}
+              >
+                {author.fullName || 'Người dùng'}
+              </Typography>
+              <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word' }}>
+                {comment.content}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mt: 0.5, pl: 1 }}>
+              <Typography fontSize={12} color={TEXT_SEC}>
+                {formatDate(comment.createdAt)}
+              </Typography>
+              <Typography fontSize={12} fontWeight={600} color={TEXT_SEC} sx={{ cursor: 'pointer', '&:hover': { color: PURPLE } }}>
+                Thích
+              </Typography>
+              <Typography 
+                fontSize={12} 
+                fontWeight={600} 
+                color={TEXT_SEC} 
+                sx={{ cursor: 'pointer', '&:hover': { color: PURPLE } }}
+                onClick={() => {
+                  setReplyingTo({ id: comment.id, name: author.fullName || 'Người dùng' });
+                  document.getElementById('comment-input')?.focus();
+                }}
+              >
+                Phản hồi
+              </Typography>
+            </Box>
           </Box>
         </Box>
-      </Box>
 
-      {/* Render replies with indentation */}
-      {comment.replies && comment.replies.length > 0 && (
-        <Box sx={{ pl: 5, mt: 2, borderLeft: `1px solid ${BORDER}`, ml: 2 }}>
-          {comment.replies.map(reply => (
-            <CommentItem key={reply.id} comment={reply} depth={depth + 1} />
-          ))}
-        </Box>
-      )}
-    </Box>
-  );
+        {comment.replies && comment.replies.length > 0 && (
+          <Box sx={{ pl: 5, mt: 2, borderLeft: `1px solid ${BORDER}`, ml: 2 }}>
+            {comment.replies.map(reply => (
+              <CommentItem key={reply.id} comment={reply} depth={depth + 1} />
+            ))}
+          </Box>
+        )}
+      </Box>
+    );
+  };
 
   return (
     <Box>
-      {/* Tiêu đề */}
       <Typography fontSize={16} fontWeight={700} color={TEXT_PRI} sx={{ mb: 2.5 }}>
-        Bình luận ({comments.length})
+        Bình luận {comments.length > 0 && `(${comments.length})`}
       </Typography>
 
-      {/* Input bình luận (đẩy lên trên để dễ tương tác hơn) */}
       <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 3 }}>
         <Avatar
-          component={RouterLink}
-          to={currentUser?.id === (currentUser?.id || currentUser?.user_id) ? '/profile' : `/profile/${currentUser?.id || currentUser?.user_id || ''}`}
           src={fullImageUrl(currentUser?.avatarUrl)}
-          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}`, cursor: 'pointer', textDecoration: 'none', bgcolor: PURPLE }}
+          sx={{ width: 38, height: 38, border: `1px solid ${BORDER}`, bgcolor: PURPLE }}
         >
           {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
         </Avatar>
@@ -181,6 +158,7 @@ export default function ListingComments({ listingId, currentUser }) {
           id="comment-input"
           placeholder={replyingTo ? `Phản hồi ${replyingTo.name}...` : "Viết bình luận của bạn..."}
           variant="outlined"
+          disabled={submitting}
           InputProps={{
             startAdornment: replyingTo && (
               <InputAdornment position="start">
@@ -209,7 +187,7 @@ export default function ListingComments({ listingId, currentUser }) {
                 <IconButton
                   size="small"
                   onClick={handleSubmit}
-                  disabled={!text.trim()}
+                  disabled={!text.trim() || submitting}
                   sx={{
                     bgcolor: text.trim() ? PURPLE : 'transparent',
                     color: text.trim() ? '#fff' : TEXT_SEC,
@@ -217,7 +195,7 @@ export default function ListingComments({ listingId, currentUser }) {
                     width: 32, height: 32
                   }}
                 >
-                  <SendIcon sx={{ fontSize: 16 }} />
+                  {submitting ? <CircularProgress size={16} color="inherit" /> : <SendIcon sx={{ fontSize: 16 }} />}
                 </IconButton>
               </InputAdornment>
             ),
@@ -228,14 +206,18 @@ export default function ListingComments({ listingId, currentUser }) {
               '& fieldset': { borderColor: BORDER },
               '&:hover fieldset': { borderColor: PURPLE },
               '&.Mui-focused fieldset': { borderColor: PURPLE },
+              '&.Mui-disabled': { opacity: 0.7 }
             },
             '& input::placeholder': { color: TEXT_SEC, opacity: 1 },
           }}
         />
       </Box>
 
-      {/* Danh sách bình luận */}
-      {comments.length === 0 ? (
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+          <CircularProgress size={24} sx={{ color: PURPLE }} />
+        </Box>
+      ) : comments.length === 0 ? (
         <Typography fontSize={13} color={TEXT_SEC} sx={{ mb: 2 }}>
           Chưa có bình luận nào. Hãy là người đầu tiên!
         </Typography>
