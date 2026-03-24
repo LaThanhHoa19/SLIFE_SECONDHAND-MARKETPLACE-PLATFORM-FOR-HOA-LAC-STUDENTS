@@ -1,5 +1,6 @@
 /**
- * Layout cho /login, /register, /admin/login — cùng Header + Sidebar + Footer với feed (SCRUM-93).
+ * Layout cho /login, /register — Header + Sidebar + Footer với feed (SCRUM-93).
+ * /admin/login không dùng layout này (khai báo riêng trong AppRouter).
  */
 import { useState } from 'react';
 import { Box } from '@mui/material';
