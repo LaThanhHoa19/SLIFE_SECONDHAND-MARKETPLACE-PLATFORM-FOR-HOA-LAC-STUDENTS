@@ -51,8 +51,8 @@ import { fullImageUrl } from '../../utils/constants';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
+import { useFollowActions } from '../../hooks/useFollowActions';
 import * as offerApi from '../../api/offerApi';
-import * as followApi from '../../api/followApi';
 
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
@@ -115,6 +115,10 @@ export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
+    const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
+        user: currentUser,
+        updateAuthUser,
+    });
 
     const [listing, setListing] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -130,7 +134,6 @@ export default function ListingDetailPage() {
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
     const [sellerFollowed, setSellerFollowed] = useState(false);
-    const [sellerFollowLoading, setSellerFollowLoading] = useState(false);
 
     // Load listing
     useEffect(() => {
@@ -146,6 +149,10 @@ export default function ListingDetailPage() {
             .catch((err) => setError(err?.message || 'Không tải được tin.'))
             .finally(() => setLoading(false));
     }, [id]);
+
+    useEffect(() => {
+        setSellerFollowed(!!listing?.isFollowed);
+    }, [listing?.id, listing?.isFollowed]);
 
     // Load tin khác của người bán + tin tương tự
     // Backend không hỗ trợ sellerId param → load toàn bộ rồi filter client-side
@@ -255,40 +262,24 @@ export default function ListingDetailPage() {
         if (!listing) return;
         const sid = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         if (!sid) return;
-        if (!isAuthenticated) {
-            showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-            navigate('/login');
-            return;
-        }
-        setSellerFollowLoading(true);
-        try {
-            if (sellerFollowed) {
-                await followApi.unfollowUser(sid);
-                setSellerFollowed(false);
-                setListing((prev) => (prev ? { ...prev, isFollowed: false } : prev));
-                if (currentUser?.id && updateAuthUser) {
-                    updateAuthUser({
-                        followingCount: Math.max(0, (currentUser.followingCount ?? 0) - 1),
-                    });
-                }
-                showSnack('Đã bỏ theo dõi người bán.');
-            } else {
-                await followApi.followUser(sid);
-                setSellerFollowed(true);
-                setListing((prev) => (prev ? { ...prev, isFollowed: true } : prev));
-                if (currentUser?.id && updateAuthUser) {
-                    updateAuthUser({
-                        followingCount: (currentUser.followingCount ?? 0) + 1,
-                    });
-                }
-                showSnack('Đã theo dõi người bán.');
-            }
-        } catch (e) {
-            showSnack(e?.message || 'Không cập nhật được trạng thái theo dõi.', 'error');
-        } finally {
-            setSellerFollowLoading(false);
-        }
-    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, currentUser, updateAuthUser]);
+        await toggleFollow({
+            targetUserId: sid,
+            isFollowing: sellerFollowed,
+            isAuthenticated,
+            onUnauthenticated: () => {
+                showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
+                navigate('/login');
+            },
+            onSuccess: (nextIsFollowing) => {
+                setSellerFollowed(nextIsFollowing);
+                setListing((prev) => (prev ? { ...prev, isFollowed: nextIsFollowing } : prev));
+                showSnack(nextIsFollowing ? 'Đã theo dõi người bán.' : 'Đã bỏ theo dõi người bán.');
+            },
+            onError: (e) => {
+                showSnack(e?.message || 'Không cập nhật được trạng thái theo dõi.', 'error');
+            },
+        });
+    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, toggleFollow]);
 
     const handleOffer = async () => {
         if (!isAuthenticated) {

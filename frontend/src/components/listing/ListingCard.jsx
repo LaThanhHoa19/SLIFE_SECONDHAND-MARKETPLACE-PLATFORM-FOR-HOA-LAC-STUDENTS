@@ -25,7 +25,7 @@ import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
 import {useAuth} from '../../hooks/useAuth';
-import * as followApi from '../../api/followApi';
+import {useFollowActions} from '../../hooks/useFollowActions';
 
 const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
 
@@ -70,13 +70,13 @@ export default function ListingCard({
                                     }) {
     const navigate = useNavigate();
     const { user, isAuthenticated, updateUser: updateAuthUser } = useAuth();
+    const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
     const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
     const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
     const [followed, setFollowed] = useState(!!listing?.isFollowed);
-    const [followLoading, setFollowLoading] = useState(false);
 
     useEffect(() => {
         setFollowed(!!listing?.isFollowed);
@@ -95,30 +95,15 @@ export default function ListingCard({
             navigate('/login');
             return;
         }
-        setFollowLoading(true);
-        try {
-            if (followed) {
-                await followApi.unfollowUser(sellerId);
-                setFollowed(false);
-                if (user?.id && updateAuthUser) {
-                    updateAuthUser({
-                        followingCount: Math.max(0, (user.followingCount ?? 0) - 1),
-                    });
-                }
-            } else {
-                await followApi.followUser(sellerId);
-                setFollowed(true);
-                if (user?.id && updateAuthUser) {
-                    updateAuthUser({
-                        followingCount: (user.followingCount ?? 0) + 1,
-                    });
-                }
-            }
-        } catch {
-            /* silent — optional toast at feed level */
-        } finally {
-            setFollowLoading(false);
-        }
+        await toggleFollow({
+            targetUserId: sellerId,
+            isFollowing: followed,
+            isAuthenticated,
+            onSuccess: (nextIsFollowing) => setFollowed(nextIsFollowing),
+            onError: () => {
+                /* silent — optional toast at feed level */
+            },
+        });
     };
 
     const conditionText = getConditionText(listing);

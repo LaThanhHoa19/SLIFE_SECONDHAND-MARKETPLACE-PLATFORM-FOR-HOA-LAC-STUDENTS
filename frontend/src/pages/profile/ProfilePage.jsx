@@ -18,8 +18,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useFollowActions } from '../../hooks/useFollowActions';
 import * as userApi from '../../api/userApi';
-import * as followApi from '../../api/followApi';
 import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
 import { createReport } from '../../api/reportApi';
@@ -79,13 +79,16 @@ export default function ProfilePage() {
   const [reportEvidence, setReportEvidence] = useState('');
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
   const [followListOpen, setFollowListOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
+  const { followLoading, toggleFollow } = useFollowActions({
+    user: currentUser,
+    updateAuthUser,
+  });
 
   const isMe = id === 'me' || (currentUser && String(currentUser.id) === String(id));
 
@@ -191,40 +194,25 @@ export default function ProfilePage() {
 
   const handleToggleFollow = async () => {
     if (!profileUser?.id || isMe) return;
-    setFollowLoading(true);
     setError(null);
-    try {
-      const following = profileUser.isFollowedByViewer === true;
-      if (following) {
-        await followApi.unfollowUser(profileUser.id);
+    await toggleFollow({
+      targetUserId: profileUser.id,
+      isFollowing: profileUser.isFollowedByViewer === true,
+      isAuthenticated: !!currentUser,
+      onUnauthenticated: () => navigate('/login'),
+      onSuccess: (nextIsFollowing) => {
         setProfileUser((p) => ({
           ...p,
-          isFollowedByViewer: false,
-          followerCount: Math.max(0, (p.followerCount ?? 0) - 1),
+          isFollowedByViewer: nextIsFollowing,
+          followerCount: nextIsFollowing
+              ? (p.followerCount ?? 0) + 1
+              : Math.max(0, (p.followerCount ?? 0) - 1),
         }));
-        if (currentUser?.id && updateAuthUser) {
-          updateAuthUser({
-            followingCount: Math.max(0, (currentUser.followingCount ?? 0) - 1),
-          });
-        }
-      } else {
-        await followApi.followUser(profileUser.id);
-        setProfileUser((p) => ({
-          ...p,
-          isFollowedByViewer: true,
-          followerCount: (p.followerCount ?? 0) + 1,
-        }));
-        if (currentUser?.id && updateAuthUser) {
-          updateAuthUser({
-            followingCount: (currentUser.followingCount ?? 0) + 1,
-          });
-        }
-      }
-    } catch (err) {
-      setError(err?.message || 'Không thể cập nhật trạng thái theo dõi.');
-    } finally {
-      setFollowLoading(false);
-    }
+      },
+      onError: (err) => {
+        setError(err?.message || 'Không thể cập nhật trạng thái theo dõi.');
+      },
+    });
   };
 
   const handleChat = async () => {
