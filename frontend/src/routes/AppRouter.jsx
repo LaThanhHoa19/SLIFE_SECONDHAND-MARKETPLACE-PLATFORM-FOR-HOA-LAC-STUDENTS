@@ -83,6 +83,14 @@ export default function AppRouter() {
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/profile/:id" element={<SuspenseProfilePage />} />
+                <Route
+                    path="/profile"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseProfilePage />
+                        </RouteGuard>
+                    }
+                />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
                 {/* Google OAuth2 redirect callback — no guard, no layout needed */}
