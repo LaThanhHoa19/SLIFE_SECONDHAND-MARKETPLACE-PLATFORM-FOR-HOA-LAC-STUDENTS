@@ -258,14 +258,14 @@ export default function ProfilePage() {
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
   if (!profileUser) return <Box p={3} textAlign="center"><Typography>{isMe ? 'Bạn cần đăng nhập.' : 'Không tìm thấy người dùng.'}</Typography><Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(isMe ? '/login' : '/')}>{isMe ? 'Đăng nhập' : 'Về trang chủ'}</Button></Box>;
 
-  const user = isMe ? (profileUser ?? currentUser) : profileUser;
-  const avatarUrl = fullImageUrl(user.avatarUrl ?? user.avatar_url) || user.avatarUrl;
-  const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl ?? user.cover_image_url) || user.coverImageUrl);
-  const fullName = user.fullName ?? user.full_name ?? 'Người dùng';
-  const bio = user.bio || 'Người bán uy tín, chuyên đồ điện tử và gia dụng.';
-  const reputationScore = user.reputationScore ?? user.reputation_score ?? 4.8;
-  const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
+  const user = profileUser || currentUser || {};
+  const avatarUrl = fullImageUrl(user.avatarUrl) || user.avatarUrl;
+  const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl) || user.coverImageUrl);
+  const fullName = user.fullName || 'Người dùng';
+  const bio = user.bio || 'Chưa có giới thiệu.';
+  const reputationScore = user.reputationScore || 5.0;
+  const joinDate = formatJoinDate(user.createdAt);
+  const phoneVerified = !!user.phoneNumber;
 
   return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
