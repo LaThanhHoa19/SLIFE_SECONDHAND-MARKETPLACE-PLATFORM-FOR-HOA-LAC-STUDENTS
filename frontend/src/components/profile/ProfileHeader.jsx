@@ -311,6 +311,12 @@ export default function ProfileHeader({
                                             </Box>
                                         </Box>
                                         <Box>
+                                            <Typography variant="caption" color="text.secondary">Bài đăng</Typography>
+                                            <Typography variant="h6" fontWeight={700}>
+                                                {user.listingCount ?? 0}
+                                            </Typography>
+                                        </Box>
+                                        <Box>
                                             <Typography variant="caption" color="text.secondary">Followers</Typography>
                                             <Typography variant="h6"
                                                         fontWeight={700}>{user.followerCount ?? 0}</Typography>
