@@ -92,10 +92,6 @@ export default function ProfilePage() {
     setError(null);
     try {
       if (!id || id === 'me') {
-        const cachedUser = currentUser;
-        if (cachedUser) {
-          setProfileUser(cachedUser);
-        }
         try {
           const res = await userApi.getUser();
           const data = getPayload(res);
@@ -104,8 +100,11 @@ export default function ProfilePage() {
           }
         } catch (err) {
           console.error("Failed to load current user:", err);
-          if (cachedUser) setProfileUser(cachedUser);
-          else setError('Không tải được thông tin cá nhân.');
+          if (currentUser) {
+             setProfileUser(currentUser);
+          } else {
+             setError('Bạn cần đăng nhập để xem thông tin này.');
+          }
         }
       } else if (/^\d+$/.test(String(id))) {
         const res = await userApi.getUserById(id);
@@ -128,29 +127,20 @@ export default function ProfilePage() {
   }, [id, isMe, currentUser]);
 
   const loadListings = useCallback(async () => {
+    if (!profileUser?.id) return;
     setListingsLoading(true);
     try {
-      const res = await getListings();
+      const res = await getListings({ sellerId: profileUser.id, size: 50 });
       const data = getPayload(res);
       const list = Array.isArray(data) ? data : data?.content ?? [];
-      const targetId = profileUser?.id;
-      const filtered = targetId
-          ? list.filter((item) => {
-            const sellerId = item.sellerId ?? item.seller?.id ?? item.seller?.userId ?? item.seller?.user_id;
-            // fall back to name filter if ID is not available in the listing's seller object
-            if (sellerId != null && targetId != null) return String(sellerId) === String(targetId);
-            const sellerName = item.sellerName ?? item.sellerSummary?.fullName ?? item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
-            const name = profileUser?.fullName ?? profileUser?.full_name;
-            return name && sellerName === name;
-          })
-          : list;
-      setListings(filtered);
-    } catch {
+      setListings(list);
+    } catch (err) {
+      console.error("Failed to load listings:", err);
       setListings([]);
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser]);
+  }, [profileUser?.id]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser) loadListings(); }, [profileUser, loadListings]);
