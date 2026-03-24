@@ -252,19 +252,39 @@ export default function ListingForm({
             .catch((e) => console.error('Nominatim error:', e));
     }, [adminLocation]);
 
-    // Giá khi check/uncheck "Cho tặng"
+    // Giá khi bật/tắt "Cho tặng" — không xóa giá lần đầu trên trang sửa (giá đã load từ API)
+    const prevGiveawayRef = useRef(null);
     useEffect(() => {
+        if (mode === 'edit') {
+            if (prevGiveawayRef.current === null) {
+                prevGiveawayRef.current = isGiveaway;
+                return;
+            }
+            if (prevGiveawayRef.current !== isGiveaway) {
+                if (isGiveaway) {
+                    setValue('price', '0');
+                    clearErrors('price');
+                } else {
+                    setValue('price', '');
+                }
+                prevGiveawayRef.current = isGiveaway;
+            }
+            return;
+        }
         if (isGiveaway) {
             setValue('price', '0');
             clearErrors('price');
         } else {
             setValue('price', '');
         }
-    }, [isGiveaway, setValue, clearErrors]);
+    }, [isGiveaway, setValue, clearErrors, mode]);
 
     const formatPrice = (value) => {
-        if (!value || value === "0") return value;
-        return Number(value.toString().replace(/\D/g, "")).toLocaleString("vi-VN");
+        if (value == null || value === '') return '';
+        if (value === '0' || value === 0) return '0';
+        const digits = String(value).replace(/\D/g, '');
+        if (!digits) return '';
+        return Number(digits).toLocaleString('vi-VN');
     };
 
     const handleFormSubmit = (values) => {
@@ -670,38 +690,11 @@ export default function ListingForm({
             <Typography fontWeight={600} fontSize={16} mb={2}>
                 Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
             </Typography>
-            {mode === 'edit' && existingImageUrls?.length > 0 && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                    {existingImageUrls.map((url) => (
-                        <Box
-                            key={url}
-                            sx={{
-                                width: 110,
-                                height: 110,
-                                borderRadius: '10px',
-                                overflow: 'hidden',
-                                flexShrink: 0,
-                            }}
-                        >
-                            <img
-                                src={url}
-                                alt=""
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                        </Box>
-                    ))}
-                </Box>
-            )}
-            {mode === 'edit' && existingImageUrls?.length > 0 && (
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-                    Thêm ảnh mới (tùy chọn)
-                </Typography>
-            )}
             <Box mb={4}>
                 <ImageUploader
                     onFilesChange={handleFilesChange}
                     maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
-                    error={imageError}
+                    existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
                 />
 
                 {imageError && (
