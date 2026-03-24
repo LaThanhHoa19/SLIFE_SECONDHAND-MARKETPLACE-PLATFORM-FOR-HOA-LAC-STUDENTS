@@ -11,6 +11,7 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.ReportRequest;
 import com.slife.marketplace.dto.request.ResolveReportRequest;
 import com.slife.marketplace.dto.response.ReportResponse;
+import com.slife.marketplace.dto.response.ReportResponseDTO;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.Report;
 import com.slife.marketplace.entity.User;
@@ -27,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -35,20 +38,24 @@ public class ReportService {
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "USER");
     private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "DISMISSED");
+    private static final int DEFAULT_REPORT_THRESHOLD = 3;
 
     private final ReportRepository reportRepository;
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ConfigService configService;
 
     public ReportService(ReportRepository reportRepository,
                          ListingRepository listingRepository,
                          UserRepository userRepository,
-                         NotificationService notificationService) {
+                         NotificationService notificationService,
+                         ConfigService configService) {
         this.reportRepository = reportRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.configService = configService;
     }
 
     @Transactional
@@ -81,6 +88,14 @@ public class ReportService {
         return reports.map(ReportResponse::from);
     }
 
+    @Transactional(readOnly = true)
+    public List<ReportResponseDTO> getPendingReports() {
+        return reportRepository.findPendingReportsWithReporter()
+                .stream()
+                .map(this::toReportResponseDTO)
+                .toList();
+    }
+
     @Transactional
     public ReportResponse resolveReport(Long reportId, User admin, ResolveReportRequest request) {
         String resolveStatus = request.getStatus().toUpperCase();
@@ -99,6 +114,29 @@ public class ReportService {
         Report saved = reportRepository.save(report);
         log.info("Report id={} resolved as {} by admin={}", reportId, resolveStatus, admin.getId());
         return ReportResponse.from(saved);
+    }
+
+    @Transactional
+    public String processReport(Long reportId, String action, String note, User admin) {
+        String normalizedAction = normalizeAction(action);
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.setAdminNote(note);
+        report.setHandledBy(admin);
+        report.setUpdatedAt(Instant.now());
+
+        if ("APPROVE".equals(normalizedAction)) {
+            report.setStatus("RESOLVED");
+        } else {
+            report.setStatus("REJECTED");
+        }
+
+        Report savedReport = reportRepository.save(report);
+        if ("APPROVE".equals(normalizedAction)) {
+            applyApproveSideEffects(savedReport);
+        }
+        return "Report processed successfully";
     }
 
     private ReportResponse createListingReport(User reporter, ReportRequest request, String targetType) {
@@ -143,5 +181,51 @@ public class ReportService {
         report.setCreatedAt(Instant.now());
         report.setUpdatedAt(Instant.now());
         return report;
+    }
+
+    private String normalizeAction(String action) {
+        if (action == null || action.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "action is required");
+        }
+        String normalized = action.trim().toUpperCase(Locale.ROOT);
+        if (!"APPROVE".equals(normalized) && !"REJECT".equals(normalized)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "action must be APPROVE or REJECT");
+        }
+        return normalized;
+    }
+
+    private void applyApproveSideEffects(Report report) {
+        if ("LISTING".equals(report.getTargetType())) {
+            Listing listing = listingRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+            listing.setStatus("HIDDEN");
+            listing.setUpdatedAt(Instant.now());
+            listingRepository.save(listing);
+            return;
+        }
+
+        if ("USER".equals(report.getTargetType())) {
+            User user = userRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
+            long approvedCount = reportRepository.countByTargetTypeAndTargetIdAndStatus("USER", user.getId(), "RESOLVED");
+            int reportThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
+            if (approvedCount >= reportThreshold) {
+                user.setStatus("BANNED");
+                user.setUpdatedAt(java.time.LocalDateTime.now());
+                userRepository.save(user);
+                log.warn("User auto-banned due to approved reports. userId={}, approvedReports={}, threshold={}",
+                        user.getId(), approvedCount, reportThreshold);
+            }
+        }
+    }
+
+    private ReportResponseDTO toReportResponseDTO(Report report) {
+        String reporterName = report.getReporter() != null ? report.getReporter().getFullName() : null;
+        return new ReportResponseDTO(
+                report.getId(),
+                reporterName,
+                report.getTargetType(),
+                report.getReason(),
+                report.getCreatedAt());
     }
 }
