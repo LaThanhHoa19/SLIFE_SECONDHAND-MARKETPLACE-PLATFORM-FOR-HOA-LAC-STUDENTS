@@ -29,6 +29,7 @@ import {
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ListingsFeed from '../../components/listing/ListingsFeed';
+import Pagination from '../../components/common/Pagination';
 import useListings from '../../hooks/useListings';
 import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
@@ -77,7 +78,6 @@ export default function SearchPage() {
         location: '',
         sort: 'createdAt,desc',
         condition: '',
-        hasVideo: false,
         minPrice: '',
         maxPrice: '',
     }), []);
@@ -89,7 +89,6 @@ export default function SearchPage() {
     const location = searchParams.get('location') || '';
     const sort = searchParams.get('sort') || 'createdAt,desc';
     const condition = searchParams.get('condition') || '';
-    const hasVideo = searchParams.get('hasVideo') === 'true';
     const minPrice = searchParams.get('minPrice') || '';
     const maxPrice = searchParams.get('maxPrice') || '';
     const page = Number(searchParams.get('page') || 0);
@@ -102,11 +101,10 @@ export default function SearchPage() {
             location,
             sort,
             condition,
-            hasVideo,
             minPrice,
             maxPrice,
         });
-    }, [q, category, location, sort, condition, hasVideo, minPrice, maxPrice]);
+    }, [q, category, location, sort, condition, minPrice, maxPrice]);
 
     const applyDraft = useCallback((d) => {
         const params = new URLSearchParams();
@@ -115,7 +113,6 @@ export default function SearchPage() {
         if (d.location) params.set('location', d.location);
         if (d.sort && d.sort !== 'createdAt,desc') params.set('sort', d.sort);
         if (d.condition) params.set('condition', d.condition);
-        if (d.hasVideo) params.set('hasVideo', 'true');
         if (d.minPrice) params.set('minPrice', d.minPrice);
         if (d.maxPrice) params.set('maxPrice', d.maxPrice);
         navigate(`/search?${params.toString()}`);
@@ -127,7 +124,6 @@ export default function SearchPage() {
         location,
         sort,
         condition,
-        hasVideo,
         minPrice,
         maxPrice,
         page,
@@ -150,7 +146,7 @@ export default function SearchPage() {
             .catch(() => setCategories([]));
     }, []);
 
-    const hasFilter = !!(category || location || condition || hasVideo || q || minPrice || maxPrice);
+    const hasFilter = !!(category || location || condition || q || minPrice || maxPrice);
 
     const categoryTree = buildCategoryTree(categories);
     const flatCategories = categoryTree.flatMap((parent) => [
@@ -504,7 +500,14 @@ export default function SearchPage() {
                             <ToggleButtonGroup
                                 exclusive
                                 value={draft.sort}
-                                onChange={(_, val) => setDraft((prev) => ({ ...prev, sort: val || 'createdAt,desc' }))}
+                                onChange={(_, val) => {
+                                    const nextSort = val || 'createdAt,desc';
+                                    setDraft((prev) => {
+                                        const next = { ...prev, sort: nextSort };
+                                        applyDraft(next);
+                                        return next;
+                                    });
+                                }}
                                 size="small"
                                 sx={{
                                     '& .MuiToggleButton-root': {
@@ -574,6 +577,17 @@ export default function SearchPage() {
                             viewMode={viewMode}
                             cardVariant="fullWidth"
                             imageAspect={viewMode === 'list' ? 'compactList' : undefined}
+                        />
+                        <Pagination
+                            page={page}
+                            totalPages={meta.totalPages}
+                            totalElements={meta.totalElements}
+                            pageSize={size}
+                            onChange={(nextPage) => {
+                                const params = new URLSearchParams(searchParams);
+                                params.set('page', String(nextPage));
+                                navigate(`/search?${params.toString()}`);
+                            }}
                         />
                     </Box>
                 </Box>
@@ -1074,50 +1088,12 @@ export default function SearchPage() {
                     </ToggleButtonGroup>
                 </Box>
 
-                <Box sx={{ mb: 2 }}>
-                    <Typography
-                        sx={{
-                            fontSize: 11,
-                            textTransform: 'uppercase',
-                            color: 'rgba(226,232,240,0.9)',
-                            mb: 0.75,
-                            letterSpacing: 0.12,
-                        }}
-                    >
-                        Tin có video
-                    </Typography>
-                    <ToggleButtonGroup
-                        exclusive
-                        value={draft.hasVideo ? 'yes' : ''}
-                        onChange={(_, val) => setDraft((prev) => ({ ...prev, hasVideo: val === 'yes' }))}
-                        size="small"
-                        sx={{
-                            '& .MuiToggleButton-root': {
-                                textTransform: 'none',
-                                fontSize: 12,
-                                px: 1.6,
-                                color: 'rgba(226,232,240,0.9)',
-                                borderColor: 'rgba(148,163,184,0.4)',
-                                bgcolor: 'transparent',
-                                '&.Mui-selected': {
-                                    bgcolor: 'rgba(34,197,94,0.25)',
-                                    color: '#BBF7D0',
-                                    borderColor: 'rgba(34,197,94,0.95)',
-                                },
-                            },
-                        }}
-                    >
-                        <ToggleButton value="">Tất cả</ToggleButton>
-                        <ToggleButton value="yes">Chỉ tin có video</ToggleButton>
-                    </ToggleButtonGroup>
-                </Box>
-
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
                     <Button
                         variant="text"
                         size="small"
                         onClick={() => {
-                            setDraft((prev) => ({ ...prev, condition: '', hasVideo: false }));
+                            setDraft((prev) => ({ ...prev, condition: '' }));
                             setAdvancedAnchorEl(null);
                         }}
                         sx={{ color: 'rgba(148,163,184,0.95)', textTransform: 'none', fontSize: 12 }}
