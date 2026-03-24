@@ -289,12 +289,21 @@ export default function ListingForm({ defaultValues = {}, onSubmit, onSaveDraft,
 
     const onFormSubmit = (e) => {
         e.preventDefault();
-        if (imageFiles.length === 0) {
-            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
-            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-        }
-        handleSubmit(handleFormSubmit)(e);
+        handleSubmit(
+            (values) => {
+                if (imageFiles.length === 0) {
+                    setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+                    imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    return;
+                }
+                handleFormSubmit(values);
+            },
+            () => {
+                if (imageFiles.length === 0) {
+                    setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+                }
+            }
+        )(e);
     };
 
     // ── Vietmap GL: khởi tạo MỘT LẦN (không có adminLocation trong deps) ──
