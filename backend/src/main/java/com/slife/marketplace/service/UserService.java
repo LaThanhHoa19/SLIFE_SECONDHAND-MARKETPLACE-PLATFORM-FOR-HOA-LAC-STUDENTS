@@ -112,7 +112,8 @@ public class UserService {
             user.setAvatarUrl(request.getAvatarUrl().trim().isEmpty() ? null : request.getAvatarUrl().trim());
         }
         if (request.getCoverImageUrl() != null) {
-            user.setCoverImageUrl(request.getCoverImageUrl().trim().isEmpty() ? null : request.getCoverImageUrl().trim());
+            user.setCoverImageUrl(
+                    request.getCoverImageUrl().trim().isEmpty() ? null : request.getCoverImageUrl().trim());
         }
         user.setUpdatedAt(LocalDateTime.now());
         log.debug("updateCurrentUser - before save, fullName={}", user.getFullName());
@@ -185,12 +186,15 @@ public class UserService {
     }
 
     private static String getImageExtension(String filename) {
-        if (filename == null || filename.isBlank()) return ".jpg";
+        if (filename == null || filename.isBlank())
+            return ".jpg";
         int i = filename.lastIndexOf('.');
-        if (i <= 0) return ".jpg";
+        if (i <= 0)
+            return ".jpg";
         String ext = filename.substring(i).toLowerCase();
         for (String e : ALLOWED_EXT) {
-            if (ext.equals(e)) return ext;
+            if (ext.equals(e))
+                return ext;
         }
         return ".jpg";
     }
