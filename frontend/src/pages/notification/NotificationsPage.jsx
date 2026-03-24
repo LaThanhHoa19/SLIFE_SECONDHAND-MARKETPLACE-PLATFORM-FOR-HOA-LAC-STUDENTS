@@ -47,7 +47,7 @@ export default function NotificationsPage() {
                         Chưa có thông báo
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Bạn sẽ nhận thông báo khi có tin nhắn mới, offer, deal xác nhận hoặc tin đăng bị báo cáo.
+                        Bạn sẽ nhận thông báo khi có tin nhắn mới, người theo dõi, offer, deal xác nhận hoặc tin đăng bị báo cáo.
                     </Typography>
                 </Box>
             ) : (

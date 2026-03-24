@@ -9,6 +9,7 @@ export { default as ErrorState } from './ErrorState';
 export { default as ImageUploader } from './ImageUploader';
 export { default as Loading } from './Loading';
 export { default as NotificationDropdown } from './NotificationDropdown';
+export { default as NotificationTypeIcon } from './NotificationTypeIcon';
 export { default as Pagination } from './Pagination';
 export { default as SkeletonGrid } from './SkeletonGrid';
 export { default as Tag } from './Tag';
