@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
+    @ExceptionHandler({ MethodArgumentNotValidException.class, BindException.class })
     public ResponseEntity<ApiResponse<Object>> handleValidationExceptions(Exception ex) {
         FieldError fieldError = null;
         if (ex instanceof MethodArgumentNotValidException manv) {
@@ -84,9 +84,7 @@ public class GlobalExceptionHandler {
         log.error("Unexpected exception", ex);
         ApiResponse<Object> body = ApiResponse.error(
                 ErrorCode.INTERNAL_ERROR.getCode(),
-                ErrorCode.INTERNAL_ERROR.getMessage()
-        );
+                ErrorCode.INTERNAL_ERROR.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
-
