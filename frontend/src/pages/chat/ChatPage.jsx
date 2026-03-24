@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  Fab,
   IconButton,
   List,
   Popover,
@@ -34,6 +35,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -43,6 +45,9 @@ import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+/** Khoảng cách từ đáy vùng scroll để coi là “đang xem tin mới nhất” */
+const CHAT_NEAR_BOTTOM_PX = 80;
 // WebSocket endpoint /chat không nằm dưới /api, phải dùng origin trực tiếp
 const WS_URL = import.meta.env.VITE_WS_URL ||
   (typeof window !== 'undefined'
@@ -370,13 +375,40 @@ export default function ChatPage() {
   const suggestBtnRef = useRef(null);
   const lastAutoSuggestSessionRef = useRef(null);
   const bottomRef = useRef(null);
+  const messagesScrollRef = useRef(null);
   const typingTimerRef = useRef(null);
   const typingSentRef = useRef(false);
 
-  // ── Auto-scroll to bottom whenever messages change ────────────────────────
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: behavior === 'auto' ? 'auto' : 'smooth', block: 'end' });
+    });
+  }, []);
+
+  const updateJumpToLatestVisibility = useCallback(() => {
+    const el = messagesScrollRef.current;
+    if (!el || messages.length === 0) {
+      setShowJumpToLatest(false);
+      return;
+    }
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const distFromBottom = scrollHeight - scrollTop - clientHeight;
+    setShowJumpToLatest(distFromBottom > CHAT_NEAR_BOTTOM_PX);
+  }, [messages.length]);
+
+  // Chỉ cuộn xuống đáy khi vừa chọn hội thoại (danh sách bên trái / URL) và đã load xong lịch sử — không cuộn mỗi khi tin nhắn đổi (WS/poll).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!activeSessionId || historyLoading) return;
+    scrollToBottom('auto');
+    requestAnimationFrame(updateJumpToLatestVisibility);
+  }, [activeSessionId, historyLoading, scrollToBottom, updateJumpToLatestVisibility]);
+
+  // Cập nhật nút “Mới nhất” khi nội dung đổi (không tự cuộn).
+  useEffect(() => {
+    updateJumpToLatestVisibility();
+  }, [messages, updateJumpToLatestVisibility]);
 
   // ── Sync activeSessionId with URL param ───────────────────────────────────
   useEffect(() => {
@@ -1043,80 +1075,112 @@ export default function ChatPage() {
               </Box>
             )}
 
-            {/* Messages */}
+            {/* Messages — cuộn trong khung; nút “Mới nhất” nổi phía trên (không cuộn theo nội dung) */}
             <Box
               sx={{
                 flex: 1,
-                overflow: 'auto',
-                p: 2,
-                bgcolor:
-                  theme.palette.mode === 'dark'
-                    ? alpha(theme.palette.common.black, 0.2)
-                    : alpha(theme.palette.grey[500], 0.08),
+                minHeight: 0,
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
-              {historyLoading ? (
-                <Box display="flex" justifyContent="center" py={2}>
-                  <CircularProgress size={28} />
-                </Box>
-              ) : messages.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
-                  <LightbulbOutlinedIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.7, mb: 1 }} />
-                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                    Bắt đầu hội thoại
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
-                    Bấm icon <strong>bóng đèn</strong> cạnh nút gửi ảnh và trả giá để mở <strong>gợi ý nhanh</strong> — hộp
-                    đó tự hiện khi bạn vào chat. Hoặc gõ tin ở ô bên dưới.
-                  </Typography>
-                </Box>
-              ) : (
-                messages.map((m, idx) => {
-                  const msgIsMe = isMessageFromCurrentUser(m, currentUserId);
-                  const prev = idx > 0 ? messages[idx - 1] : null;
-                  const showDay =
-                    idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
-                  return (
-                    <Fragment key={`msg-${idx}-${m.id}-${m._pending ? 'p' : 's'}`}>
-                      {showDay && m.timestamp && (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                          <Chip
-                            size="small"
-                            label={formatChatDayLabel(m.timestamp)}
-                            sx={{
-                              bgcolor: alpha(theme.palette.primary.main, 0.12),
-                              fontWeight: 600,
-                              fontSize: '0.7rem',
-                            }}
-                          />
-                        </Box>
-                      )}
-                      <Bubble
-                        msg={{ ...m, isFromCurrentUser: msgIsMe }}
-                        onAccept={handleAccept}
-                        onReject={handleReject}
-                      />
-                    </Fragment>
-                  );
-                })
+              <Box
+                ref={messagesScrollRef}
+                onScroll={updateJumpToLatestVisibility}
+                sx={{
+                  flex: 1,
+                  overflow: 'auto',
+                  p: 2,
+                  bgcolor:
+                    theme.palette.mode === 'dark'
+                      ? alpha(theme.palette.common.black, 0.2)
+                      : alpha(theme.palette.grey[500], 0.08),
+                }}
+              >
+                {historyLoading ? (
+                  <Box display="flex" justifyContent="center" py={2}>
+                    <CircularProgress size={28} />
+                  </Box>
+                ) : messages.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
+                    <LightbulbOutlinedIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.7, mb: 1 }} />
+                    <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                      Bắt đầu hội thoại
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
+                      Bấm icon <strong>bóng đèn</strong> cạnh nút gửi ảnh và trả giá để mở <strong>gợi ý nhanh</strong> — hộp
+                      đó tự hiện khi bạn vào chat. Hoặc gõ tin ở ô bên dưới.
+                    </Typography>
+                  </Box>
+                ) : (
+                  messages.map((m, idx) => {
+                    const msgIsMe = isMessageFromCurrentUser(m, currentUserId);
+                    const prev = idx > 0 ? messages[idx - 1] : null;
+                    const showDay =
+                      idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
+                    return (
+                      <Fragment key={`msg-${idx}-${m.id}-${m._pending ? 'p' : 's'}`}>
+                        {showDay && m.timestamp && (
+                          <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                            <Chip
+                              size="small"
+                              label={formatChatDayLabel(m.timestamp)}
+                              sx={{
+                                bgcolor: alpha(theme.palette.primary.main, 0.12),
+                                fontWeight: 600,
+                                fontSize: '0.7rem',
+                              }}
+                            />
+                          </Box>
+                        )}
+                        <Bubble
+                          msg={{ ...m, isFromCurrentUser: msgIsMe }}
+                          onAccept={handleAccept}
+                          onReject={handleReject}
+                        />
+                      </Fragment>
+                    );
+                  })
+                )}
+                {typingLabel && (
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <CircularProgress size={12} />
+                    <Typography variant="caption" color="text.secondary">
+                      {typingLabel}
+                    </Typography>
+                  </Box>
+                )}
+                <div ref={bottomRef} />
+              </Box>
+
+              {showJumpToLatest && !historyLoading && messages.length > 0 && (
+                <Tooltip title="Xuống tin mới nhất" placement="left">
+                  <Fab
+                    size="small"
+                    color="primary"
+                    aria-label="Xuống tin mới nhất"
+                    onClick={() => scrollToBottom('smooth')}
+                    sx={{
+                      position: 'absolute',
+                      bottom: 12,
+                      right: 16,
+                      zIndex: 2,
+                      boxShadow: 3,
+                    }}
+                  >
+                    <KeyboardArrowDownIcon />
+                  </Fab>
+                </Tooltip>
               )}
-              {typingLabel && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    px: 1,
-                    mb: 1,
-                  }}
-                >
-                  <CircularProgress size={12} />
-                  <Typography variant="caption" color="text.secondary">
-                    {typingLabel}
-                  </Typography>
-                </Box>
-              )}
-              <div ref={bottomRef} />
             </Box>
 
             {/* Ô nhập + tiện ích (ảnh, trả giá, gợi ý bóng đèn) */}
