@@ -34,6 +34,7 @@ export const LazyDealDetailPage = lazy(() => import('../pages/deal/DealDetailPag
 export const LazyNotificationsPage = lazy(() => import('../pages/notification/NotificationsPage.jsx'));
 export const LazyDashboardPage = lazy(() => import('../pages/admin/DashboardPage'));
 export const LazyReportManagementPage = lazy(() => import('../pages/admin/ReportManagementPage'));
+export const LazyReportDetailPage = lazy(() => import('../pages/admin/ReportDetailPage'));
 export const LazyUserManagementPage = lazy(() => import('../pages/admin/UserManagementPage'));
 export const LazyCategoryManagementPage = lazy(() => import('../pages/admin/CategoryManagementPage'));
 export const LazyConfigurationManagementPage = lazy(() => import('../pages/admin/ConfigurationManagementPage'));
@@ -65,6 +66,7 @@ export const SuspenseDealDetailPage = withSuspense(LazyDealDetailPage, "Đang t�
 export const SuspenseNotificationsPage = withSuspense(LazyNotificationsPage, "Đang tải thông báo...");
 export const SuspenseDashboardPage = withSuspense(LazyDashboardPage, "Đang tải dashboard...");
 export const SuspenseReportManagementPage = withSuspense(LazyReportManagementPage, "Đang tải quản lý báo cáo...");
+export const SuspenseReportDetailPage = withSuspense(LazyReportDetailPage, "Đang tải chi tiết báo cáo...");
 export const SuspenseUserManagementPage = withSuspense(LazyUserManagementPage, "Đang tải quản lý người dùng...");
 export const SuspenseCategoryManagementPage = withSuspense(LazyCategoryManagementPage, "Đang tải quản lý danh mục...");
 export const SuspenseConfigurationManagementPage = withSuspense(LazyConfigurationManagementPage, "Đang tải cấu hình hệ thống...");

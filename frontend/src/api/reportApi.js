@@ -5,5 +5,7 @@ export const createReport = (payload) => axiosClient.post('/api/reports', payloa
 
 export const getReports = (params) => axiosClient.get('/api/admin/reports', { params });
 
+export const processReport = (id, payload) => axiosClient.patch(`/api/admin/reports/${id}`, payload);
+
 export const resolveReport = (id, payload) => axiosClient.put(`/api/admin/reports/${id}/resolve`, payload);
 

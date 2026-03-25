@@ -2,6 +2,7 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.CreateCommentRequest;
 import com.slife.marketplace.dto.request.ReplyCommentRequest;
+import com.slife.marketplace.dto.request.UpdateCommentRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.CommentResponse;
 import com.slife.marketplace.service.CommentService;
@@ -53,6 +54,18 @@ public class CommentController {
     public ResponseEntity<ApiResponse<Void>> deleteComment(@PathVariable("id") Long id) {
         commentService.deleteComment(id);
         return ResponseEntity.ok(ApiResponse.success("Comment deleted", null));
+    }
+
+    /**
+     * PUT /api/v1/comments/{id}
+     * Cap nhat noi dung/anh comment. Chi chu comment moi duoc phep.
+     */
+    @PutMapping("/comments/{id}")
+    public ResponseEntity<ApiResponse<CommentResponse>> updateComment(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody UpdateCommentRequest request) {
+        CommentResponse res = commentService.updateComment(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Comment updated", res));
     }
 
     /**

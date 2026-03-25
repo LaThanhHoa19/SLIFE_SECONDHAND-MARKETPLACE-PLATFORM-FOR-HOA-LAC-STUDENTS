@@ -2,6 +2,7 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateCommentRequest;
 import com.slife.marketplace.dto.request.ReplyCommentRequest;
+import com.slife.marketplace.dto.request.UpdateCommentRequest;
 import com.slife.marketplace.dto.response.CommentResponse;
 import com.slife.marketplace.entity.Comment;
 import com.slife.marketplace.entity.CommentImage;
@@ -113,6 +114,31 @@ public class CommentService {
         // Xoa anh truoc de tranh FK constraint violation tren comment_images
         commentImageRepository.deleteAll(commentImageRepository.findByComment_Id(commentId));
         commentRepository.delete(comment);
+    }
+
+    @Transactional
+    public CommentResponse updateComment(Long commentId, UpdateCommentRequest request) {
+        User currentUser = userService.getCurrentUser();
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.COMMENT_NOT_FOUND));
+
+        if (!comment.getUser().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "You can only edit your own comments");
+        }
+
+        String text = trimOrNull(request.getContent());
+        List<String> imageUrls = sanitize(request.getImageUrls());
+        validateContentOrImage(text, imageUrls);
+
+        comment.setContent(text);
+        // Neu co update anh, xoa anh cu va luu anh moi
+        if (request.getImageUrls() != null) {
+            commentImageRepository.deleteAll(commentImageRepository.findByComment_Id(commentId));
+            saveImages(comment, imageUrls);
+        }
+
+        Comment saved = commentRepository.save(comment);
+        return toResponse(saved, imageUrls, List.of()); // Simplified for update, replies will be re-fetched by FE
     }
 
     @Transactional(readOnly = true)
