@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -17,6 +18,53 @@ function formatDate(dateValue) {
   return date.toLocaleString('vi-VN');
 }
 
+function extractUserList(response) {
+  const payload = response?.data?.data ?? response?.data;
+  if (Array.isArray(payload)) return payload;
+  if (payload?.content && Array.isArray(payload.content)) return payload.content;
+  return [];
+}
+
+const USER_TABLE_SURFACE = '#19191B';
+const USER_TABLE_BORDER = '#3E3E42';
+
+const userManagementPaperSx = {
+  bgcolor: USER_TABLE_SURFACE,
+  border: `1px solid ${USER_TABLE_BORDER}`,
+  borderRadius: 1,
+  boxShadow: 'none',
+  '& .MuiCircularProgress-root': {
+    color: '#fff',
+  },
+};
+
+const userManagementTableSx = {
+  '& thead th': {
+    color: 'rgba(255,255,255,0.88)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderBottom: `1px solid ${USER_TABLE_BORDER}`,
+  },
+  '& tbody td': {
+    color: '#ffffff',
+    borderBottom: `1px solid ${USER_TABLE_BORDER}`,
+  },
+  '& .MuiTableCell-root:not(:last-of-type)': {
+    borderRight: `1px solid ${USER_TABLE_BORDER}`,
+  },
+  '& tbody .MuiTableRow-root:nth-of-type(odd)': {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  '& tbody .MuiTableRow-root:hover': {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  '& tbody .MuiTableRow-root:last-of-type .MuiTableCell-root': {
+    borderBottom: 'none',
+  },
+  '& .MuiTypography-root': {
+    color: 'rgba(255,255,255,0.72)',
+  },
+};
+
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +75,7 @@ export default function UserManagementPage() {
       setIsLoading(true);
       setErrorMessage('');
       const response = await getAdminUsers();
-      setUsers(response?.data || []);
+      setUsers(extractUserList(response));
     } catch (error) {
       setErrorMessage(error?.message || 'Không tải được danh sách user.');
     } finally {
@@ -41,6 +89,25 @@ export default function UserManagementPage() {
 
   const columns = [
     { id: 'id', label: 'ID', width: 80 },
+    {
+      id: 'avatarUrl',
+      label: 'Avatar',
+      width: 80,
+      align: 'center',
+      render: (row) => {
+        const src = row.avatarUrl ?? row.avatar_url;
+        const initial = (row.fullName || row.email || '?').trim().charAt(0).toUpperCase() || '?';
+        return (
+          <Avatar
+            src={src || undefined}
+            alt=""
+            sx={{ width: 40, height: 40, mx: 'auto', fontSize: 16 }}
+          >
+            {initial}
+          </Avatar>
+        );
+      },
+    },
     { id: 'email', label: 'Email' },
     {
       id: 'fullName',
@@ -109,6 +176,16 @@ export default function UserManagementPage() {
       render: (row) => row.reputationScore ?? '-',
     },
     {
+      id: 'violationCount',
+      label: 'Vi phạm',
+      width: 96,
+      align: 'right',
+      render: (row) => {
+        const v = row.violationCount ?? row.violation_count;
+        return v != null && v !== '' ? v : '-';
+      },
+    },
+    {
       id: 'createdAt',
       label: 'Ngày tạo',
       width: 180,
@@ -120,10 +197,10 @@ export default function UserManagementPage() {
       <Box>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
           <Box>
-            <Typography variant="h5" fontWeight={700}>
+            <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
               Quản lý người dùng
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
               Theo dõi role, trạng thái và uy tín tài khoản trong hệ thống.
             </Typography>
           </Box>
@@ -142,8 +219,11 @@ export default function UserManagementPage() {
         <ReusableTable
             columns={columns}
             rows={users}
+            getRowId={(row) => String(row.id ?? '')}
             isLoading={isLoading}
             emptyMessage="Không có dữ liệu user."
+            paperSx={userManagementPaperSx}
+            tableSx={userManagementTableSx}
         />
       </Box>
   );

@@ -1,11 +1,9 @@
 import { Avatar, Box, Typography, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import {
     Dashboard as DashboardIcon,
-    People as PeopleIcon,
     Flag as FlagIcon,
     Category as CategoryIcon,
     ManageAccounts as ManageAccountsIcon,
-    Insights as InsightsIcon,
     SettingsInputComponent as SettingsIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -16,36 +14,34 @@ const SIDEBAR_WIDTH = 260;
 
 const ADMIN_ITEMS = [
     {
+        id: 'dashboard',
         label: 'Tổng quan hệ thống',
         icon: DashboardIcon,
         path: '/admin',
-        allowedRoles: ['ADMIN', 'MODERATOR'],
     },
     {
+        id: 'reports',
         label: 'Báo cáo',
         icon: FlagIcon,
         path: '/admin/reports',
     },
-    { 
-        label: 'Quản lý danh mục', 
-        icon: CategoryIcon, 
-        path: '/admin/categories' 
-    },
-    { 
-        label: 'Quản lý người dùng', 
-        icon: ManageAccountsIcon, 
-        path: '/admin/users' 
-    },
-    { 
-        label: 'Cấu hình hệ thống', 
-        icon: SettingsIcon, 
-        path: '/admin/settings' 
-    },
     {
-        label: 'Danh mục',
+        id: 'categories',
+        label: 'Quản lý danh mục',
         icon: CategoryIcon,
         path: '/admin/categories',
-        allowedRoles: ['ADMIN'],
+    },
+    {
+        id: 'users',
+        label: 'Quản lý người dùng',
+        icon: ManageAccountsIcon,
+        path: '/admin/users',
+    },
+    {
+        id: 'settings',
+        label: 'Cấu hình hệ thống',
+        icon: SettingsIcon,
+        path: '/admin/settings',
     },
 ];
 
@@ -61,15 +57,7 @@ export default function AdminSidebar() {
         return location.pathname.startsWith(path);
     };
 
-    const visibleItems = ADMIN_ITEMS.filter(({ allowedRoles }) => {
-        if (!allowedRoles || allowedRoles.length === 0) return true;
-        const role = user?.role;
-        // Role-based menu:
-        // - Nếu role chưa xác định thì không hiển thị item admin để tránh user thường nhìn thấy UI không phù hợp.
-        // - Route admin đã được guard phía router, nhưng guard không ngăn 100% trường hợp state role null trên UI.
-        if (!role) return false;
-        return allowedRoles.includes(role);
-    });
+    const visibleItems = ADMIN_ITEMS;
 
     return (
         <Box
@@ -161,11 +149,11 @@ export default function AdminSidebar() {
             <Box sx={{ borderBottom: '1px solid rgba(255,255,255,0.08)', mb: 2 }} />
 
             <List dense disablePadding sx={{ mt: 1 }}>
-                {visibleItems.map(({ label, icon: Icon, path }) => {
+                {visibleItems.map(({ id, label, icon: Icon, path }) => {
                     const active = isActive(path);
                     return (
                         <ListItemButton
-                            key={path}
+                            key={id}
                             onClick={() => navigate(path)}
                             sx={{
                                 mb: 0.75,

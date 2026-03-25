@@ -25,6 +25,7 @@ import {
     SuspenseNotificationsPage,
     SuspenseDashboardPage,
     SuspenseReportManagementPage,
+    SuspenseReportDetailPage,
     SuspenseUserManagementPage,
     SuspenseCategoryManagementPage,
     SuspenseConfigurationManagementPage,
@@ -65,12 +66,15 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-                <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
             </Route>
+
+            {/* Đăng nhập admin: full page, không AuthLayout / không MainLayout */}
+            <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
 
             {/* ===== ADMIN ROUTES - Dùng AdminLayout (header + sidebar) ===== */}
             <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<SuspenseDashboardPage />} />
+                <Route path="reports/:reportId" element={<SuspenseReportDetailPage />} />
                 <Route path="reports" element={<SuspenseReportManagementPage />} />
                 <Route path="users" element={<SuspenseUserManagementPage />} />
                 <Route path="categories" element={<SuspenseCategoryManagementPage />} />
