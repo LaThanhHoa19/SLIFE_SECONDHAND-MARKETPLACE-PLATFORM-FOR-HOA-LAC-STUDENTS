@@ -13,14 +13,16 @@ const sanitizeQueryParams = (params = {}) => Object.fromEntries(
 export const getListings = (params, config = {}) =>
     axiosClient.get('/api/listings', { params: sanitizeQueryParams(params), ...config });
 export const searchListings = (params = {}) =>
-  axiosClient.get('/api/search', { params: sanitizeQueryParams(params) });
+    axiosClient.get('/api/search', { params: sanitizeQueryParams(params) });
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
+/** POST — một endpoint: lần 1 like, lần 2 bỏ like (cần đăng nhập). */
+export const toggleListingLike = (id) => axiosClient.post(`/api/listings/${id}/like`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
 export const uploadImages = (id, formData, onUploadProgress) =>
-  axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
+    axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
 
 // Comments
 export const getComments = (listingId) => axiosClient.get(`/api/v1/listings/${listingId}/comments`);
