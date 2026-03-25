@@ -27,3 +27,4 @@ export const getComments = (listingId) => axiosClient.get(`/api/v1/listings/${li
 export const createComment = (payload) => axiosClient.post('/api/v1/comments', payload);
 export const replyToComment = (id, payload) => axiosClient.post(`/api/v1/comments/${id}/reply`, payload);
 export const deleteComment = (id) => axiosClient.delete(`/api/v1/comments/${id}`);
+export const updateComment = (id, payload) => axiosClient.put(`/api/v1/comments/${id}`, payload);
