@@ -40,6 +40,7 @@ public class SecurityConfig {
                         // Save listing: auth required
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/listings/*/like").authenticated()
                         // Delete draft listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/draft").authenticated()
                         // Repost / Renew listing: chỉ seller mới được thực hiện

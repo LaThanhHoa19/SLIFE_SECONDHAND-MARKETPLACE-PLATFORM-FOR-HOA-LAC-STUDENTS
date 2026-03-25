@@ -6,6 +6,7 @@ import com.slife.marketplace.dto.response.ListingCardResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.dto.response.ToggleLikeResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
@@ -14,6 +15,7 @@ import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.service.FollowService;
 import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.ListingImageService;
+import com.slife.marketplace.service.ListingLikeService;
 import com.slife.marketplace.service.SavedListingService;
 import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.util.AddressFormat;
@@ -35,6 +37,7 @@ public class ListingController {
     private final SavedListingService savedListingService;
     private final ListingImageService listingImageService;
     private final FollowService followService;
+    private final ListingLikeService listingLikeService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -44,13 +47,15 @@ public class ListingController {
                              ListingRepository listingRepository,
                              SavedListingService savedListingService,
                              ListingImageService listingImageService,
-                             FollowService followService) {
+                             FollowService followService,
+                             ListingLikeService listingLikeService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
         this.savedListingService = savedListingService;
         this.listingImageService = listingImageService;
         this.followService = followService;
+        this.listingLikeService = listingLikeService;
     }
 
     /**
@@ -183,7 +188,22 @@ public class ListingController {
         }
         data.put("isFollowed", isFollowed);
 
+        long likeCount = listingLikeService.countByListingId(id);
+        data.put("likeCount", likeCount);
+        boolean isLiked = currentUser != null && listingLikeService.isLikedBy(currentUser.getId(), id);
+        data.put("isLiked", isLiked);
+
         return ResponseEntity.ok(ApiResponse.success("OK", data));
+    }
+
+    /**
+     * POST /api/listings/{id}/like — toggle like / unlike (auth required).
+     */
+    @PostMapping("/{id}/like")
+    public ResponseEntity<ApiResponse<ToggleLikeResponse>> toggleLike(@PathVariable("id") Long id) {
+        User user = userService.getCurrentUser();
+        ToggleLikeResponse body = listingLikeService.toggle(user, id);
+        return ResponseEntity.ok(ApiResponse.success("OK", body));
     }
 
     /**
