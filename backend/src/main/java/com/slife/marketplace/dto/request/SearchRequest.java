@@ -47,6 +47,7 @@ public class SearchRequest {
     @Max(value = 50, message = "Page size must be <= 50")
     private Integer size = 20;
 
-    /** Sort string: field,direction */
+    /** Ví dụ: createdAt,desc hoặc price,asc */
+    @Size(max = 40)
     private String sort;
 }
