@@ -84,20 +84,27 @@ export default function ProfilePage() {
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
 
-  const isMe = id === 'me' || (currentUser && String(currentUser.id) === String(id));
+  const isMe = !id || id === 'me' || (currentUser && String(currentUser.id) === String(id));
 
   const loadUser = useCallback(async () => {
-    if (!id) return;
+    if (!id && !currentUser) return;
     setLoading(true);
     setError(null);
     try {
-      if (id === 'me') {
+      if (!id || id === 'me') {
         try {
           const res = await userApi.getUser();
           const data = getPayload(res);
-          setProfileUser(data ?? currentUser);
-        } catch {
-          setProfileUser(currentUser);
+          if (data) {
+            setProfileUser(data);
+          }
+        } catch (err) {
+          console.error("Failed to load current user:", err);
+          if (currentUser) {
+             setProfileUser(currentUser);
+          } else {
+             setError('Bạn cần đăng nhập để xem thông tin này.');
+          }
         }
       } else if (/^\d+$/.test(String(id))) {
         const res = await userApi.getUserById(id);
@@ -120,29 +127,20 @@ export default function ProfilePage() {
   }, [id, isMe, currentUser]);
 
   const loadListings = useCallback(async () => {
+    if (!profileUser?.id) return;
     setListingsLoading(true);
     try {
-      const res = await getListings();
+      const res = await getListings({ sellerId: profileUser.id, size: 50 });
       const data = getPayload(res);
       const list = Array.isArray(data) ? data : data?.content ?? [];
-      const targetId = profileUser?.id;
-      const filtered = targetId
-          ? list.filter((item) => {
-            const sellerId = item.sellerId ?? item.seller?.id ?? item.seller?.userId ?? item.seller?.user_id;
-            // fall back to name filter if ID is not available in the listing's seller object
-            if (sellerId != null && targetId != null) return String(sellerId) === String(targetId);
-            const sellerName = item.sellerName ?? item.sellerSummary?.fullName ?? item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
-            const name = profileUser?.fullName ?? profileUser?.full_name;
-            return name && sellerName === name;
-          })
-          : list;
-      setListings(filtered);
-    } catch {
+      setListings(list);
+    } catch (err) {
+      console.error("Failed to load listings:", err);
       setListings([]);
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser]);
+  }, [profileUser?.id]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser) loadListings(); }, [profileUser, loadListings]);
@@ -250,14 +248,14 @@ export default function ProfilePage() {
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
   if (!profileUser) return <Box p={3} textAlign="center"><Typography>{isMe ? 'Bạn cần đăng nhập.' : 'Không tìm thấy người dùng.'}</Typography><Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(isMe ? '/login' : '/')}>{isMe ? 'Đăng nhập' : 'Về trang chủ'}</Button></Box>;
 
-  const user = isMe ? (profileUser ?? currentUser) : profileUser;
-  const avatarUrl = fullImageUrl(user.avatarUrl ?? user.avatar_url) || user.avatarUrl;
-  const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl ?? user.cover_image_url) || user.coverImageUrl);
-  const fullName = user.fullName ?? user.full_name ?? 'Người dùng';
-  const bio = user.bio || 'Người bán uy tín, chuyên đồ điện tử và gia dụng.';
-  const reputationScore = user.reputationScore ?? user.reputation_score ?? 4.8;
-  const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
+  const user = profileUser || currentUser || {};
+  const avatarUrl = fullImageUrl(user.avatarUrl) || user.avatarUrl;
+  const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl) || user.coverImageUrl);
+  const fullName = user.fullName || 'Người dùng';
+  const bio = user.bio || 'Chưa có giới thiệu.';
+  const reputationScore = user.reputationScore || 5.0;
+  const joinDate = formatJoinDate(user.createdAt);
+  const phoneVerified = !!user.phoneNumber;
 
   return (
       <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
@@ -286,7 +284,6 @@ export default function ProfilePage() {
               <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><CheckCircleIcon fontSize="small" color="success" /><Typography variant="body2">Email đã xác minh</Typography></Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
                   <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
@@ -297,12 +294,14 @@ export default function ProfilePage() {
 
           <Box sx={{ display: 'flex', flexDirection: 'column' }}>
             <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-              <Tab label="Đang bán" /><Tab label="Đã bán" /><Tab label="Đánh giá" />
+              {!isMe && <Tab label="Đang bán" />}
+              {!isMe && <Tab label="Đã bán" />}
+              <Tab label="Đánh giá" />
             </Tabs>
             <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateNew={() => navigate('/listings/new')} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
-              {tab === 2 && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+              {!isMe && tab === 0 && <ListingSection isMe={false} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {!isMe && tab === 1 && <ListingSection isMe={false} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {((!isMe && tab === 2) || (isMe && tab === 0)) && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
             </Box>
           </Box>
         </Box>

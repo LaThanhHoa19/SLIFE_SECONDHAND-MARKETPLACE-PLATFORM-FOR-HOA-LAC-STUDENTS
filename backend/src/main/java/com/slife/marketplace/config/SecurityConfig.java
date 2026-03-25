@@ -48,7 +48,8 @@ public class SecurityConfig {
                                 "/chat/**") // Cho phép Websocket nếu có tính năng chat
                         .permitAll()
                         
-                        // Các chức năng yêu cầu đăng nhập
+                        // Chức năng listing cá nhân
+                        .requestMatchers("/api/listings/my/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/draft").authenticated()
@@ -56,14 +57,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/renew").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
-                        .requestMatchers("/api/me/**").authenticated()
                         
                         // Kiểm tra /me trước khi kiểm tra wildcard /*
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                         
                         // Public truy cập (khách xem được)
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
-                        .requestMatchers("/api/listings/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/*/comments").permitAll()
                         
                         // Admin-only
