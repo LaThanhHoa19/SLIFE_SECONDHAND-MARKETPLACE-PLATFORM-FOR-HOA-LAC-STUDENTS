@@ -20,12 +20,13 @@ import {
     PersonAdd as PersonAddIcon,
     PersonRemove as PersonRemoveIcon,
 } from '@mui/icons-material';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
 import {useAuth} from '../../hooks/useAuth';
-import * as followApi from '../../api/followApi';
+import {useFollowActions} from '../../hooks/useFollowActions';
+import CommentModal from './CommentModal';
 
 const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
 
@@ -69,14 +70,15 @@ export default function ListingCard({
                                         imageAspect,
                                     }) {
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, updateUser: updateAuthUser } = useAuth();
+    const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
     const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
     const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
     const [followed, setFollowed] = useState(!!listing?.isFollowed);
-    const [followLoading, setFollowLoading] = useState(false);
+    const [commentOpen, setCommentOpen] = useState(false);
 
     useEffect(() => {
         setFollowed(!!listing?.isFollowed);
@@ -95,20 +97,15 @@ export default function ListingCard({
             navigate('/login');
             return;
         }
-        setFollowLoading(true);
-        try {
-            if (followed) {
-                await followApi.unfollowUser(sellerId);
-                setFollowed(false);
-            } else {
-                await followApi.followUser(sellerId);
-                setFollowed(true);
-            }
-        } catch {
-            /* silent — optional toast at feed level */
-        } finally {
-            setFollowLoading(false);
-        }
+        await toggleFollow({
+            targetUserId: sellerId,
+            isFollowing: followed,
+            isAuthenticated,
+            onSuccess: (nextIsFollowing) => setFollowed(nextIsFollowing),
+            onError: () => {
+                /* silent — optional toast at feed level */
+            },
+        });
     };
 
     const conditionText = getConditionText(listing);
@@ -135,7 +132,7 @@ export default function ListingCard({
                 <Stack direction="row" spacing={1.5} alignItems="center">
                     <Avatar 
                         component={RouterLink}
-                        to={sellerId ? `/profile/${sellerId}` : '#'}
+                        to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                         src={fullImageUrl(seller?.avatarUrl)} 
                         alt={seller?.fullName || 'seller'} 
                         sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }} 
@@ -146,7 +143,7 @@ export default function ListingCard({
                     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
                         <Typography 
                             component={RouterLink}
-                            to={sellerId ? `/profile/${sellerId}` : '#'}
+                            to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                             fontSize={14.5} 
                             fontWeight={600} 
                             color="#FFF"
@@ -267,10 +264,26 @@ export default function ListingCard({
             {/* Actions */}
             <Box sx={{ px: 2, py: 1.5, display: 'flex', gap: 2.5, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#FF4757', bgcolor: 'rgba(255,71,87,0.1)' } }}><FavoriteIcon fontSize="small" /></IconButton>
-                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><CommentIcon fontSize="small" /></IconButton>
+                <IconButton
+                    size="small"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setCommentOpen(true);
+                    }}
+                    sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
+                >
+                    <CommentIcon fontSize="small" />
+                </IconButton>
                 <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><SendIcon fontSize="small" /></IconButton>
                 <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', ml: 'auto', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><ShareIcon fontSize="small" /></IconButton>
             </Box>
+
+            <CommentModal
+                open={commentOpen}
+                onClose={() => setCommentOpen(false)}
+                listingId={id}
+                listingTitle={listing?.title}
+            />
         </Card>
     );
 }
