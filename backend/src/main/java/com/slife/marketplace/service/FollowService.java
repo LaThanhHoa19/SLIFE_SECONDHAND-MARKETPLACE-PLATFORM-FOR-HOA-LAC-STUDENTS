@@ -9,6 +9,7 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.BlockRepository;
 import com.slife.marketplace.repository.FollowRepository;
+import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,15 +30,18 @@ public class FollowService {
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
     private final NotificationService notificationService;
+    private final ListingRepository listingRepository;
 
     public FollowService(FollowRepository followRepository,
                          UserRepository userRepository,
                          BlockRepository blockRepository,
-                         NotificationService notificationService) {
+                         NotificationService notificationService,
+                         ListingRepository listingRepository) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
         this.notificationService = notificationService;
+        this.listingRepository = listingRepository;
     }
 
     private static final int FOLLOW_LIST_MAX_PAGE_SIZE = 50;
@@ -150,6 +154,7 @@ public class FollowService {
         UserProfileResponse dto = UserProfileResponse.fromUser(profileUser);
         dto.setFollowerCount(countFollowers(profileUser.getId()));
         dto.setFollowingCount(countFollowing(profileUser.getId()));
+        dto.setListingCount(listingRepository.countBySeller_IdAndStatus(profileUser.getId(), "ACTIVE"));
         if (viewerUserId != null && !viewerUserId.equals(profileUser.getId())) {
             dto.setIsFollowedByViewer(isFollowing(viewerUserId, profileUser.getId()));
         } else {
