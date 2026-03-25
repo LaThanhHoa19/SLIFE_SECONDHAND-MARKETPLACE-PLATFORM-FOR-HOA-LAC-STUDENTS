@@ -26,4 +26,9 @@ public class ListingCardResponse {
 
     /** True if the current viewer follows the seller (false when anonymous or self). */
     private Boolean isFollowed;
+
+    private Long likeCount;
+
+    /** True if the current viewer liked this listing (false when anonymous). */
+    private Boolean isLiked;
 }
