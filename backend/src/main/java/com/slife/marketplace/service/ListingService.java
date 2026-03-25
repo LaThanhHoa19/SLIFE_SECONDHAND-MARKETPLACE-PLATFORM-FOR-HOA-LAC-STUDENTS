@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
+import com.slife.marketplace.dto.response.PickupAddressResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
@@ -379,6 +380,7 @@ public class ListingService {
         response.setPrice(listing.getPrice());
         response.setCondition(listing.getItemCondition());
         response.setLocation(resolveLocation(listing));
+        response.setPickupAddress(toPickupAddressResponse(listing.getPickupAddress()));
         response.setCreatedAt(listing.getCreatedAt());
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
@@ -389,6 +391,16 @@ public class ListingService {
         response.setIsLiked(false);
 
         return response;
+    }
+
+    private PickupAddressResponse toPickupAddressResponse(Address a) {
+        if (a == null) return null;
+        return PickupAddressResponse.builder()
+                .locationName(a.getLocationName())
+                .addressText(a.getAddressText())
+                .lat(a.getLat())
+                .lng(a.getLng())
+                .build();
     }
 
     private Map<Long, Long> likeCountsForListingIds(Collection<Long> listingIds) {

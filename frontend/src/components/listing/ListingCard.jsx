@@ -20,7 +20,7 @@ import {
     PersonAdd as PersonAddIcon,
     PersonRemove as PersonRemoveIcon,
 } from '@mui/icons-material';
-import {useNavigate} from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
