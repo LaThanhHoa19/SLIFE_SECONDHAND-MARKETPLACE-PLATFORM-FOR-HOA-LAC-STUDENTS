@@ -28,10 +28,6 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShareIcon from '@mui/icons-material/Share';
-import FlagIcon from '@mui/icons-material/Flag';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import SendIcon from '@mui/icons-material/Send';
@@ -44,7 +40,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 
-import { getListing, getListings } from '../../api/listingApi';
+import { getListing, getListings, toggleListingLike } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
 import { getUserById } from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
@@ -125,7 +121,9 @@ export default function ListingDetailPage() {
     const [error, setError] = useState('');
     const [startingChat, setStartingChat] = useState(false);
     const [showPhone, setShowPhone] = useState(false);
-    const [liked, setLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(0);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likeSubmitting, setLikeSubmitting] = useState(false);
     const [snackMsg, setSnackMsg] = useState('');
     const [snackType, setSnackType] = useState('success');
     const [snackAction, setSnackAction] = useState(null);
@@ -145,6 +143,8 @@ export default function ListingDetailPage() {
                 const data = getPayload(res);
                 setListing(data);
                 setIsSavedItem(data?.isSaved ?? false);
+                setLikeCount(Number(data?.likeCount ?? 0));
+                setIsLiked(!!data?.isLiked);
             })
             .catch((err) => setError(err?.message || 'Không tải được tin.'))
             .finally(() => setLoading(false));
@@ -203,6 +203,46 @@ export default function ListingDetailPage() {
     }, [listing, id]);
 
     // ── Handlers ─────────────────────────────────────────────────────────────
+    const handleToggleLike = async () => {
+        if (!isAuthenticated) {
+            setSnackType('warning');
+            setSnackMsg('Bạn cần đăng nhập để thích tin.');
+            return;
+        }
+        if (likeSubmitting) return;
+
+        const prevLiked = isLiked;
+        const prevCount = likeCount;
+        setIsLiked(!prevLiked);
+        setLikeCount(Math.max(0, prevCount + (prevLiked ? -1 : 1)));
+        setLikeSubmitting(true);
+
+        try {
+            const res = await toggleListingLike(listing.id);
+            const body = getPayload(res);
+            const nextLiked = body?.liked ?? body?.isLiked;
+            const nextCount = body?.likeCount;
+            if (typeof nextLiked === 'boolean') setIsLiked(nextLiked);
+            if (nextCount != null) setLikeCount(Number(nextCount));
+            setListing((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        isLiked: typeof nextLiked === 'boolean' ? nextLiked : !prevLiked,
+                        likeCount: nextCount != null ? Number(nextCount) : Math.max(0, prevCount + (prevLiked ? -1 : 1)),
+                    }
+                    : prev
+            );
+        } catch {
+            setIsLiked(prevLiked);
+            setLikeCount(prevCount);
+            setSnackType('error');
+            setSnackMsg('Không cập nhật được lượt thích. Thử lại sau.');
+        } finally {
+            setLikeSubmitting(false);
+        }
+    };
+
     const handleShare = async () => {
         const url = window.location.href;
         try {
@@ -424,7 +464,11 @@ export default function ListingDetailPage() {
                         onReport={handleReport}
                         isSaved={isSavedItem}
                         onToggleSave={handleToggleSave}
-                        hideThumbs={true} // Hide internal thumbs
+                        likeCount={likeCount}
+                        isLiked={isLiked}
+                        onToggleLike={handleToggleLike}
+                        likeDisabled={likeSubmitting}
+                        hideThumbs={true}
                     />
                     {/* Thumbnails below large image */}
                     {images.length > 1 && (
