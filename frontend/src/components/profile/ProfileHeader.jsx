@@ -84,7 +84,7 @@ export default function ProfileHeader({
                     }}
                 >
                     {isMe ? (
-                        <Box sx={{position: 'absolute', bottom: 16, right: 16}}>
+                        <Box sx={{position: 'absolute', top: 16, right: 16}}>
                             <input
                                 type="file"
                                 accept="image/*"
@@ -100,13 +100,14 @@ export default function ProfileHeader({
                                 onClick={() => coverInputRef.current?.click()}
                                 disabled={uploadingCover}
                                 sx={{
-                                    bgcolor: 'rgba(255,255,255,0.9)',
-                                    color: '#1d1d1f',
-                                    '&:hover': {bgcolor: 'white'},
+                                    bgcolor: 'rgba(0,0,0,0.3)',
+                                    color: 'white',
+                                    '&:hover': {bgcolor: 'rgba(0,0,0,0.5)'},
                                     backdropFilter: 'blur(10px)',
                                     textTransform: 'none',
                                     fontWeight: 600,
                                     borderRadius: '8px',
+                                    border: '1px solid rgba(255,255,255,0.2)'
                                 }}
                             >
                                 {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
@@ -262,15 +263,29 @@ export default function ProfileHeader({
                                                     </IconButton>
                                                 </>
                                             ) : (
-                                                <Button
-                                                    variant="outlined"
-                                                    startIcon={editing ? <CloseIcon/> : <EditIcon/>}
-                                                    onClick={() => setEditing(!editing)}
-                                                    sx={{borderRadius: 2, borderColor: PURPLE, color: PURPLE}}
-                                                >
-                                                    {editing ? 'Hủy' : 'Chỉnh sửa'}
-                                                </Button>
-                                            )}
+                                                 <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                                     <Button
+                                                         variant="contained"
+                                                         onClick={() => window.location.href = '/my-listings'}
+                                                         sx={{
+                                                             borderRadius: 2,
+                                                             bgcolor: PURPLE,
+                                                             color: 'white',
+                                                             '&:hover': { bgcolor: '#835cd4' }
+                                                         }}
+                                                     >
+                                                         Quản lý bài đăng
+                                                     </Button>
+                                                     <Button
+                                                         variant="outlined"
+                                                         startIcon={editing ? <CloseIcon/> : <EditIcon/>}
+                                                         onClick={() => setEditing(!editing)}
+                                                         sx={{borderRadius: 2, borderColor: PURPLE, color: PURPLE}}
+                                                     >
+                                                         {editing ? 'Hủy' : 'Chỉnh sửa hồ sơ'}
+                                                     </Button>
+                                                 </Box>
+                                             )}
                                         </Box>
                                     </Box>
 
@@ -280,7 +295,7 @@ export default function ProfileHeader({
                                         gridTemplateColumns: {
                                             xs: 'repeat(2, 1fr)',
                                             sm: 'repeat(3, 1fr)',
-                                            md: 'repeat(5, 1fr)'
+                                            md: 'repeat(3, 1fr)'
                                         },
                                         gap: 2,
                                         mt: 3,
@@ -296,6 +311,12 @@ export default function ProfileHeader({
                                             </Box>
                                         </Box>
                                         <Box>
+                                            <Typography variant="caption" color="text.secondary">Bài đăng</Typography>
+                                            <Typography variant="h6" fontWeight={700}>
+                                                {user.listingCount ?? 0}
+                                            </Typography>
+                                        </Box>
+                                        <Box>
                                             <Typography variant="caption" color="text.secondary">Followers</Typography>
                                             <Typography variant="h6"
                                                         fontWeight={700}>{user.followerCount ?? 0}</Typography>
@@ -304,11 +325,6 @@ export default function ProfileHeader({
                                             <Typography variant="caption" color="text.secondary">Following</Typography>
                                             <Typography variant="h6"
                                                         fontWeight={700}>{user.followingCount ?? 0}</Typography>
-                                        </Box>
-                                        <Box>
-                                            <Typography variant="caption" color="text.secondary">Địa chỉ</Typography>
-                                            <Typography variant="body2" fontWeight={600}
-                                                        noWrap>{user.address || 'Hòa Lạc'}</Typography>
                                         </Box>
                                     </Box>
                                 </Box>

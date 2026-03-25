@@ -3,7 +3,7 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.SearchRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
-import com.slife.marketplace.dto.response.ListingPageResponse;
+import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
@@ -37,8 +37,8 @@ public class SearchController {
     private final FollowService followService;
 
     public SearchController(SearchService searchService,
-                            UserService userService,
-                            FollowService followService) {
+            UserService userService,
+            FollowService followService) {
         this.searchService = searchService;
         this.userService = userService;
         this.followService = followService;
@@ -46,7 +46,7 @@ public class SearchController {
 
     @GetMapping("/search")
     @Transactional(readOnly = true)
-    public ResponseEntity<ApiResponse<ListingPageResponse>> search(@Valid SearchRequest request) {
+    public ResponseEntity<ApiResponse<PagedResponse<ListingResponse>>> search(@Valid SearchRequest request) {
         Page<Listing> pageResult = searchService.search(request);
 
         Optional<User> viewer = userService.getCurrentUserOptional();
@@ -56,7 +56,7 @@ public class SearchController {
                 .map(listing -> toListingResponse(listing, viewer.orElse(null), followedSellerIds))
                 .toList();
 
-        ListingPageResponse body = new ListingPageResponse();
+        PagedResponse<ListingResponse> body = new PagedResponse<>();
         body.setContent(content);
         body.setTotalElements(pageResult.getTotalElements());
         body.setTotalPages(pageResult.getTotalPages());

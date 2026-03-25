@@ -81,8 +81,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
         FROM Listing l
         LEFT JOIN l.pickupAddress a
         WHERE l.status = 'ACTIVE'
+          AND (:sellerId IS NULL OR l.seller.id = :sellerId)
     """)
-    Page<com.slife.marketplace.dto.response.ListingCardResponse> findAllActiveListingCards(Pageable pageable);
+    Page<com.slife.marketplace.dto.response.ListingCardResponse> findAllActiveListingCards(
+            @Param("sellerId") Long sellerId,
+            Pageable pageable);
+
+    long countBySeller_IdAndStatus(Long sellerId, String status);
 
     /** Distinct pickup locations for filter dropdown */
     @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
