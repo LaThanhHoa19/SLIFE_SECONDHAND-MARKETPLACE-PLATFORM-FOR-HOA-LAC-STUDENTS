@@ -76,6 +76,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             l.seller.id,
             l.seller.fullName,
             l.seller.avatarUrl,
+            false,
+            0L,
             false
         )
         FROM Listing l

@@ -16,4 +16,6 @@ public class ListingResponse {
     private Object sellerSummary;
     private Boolean isSaved;
     private Boolean isFollowed;
+    private Long likeCount;
+    private Boolean isLiked;
 }
