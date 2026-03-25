@@ -32,6 +32,7 @@ import {
     SuspenseConfigurationManagementPage,
     SuspenseAdminProfilePage,
     SuspenseReportPage,
+    SuspenseChatPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
@@ -150,6 +151,15 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseReportPage />
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/chat"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseChatPage />
                         </RouteGuard>
                     }
                 />

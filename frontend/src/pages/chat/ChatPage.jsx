@@ -28,11 +28,15 @@ import {
   Typography,
 } from '@mui/material';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import QuickreplyIcon from '@mui/icons-material/Quickreply';
 import SendIcon from '@mui/icons-material/Send';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
+import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
+import { unwrapApiData } from '../../utils/apiPayload';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const WS_URL = `${API_BASE}/chat`;
@@ -40,9 +44,12 @@ const WS_URL = `${API_BASE}/chat`;
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function getData(res) {
-  const b = res?.data;
-  return b?.data ?? b;
+  return unwrapApiData(res);
 }
+
+// ChatPage đang dùng cả `getData` và `getPayload` (một số nhánh gọi `getPayload`).
+// Dùng chung helper để tránh undefined và giảm trùng logic.
+const getPayload = unwrapApiData;
 
 function makeTempId() {
   return `tmp_${Date.now()}_${Math.random()}`;
@@ -53,13 +60,13 @@ function makeTempId() {
 function ImageBubble({ fileUrl }) {
   const src = fileUrl?.startsWith('http') ? fileUrl : `${API_BASE}${fileUrl}`;
   return (
-    <Box
-      component="img"
-      src={src}
-      alt="Ảnh"
-      sx={{ maxWidth: 220, maxHeight: 220, borderRadius: 1, display: 'block', objectFit: 'cover', cursor: 'pointer' }}
-      onClick={() => window.open(src, '_blank')}
-    />
+      <Box
+          component="img"
+          src={src}
+          alt="Ảnh"
+          sx={{ maxWidth: 220, maxHeight: 220, borderRadius: 1, display: 'block', objectFit: 'cover', cursor: 'pointer' }}
+          onClick={() => window.open(src, '_blank')}
+      />
   );
 }
 
@@ -67,31 +74,31 @@ function OfferBubble({ msg, onAccept, onReject }) {
   const isPending = msg.offerStatus === 'PENDING';
   const isMe = msg.isFromCurrentUser;
   return (
-    <Box>
-      <Typography variant="body2" fontWeight={600} gutterBottom>
-        {msg.content}
-      </Typography>
-      {!isMe && isPending && (
-        <Stack direction="row" spacing={1} mt={0.5}>
-          <Button size="small" variant="contained" color="success"
-                  startIcon={<CheckCircleIcon />}
-                  onClick={() => onAccept(msg.offerId)}>
-            Chấp nhận
-          </Button>
-          <Button size="small" variant="outlined" color="error"
-                  startIcon={<CancelIcon />}
-                  onClick={() => onReject(msg.offerId)}>
-            Từ chối
-          </Button>
-        </Stack>
-      )}
-      {!isPending && (
-        <Chip size="small"
-              label={msg.offerStatus === 'ACCEPTED' ? '✅ Đã chấp nhận' : '❌ Đã từ chối'}
-              color={msg.offerStatus === 'ACCEPTED' ? 'success' : 'error'}
-              sx={{ mt: 0.5 }} />
-      )}
-    </Box>
+      <Box>
+        <Typography variant="body2" fontWeight={600} gutterBottom>
+          {msg.content}
+        </Typography>
+        {!isMe && isPending && (
+            <Stack direction="row" spacing={1} mt={0.5}>
+              <Button size="small" variant="contained" color="success"
+                      startIcon={<CheckCircleIcon />}
+                      onClick={() => onAccept(msg.offerId)}>
+                Chấp nhận
+              </Button>
+              <Button size="small" variant="outlined" color="error"
+                      startIcon={<CancelIcon />}
+                      onClick={() => onReject(msg.offerId)}>
+                Từ chối
+              </Button>
+            </Stack>
+        )}
+        {!isPending && (
+            <Chip size="small"
+                  label={msg.offerStatus === 'ACCEPTED' ? '✅ Đã chấp nhận' : '❌ Đã từ chối'}
+                  color={msg.offerStatus === 'ACCEPTED' ? 'success' : 'error'}
+                  sx={{ mt: 0.5 }} />
+        )}
+      </Box>
   );
 }
 
@@ -102,50 +109,50 @@ function Bubble({ msg, onAccept, onReject }) {
 
   if (isSystem) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
-        <Paper sx={{ px: 2, py: 1, bgcolor: 'success.light', border: '1px solid', borderColor: 'success.main', borderRadius: 2 }}>
-          <Typography variant="body2" fontWeight={600} color="success.contrastText">{msg.content}</Typography>
-        </Paper>
-      </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
+          <Paper sx={{ px: 2, py: 1, bgcolor: 'success.light', border: '1px solid', borderColor: 'success.main', borderRadius: 2 }}>
+            <Typography variant="body2" fontWeight={600} color="success.contrastText">{msg.content}</Typography>
+          </Paper>
+        </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', mb: 1, opacity: isPending ? 0.6 : 1 }}>
-      <Paper elevation={1} sx={{
-        maxWidth: '72%', p: 1.5,
-        bgcolor: isMe ? 'primary.main' : 'grey.100',
-        color: isMe ? 'primary.contrastText' : 'text.primary',
-        borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-      }}>
-        {!isMe && msg.senderName && (
-          <Typography variant="caption" display="block" fontWeight={700} sx={{ mb: 0.5, opacity: 0.75 }}>
-            {msg.senderName}
-          </Typography>
-        )}
-
-        {msg.messageType === 'IMAGE'
-          ? <ImageBubble fileUrl={msg.fileUrl} />
-          : msg.messageType === 'OFFER_PROPOSAL'
-            ? <OfferBubble msg={msg} onAccept={onAccept} onReject={onReject} />
-            : (
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                {msg.content}
+      <Box sx={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', mb: 1, opacity: isPending ? 0.6 : 1 }}>
+        <Paper elevation={1} sx={{
+          maxWidth: '72%', p: 1.5,
+          bgcolor: isMe ? 'primary.main' : 'grey.100',
+          color: isMe ? 'primary.contrastText' : 'text.primary',
+          borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+        }}>
+          {!isMe && msg.senderName && (
+              <Typography variant="caption" display="block" fontWeight={700} sx={{ mb: 0.5, opacity: 0.75 }}>
+                {msg.senderName}
               </Typography>
-            )}
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, opacity: 0.65 }}>
-          <Typography variant="caption">
-            {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '…'}
-          </Typography>
-          {isMe && (
-            <Typography variant="caption">
-              {isPending ? '⏳' : msg.isRead ? '✓✓' : '✓'}
-            </Typography>
           )}
-        </Box>
-      </Paper>
-    </Box>
+
+          {msg.messageType === 'IMAGE'
+              ? <ImageBubble fileUrl={msg.fileUrl} />
+              : msg.messageType === 'OFFER_PROPOSAL'
+                  ? <OfferBubble msg={msg} onAccept={onAccept} onReject={onReject} />
+                  : (
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {msg.content}
+                      </Typography>
+                  )}
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, opacity: 0.65 }}>
+            <Typography variant="caption">
+              {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '…'}
+            </Typography>
+            {isMe && (
+                <Typography variant="caption">
+                  {isPending ? '⏳' : msg.isRead ? '✓✓' : '✓'}
+                </Typography>
+            )}
+          </Box>
+        </Paper>
+      </Box>
   );
 }
 
@@ -163,6 +170,8 @@ export default function ChatPage() {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionsVersion, setSessionsVersion] = useState(0);
+  /** STOMP chưa gắn state — false để poll session vẫn chạy; khi có WS set true và tắt poll trùng. */
+  const [wsConnected] = useState(false);
 
   // Sync activeSessionId with URL param
   useEffect(() => {
@@ -183,17 +192,17 @@ export default function ChatPage() {
   // Load + poll danh sách hội thoại (phát hiện conversation mới từ người dùng khác)
   const fetchSessions = useCallback(() => {
     return chatApi
-      .getChats('ALL')
-      .then((res) => {
-        const body = res?.data;
-        const list = Array.isArray(body?.data) ? body.data : Array.isArray(body?.content) ? body.content : Array.isArray(body) ? body : [];
-        setSessions(list);
-        return list;
-      })
-      .catch((err) => {
-        if (import.meta.env.DEV) console.warn('[Chat] getChats failed:', err?.message ?? err);
-        return [];
-      });
+        .getChats('ALL')
+        .then((res) => {
+          const body = res?.data;
+          const list = Array.isArray(body?.data) ? body.data : Array.isArray(body?.content) ? body.content : Array.isArray(body) ? body : [];
+          setSessions(list);
+          return list;
+        })
+        .catch((err) => {
+          if (import.meta.env.DEV) console.warn('[Chat] getChats failed:', err?.message ?? err);
+          return [];
+        });
   }, []);
 
   useEffect(() => {
@@ -223,29 +232,29 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!activeSessionId) { setMessages([]); return; }
-    let ok = true;
+    let alive = true;
     setHistoryLoading(true);
     chatApi
-      .getHistory(activeSessionId, 0, 30)
-      .then((res) => {
-        if (cancelled) return;
-        const body = res?.data;
-        const page = body?.data ?? body;
-        const content = page?.content ?? (Array.isArray(page) ? page : []);
-        const list = Array.isArray(content) ? [...content].reverse() : [];
-        if (import.meta.env.DEV) {
-          console.debug('[Chat] history', { sessionId: activeSessionId, count: list.length, hasContent: !!page?.content });
-        }
-        setMessages(list);
-      })
-      .catch((err) => {
-        if (!cancelled) setMessages([]);
-        if (import.meta.env.DEV) console.warn('[Chat] getHistory failed', err?.message ?? err);
-      })
-      .finally(() => {
-        if (!cancelled) setHistoryLoading(false);
-      });
-    return () => { cancelled = true; };
+        .getHistory(activeSessionId, 0, 30)
+        .then((res) => {
+          if (!alive) return;
+          const body = res?.data;
+          const page = body?.data ?? body;
+          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const list = Array.isArray(content) ? [...content].reverse() : [];
+          if (import.meta.env.DEV) {
+            console.debug('[Chat] history', { sessionId: activeSessionId, count: list.length, hasContent: !!page?.content });
+          }
+          setMessages(list);
+        })
+        .catch((err) => {
+          if (alive) setMessages([]);
+          if (import.meta.env.DEV) console.warn('[Chat] getHistory failed', err?.message ?? err);
+        })
+        .finally(() => {
+          if (alive) setHistoryLoading(false);
+        });
+    return () => { alive = false; };
   }, [activeSessionId]);
 
   // Poll mỗi 3 giây khi đang mở một hội thoại để cả hai tài khoản đều thấy tin nhắn mới
@@ -340,7 +349,7 @@ export default function ChatPage() {
       const res = await chatApi.respondToOffer(offerId, 'REJECTED');
       const msg = getPayload(res);
       setMessages((prev) =>
-        prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: 'REJECTED' } : m))
+          prev.map((m) => (m.offerId === offerId ? { ...m, offerStatus: 'REJECTED' } : m))
       );
       if (msg?.id) setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
@@ -494,126 +503,122 @@ export default function ChatPage() {
   // ── render ────────────────────────────────────────────────────────────────────
 
   return (
-    <Box sx={{ display: 'flex', height: 'calc(100vh - 120px)', maxWidth: 1000, mx: 'auto', pt: 2 }}>
-      <Paper sx={{ width: 280, mr: 2, overflow: 'auto', flexShrink: 0 }}>
-        <Typography variant="subtitle1" fontWeight={600} sx={{ p: 2, pb: 0 }}>
-          Tin nhắn
-        </Typography>
-        {sessionsLoading ? (
-          <Box sx={{ p: 2 }}><CircularProgress size={24} /></Box>
-        ) : (
-          <List dense sx={{ flex: 1, overflow: 'auto' }}>
-            {sessions.length === 0 && (
-              <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>
-                Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
-              </Typography>
-            )}
-            {sessions.map((s) => (
-              <ListItemButton
-                key={s.sessionId}
-                selected={s.sessionId === activeSessionId}
-                onClick={() => setActiveSessionId(s.sessionId)}
-              >
-                <ListItemText
-                  primary={s.otherParticipantName || s.listingTitle || 'Chat'}
-                  secondary={s.lastMessagePreview || s.listingTitle}
-                  primaryTypographyProps={{ noWrap: true }}
-                  secondaryTypographyProps={{ noWrap: true }}
-                />
-              </ListItemButton>
-            ))}
-          </List>
-        )}
-      </Paper>
-
-      <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {!activeSessionId ? (
-          <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
-            Chọn một hội thoại bên trái hoặc mở tin đăng và bấm &quot;Nhắn tin&quot;.
-          </Box>
-        ) : (
-          <>
-            <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
-              <Typography 
-                component={RouterLink}
-                to={otherParticipantId === currentUserId ? '/profile' : (otherParticipantId ? `/profile/${otherParticipantId}` : '#')}
-                variant="subtitle1" 
-                fontWeight={600}
-                sx={{ textDecoration: 'none', color: 'inherit', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
-              >
-                {activeSession?.otherParticipantName || activeSession?.listingTitle || 'Chat'}
-              </Typography>
-              {activeSession?.listingTitle && (
-                <Typography variant="caption" color="text.secondary">
-                  {activeSession.listingTitle}
-                </Typography>
-              )}
-            </Box>
-            <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-              {historyLoading ? (
-                <Box display="flex" justifyContent="center" py={2}>
-                  <CircularProgress size={28} />
-                </Box>
-              ) : (
-                messages.map((m) => {
-                  const isMe = m.isFromCurrentUser === true || (currentUserId != null && m.senderId === currentUserId);
-                  return (
-                  <Box
-                    key={m.id}
-                    sx={{
-                      display: 'flex',
-                      justifyContent: isMe ? 'flex-end' : 'flex-start',
-                      mb: 1,
-                    }}
-                  >
-                    <Paper
-                      sx={{
-                        maxWidth: '75%',
-                        p: 1.5,
-                        bgcolor: isMe ? 'primary.main' : 'grey.100',
-                        color: isMe ? 'primary.contrastText' : 'text.primary',
-                      }}
+      <Box
+          sx={{
+            display: 'flex',
+            flex: 1,
+            minHeight: 0,
+            height: '100%',
+            maxWidth: DETAIL_PAGE_MAX_WIDTH,
+            mx: 'auto',
+            pt: 0,
+          }}
+      >
+        <Paper
+            sx={{
+              width: 280,
+              mr: 2,
+              overflow: 'hidden',
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+            }}
+        >
+          <Typography variant="subtitle1" fontWeight={600} sx={{ p: 2, pb: 0 }}>
+            Tin nhắn
+          </Typography>
+          {sessionsLoading ? (
+              <Box sx={{ p: 2 }}><CircularProgress size={24} /></Box>
+          ) : (
+              <List dense sx={{ flex: 1, overflow: 'auto' }}>
+                {sessions.length === 0 && (
+                    <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>
+                      Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
+                    </Typography>
+                )}
+                {sessions.map((s) => (
+                    <ListItemButton
+                        key={s.sessionId}
+                        selected={s.sessionId === activeSessionId}
+                        onClick={() => setActiveSessionId(s.sessionId)}
                     >
-                      {!isMe && m.senderName && (
-                        <Typography 
-                          component={RouterLink}
-                          to={m.senderId === currentUserId ? '/profile' : (m.senderId ? `/profile/${m.senderId}` : '#')}
-                          variant="caption" 
-                          display="block" 
-                          color="text.secondary" 
-                          sx={{ mb: 0.5, textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
-                        >
-                          {m.senderName}
-                        </Typography>
-                      )}
-                      <Typography variant="body2">{m.content}</Typography>
-                      {m.timestamp && (
-                        <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', mt: 0.5 }}>
-                          {new Date(m.timestamp).toLocaleString('vi-VN')}
-                        </Typography>
-                      )}
-                    </Paper>
-                  </Box>
-                  );
-                })
-              )}
-            </Box>
-            <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
-              <TextField
-                size="small"
-                fullWidth
-                placeholder="Nhập tin nhắn..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-              />
-              <IconButton color="primary" onClick={handleSend} disabled={sending || !inputText?.trim()}>
-                {sending ? <CircularProgress size={24} /> : <SendIcon />}
-              </IconButton>
-            </Box>
-          </>
-        )}
-      </Paper>
-    </Box>
+                      <ListItemText
+                          primary={s.otherParticipantName || s.listingTitle || 'Chat'}
+                          secondary={s.lastMessagePreview || s.listingTitle}
+                          primaryTypographyProps={{ noWrap: true }}
+                          secondaryTypographyProps={{ noWrap: true }}
+                      />
+                    </ListItemButton>
+                ))}
+              </List>
+          )}
+        </Paper>
+
+        <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          {!activeSessionId ? (
+              <Box sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                Chọn một hội thoại bên trái hoặc mở tin đăng và bấm &quot;Nhắn tin&quot;.
+              </Box>
+          ) : (
+              <>
+                <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography
+                      component={RouterLink}
+                      to={otherParticipantId === currentUserId ? '/profile' : (otherParticipantId ? `/profile/${otherParticipantId}` : '#')}
+                      variant="subtitle1"
+                      fontWeight={600}
+                      sx={{ textDecoration: 'none', color: 'inherit', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
+                  >
+                    {activeSession?.otherParticipantName || activeSession?.listingTitle || 'Chat'}
+                  </Typography>
+                  {activeSession?.listingTitle && (
+                      <Typography variant="caption" color="text.secondary">
+                        {activeSession.listingTitle}
+                      </Typography>
+                  )}
+                </Box>
+                <Box sx={{ flex: 1, overflow: 'auto', p: 2, minHeight: 0 }}>
+                  {historyLoading ? (
+                      <Box display="flex" justifyContent="center" py={2}>
+                        <CircularProgress size={28} />
+                      </Box>
+                  ) : (
+                      messages.map((m) => {
+                        const normalizedMsg = {
+                          ...m,
+                          isFromCurrentUser:
+                              m.isFromCurrentUser === true ||
+                              (currentUserId != null && m.senderId === currentUserId),
+                        };
+
+                        return (
+                            <Bubble
+                                key={m.id}
+                                msg={normalizedMsg}
+                                onAccept={handleAcceptOffer}
+                                onReject={handleRejectOffer}
+                            />
+                        );
+                      })
+                  )}
+                </Box>
+                <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
+                  <TextField
+                      size="small"
+                      fullWidth
+                      placeholder="Nhập tin nhắn..."
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+                  />
+                  <IconButton color="primary" onClick={handleSend} disabled={sending || !inputText?.trim()}>
+                    {sending ? <CircularProgress size={24} /> : <SendIcon />}
+                  </IconButton>
+                </Box>
+              </>
+          )}
+        </Paper>
+      </Box>
   );
 }

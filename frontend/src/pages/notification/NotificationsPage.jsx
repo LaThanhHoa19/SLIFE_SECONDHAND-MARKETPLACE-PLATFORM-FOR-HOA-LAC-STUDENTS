@@ -5,6 +5,26 @@ import { Box, Button, Typography } from '@mui/material';
 import { useContext } from 'react';
 import { DoneAll as DoneAllIcon, NotificationsOff as EmptyIcon } from '@mui/icons-material';
 import { NotificationContext } from '../../providers/NotificationProvider';
+import { useNavigate } from 'react-router-dom';
+import * as chatApi from '../../api/chatApi';
+
+const normalizeName = (name) =>
+    (name ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        // Bỏ dấu để so khớp tên tiếng Việt ổn định hơn.
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '');
+
+// notification.content format (BE): "<senderName>: <preview...>"
+const parseSenderNameFromNotificationContent = (content) => {
+    const s = (content ?? '').trim();
+    if (!s) return null;
+    const idx = s.indexOf(':');
+    if (idx <= 0) return s;
+    return s.slice(0, idx).trim() || null;
+};
 
 const formatNotificationTime = (createdAt) => {
     if (!createdAt) return '';
@@ -20,6 +40,50 @@ const formatNotificationTime = (createdAt) => {
 
 export default function NotificationsPage() {
     const { notifications, unreadCount, markRead, markAllRead } = useContext(NotificationContext);
+    const navigate = useNavigate();
+
+    const resolveChatSessionIdBySenderName = async (senderName) => {
+        if (!senderName) return null;
+        try {
+            const res = await chatApi.getChats('ALL');
+            const body = res?.data;
+            const list = Array.isArray(body?.data)
+                ? body.data
+                : Array.isArray(body?.content)
+                ? body.content
+                : Array.isArray(body)
+                ? body
+                : [];
+            const target = list.find(
+                (s) => normalizeName(s?.otherParticipantName) === normalizeName(senderName)
+            );
+            return target?.sessionId ?? null;
+        } catch (e) {
+            console.warn('[NotificationsPage] resolve chat session failed:', e);
+            return null;
+        }
+    };
+
+    const handleNotificationClick = async (n) => {
+        if (!n) return;
+        if (!n.isRead) {
+            await markRead(n.id);
+        }
+
+        // Tin nhắn mới trong chat
+        if (n?.type === 'MESSAGE' && n?.refType === 'CONVERSATION') {
+            const senderName = parseSenderNameFromNotificationContent(n?.content);
+            const sessionId = await resolveChatSessionIdBySenderName(senderName);
+            if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
+            else navigate('/chat');
+            return;
+        }
+
+        // Tin khác có refType LISTING => mở trang listing
+        if (n?.refType === 'LISTING' && n?.refId) {
+            navigate(`/listings/${n.refId}`);
+        }
+    };
 
     return (
         <Box sx={{ px: 2, py: 3, maxWidth: 640, mx: 'auto' }}>
@@ -55,14 +119,14 @@ export default function NotificationsPage() {
                     {notifications.map((n) => (
                         <Box
                             key={n.id}
-                            onClick={() => !n.isRead && markRead(n.id)}
+                            onClick={() => void handleNotificationClick(n)}
                             sx={{
                                 p: 2,
                                 borderRadius: '12px',
                                 bgcolor: n.isRead ? '#fafafa' : '#faf5ff',
                                 border: '1px solid',
                                 borderColor: n.isRead ? '#eee' : '#ede9fe',
-                                cursor: n.isRead ? 'default' : 'pointer',
+                                cursor: 'pointer',
                                 transition: 'background 0.2s',
                                 '&:hover': { bgcolor: n.isRead ? '#fafafa' : '#f5f0ff' },
                             }}

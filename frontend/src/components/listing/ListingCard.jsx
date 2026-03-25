@@ -25,7 +25,7 @@ import {fullImageUrl} from '../../utils/constants';
 import {formatPickupDisplayLine} from '../../utils/addressDisplay';
 import {formatDate} from '../../utils/formatDate';
 import {useAuth} from '../../hooks/useAuth';
-import * as followApi from '../../api/followApi';
+import {useFollowActions} from '../../hooks/useFollowActions';
 import CommentModal from './CommentModal';
 
 const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
@@ -70,14 +70,14 @@ export default function ListingCard({
                                         imageAspect,
                                     }) {
     const navigate = useNavigate();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, updateUser: updateAuthUser } = useAuth();
+    const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
     const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
     const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
     const [followed, setFollowed] = useState(!!listing?.isFollowed);
-    const [followLoading, setFollowLoading] = useState(false);
     const [commentOpen, setCommentOpen] = useState(false);
 
     useEffect(() => {
@@ -97,20 +97,15 @@ export default function ListingCard({
             navigate('/login');
             return;
         }
-        setFollowLoading(true);
-        try {
-            if (followed) {
-                await followApi.unfollowUser(sellerId);
-                setFollowed(false);
-            } else {
-                await followApi.followUser(sellerId);
-                setFollowed(true);
-            }
-        } catch {
-            /* silent — optional toast at feed level */
-        } finally {
-            setFollowLoading(false);
-        }
+        await toggleFollow({
+            targetUserId: sellerId,
+            isFollowing: followed,
+            isAuthenticated,
+            onSuccess: (nextIsFollowing) => setFollowed(nextIsFollowing),
+            onError: () => {
+                /* silent — optional toast at feed level */
+            },
+        });
     };
 
     const conditionText = getConditionText(listing);
@@ -269,8 +264,8 @@ export default function ListingCard({
             {/* Actions */}
             <Box sx={{ px: 2, py: 1.5, display: 'flex', gap: 2.5, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#FF4757', bgcolor: 'rgba(255,71,87,0.1)' } }}><FavoriteIcon fontSize="small" /></IconButton>
-                <IconButton 
-                    size="small" 
+                <IconButton
+                    size="small"
                     onClick={(e) => {
                         e.stopPropagation();
                         setCommentOpen(true);
@@ -283,11 +278,11 @@ export default function ListingCard({
                 <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', ml: 'auto', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><ShareIcon fontSize="small" /></IconButton>
             </Box>
 
-            <CommentModal 
-                open={commentOpen} 
-                onClose={() => setCommentOpen(false)} 
-                listingId={id} 
-                listingTitle={listing?.title} 
+            <CommentModal
+                open={commentOpen}
+                onClose={() => setCommentOpen(false)}
+                listingId={id}
+                listingTitle={listing?.title}
             />
         </Card>
     );

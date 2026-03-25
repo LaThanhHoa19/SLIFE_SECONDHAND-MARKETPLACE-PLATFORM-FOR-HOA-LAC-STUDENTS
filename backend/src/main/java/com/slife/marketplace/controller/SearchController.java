@@ -8,6 +8,7 @@ import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.FollowService;
+import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.SearchService;
 import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.util.AddressFormat;
@@ -35,13 +36,16 @@ public class SearchController {
     private final SearchService searchService;
     private final UserService userService;
     private final FollowService followService;
+    private final ListingService listingService;
 
     public SearchController(SearchService searchService,
-            UserService userService,
-            FollowService followService) {
+                            UserService userService,
+                            FollowService followService,
+                            ListingService listingService) {
         this.searchService = searchService;
         this.userService = userService;
         this.followService = followService;
+        this.listingService = listingService;
     }
 
     @GetMapping("/search")
@@ -52,9 +56,12 @@ public class SearchController {
         Optional<User> viewer = userService.getCurrentUserOptional();
         Set<Long> followedSellerIds = resolveFollowedSellerIds(viewer.orElse(null), pageResult.getContent());
 
+        User viewerUser = viewer.orElse(null);
         List<ListingResponse> content = pageResult.getContent().stream()
-                .map(listing -> toListingResponse(listing, viewer.orElse(null), followedSellerIds))
+                .map(listing -> toListingResponse(listing, viewerUser, followedSellerIds))
                 .toList();
+        listingService.enrichWithLikeMetadata(content, viewerUser);
+
 
         PagedResponse<ListingResponse> body = new PagedResponse<>();
         body.setContent(content);
