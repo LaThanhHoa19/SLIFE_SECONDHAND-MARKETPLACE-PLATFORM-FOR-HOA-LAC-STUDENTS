@@ -407,44 +407,21 @@ public class ListingService {
                 if (inside) {
                     return;
                 }
+                // Bbox có mà pin nằm ngoài => chặn chắc chắn
+                throw new SlifeException(
+                        ErrorCode.INVALID_INPUT,
+                        "Vị trí ghim không thuộc khu vực đã chọn. Vui lòng ghim lại trong đúng khu vực."
+                );
             }
         } catch (Exception ignored) {
             // ignore bbox errors and fallback to reverse-name matching
         }
 
-        Map<String, Object> rev = vietmapService.reverse(
-                request.getPickupLat().doubleValue(),
-                request.getPickupLng().doubleValue()
-        );
-        String addressText = normalizeVi(String.valueOf(rev.getOrDefault("addressText", "")));
-        String revProvince = normalizeVi(String.valueOf(rev.getOrDefault("province", "")));
-        String revDistrict = normalizeVi(String.valueOf(rev.getOrDefault("district", "")));
-        String revWard = normalizeVi(String.valueOf(rev.getOrDefault("ward", "")));
-
-        // Nếu Vietmap servicesKey chưa cấu hình (reverse trả rỗng) thì không chặn đăng tin.
-        // FE đã có fallback OSM để validate sớm; BE giữ soft-fail để tránh false-negative.
-        if (addressText.isEmpty() && revProvince.isEmpty() && revDistrict.isEmpty() && revWard.isEmpty()) {
-            log.warn("Pin validation skipped (reverse unavailable). lat={}, lng={}",
-                    request.getPickupLat(), request.getPickupLng());
-            return;
-        }
-
-        boolean provinceMatch = chosenProvince.isEmpty()
-                || (!revProvince.isEmpty() && (revProvince.contains(chosenProvince) || chosenProvince.contains(revProvince)))
-                || addressText.contains(chosenProvince);
-        boolean districtMatch = chosenDistrict.isEmpty()
-                || (!revDistrict.isEmpty() && (revDistrict.contains(chosenDistrict) || chosenDistrict.contains(revDistrict)))
-                || addressText.contains(chosenDistrict);
-        boolean wardMatch = chosenWard.isEmpty()
-                || (!revWard.isEmpty() && (revWard.contains(chosenWard) || chosenWard.contains(revWard)))
-                || addressText.contains(chosenWard);
-
-        if (!(provinceMatch && districtMatch && wardMatch)) {
-            throw new SlifeException(
-                    ErrorCode.INVALID_INPUT,
-                    "Vị trí ghim không thuộc khu vực đã chọn. Vui lòng ghim lại trong đúng khu vực."
-            );
-        }
+        // Nếu không lấy được bbox (OSM search fail), tránh chặn nhầm: FE đã validate sớm.
+        // Server vẫn có thể validate lại khi bbox reverse ổn định.
+        log.warn("Pin validation skipped (bbox unavailable). province='{}', district='{}', ward='{}'",
+                request.getPickupProvince(), request.getPickupDistrict(), request.getPickupWard());
+        return;
     }
 
     private static String normalizeVi(String s) {
