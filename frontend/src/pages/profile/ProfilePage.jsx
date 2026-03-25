@@ -25,6 +25,7 @@ import { getListings } from '../../api/listingApi';
 import { createReport } from '../../api/reportApi';
 import Loading from '../../components/common/Loading';
 import { API_BASE_URL } from '../../utils/constants';
+import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -269,7 +270,7 @@ export default function ProfilePage() {
   const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
 
   return (
-      <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f7', pb: 6 }}>
+      <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: 6 }}>
         <ProfileHeader
             user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
             handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
@@ -297,7 +298,7 @@ export default function ProfilePage() {
             userId={followListUserId}
         />
 
-        <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
+        <Box sx={{ maxWidth: DETAIL_PAGE_MAX_WIDTH, mx: 'auto' }}>
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, mt: 2 }}>
             <Box sx={{ p: 4, bgcolor: 'rgba(0,0,0,0.01)', borderRight: { md: '1px solid rgba(0,0,0,0.06)' } }}>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Giới thiệu</Typography>
