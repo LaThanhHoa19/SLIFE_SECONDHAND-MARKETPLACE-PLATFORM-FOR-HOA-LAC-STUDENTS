@@ -1,7 +1,7 @@
 /**
- * Trang chi tiết listing – thiết kế đồng bộ với Feed (dark theme).
- * Bố cục: Gallery bên trái | Thông tin + Hành động bên phải
- * Phần bên dưới: Bình luận | Tin khác của người bán | Tin tương tự
+ * Trang chi tiáº¿t listing â€“ thiáº¿t káº¿ Ä‘á»“ng bá»™ vá»›i Feed (dark theme).
+ * Bá»‘ cá»¥c: Gallery bÃªn trÃ¡i | ThÃ´ng tin + HÃ nh Ä‘á»™ng bÃªn pháº£i
+ * Pháº§n bÃªn dÆ°á»›i: BÃ¬nh luáº­n | Tin khÃ¡c cá»§a ngÆ°á»i bÃ¡n | Tin tÆ°Æ¡ng tá»±
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -28,10 +28,6 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShareIcon from '@mui/icons-material/Share';
-import FlagIcon from '@mui/icons-material/Flag';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import SendIcon from '@mui/icons-material/Send';
@@ -44,16 +40,14 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 
-import { getListing, getListings } from '../../api/listingApi';
+import { getListing, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
-import { getUserById } from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
+import { unwrapApiData } from '../../utils/apiPayload';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
-import * as offerApi from '../../api/offerApi';
-import * as followApi from '../../api/followApi';
-
+import { useFollowActions } from '../../hooks/useFollowActions';
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
 import ListingComments from '../../components/listing/ListingComments';
@@ -63,7 +57,7 @@ import ListingSellerOtherListings from '../../components/listing/ListingSellerOt
 import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
 
-// ─── Hằng số màu sắc đồng bộ với Feed ───────────────────────────────────────
+// â”€â”€â”€ Háº±ng sá»‘ mÃ u sáº¯c Ä‘á»“ng bá»™ vá»›i Feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DARK_BG = '#1C1B23';
 const CARD_BG = '#201D26';
 const CARD_BG2 = '#252230';
@@ -74,29 +68,28 @@ const PURPLE = '#9D6EED';
 const RED = '#FF4757';
 const GREEN = '#2ED573';
 
-// ─── Helper ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const getPayload = (res) => {
-    const body = res?.data;
-    return body?.data ?? body;
+    return unwrapApiData(res);
 };
 
 const toCurrency = (value) =>
-    value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
+    value == null ? 'â€”' : `${Number(value).toLocaleString('vi-VN')} â‚«`;
 
 const CONDITION_MAP = {
-    NEW: { label: 'Mới', color: GREEN },
-    USED_LIKE_NEW: { label: 'Như mới', color: '#1DD3B0' },
-    USED_GOOD: { label: 'Đã dùng – tốt', color: PURPLE },
-    USED_FAIR: { label: 'Đã dùng', color: '#FFA502' },
+    NEW: { label: 'Má»›i', color: GREEN },
+    USED_LIKE_NEW: { label: 'NhÆ° má»›i', color: '#1DD3B0' },
+    USED_GOOD: { label: 'ÄÃ£ dÃ¹ng â€“ tá»‘t', color: PURPLE },
+    USED_FAIR: { label: 'ÄÃ£ dÃ¹ng', color: '#FFA502' },
 };
 
 const getConditionInfo = (condition) =>
-    CONDITION_MAP[condition] || { label: condition || 'Không rõ', color: TEXT_SEC };
+    CONDITION_MAP[condition] || { label: condition || 'KhÃ´ng rÃµ', color: TEXT_SEC };
 
 const getSeller = (listing) => {
     const s = listing?.sellerSummary ?? listing?.seller;
     if (s && typeof s === 'object') return s;
-    return { fullName: typeof s === 'string' ? s : 'Người bán' };
+    return { fullName: typeof s === 'string' ? s : 'NgÆ°á»i bÃ¡n' };
 };
 
 const getLocation = (listing) => {
@@ -110,18 +103,25 @@ const getLocation = (listing) => {
     return '';
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user: currentUser, isAuthenticated } = useAuth();
+    const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
+    const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
+        user: currentUser,
+        updateAuthUser,
+    });
 
     const [listing, setListing] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [startingChat, setStartingChat] = useState(false);
     const [showPhone, setShowPhone] = useState(false);
-    const [liked, setLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(0);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likeSubmitting, setLikeSubmitting] = useState(false);
+    const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [snackMsg, setSnackMsg] = useState('');
     const [snackType, setSnackType] = useState('success');
     const [snackAction, setSnackAction] = useState(null);
@@ -130,7 +130,6 @@ export default function ListingDetailPage() {
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
     const [sellerFollowed, setSellerFollowed] = useState(false);
-    const [sellerFollowLoading, setSellerFollowLoading] = useState(false);
 
     // Load listing
     useEffect(() => {
@@ -142,16 +141,22 @@ export default function ListingDetailPage() {
                 const data = getPayload(res);
                 setListing(data);
                 setIsSavedItem(data?.isSaved ?? false);
+                setLikeCount(Number(data?.likeCount ?? 0));
+                setIsLiked(!!data?.isLiked);
             })
-            .catch((err) => setError(err?.message || 'Không tải được tin.'))
+            .catch((err) => setError(err?.message || 'KhÃ´ng táº£i Ä‘Æ°á»£c tin.'))
             .finally(() => setLoading(false));
     }, [id]);
 
-    // Load tin khác của người bán + tin tương tự
-    // Backend không hỗ trợ sellerId param → load toàn bộ rồi filter client-side
+    useEffect(() => {
+        setSellerFollowed(!!listing?.isFollowed);
+    }, [listing?.id, listing?.isFollowed]);
+
+    // Load tin khÃ¡c cá»§a ngÆ°á»i bÃ¡n + tin tÆ°Æ¡ng tá»±
+    // Backend khÃ´ng há»— trá»£ sellerId param â†’ load toÃ n bá»™ rá»“i filter client-side
     useEffect(() => {
         if (!listing) return;
-        // Lấy seller id từ listing.seller.id (theo đúng field backend trả về)
+        // Láº¥y seller id tá»« listing.seller.id (theo Ä‘Ãºng field backend tráº£ vá»)
         const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         const currentId = Number(id);
 
@@ -163,7 +168,7 @@ export default function ListingDetailPage() {
                     ? data.content
                     : Array.isArray(data) ? data : [];
 
-                // Tin khác của cùng người bán (loại trừ tin hiện tại)
+                // Tin khÃ¡c cá»§a cÃ¹ng ngÆ°á»i bÃ¡n (loáº¡i trá»« tin hiá»‡n táº¡i)
                 const bySellerRaw = sellerId
                     ? allList.filter((l) => {
                         const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
@@ -172,7 +177,7 @@ export default function ListingDetailPage() {
                     : [];
                 setSellerListings(bySellerRaw.slice(0, 6));
 
-                // Tin tương tự: cùng điều kiện sản phẩm hoặc mức giá tương đồng, loại trừ tin hiện tại và tin của cùng seller
+                // Tin tÆ°Æ¡ng tá»±: cÃ¹ng Ä‘iá»u kiá»‡n sáº£n pháº©m hoáº·c má»©c giÃ¡ tÆ°Æ¡ng Ä‘á»“ng, loáº¡i trá»« tin hiá»‡n táº¡i vÃ  tin cá»§a cÃ¹ng seller
                 const condition = listing?.condition ?? listing?.itemCondition;
                 const price = Number(listing?.price ?? 0);
                 const similar = allList
@@ -180,8 +185,8 @@ export default function ListingDetailPage() {
                         const lId = l.id ?? l.listingId;
                         if (lId === currentId) return false;
                         const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        if (String(lSellerId) === String(sellerId)) return false; // bỏ tin của cùng seller (đã có section trên)
-                        // ưu tiên: cùng condition hoặc giá trong khoảng ±50%
+                        if (String(lSellerId) === String(sellerId)) return false; // bá» tin cá»§a cÃ¹ng seller (Ä‘Ã£ cÃ³ section trÃªn)
+                        // Æ°u tiÃªn: cÃ¹ng condition hoáº·c giÃ¡ trong khoáº£ng Â±50%
                         const lCond = l?.condition ?? l?.itemCondition;
                         const lPrice = Number(l?.price ?? 0);
                         const sameCondition = condition && lCond === condition;
@@ -195,13 +200,53 @@ export default function ListingDetailPage() {
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
 
-    // ── Handlers ─────────────────────────────────────────────────────────────
+    // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    const handleToggleLike = async () => {
+        if (!isAuthenticated) {
+            setSnackType('warning');
+            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ thÃ­ch tin.');
+            return;
+        }
+        if (likeSubmitting) return;
+
+        const prevLiked = isLiked;
+        const prevCount = likeCount;
+        setIsLiked(!prevLiked);
+        setLikeCount(Math.max(0, prevCount + (prevLiked ? -1 : 1)));
+        setLikeSubmitting(true);
+
+        try {
+            const res = await toggleListingLike(listing.id);
+            const body = getPayload(res);
+            const nextLiked = body?.liked ?? body?.isLiked;
+            const nextCount = body?.likeCount;
+            if (typeof nextLiked === 'boolean') setIsLiked(nextLiked);
+            if (nextCount != null) setLikeCount(Number(nextCount));
+            setListing((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        isLiked: typeof nextLiked === 'boolean' ? nextLiked : !prevLiked,
+                        likeCount: nextCount != null ? Number(nextCount) : Math.max(0, prevCount + (prevLiked ? -1 : 1)),
+                    }
+                    : prev
+            );
+        } catch {
+            setIsLiked(prevLiked);
+            setLikeCount(prevCount);
+            setSnackType('error');
+            setSnackMsg('KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c lÆ°á»£t thÃ­ch. Thá»­ láº¡i sau.');
+        } finally {
+            setLikeSubmitting(false);
+        }
+    };
+
     const handleShare = async () => {
         const url = window.location.href;
         try {
             await navigator.clipboard.writeText(url);
             setSnackType('success');
-            setSnackMsg('Đã sao chép link vào clipboard!');
+            setSnackMsg('ÄÃ£ sao chÃ©p link vÃ o clipboard!');
         } catch {
             setSnackType('info');
             setSnackMsg(url);
@@ -211,7 +256,7 @@ export default function ListingDetailPage() {
     const handleReport = () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để báo cáo tin.');
+            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ bÃ¡o cÃ¡o tin.');
             return;
         }
         navigate(`/report?targetType=LISTING&targetId=${id}`);
@@ -220,7 +265,7 @@ export default function ListingDetailPage() {
     const handleChat = async () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để nhắn tin.');
+            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ nháº¯n tin.');
             return;
         }
         setStartingChat(true);
@@ -230,7 +275,7 @@ export default function ListingDetailPage() {
             if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
         } catch {
             setSnackType('error');
-            setSnackMsg('Không thể mở cuộc trò chuyện. Thử lại sau.');
+            setSnackMsg('KhÃ´ng thá»ƒ má»Ÿ cuá»™c trÃ² chuyá»‡n. Thá»­ láº¡i sau.');
         } finally {
             setStartingChat(false);
         }
@@ -239,7 +284,7 @@ export default function ListingDetailPage() {
     const handleShowPhone = () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để xem số điện thoại.');
+            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ xem sá»‘ Ä‘iá»‡n thoáº¡i.');
             return;
         }
         setShowPhone(true);
@@ -255,73 +300,71 @@ export default function ListingDetailPage() {
         if (!listing) return;
         const sid = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         if (!sid) return;
+        await toggleFollow({
+            targetUserId: sid,
+            isFollowing: sellerFollowed,
+            isAuthenticated,
+            onUnauthenticated: () => {
+                showSnack('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ theo dÃµi ngÆ°á»i bÃ¡n.', 'warning');
+                navigate('/login');
+            },
+            onSuccess: (nextIsFollowing) => {
+                const delta = nextIsFollowing ? 1 : -1;
+                const bumpFollowers = (obj) => {
+                    if (!obj || typeof obj !== 'object') return obj;
+                    const cur = Number(obj.followerCount ?? obj.follower_count ?? 0);
+                    return { ...obj, followerCount: Math.max(0, cur + delta) };
+                };
+                setSellerFollowed(nextIsFollowing);
+                setListing((prev) =>
+                    prev
+                        ? {
+                            ...prev,
+                            isFollowed: nextIsFollowing,
+                            seller: bumpFollowers(prev.seller),
+                            sellerSummary: bumpFollowers(prev.sellerSummary),
+                        }
+                        : prev
+                );
+                showSnack(nextIsFollowing ? 'ÄÃ£ theo dÃµi ngÆ°á»i bÃ¡n.' : 'ÄÃ£ bá» theo dÃµi ngÆ°á»i bÃ¡n.');
+            },
+            onError: (e) => {
+                showSnack(e?.message || 'KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c tráº¡ng thÃ¡i theo dÃµi.', 'error');
+            },
+        });
+    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, toggleFollow]);
+
+    const handleToggleSave = async () => {
         if (!isAuthenticated) {
-            showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-            navigate('/login');
+            setSnackType('warning');
+            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ lÆ°u tin.');
             return;
         }
-        setSellerFollowLoading(true);
+        if (!listing?.id || saveSubmitting) return;
+
+        const wasSaved = isSavedItem;
+        setIsSavedItem(!wasSaved);
+        setSaveSubmitting(true);
+
         try {
-            if (sellerFollowed) {
-                await followApi.unfollowUser(sid);
-                setSellerFollowed(false);
-                setListing((prev) => (prev ? { ...prev, isFollowed: false } : prev));
-                showSnack('Đã bỏ theo dõi người bán.');
+            if (wasSaved) {
+                await unsaveListing(listing.id);
             } else {
-                await followApi.followUser(sid);
-                setSellerFollowed(true);
-                setListing((prev) => (prev ? { ...prev, isFollowed: true } : prev));
-                showSnack('Đã theo dõi người bán.');
+                await saveListing(listing.id);
             }
-        } catch (e) {
-            showSnack(e?.message || 'Không cập nhật được trạng thái theo dõi.', 'error');
-        } finally {
-            setSellerFollowLoading(false);
-        }
-    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack]);
-
-    const handleOffer = async () => {
-        if (!isAuthenticated) {
-            setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để trả giá.');
-            return;
-        }
-        const amount = Number(offerPrice.replace(/[^\d]/g, ''));
-        if (!amount || amount <= 0) {
-            setSnackType('error');
-            setSnackMsg('Vui lòng nhập giá hợp lệ.');
-            return;
-        }
-        try {
-            const res = await chatApi.getSession(listing.id);
-            const sessionId = res?.data?.data ?? res?.data;
-            if (sessionId) {
-                await chatApi.makeOffer(sessionId, amount);
-                setSnackType('success');
-                setSnackMsg('Đã gửi giá trả thành công!');
-                setOfferPrice('');
-                navigate(`/chat?sessionId=${sessionId}`);
-            }
+            setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
+            setSnackType('success');
+            setSnackMsg(!wasSaved ? 'ÄÃ£ lÆ°u tin rao' : 'ÄÃ£ bá» lÆ°u tin rao');
         } catch {
+            setIsSavedItem(wasSaved);
             setSnackType('error');
-            setSnackMsg('Không thể trả giá lúc này.');
+            setSnackMsg('KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c tráº¡ng thÃ¡i lÆ°u tin. Thá»­ láº¡i sau.');
+        } finally {
+            setSaveSubmitting(false);
         }
     };
 
-    const handleToggleSave = () => {
-        if (!isAuthenticated) {
-            setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để lưu tin.');
-            return;
-        }
-        // Gửi API update thực tế tại đây (gọi save API từ backend)
-        // Tạm thời update UX ngay lập tức
-        setIsSavedItem(!isSavedItem);
-        setSnackType('success');
-        setSnackMsg(!isSavedItem ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
-    };
-
-    // ── Render loading / error ────────────────────────────────────────────────
+    // â”€â”€ Render loading / error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if (loading) {
         return (
             <Box sx={{ px: 2, py: 3, maxWidth: 1100, mx: 'auto' }}>
@@ -341,19 +384,19 @@ export default function ListingDetailPage() {
     if (error || !listing) {
         return (
             <Box sx={{ p: 4, textAlign: 'center' }}>
-                <Typography color="error" sx={{ mb: 2 }}>{error || 'Không tìm thấy tin.'}</Typography>
+                <Typography color="error" sx={{ mb: 2 }}>{error || 'KhÃ´ng tÃ¬m tháº¥y tin.'}</Typography>
                 <Button
                     startIcon={<ArrowBackIosNewIcon />}
                     onClick={() => navigate(-1)}
                     sx={{ bgcolor: CARD_BG, color: TEXT_PRI, '&:hover': { bgcolor: CARD_BG2 } }}
                 >
-                    Quay lại
+                    Quay láº¡i
                 </Button>
             </Box>
         );
     }
 
-    // ── Dẫn xuất dữ liệu ─────────────────────────────────────────────────────
+    // â”€â”€ Dáº«n xuáº¥t dá»¯ liá»‡u â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const images = (listing?.images ?? []).map((p) => fullImageUrl(p)).filter(Boolean);
     const seller = getSeller(listing);
     const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id ?? listing?.sellerId;
@@ -361,13 +404,13 @@ export default function ListingDetailPage() {
     const locationText = getLocation(listing);
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
     const phoneNumber = isAuthenticated && showPhone
-        ? (listing.sellerPhone || seller?.phoneNumber || 'Không có SĐT')
+        ? (listing.sellerPhone || seller?.phoneNumber || 'KhÃ´ng cÃ³ SÄT')
         : null;
     const pickupAddress = listing?.pickupAddress;
 
     return (
         <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
-            {/* Nối đuôi cha-con (Breadcrumbs) */}
+            {/* Ná»‘i Ä‘uÃ´i cha-con (Breadcrumbs) */}
             <Breadcrumbs
                 separator={<NavigateNextIcon sx={{ fontSize: 16, color: TEXT_SEC }} />}
                 sx={{ mb: 2.5 }}
@@ -392,7 +435,7 @@ export default function ListingDetailPage() {
                         '&:hover': { color: TEXT_PRI }
                     }}
                 >
-                    {listing.category?.name || 'Tin đăng'}
+                    {listing.category?.name || 'Tin Ä‘Äƒng'}
                 </Link>
                 <Typography color={TEXT_PRI} fontSize={13} fontWeight={500} sx={{
                     maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
@@ -401,16 +444,16 @@ export default function ListingDetailPage() {
                 </Typography>
             </Breadcrumbs>
 
-            {/* ═══════════════════════════════════════════════════════════════
-          KHỐI CHÍNH: Layout lưới để đảm bảo các thành phần ngang hàng nhau
-      ══════════════════════════════════════════════════════════════ */}
+            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          KHá»I CHÃNH: Layout lÆ°á»›i Ä‘á»ƒ Ä‘áº£m báº£o cÃ¡c thÃ nh pháº§n ngang hÃ ng nhau
+      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
             <Box
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: { xs: '1fr', md: '5.5fr 4.5fr' },
                     gap: { xs: 3, md: 4 },
                     mb: 4,
-                    alignItems: 'stretch' // Đảm bảo các cell trong cùng row có chiều cao bằng nhau
+                    alignItems: 'stretch' // Äáº£m báº£o cÃ¡c cell trong cÃ¹ng row cÃ³ chiá»u cao báº±ng nhau
                 }}
             >
                 {/* Row 1: Gallery (Split Large Image & Thumbs) | Info Block */}
@@ -423,7 +466,12 @@ export default function ListingDetailPage() {
                         onReport={handleReport}
                         isSaved={isSavedItem}
                         onToggleSave={handleToggleSave}
-                        hideThumbs={true} // Hide internal thumbs
+                        saveDisabled={saveSubmitting}
+                        likeCount={likeCount}
+                        isLiked={isLiked}
+                        onToggleLike={handleToggleLike}
+                        likeDisabled={likeSubmitting}
+                        hideThumbs={true}
                     />
                     {/* Thumbnails below large image */}
                     {images.length > 1 && (
@@ -479,7 +527,7 @@ export default function ListingDetailPage() {
                     listing={listing}
                 />
 
-                {/* Row 3: Comments | Trống (Bình luận rộng bằng Gallery) */}
+                {/* Row 3: Comments | Trá»‘ng (BÃ¬nh luáº­n rá»™ng báº±ng Gallery) */}
                 <Card
                     sx={{
                         bgcolor: CARD_BG, border: `1px solid ${BORDER}`,
@@ -493,17 +541,17 @@ export default function ListingDetailPage() {
                         onNotify={showSnack}
                     />
                 </Card>
-                <Box /> {/* Ô trống để giữ grid 2 cột */}
+                <Box /> {/* Ã” trá»‘ng Ä‘á»ƒ giá»¯ grid 2 cá»™t */}
             </Box>
 
-            {/* Xem trước vị trí hẹn (map Vietmap + nút mở Google Maps) */}
+            {/* Xem trÆ°á»›c vá»‹ trÃ­ háº¹n (map Vietmap + nÃºt má»Ÿ Google Maps) */}
             {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null && (
                 <Box sx={{ maxWidth: 1200, mx: 'auto', mb: 4 }}>
                     <Typography
                         variant="h6"
                         sx={{ mb: 1.5, color: TEXT_PRI, fontSize: 18, fontWeight: 600 }}
                     >
-                        Vị trí điểm hẹn (xem trước)
+                        Vá»‹ trÃ­ Ä‘iá»ƒm háº¹n (xem trÆ°á»›c)
                     </Typography>
                     <ListingPickupMapPreview
                         lat={pickupAddress.lat}
@@ -513,13 +561,13 @@ export default function ListingDetailPage() {
                 </Box>
             )}
 
-            {/* Tin đăng tương tự – luôn hiện, grid 4 cột */}
+            {/* Tin Ä‘Äƒng tÆ°Æ¡ng tá»± â€“ luÃ´n hiá»‡n, grid 4 cá»™t */}
             <ListingSimilar
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
             />
 
-            {/* Banner Quảng Cáo */}
+            {/* Banner Quáº£ng CÃ¡o */}
             <Box
                 sx={{
                     mt: 6, mb: 2,
@@ -540,7 +588,7 @@ export default function ListingDetailPage() {
                 />
             </Box>
 
-            {/* Snackbar thông báo */}
+            {/* Snackbar thÃ´ng bÃ¡o */}
             <Snackbar
                 open={!!snackMsg}
                 autoHideDuration={3000}

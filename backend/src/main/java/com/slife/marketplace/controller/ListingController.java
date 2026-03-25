@@ -6,6 +6,7 @@ import com.slife.marketplace.dto.response.ListingCardResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.dto.response.ToggleLikeResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
@@ -13,6 +14,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.ListingImageService;
+import com.slife.marketplace.service.ListingLikeService;
 import com.slife.marketplace.service.SavedListingService;
 import com.slife.marketplace.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +34,7 @@ public class ListingController {
     private final ListingRepository listingRepository;
     private final SavedListingService savedListingService;
     private final ListingImageService listingImageService;
+    private final ListingLikeService listingLikeService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -40,12 +43,14 @@ public class ListingController {
                              UserService userService,
                              ListingRepository listingRepository,
                              SavedListingService savedListingService,
-                             ListingImageService listingImageService) {
+                             ListingImageService listingImageService,
+                             ListingLikeService listingLikeService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
         this.savedListingService = savedListingService;
         this.listingImageService = listingImageService;
+        this.listingLikeService = listingLikeService;
     }
 
     /**
@@ -130,10 +135,19 @@ public class ListingController {
 
         User currentUser = userService.getCurrentUserOptional().orElse(null);
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
-        
-        ListingResponse response = listingService.buildListingResponse(listing, currentUser, isSaved);
 
+        ListingResponse response = listingService.buildListingResponse(listing, currentUser, isSaved);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * POST /api/listings/{id}/like — toggle like / unlike (auth required).
+     */
+    @PostMapping("/{id}/like")
+    public ResponseEntity<ApiResponse<ToggleLikeResponse>> toggleLike(@PathVariable("id") Long id) {
+        User user = userService.getCurrentUser();
+        ToggleLikeResponse body = listingLikeService.toggle(user, id);
+        return ResponseEntity.ok(ApiResponse.success("OK", body));
     }
 
     /**
