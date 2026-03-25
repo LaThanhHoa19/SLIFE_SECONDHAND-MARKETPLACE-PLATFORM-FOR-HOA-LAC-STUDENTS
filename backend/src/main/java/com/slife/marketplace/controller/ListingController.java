@@ -34,7 +34,6 @@ public class ListingController {
     private final ListingRepository listingRepository;
     private final SavedListingService savedListingService;
     private final ListingImageService listingImageService;
-    private final FollowService followService;
     private final ListingLikeService listingLikeService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
@@ -45,14 +44,12 @@ public class ListingController {
                              ListingRepository listingRepository,
                              SavedListingService savedListingService,
                              ListingImageService listingImageService,
-                             FollowService followService,
                              ListingLikeService listingLikeService) {
         this.listingService = listingService;
         this.userService = userService;
         this.listingRepository = listingRepository;
         this.savedListingService = savedListingService;
         this.listingImageService = listingImageService;
-        this.followService = followService;
         this.listingLikeService = listingLikeService;
     }
 
@@ -140,14 +137,7 @@ public class ListingController {
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
 
         ListingResponse response = listingService.buildListingResponse(listing, currentUser, isSaved);
-
         return ResponseEntity.ok(ApiResponse.success("OK", response));
-        long likeCount = listingLikeService.countByListingId(id);
-        data.put("likeCount", likeCount);
-        boolean isLiked = currentUser != null && listingLikeService.isLikedBy(currentUser.getId(), id);
-        data.put("isLiked", isLiked);
-
-        return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
     /**
