@@ -13,6 +13,7 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.AddressRepository;
 import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
+import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
 import com.slife.marketplace.service.FollowService;
@@ -59,6 +60,9 @@ class ListingServiceTest {
     private FollowService followService;
 
     @Mock
+    private ListingLikeRepository listingLikeRepository;
+
+    @Mock
     private ListingImageService listingImageService;
 
     private ListingService listingService;
@@ -72,6 +76,7 @@ class ListingServiceTest {
                 categoryRepository,
                 addressRepository,
                 followService,
+                listingLikeRepository,
                 listingImageService
         );
     }

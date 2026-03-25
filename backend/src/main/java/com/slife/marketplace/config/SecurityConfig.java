@@ -76,22 +76,6 @@ public class SecurityConfig {
 
                         // Mọi request còn lại yêu cầu đăng nhập
                         .anyRequest().authenticated())
-                .exceptionHandling(e -> e.accessDeniedHandler((request, response, ex) -> {
-                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    response.setCharacterEncoding("UTF-8");
-                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    BaseResponse<Object> body = new BaseResponse<>(
-                            "FORBIDDEN",
-                            "Bạn không có quyền truy cập tính năng này",
-                            null
-                    );
-                    response.getWriter().write(objectMapper.writeValueAsString(body));
-                }))
-                        // Admin-only
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Everything else requires authentication
-                        .anyRequest()
-                        .authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
