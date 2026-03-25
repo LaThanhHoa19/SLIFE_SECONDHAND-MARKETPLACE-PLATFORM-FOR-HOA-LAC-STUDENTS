@@ -35,6 +35,7 @@ import QuickreplyIcon from '@mui/icons-material/Quickreply';
 import SendIcon from '@mui/icons-material/Send';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
+import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const WS_URL = `${API_BASE}/chat`;
@@ -498,8 +499,28 @@ export default function ChatPage() {
   // ── render ────────────────────────────────────────────────────────────────────
 
   return (
-      <Box sx={{ display: 'flex', height: 'calc(100vh - 120px)', maxWidth: 1000, mx: 'auto', pt: 2 }}>
-        <Paper sx={{ width: 280, mr: 2, overflow: 'auto', flexShrink: 0 }}>
+      <Box
+          sx={{
+            display: 'flex',
+            flex: 1,
+            minHeight: 0, // Cho phép content con scroll đúng
+            height: '100%',
+            maxWidth: DETAIL_PAGE_MAX_WIDTH,
+            mx: 'auto',
+            pt: 0,
+          }}
+      >
+        <Paper
+            sx={{
+              width: 280,
+              mr: 2,
+              overflow: 'hidden',
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+            }}
+        >
           <Typography variant="subtitle1" fontWeight={600} sx={{ p: 2, pb: 0 }}>
             Tin nhắn
           </Typography>
@@ -553,51 +574,29 @@ export default function ChatPage() {
                       </Typography>
                   )}
                 </Box>
-                <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                <Box sx={{ flex: 1, overflow: 'auto', p: 2, minHeight: 0 }}>
                   {historyLoading ? (
                       <Box display="flex" justifyContent="center" py={2}>
                         <CircularProgress size={28} />
                       </Box>
                   ) : (
                       messages.map((m) => {
-                        const isMe = m.isFromCurrentUser === true || (currentUserId != null && m.senderId === currentUserId);
+                        const normalizedMsg = {
+                          ...m,
+                          // Bubble component dựa vào isFromCurrentUser để căn khung/bgcolor.
+                          // Nếu backend không set sẵn, suy ra từ senderId.
+                          isFromCurrentUser:
+                              m.isFromCurrentUser === true ||
+                              (currentUserId != null && m.senderId === currentUserId),
+                        };
+
                         return (
-                            <Box
+                            <Bubble
                                 key={m.id}
-                                sx={{
-                                  display: 'flex',
-                                  justifyContent: isMe ? 'flex-end' : 'flex-start',
-                                  mb: 1,
-                                }}
-                            >
-                              <Paper
-                                  sx={{
-                                    maxWidth: '75%',
-                                    p: 1.5,
-                                    bgcolor: isMe ? 'primary.main' : 'grey.100',
-                                    color: isMe ? 'primary.contrastText' : 'text.primary',
-                                  }}
-                              >
-                                {!isMe && m.senderName && (
-                                    <Typography
-                                        component={RouterLink}
-                                        to={m.senderId === currentUserId ? '/profile' : (m.senderId ? `/profile/${m.senderId}` : '#')}
-                                        variant="caption"
-                                        display="block"
-                                        color="text.secondary"
-                                        sx={{ mb: 0.5, textDecoration: 'none', '&:hover': { textDecoration: 'underline', color: 'primary.main' } }}
-                                    >
-                                      {m.senderName}
-                                    </Typography>
-                                )}
-                                <Typography variant="body2">{m.content}</Typography>
-                                {m.timestamp && (
-                                    <Typography variant="caption" sx={{ opacity: 0.8, display: 'block', mt: 0.5 }}>
-                                      {new Date(m.timestamp).toLocaleString('vi-VN')}
-                                    </Typography>
-                                )}
-                              </Paper>
-                            </Box>
+                                msg={normalizedMsg}
+                                onAccept={handleAcceptOffer}
+                                onReject={handleRejectOffer}
+                            />
                         );
                       })
                   )}
