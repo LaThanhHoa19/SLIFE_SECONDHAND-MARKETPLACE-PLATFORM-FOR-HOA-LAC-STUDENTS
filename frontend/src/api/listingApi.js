@@ -17,6 +17,9 @@ export const searchListings = (params = {}) =>
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
 /** POST — một endpoint: lần 1 like, lần 2 bỏ like (cần đăng nhập). */
 export const toggleListingLike = (id) => axiosClient.post(`/api/listings/${id}/like`);
+/** Lưu / bỏ lưu tin (auth). */
+export const saveListing = (id) => axiosClient.post(`/api/listings/${id}/save`);
+export const unsaveListing = (id) => axiosClient.delete(`/api/listings/${id}/save`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
