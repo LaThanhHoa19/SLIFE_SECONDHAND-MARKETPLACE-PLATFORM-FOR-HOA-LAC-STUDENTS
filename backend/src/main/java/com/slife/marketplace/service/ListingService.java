@@ -188,7 +188,22 @@ public class ListingService {
     public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
         ListingResponse r = toListingResponse(listing, currentUser, isSaved, computeIsFollowed(listing, currentUser));
         enrichSingleListingResponseWithLikes(r, currentUser);
+        enrichSellerSummaryWithFollowerCount(r, listing);
         return r;
+    }
+
+    /** Chỉ dùng cho chi tiết tin — tránh N+1 count trên danh sách dùng {@link #toListingResponse}. */
+    private void enrichSellerSummaryWithFollowerCount(ListingResponse r, Listing listing) {
+        if (r == null || listing == null || listing.getSeller() == null) {
+            return;
+        }
+        Object ss = r.getSellerSummary();
+        if (!(ss instanceof Map<?, ?> raw)) {
+            return;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> m = (Map<String, Object>) raw;
+        m.put("followerCount", followService.countFollowers(listing.getSeller().getId()));
     }
 
     // ----------------------------------------------------------------
