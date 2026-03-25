@@ -26,7 +26,13 @@ export default function ListingSellerInfo({
                     src={fullImageUrl(seller?.avatarUrl)}
                     alt={seller?.fullName}
                     sx={{ width: 52, height: 52, cursor: 'pointer', border: `2px solid ${PURPLE}` }}
-                    onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
+                    onClick={() => {
+                        const targetId = sellerId ?? seller?.id;
+                        if (!targetId) return;
+                        const currentUser = JSON.parse(localStorage.getItem('user')); // useAuth context is better but this is a quick fix if context is not passed
+                        if (String(targetId) === String(currentUser?.id)) navigate('/profile');
+                        else navigate(`/profile/${targetId}`);
+                    }}
                 />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography
@@ -48,7 +54,13 @@ export default function ListingSellerInfo({
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                         <Chip
                             label="Xem trang"
-                            onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
+                            onClick={() => {
+                                const targetId = sellerId ?? seller?.id;
+                                if (!targetId) return;
+                                const currentUser = JSON.parse(localStorage.getItem('user'));
+                                if (String(targetId) === String(currentUser?.id)) navigate('/profile');
+                                else navigate(`/profile/${targetId}`);
+                            }}
                             sx={{
                                 height: 22, fontSize: 11, fontWeight: 600,
                                 bgcolor: `${PURPLE}22`, color: PURPLE,
@@ -85,7 +97,17 @@ export default function ListingSellerInfo({
                 </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 3 }}>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                {(seller?.followerCount != null || seller?.follower_count != null) && (
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
+                            {Number(seller?.followerCount ?? seller?.follower_count ?? 0)}
+                        </Typography>
+                        <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>
+                            Người theo dõi
+                        </Typography>
+                    </Box>
+                )}
                 {/* Đã bán */}
                 <Box sx={{ textAlign: 'center' }}>
                     <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>

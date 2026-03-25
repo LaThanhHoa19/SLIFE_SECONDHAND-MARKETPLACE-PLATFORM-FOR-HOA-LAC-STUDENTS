@@ -3,11 +3,12 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.SearchRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
-import com.slife.marketplace.dto.response.ListingPageResponse;
+import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.FollowService;
+import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.SearchService;
 import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.util.AddressFormat;
@@ -35,28 +36,33 @@ public class SearchController {
     private final SearchService searchService;
     private final UserService userService;
     private final FollowService followService;
+    private final ListingService listingService;
 
     public SearchController(SearchService searchService,
                             UserService userService,
-                            FollowService followService) {
+                            FollowService followService,
+                            ListingService listingService) {
         this.searchService = searchService;
         this.userService = userService;
         this.followService = followService;
+        this.listingService = listingService;
     }
 
     @GetMapping("/search")
     @Transactional(readOnly = true)
-    public ResponseEntity<ApiResponse<ListingPageResponse>> search(@Valid SearchRequest request) {
+    public ResponseEntity<ApiResponse<PagedResponse<ListingResponse>>> search(@Valid SearchRequest request) {
         Page<Listing> pageResult = searchService.search(request);
 
         Optional<User> viewer = userService.getCurrentUserOptional();
         Set<Long> followedSellerIds = resolveFollowedSellerIds(viewer.orElse(null), pageResult.getContent());
 
+        User viewerUser = viewer.orElse(null);
         List<ListingResponse> content = pageResult.getContent().stream()
-                .map(listing -> toListingResponse(listing, viewer.orElse(null), followedSellerIds))
+                .map(listing -> toListingResponse(listing, viewerUser, followedSellerIds))
                 .toList();
+        listingService.enrichWithLikeMetadata(content, viewerUser);
 
-        ListingPageResponse body = new ListingPageResponse();
+        PagedResponse<ListingResponse> body = new PagedResponse<>();
         body.setContent(content);
         body.setTotalElements(pageResult.getTotalElements());
         body.setTotalPages(pageResult.getTotalPages());

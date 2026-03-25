@@ -1,5 +1,6 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.response.FollowUserSummaryResponse;
 import com.slife.marketplace.dto.response.UserProfileResponse;
 import com.slife.marketplace.entity.Follow;
 import com.slife.marketplace.entity.FollowId;
@@ -8,7 +9,11 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.BlockRepository;
 import com.slife.marketplace.repository.FollowRepository;
+import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,15 +30,48 @@ public class FollowService {
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
     private final NotificationService notificationService;
+    private final ListingRepository listingRepository;
 
     public FollowService(FollowRepository followRepository,
                          UserRepository userRepository,
                          BlockRepository blockRepository,
-                         NotificationService notificationService) {
+                         NotificationService notificationService,
+                         ListingRepository listingRepository) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
         this.notificationService = notificationService;
+        this.listingRepository = listingRepository;
+    }
+
+    private static final int FOLLOW_LIST_MAX_PAGE_SIZE = 50;
+
+    @Transactional(readOnly = true)
+    public Page<FollowUserSummaryResponse> getFollowers(Long profileUserId, int page, int size) {
+        if (profileUserId == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT);
+        }
+        if (!userRepository.existsById(profileUserId)) {
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
+        Pageable pageable = PageRequest.of(Math.max(0, page), clampPageSize(size));
+        return followRepository.findFollowerSummariesByFollowedId(profileUserId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<FollowUserSummaryResponse> getFollowing(Long profileUserId, int page, int size) {
+        if (profileUserId == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT);
+        }
+        if (!userRepository.existsById(profileUserId)) {
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
+        Pageable pageable = PageRequest.of(Math.max(0, page), clampPageSize(size));
+        return followRepository.findFollowingSummariesByFollowerId(profileUserId, pageable);
+    }
+
+    private static int clampPageSize(int size) {
+        return Math.max(1, Math.min(size, FOLLOW_LIST_MAX_PAGE_SIZE));
     }
 
     @Transactional(readOnly = true)
@@ -116,6 +154,7 @@ public class FollowService {
         UserProfileResponse dto = UserProfileResponse.fromUser(profileUser);
         dto.setFollowerCount(countFollowers(profileUser.getId()));
         dto.setFollowingCount(countFollowing(profileUser.getId()));
+        dto.setListingCount(listingRepository.countBySeller_IdAndStatus(profileUser.getId(), "ACTIVE"));
         if (viewerUserId != null && !viewerUserId.equals(profileUser.getId())) {
             dto.setIsFollowedByViewer(isFollowing(viewerUserId, profileUser.getId()));
         } else {

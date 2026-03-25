@@ -64,7 +64,16 @@ export default function AdminLoginPage() {
     };
 
     return (
-        <Box sx={{ minHeight: '100vh', width: '100%', display: 'grid', placeItems: 'center', p: 2 }}>
+        <Box
+            sx={{
+                minHeight: '100vh',
+                width: '100%',
+                display: 'grid',
+                placeItems: 'center',
+                p: 2,
+                bgcolor: '#1C1B23',
+            }}
+        >
             <Paper
                 elevation={0}
                 sx={{
