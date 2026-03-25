@@ -1,5 +1,5 @@
 /** Mục đích: Trang profile của admin. */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Avatar,
     Box,
@@ -17,6 +17,7 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -76,6 +77,8 @@ function InfoRow({ label, value }) {
 }
 
 const MIN_PASSWORD_LEN = 8;
+const PROFILE_BIO_MAX = 500;
+const PROFILE_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function AdminProfilePage() {
     const { user } = useAuth() || {};
@@ -96,6 +99,24 @@ export default function AdminProfilePage() {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '' });
+
+    const [profileEditOpen, setProfileEditOpen] = useState(false);
+    const [profileForm, setProfileForm] = useState({
+        fullName: '',
+        email: '',
+        phone: '',
+        bio: '',
+    });
+    const [profileErrors, setProfileErrors] = useState({});
+    /** Sau khi Lưu trong popup (mock) — dùng để hiển thị bio (và mở lại form) đồng bộ với popup. */
+    const [lastSavedProfile, setLastSavedProfile] = useState(null);
+
+    useEffect(() => {
+        setLastSavedProfile(null);
+    }, [user?.id]);
+
+    const bioForDisplay =
+        (lastSavedProfile?.bio !== undefined ? lastSavedProfile.bio : user?.bio)?.trim() || undefined;
 
     const resetPwdForm = useCallback(() => {
         setCurrentPassword('');
@@ -134,6 +155,50 @@ export default function AdminProfilePage() {
             closePwdDialog();
         },
         [validatePasswordForm, closePwdDialog],
+    );
+
+    const openProfileEdit = useCallback(() => {
+        setProfileForm({
+            fullName: lastSavedProfile?.fullName ?? user?.fullName ?? user?.name ?? '',
+            email: lastSavedProfile?.email ?? user?.email ?? '',
+            phone: lastSavedProfile?.phone ?? user?.phoneNumber ?? user?.phone ?? '',
+            bio:
+                lastSavedProfile?.bio !== undefined ? lastSavedProfile.bio : (user?.bio ?? ''),
+        });
+        setProfileErrors({});
+        setProfileEditOpen(true);
+    }, [user, lastSavedProfile]);
+
+    const closeProfileEdit = useCallback(() => {
+        setProfileEditOpen(false);
+    }, []);
+
+    const validateProfileForm = useCallback(() => {
+        const next = {};
+        if (!profileForm.fullName?.trim()) next.fullName = 'Nhập họ tên.';
+        const em = profileForm.email?.trim();
+        if (!em) next.email = 'Nhập email.';
+        else if (!PROFILE_EMAIL_RE.test(em)) next.email = 'Email không hợp lệ.';
+        if (profileForm.bio && profileForm.bio.length > PROFILE_BIO_MAX)
+            next.bio = `Tối đa ${PROFILE_BIO_MAX} ký tự.`;
+        setProfileErrors(next);
+        return Object.keys(next).length === 0;
+    }, [profileForm]);
+
+    const handleSubmitProfileEdit = useCallback(
+        (e) => {
+            e?.preventDefault?.();
+            if (!validateProfileForm()) return;
+            setLastSavedProfile({
+                fullName: profileForm.fullName.trim(),
+                email: profileForm.email.trim(),
+                phone: profileForm.phone?.trim() ?? '',
+                bio: profileForm.bio?.trim() ?? '',
+            });
+            setSnackbar({ open: true, message: 'Đã lưu hồ sơ (mock — chưa gọi API).' });
+            closeProfileEdit();
+        },
+        [validateProfileForm, closeProfileEdit, profileForm],
     );
 
     return (
@@ -183,6 +248,19 @@ export default function AdminProfilePage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3, mb: 2 }} alignItems={{ sm: 'center' }}>
                 <Button
                     variant="outlined"
+                    startIcon={<EditOutlinedIcon />}
+                    onClick={openProfileEdit}
+                    sx={{
+                        alignSelf: { xs: 'stretch', sm: 'flex-start' },
+                        borderColor: 'rgba(167,139,250,0.5)',
+                        color: '#e9d5ff',
+                        '&:hover': { borderColor: '#a78bfa', bgcolor: 'rgba(167,139,250,0.08)' },
+                    }}
+                >
+                    Chỉnh sửa hồ sơ
+                </Button>
+                <Button
+                    variant="outlined"
                     startIcon={<LockOutlinedIcon />}
                     onClick={() => setPwdOpen(true)}
                     sx={{
@@ -220,8 +298,97 @@ export default function AdminProfilePage() {
                         <InfoRow label="Vai trò (hệ thống)" value={roleLabel} />
                         <InfoRow label="Tham gia" value={memberSince} />
                     </Grid>
+                    <Grid item xs={12}>
+                        <InfoRow label="Giới thiệu (bio)" value={bioForDisplay} />
+                    </Grid>
                 </Grid>
             </Box>
+
+            <Dialog
+                open={profileEditOpen}
+                onClose={closeProfileEdit}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#25232C',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                    },
+                }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>Chỉnh sửa hồ sơ</DialogTitle>
+                <form onSubmit={handleSubmitProfileEdit}>
+                    <DialogContent>
+                        <Stack spacing={2} sx={{ mt: 0.5 }}>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+                                Chỉ giao diện — chưa gửi API.
+                            </Typography>
+                            <TextField
+                                label="Họ và tên"
+                                value={profileForm.fullName}
+                                onChange={(e) => {
+                                    setProfileForm((f) => ({ ...f, fullName: e.target.value }));
+                                    if (profileErrors.fullName) setProfileErrors((er) => ({ ...er, fullName: undefined }));
+                                }}
+                                error={Boolean(profileErrors.fullName)}
+                                helperText={profileErrors.fullName}
+                                fullWidth
+                                sx={textFieldSx}
+                            />
+                            <TextField
+                                label="Email"
+                                type="email"
+                                value={profileForm.email}
+                                onChange={(e) => {
+                                    setProfileForm((f) => ({ ...f, email: e.target.value }));
+                                    if (profileErrors.email) setProfileErrors((er) => ({ ...er, email: undefined }));
+                                }}
+                                error={Boolean(profileErrors.email)}
+                                helperText={profileErrors.email}
+                                fullWidth
+                                autoComplete="email"
+                                sx={textFieldSx}
+                            />
+                            <TextField
+                                label="Số điện thoại"
+                                value={profileForm.phone}
+                                onChange={(e) => setProfileForm((f) => ({ ...f, phone: e.target.value }))}
+                                fullWidth
+                                autoComplete="tel"
+                                sx={textFieldSx}
+                            />
+                            <TextField
+                                label="Giới thiệu (bio)"
+                                value={profileForm.bio}
+                                onChange={(e) => {
+                                    setProfileForm((f) => ({ ...f, bio: e.target.value }));
+                                    if (profileErrors.bio) setProfileErrors((er) => ({ ...er, bio: undefined }));
+                                }}
+                                error={Boolean(profileErrors.bio)}
+                                helperText={profileErrors.bio || `${profileForm.bio?.length ?? 0}/${PROFILE_BIO_MAX}`}
+                                fullWidth
+                                multiline
+                                minRows={3}
+                                inputProps={{ maxLength: PROFILE_BIO_MAX }}
+                                sx={textFieldSx}
+                            />
+                        </Stack>
+                    </DialogContent>
+                    <DialogActions sx={{ px: 3, pb: 2 }}>
+                        <Button type="button" onClick={closeProfileEdit} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                            Hủy
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
+                        >
+                            Lưu
+                        </Button>
+                    </DialogActions>
+                </form>
+            </Dialog>
 
             <Dialog
                 open={pwdOpen}
