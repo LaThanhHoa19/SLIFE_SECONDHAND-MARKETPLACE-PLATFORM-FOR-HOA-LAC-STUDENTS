@@ -36,6 +36,7 @@ import SendIcon from '@mui/icons-material/Send';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
 import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
+import { unwrapApiData } from '../../utils/apiPayload';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 const WS_URL = `${API_BASE}/chat`;
@@ -43,9 +44,12 @@ const WS_URL = `${API_BASE}/chat`;
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function getData(res) {
-  const b = res?.data;
-  return b?.data ?? b;
+  return unwrapApiData(res);
 }
+
+// ChatPage đang dùng cả `getData` và `getPayload` (một số nhánh gọi `getPayload`).
+// Dùng chung helper để tránh undefined và giảm trùng logic.
+const getPayload = unwrapApiData;
 
 function makeTempId() {
   return `tmp_${Date.now()}_${Math.random()}`;
