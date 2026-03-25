@@ -21,6 +21,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
+import * as chatApi from '../../api/chatApi';
 
 const formatTime = (createdAt) => {
     if (!createdAt) return '';
@@ -52,18 +53,69 @@ const getIconForType = (type) => {
     }
 };
 
+const normalizeName = (name) =>
+    (name ?? '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase()
+        // Bỏ dấu để so khớp tên tiếng Việt ổn định hơn.
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '');
+
+// notification.content format (BE): "<senderName>: <preview...>"
+const parseSenderNameFromNotificationContent = (content) => {
+    const s = (content ?? '').trim();
+    if (!s) return null;
+    const idx = s.indexOf(':');
+    if (idx <= 0) return s;
+    return s.slice(0, idx).trim() || null;
+};
+
 export default function NotificationDropdown({ anchorEl, open, onClose }) {
     const { notifications, unreadCount, markRead, markAllRead } =
         useContext(NotificationContext);
     const navigate = useNavigate();
+
+    const resolveChatSessionIdBySenderName = async (senderName) => {
+        if (!senderName) return null;
+        try {
+            const res = await chatApi.getChats('ALL');
+            const body = res?.data;
+            const list = Array.isArray(body?.data)
+                ? body.data
+                : Array.isArray(body?.content)
+                ? body.content
+                : Array.isArray(body)
+                ? body
+                : [];
+            const target = list.find(
+                (s) => normalizeName(s?.otherParticipantName) === normalizeName(senderName)
+            );
+            return target?.sessionId ?? null;
+        } catch (e) {
+            console.warn('[NotificationDropdown] resolve chat session failed:', e);
+            return null;
+        }
+    };
 
     const handleItemClick = async (n) => {
         if (!n.isRead) {
             await markRead(n.id);
         }
         onClose?.();
-        // Điều hướng đơn giản theo refType nếu sau này cần mở rộng.
-        if (n.refType === 'LISTING' && n.refId) {
+
+        // Tin nhắn mới trong chat: mở thẳng trang chat của người vừa nhắn
+        // BE: notifyNewMessage(...) => refType="CONVERSATION", refId=null
+        if (n?.type === 'MESSAGE' && n?.refType === 'CONVERSATION') {
+            const senderName = parseSenderNameFromNotificationContent(n?.content);
+            const sessionId = await resolveChatSessionIdBySenderName(senderName);
+            if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
+            else navigate('/chat');
+            return;
+        }
+
+        // Các loại khác: điều hướng theo refType/refId (vd: tin đăng)
+        if (n?.refType === 'LISTING' && n?.refId) {
             navigate(`/listings/${n.refId}`);
         } else if (n.refType === 'USER' && n.refId) {
             navigate(`/profile/${n.refId}`);

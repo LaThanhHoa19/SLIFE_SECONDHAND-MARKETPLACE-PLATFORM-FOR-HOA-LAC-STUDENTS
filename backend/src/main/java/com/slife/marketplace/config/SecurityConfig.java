@@ -38,6 +38,8 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/chat/**") // Cho phép Websocket nếu có tính năng chat
                         .permitAll()
+
+                        // Các chức năng yêu cầu đăng nhập
                         // Save listing: auth required
 
                         // Chức năng listing cá nhân
@@ -54,6 +56,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
                         .requestMatchers("/api/me/**").authenticated()
+
+                        // Kiểm tra /me trước khi kiểm tra wildcard /*
+                        .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
+
+                        // Public truy cập (khách xem được)
                         // /api/users/me must be checked before the wildcard below
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/followers", "/api/users/*/following").permitAll()
@@ -63,6 +70,23 @@ public class SecurityConfig {
                         .requestMatchers("/api/listings/**").permitAll()
                         // Xem bình luận tin đăng không cần đăng nhập (POST/DELETE vẫn yêu cầu auth)
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/*/comments").permitAll()
+
+                        // Admin-only
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Mọi request còn lại yêu cầu đăng nhập
+                        .anyRequest().authenticated())
+                .exceptionHandling(e -> e.accessDeniedHandler((request, response, ex) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setCharacterEncoding("UTF-8");
+                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    BaseResponse<Object> body = new BaseResponse<>(
+                            "FORBIDDEN",
+                            "Bạn không có quyền truy cập tính năng này",
+                            null
+                    );
+                    response.getWriter().write(objectMapper.writeValueAsString(body));
+                }))
                         // Admin-only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Everything else requires authentication

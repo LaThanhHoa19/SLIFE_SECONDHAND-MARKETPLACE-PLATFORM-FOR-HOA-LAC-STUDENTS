@@ -10,6 +10,7 @@ import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -188,8 +189,44 @@ public class ChatService {
         User current = userService.getCurrentUser();
         ensureParticipant(conv, current);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sentAt"));
-        return messageRepository.findByConversation_IdOrderBySentAtDesc(conv.getId(), pageable)
-                .map(m -> toMessageResponse(m, conv.getSessionUuid(), current));
+        Page<Message> msgPage = messageRepository.findByConversation_IdOrderBySentAtDesc(conv.getId(), pageable);
+        Map<Long, Offer> offerByMessageId = mapOfferProposalsToOffers(msgPage.getContent(), conv);
+        List<ChatMessageResponse> rows = msgPage.getContent().stream()
+                .map(m -> toMessageResponse(m, conv.getSessionUuid(), current, offerByMessageId.get(m.getId())))
+                .toList();
+        return new PageImpl<>(rows, pageable, msgPage.getTotalElements());
+    }
+
+    /**
+     * Lịch sử chat gọi {@link #toMessageResponse} không có Offer → offerStatus null → FE hiển thị nhầm "đã từ chối".
+     * Ghép tin OFFER_PROPOSAL với bản ghi Offer (listing + buyer + thứ tự thời gian).
+     */
+    private Map<Long, Offer> mapOfferProposalsToOffers(List<Message> messages, Conversation conv) {
+        Map<Long, Offer> out = new HashMap<>();
+        Listing listing = conv.getListing();
+        if (listing == null || messages == null || messages.isEmpty()) {
+            return out;
+        }
+        Long listingId = listing.getId();
+        Map<Long, List<Message>> byBuyer = messages.stream()
+                .filter(m -> m.getMessageType() == MessageType.OFFER_PROPOSAL)
+                .collect(Collectors.groupingBy(m -> m.getSender().getId()));
+
+        for (Map.Entry<Long, List<Message>> e : byBuyer.entrySet()) {
+            Long buyerId = e.getKey();
+            List<Message> proposalMsgs = e.getValue().stream()
+                    .sorted(Comparator.comparing(Message::getSentAt))
+                    .toList();
+            List<Offer> offers = new ArrayList<>(offerRepository
+                    .findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(listingId, buyerId, PageRequest.of(0, 100))
+                    .getContent());
+            Collections.reverse(offers);
+            int n = Math.min(proposalMsgs.size(), offers.size());
+            for (int i = 0; i < n; i++) {
+                out.put(proposalMsgs.get(i).getId(), offers.get(i));
+            }
+        }
+        return out;
     }
 
     // ── Send message (REST + WS shared path) ─────────────────────────────────
