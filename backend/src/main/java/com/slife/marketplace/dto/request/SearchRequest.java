@@ -47,6 +47,6 @@ public class SearchRequest {
     @Max(value = 50, message = "Page size must be <= 50")
     private Integer size = 20;
 
-    /** Sort string (e.g. createdAt,desc or price,asc) */
+    /** Sort string: field,direction */
     private String sort;
 }
