@@ -33,6 +33,9 @@ public class UserProfileResponse {
     /** How many users this profile is following. */
     private long followingCount;
 
+    /** Total number of ACTIVE listings by this user. SCRUM-216 */
+    private long listingCount;
+
     /**
      * Whether the authenticated viewer follows this user.
      * Null when viewing own profile or when viewer is unknown.
