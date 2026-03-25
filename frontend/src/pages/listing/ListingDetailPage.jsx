@@ -28,10 +28,6 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ShareIcon from '@mui/icons-material/Share';
-import FlagIcon from '@mui/icons-material/Flag';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import SendIcon from '@mui/icons-material/Send';
@@ -44,16 +40,13 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 
-import { getListing, getListings } from '../../api/listingApi';
+import { getListing, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
-import { getUserById } from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
-import * as offerApi from '../../api/offerApi';
-import * as followApi from '../../api/followApi';
-
+import { useFollowActions } from '../../hooks/useFollowActions';
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
 import ListingComments from '../../components/listing/ListingComments';
@@ -114,14 +107,21 @@ const getLocation = (listing) => {
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user: currentUser, isAuthenticated } = useAuth();
+    const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
+    const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
+        user: currentUser,
+        updateAuthUser,
+    });
 
     const [listing, setListing] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [startingChat, setStartingChat] = useState(false);
     const [showPhone, setShowPhone] = useState(false);
-    const [liked, setLiked] = useState(false);
+    const [likeCount, setLikeCount] = useState(0);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likeSubmitting, setLikeSubmitting] = useState(false);
+    const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [snackMsg, setSnackMsg] = useState('');
     const [snackType, setSnackType] = useState('success');
     const [snackAction, setSnackAction] = useState(null);
@@ -130,7 +130,6 @@ export default function ListingDetailPage() {
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
     const [sellerFollowed, setSellerFollowed] = useState(false);
-    const [sellerFollowLoading, setSellerFollowLoading] = useState(false);
 
     // Load listing
     useEffect(() => {
@@ -142,10 +141,16 @@ export default function ListingDetailPage() {
                 const data = getPayload(res);
                 setListing(data);
                 setIsSavedItem(data?.isSaved ?? false);
+                setLikeCount(Number(data?.likeCount ?? 0));
+                setIsLiked(!!data?.isLiked);
             })
             .catch((err) => setError(err?.message || 'Không tải được tin.'))
             .finally(() => setLoading(false));
     }, [id]);
+
+    useEffect(() => {
+        setSellerFollowed(!!listing?.isFollowed);
+    }, [listing?.id, listing?.isFollowed]);
 
     // Load tin khác của người bán + tin tương tự
     // Backend không hỗ trợ sellerId param → load toàn bộ rồi filter client-side
@@ -196,6 +201,46 @@ export default function ListingDetailPage() {
     }, [listing, id]);
 
     // ── Handlers ─────────────────────────────────────────────────────────────
+    const handleToggleLike = async () => {
+        if (!isAuthenticated) {
+            setSnackType('warning');
+            setSnackMsg('Bạn cần đăng nhập để thích tin.');
+            return;
+        }
+        if (likeSubmitting) return;
+
+        const prevLiked = isLiked;
+        const prevCount = likeCount;
+        setIsLiked(!prevLiked);
+        setLikeCount(Math.max(0, prevCount + (prevLiked ? -1 : 1)));
+        setLikeSubmitting(true);
+
+        try {
+            const res = await toggleListingLike(listing.id);
+            const body = getPayload(res);
+            const nextLiked = body?.liked ?? body?.isLiked;
+            const nextCount = body?.likeCount;
+            if (typeof nextLiked === 'boolean') setIsLiked(nextLiked);
+            if (nextCount != null) setLikeCount(Number(nextCount));
+            setListing((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        isLiked: typeof nextLiked === 'boolean' ? nextLiked : !prevLiked,
+                        likeCount: nextCount != null ? Number(nextCount) : Math.max(0, prevCount + (prevLiked ? -1 : 1)),
+                    }
+                    : prev
+            );
+        } catch {
+            setIsLiked(prevLiked);
+            setLikeCount(prevCount);
+            setSnackType('error');
+            setSnackMsg('Không cập nhật được lượt thích. Thử lại sau.');
+        } finally {
+            setLikeSubmitting(false);
+        }
+    };
+
     const handleShare = async () => {
         const url = window.location.href;
         try {
@@ -255,70 +300,68 @@ export default function ListingDetailPage() {
         if (!listing) return;
         const sid = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         if (!sid) return;
-        if (!isAuthenticated) {
-            showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-            navigate('/login');
-            return;
-        }
-        setSellerFollowLoading(true);
-        try {
-            if (sellerFollowed) {
-                await followApi.unfollowUser(sid);
-                setSellerFollowed(false);
-                setListing((prev) => (prev ? { ...prev, isFollowed: false } : prev));
-                showSnack('Đã bỏ theo dõi người bán.');
-            } else {
-                await followApi.followUser(sid);
-                setSellerFollowed(true);
-                setListing((prev) => (prev ? { ...prev, isFollowed: true } : prev));
-                showSnack('Đã theo dõi người bán.');
-            }
-        } catch (e) {
-            showSnack(e?.message || 'Không cập nhật được trạng thái theo dõi.', 'error');
-        } finally {
-            setSellerFollowLoading(false);
-        }
-    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack]);
+        await toggleFollow({
+            targetUserId: sid,
+            isFollowing: sellerFollowed,
+            isAuthenticated,
+            onUnauthenticated: () => {
+                showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
+                navigate('/login');
+            },
+            onSuccess: (nextIsFollowing) => {
+                const delta = nextIsFollowing ? 1 : -1;
+                const bumpFollowers = (obj) => {
+                    if (!obj || typeof obj !== 'object') return obj;
+                    const cur = Number(obj.followerCount ?? obj.follower_count ?? 0);
+                    return { ...obj, followerCount: Math.max(0, cur + delta) };
+                };
+                setSellerFollowed(nextIsFollowing);
+                setListing((prev) =>
+                    prev
+                        ? {
+                            ...prev,
+                            isFollowed: nextIsFollowing,
+                            seller: bumpFollowers(prev.seller),
+                            sellerSummary: bumpFollowers(prev.sellerSummary),
+                        }
+                        : prev
+                );
+                showSnack(nextIsFollowing ? 'Đã theo dõi người bán.' : 'Đã bỏ theo dõi người bán.');
+            },
+            onError: (e) => {
+                showSnack(e?.message || 'Không cập nhật được trạng thái theo dõi.', 'error');
+            },
+        });
+    }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, toggleFollow]);
 
-    const handleOffer = async () => {
-        if (!isAuthenticated) {
-            setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để trả giá.');
-            return;
-        }
-        const amount = Number(offerPrice.replace(/[^\d]/g, ''));
-        if (!amount || amount <= 0) {
-            setSnackType('error');
-            setSnackMsg('Vui lòng nhập giá hợp lệ.');
-            return;
-        }
-        try {
-            const res = await chatApi.getSession(listing.id);
-            const sessionId = res?.data?.data ?? res?.data;
-            if (sessionId) {
-                await chatApi.makeOffer(sessionId, amount);
-                setSnackType('success');
-                setSnackMsg('Đã gửi giá trả thành công!');
-                setOfferPrice('');
-                navigate(`/chat?sessionId=${sessionId}`);
-            }
-        } catch {
-            setSnackType('error');
-            setSnackMsg('Không thể trả giá lúc này.');
-        }
-    };
-
-    const handleToggleSave = () => {
+    const handleToggleSave = async () => {
         if (!isAuthenticated) {
             setSnackType('warning');
             setSnackMsg('Bạn cần đăng nhập để lưu tin.');
             return;
         }
-        // Gửi API update thực tế tại đây (gọi save API từ backend)
-        // Tạm thời update UX ngay lập tức
-        setIsSavedItem(!isSavedItem);
-        setSnackType('success');
-        setSnackMsg(!isSavedItem ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
+        if (!listing?.id || saveSubmitting) return;
+
+        const wasSaved = isSavedItem;
+        setIsSavedItem(!wasSaved);
+        setSaveSubmitting(true);
+
+        try {
+            if (wasSaved) {
+                await unsaveListing(listing.id);
+            } else {
+                await saveListing(listing.id);
+            }
+            setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
+            setSnackType('success');
+            setSnackMsg(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
+        } catch {
+            setIsSavedItem(wasSaved);
+            setSnackType('error');
+            setSnackMsg('Không cập nhật được trạng thái lưu tin. Thử lại sau.');
+        } finally {
+            setSaveSubmitting(false);
+        }
     };
 
     // ── Render loading / error ────────────────────────────────────────────────
@@ -423,7 +466,12 @@ export default function ListingDetailPage() {
                         onReport={handleReport}
                         isSaved={isSavedItem}
                         onToggleSave={handleToggleSave}
-                        hideThumbs={true} // Hide internal thumbs
+                        saveDisabled={saveSubmitting}
+                        likeCount={likeCount}
+                        isLiked={isLiked}
+                        onToggleLike={handleToggleLike}
+                        likeDisabled={likeSubmitting}
+                        hideThumbs={true}
                     />
                     {/* Thumbnails below large image */}
                     {images.length > 1 && (

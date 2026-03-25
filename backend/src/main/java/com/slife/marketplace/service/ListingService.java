@@ -14,6 +14,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.AddressRepository;
 import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
+import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
 import com.slife.marketplace.util.AddressFormat;
@@ -27,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,19 +49,22 @@ public class ListingService {
     private final CategoryRepository categoryRepository;
     private final AddressRepository addressRepository;
     private final FollowService followService;
+    private final ListingLikeRepository listingLikeRepository;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
                           SavedListingRepository savedListingRepository,
                           CategoryRepository categoryRepository,
                           AddressRepository addressRepository,
-                          FollowService followService) {
+                          FollowService followService,
+                          ListingLikeRepository listingLikeRepository) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
         this.categoryRepository = categoryRepository;
         this.addressRepository = addressRepository;
         this.followService = followService;
+        this.listingLikeRepository = listingLikeRepository;
     }
 
     // ----------------------------------------------------------------
@@ -108,6 +113,8 @@ public class ListingService {
                         isFollowedForListing(listing, currentUser, followedSellerIds)))
                 .toList();
 
+        enrichListingResponsesWithLikes(content, currentUser);
+
         return new PagedResponse<>(
                 content,
                 pageResult.getNumber(),
@@ -122,8 +129,8 @@ public class ListingService {
      */
     @Transactional(readOnly = true)
     public PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> getActiveListingCards(
-            int page, 
-            int size, 
+            int page,
+            int size,
             User currentUser,
             Long sellerId) {
         Pageable pageable = PageRequest.of(
@@ -158,6 +165,8 @@ public class ListingService {
             }
         }
 
+        enrichListingCardsWithLikes(content, currentUser);
+
         return new PagedResponse<>(
                 content,
                 pageResult.getNumber(),
@@ -167,9 +176,34 @@ public class ListingService {
         );
     }
 
+    /**
+     * Gắn likeCount / isLiked cho kết quả đã map (ví dụ {@code SearchController}).
+     */
+    @Transactional(readOnly = true)
+    public void enrichWithLikeMetadata(List<ListingResponse> items, User viewer) {
+        enrichListingResponsesWithLikes(items, viewer);
+    }
+
     /** Public for use by SavedListingService when building saved list. */
     public ListingResponse buildListingResponse(Listing listing, User currentUser, boolean isSaved) {
-        return toListingResponse(listing, currentUser, isSaved, computeIsFollowed(listing, currentUser));
+        ListingResponse r = toListingResponse(listing, currentUser, isSaved, computeIsFollowed(listing, currentUser));
+        enrichSingleListingResponseWithLikes(r, currentUser);
+        enrichSellerSummaryWithFollowerCount(r, listing);
+        return r;
+    }
+
+    /** Chỉ dùng cho chi tiết tin — tránh N+1 count trên danh sách dùng {@link #toListingResponse}. */
+    private void enrichSellerSummaryWithFollowerCount(ListingResponse r, Listing listing) {
+        if (r == null || listing == null || listing.getSeller() == null) {
+            return;
+        }
+        Object ss = r.getSellerSummary();
+        if (!(ss instanceof Map<?, ?> raw)) {
+            return;
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> m = (Map<String, Object>) raw;
+        m.put("followerCount", followService.countFollowers(listing.getSeller().getId()));
     }
 
     // ----------------------------------------------------------------
@@ -221,7 +255,9 @@ public class ListingService {
         Listing saved = listingRepository.save(listing);
         log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
-        return toListingResponse(saved, seller, false, false);
+        ListingResponse created = toListingResponse(saved, seller, false, false);
+        enrichSingleListingResponseWithLikes(created, seller);
+        return created;
     }
 
     /**
@@ -281,7 +317,9 @@ public class ListingService {
         Listing saved = listingRepository.save(listing);
         log.info("updateListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
-        return toListingResponse(saved, seller, false, false);
+        ListingResponse updated = toListingResponse(saved, seller, false, false);
+        enrichSingleListingResponseWithLikes(updated, seller);
+        return updated;
     }
 
     private Address resolvePickupAddress(User seller, CreateListingRequest request) {
@@ -330,8 +368,86 @@ public class ListingService {
 
         response.setIsSaved(isSaved);
         response.setIsFollowed(isFollowed);
+        response.setLikeCount(0L);
+        response.setIsLiked(false);
 
         return response;
+    }
+
+    private Map<Long, Long> likeCountsForListingIds(Collection<Long> listingIds) {
+        if (listingIds == null || listingIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Object[]> rows = listingLikeRepository.countGroupedByListingId(listingIds);
+        Map<Long, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            map.put((Long) row[0], (Long) row[1]);
+        }
+        return map;
+    }
+
+    private Set<Long> likedListingIdsForUser(Long userId, Collection<Long> listingIds) {
+        if (userId == null || listingIds == null || listingIds.isEmpty()) {
+            return Set.of();
+        }
+        return new HashSet<>(listingLikeRepository.findLikedListingIds(userId, listingIds));
+    }
+
+    private void enrichListingResponsesWithLikes(List<ListingResponse> items, User currentUser) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        List<Long> ids = items.stream()
+                .map(ListingResponse::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, Long> counts = likeCountsForListingIds(ids);
+        Set<Long> liked = currentUser != null
+                ? likedListingIdsForUser(currentUser.getId(), ids)
+                : Set.of();
+        for (ListingResponse r : items) {
+            Long lid = r.getId();
+            if (lid == null) {
+                r.setLikeCount(0L);
+                r.setIsLiked(false);
+                continue;
+            }
+            r.setLikeCount(counts.getOrDefault(lid, 0L));
+            r.setIsLiked(currentUser != null && liked.contains(lid));
+        }
+    }
+
+    private void enrichListingCardsWithLikes(List<com.slife.marketplace.dto.response.ListingCardResponse> cards, User currentUser) {
+        if (cards == null || cards.isEmpty()) {
+            return;
+        }
+        List<Long> ids = cards.stream()
+                .map(com.slife.marketplace.dto.response.ListingCardResponse::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        Map<Long, Long> counts = likeCountsForListingIds(ids);
+        Set<Long> liked = currentUser != null
+                ? likedListingIdsForUser(currentUser.getId(), ids)
+                : Set.of();
+        for (com.slife.marketplace.dto.response.ListingCardResponse c : cards) {
+            Long lid = c.getId();
+            if (lid == null) {
+                c.setLikeCount(0L);
+                c.setIsLiked(false);
+                continue;
+            }
+            c.setLikeCount(counts.getOrDefault(lid, 0L));
+            c.setIsLiked(currentUser != null && liked.contains(lid));
+        }
+    }
+
+    private void enrichSingleListingResponseWithLikes(ListingResponse r, User currentUser) {
+        if (r == null || r.getId() == null) {
+            return;
+        }
+        r.setLikeCount(listingLikeRepository.countByListing_Id(r.getId()));
+        r.setIsLiked(currentUser != null
+                && listingLikeRepository.existsByUser_IdAndListing_Id(currentUser.getId(), r.getId()));
     }
 
     private Set<Long> resolveFollowedSellerIds(User currentUser, List<Listing> listings) {
