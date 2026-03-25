@@ -35,9 +35,13 @@ public class SecurityConfig {
                                 "/api/geo/**",
                                 "/uploads/**",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**")
+                                "/v3/api-docs/**",
+                                "/chat/**") // Cho phép Websocket nếu có tính năng chat
                         .permitAll()
                         // Save listing: auth required
+
+                        // Chức năng listing cá nhân
+                        .requestMatchers("/api/listings/my/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/like").authenticated()
@@ -54,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/followers", "/api/users/*/following").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
                         // Guest access
                         .requestMatchers("/api/listings/**").permitAll()
                         // Xem bình luận tin đăng không cần đăng nhập (POST/DELETE vẫn yêu cầu auth)

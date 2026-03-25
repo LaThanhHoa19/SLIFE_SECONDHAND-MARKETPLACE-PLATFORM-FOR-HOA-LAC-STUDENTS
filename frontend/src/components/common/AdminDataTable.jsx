@@ -20,25 +20,55 @@ import PropTypes from 'prop-types';
  *   isLoading    – boolean
  *   emptyMessage – chuỗi khi không có dữ liệu
  */
+const defaultPaperSx = {
+    width: '100%',
+    overflow: 'hidden',
+    borderRadius: 3,
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 16px 40px rgba(15,23,42,0.06)',
+};
+
+const defaultTableSx = {
+    minWidth: 650,
+    '& thead th': {
+        fontSize: 12,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        color: '#6b7280',
+        backgroundColor: '#f9fafb',
+        borderBottom: '1px solid #e5e7eb',
+    },
+    '& tbody td': {
+        fontSize: 13,
+        borderBottom: '1px solid #f3f4f6',
+    },
+    '& tbody .MuiTableRow-root:nth-of-type(odd)': {
+        backgroundColor: '#fafafa',
+    },
+    '& tbody .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    },
+    '& tbody .MuiTableRow-root:last-of-type .MuiTableCell-root': {
+        borderBottom: 'none',
+    },
+};
+
 export default function AdminDataTable({
                                            columns,
                                            rows,
                                            getRowId,
                                            isLoading = false,
                                            emptyMessage = 'Không có dữ liệu.',
+                                           paperSx,
+                                           tableSx,
                                        }) {
     const safeRows = rows || [];
     const resolveRowId = getRowId || ((row, index) => row?.id ?? index);
 
     return (
         <Paper
-            sx={{
-                width: '100%',
-                overflow: 'hidden',
-                borderRadius: 3,
-                border: '1px solid #e5e7eb',
-                boxShadow: '0 16px 40px rgba(15,23,42,0.06)',
-            }}
+            sx={[defaultPaperSx, ...(paperSx ? [paperSx] : [])]}
         >
             {isLoading ? (
                 <Box
@@ -53,22 +83,7 @@ export default function AdminDataTable({
                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
                     <Table
                         size="small"
-                        sx={{
-                            minWidth: 650,
-                            '& thead th': {
-                                fontSize: 12,
-                                fontWeight: 600,
-                                textTransform: 'uppercase',
-                                letterSpacing: 0.4,
-                                color: '#6b7280',
-                                backgroundColor: '#f9fafb',
-                                borderBottom: '1px solid #e5e7eb',
-                            },
-                            '& tbody td': {
-                                fontSize: 13,
-                                borderBottom: '1px solid #f3f4f6',
-                            },
-                        }}
+                        sx={[defaultTableSx, ...(tableSx ? [tableSx] : [])]}
                     >
                         <TableHead>
                             <TableRow>
@@ -97,14 +112,6 @@ export default function AdminDataTable({
                                     <TableRow
                                         key={resolveRowId(row, index)}
                                         hover
-                                        sx={{
-                                            '&:nth-of-type(odd)': {
-                                                backgroundColor: '#fafafa',
-                                            },
-                                            '&:last-of-type td': {
-                                                borderBottom: 'none',
-                                            },
-                                        }}
                                     >
                                         {columns.map((column) => {
                                             const value = row[column.id];
@@ -140,5 +147,7 @@ AdminDataTable.propTypes = {
     getRowId: PropTypes.func,
     isLoading: PropTypes.bool,
     emptyMessage: PropTypes.string,
+    paperSx: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
+    tableSx: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
 };
 
