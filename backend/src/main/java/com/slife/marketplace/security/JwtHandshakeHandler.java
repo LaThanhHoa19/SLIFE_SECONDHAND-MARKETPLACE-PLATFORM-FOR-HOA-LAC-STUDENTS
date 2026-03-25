@@ -23,7 +23,14 @@ public class JwtHandshakeHandler extends DefaultHandshakeHandler {
     @Override
     protected Principal determineUser(ServerHttpRequest request, WebSocketHandler wsHandler, Map<String, Object> attributes) {
         if (request instanceof ServletServerHttpRequest servletRequest) {
-            String token = servletRequest.getServletRequest().getParameter("token");
+            var req = servletRequest.getServletRequest();
+            String token = req.getParameter("token");
+            if (token == null || token.isBlank()) {
+                String auth = req.getHeader("Authorization");
+                if (auth != null && auth.regionMatches(true, 0, "Bearer ", 0, 7)) {
+                    token = auth.substring(7).trim();
+                }
+            }
             if (token != null && !token.isBlank() && jwtTokenProvider.isTokenValid(token)) {
                 String email = jwtTokenProvider.parseToken(token).getSubject();
                 if (email != null && !email.isBlank()) {
