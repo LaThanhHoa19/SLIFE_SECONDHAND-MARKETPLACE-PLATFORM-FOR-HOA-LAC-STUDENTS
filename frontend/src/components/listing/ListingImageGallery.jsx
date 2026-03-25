@@ -23,6 +23,7 @@ export default function ListingImageGallery({
                                                 onReport,
                                                 isSaved,
                                                 onToggleSave,
+                                                saveDisabled = false,
                                                 likeCount = 0,
                                                 isLiked = false,
                                                 onToggleLike,
@@ -116,21 +117,24 @@ export default function ListingImageGallery({
                 {/* Lưu tin (bookmark) + Share + Report góc phải trên */}
                 <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 1 }}>
                     <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
-                        <IconButton
-                            size="small"
-                            onClick={onToggleSave}
-                            sx={{
-                                bgcolor: 'rgba(0,0,0,0.55)',
-                                color: isSaved ? PURPLE : '#fff',
-                                width: 36,
-                                height: 36,
-                                backdropFilter: 'blur(4px)',
-                                transition: 'all 0.2s',
-                                '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.05)' },
-                            }}
-                        >
-                            {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
-                        </IconButton>
+            <span>
+            <IconButton
+                size="small"
+                disabled={saveDisabled}
+                onClick={onToggleSave}
+                sx={{
+                    bgcolor: 'rgba(0,0,0,0.55)',
+                    color: isSaved ? PURPLE : '#fff',
+                    width: 36,
+                    height: 36,
+                    backdropFilter: 'blur(4px)',
+                    transition: 'all 0.2s',
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.05)' },
+                }}
+            >
+              {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+            </IconButton>
+            </span>
                     </Tooltip>
                     <Tooltip title="Chia sẻ link">
                         <IconButton

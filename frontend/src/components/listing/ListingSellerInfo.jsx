@@ -97,7 +97,17 @@ export default function ListingSellerInfo({
                 </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 3 }}>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                {(seller?.followerCount != null || seller?.follower_count != null) && (
+                    <Box sx={{ textAlign: 'center' }}>
+                        <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
+                            {Number(seller?.followerCount ?? seller?.follower_count ?? 0)}
+                        </Typography>
+                        <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>
+                            Người theo dõi
+                        </Typography>
+                    </Box>
+                )}
                 {/* Đã bán */}
                 <Box sx={{ textAlign: 'center' }}>
                     <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
