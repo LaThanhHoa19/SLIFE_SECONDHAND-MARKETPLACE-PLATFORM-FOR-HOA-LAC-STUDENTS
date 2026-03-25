@@ -30,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.text.Normalizer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -53,6 +54,7 @@ public class ListingService {
     private final FollowService followService;
     private final ListingLikeRepository listingLikeRepository;
     private final ListingImageService listingImageService;
+    private final VietmapService vietmapService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -61,7 +63,8 @@ public class ListingService {
                           AddressRepository addressRepository,
                           FollowService followService,
                           ListingLikeRepository listingLikeRepository,
-                          ListingImageService listingImageService) {
+                          ListingImageService listingImageService,
+                          VietmapService vietmapService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -70,6 +73,7 @@ public class ListingService {
         this.followService = followService;
         this.listingLikeRepository = listingLikeRepository;
         this.listingImageService = listingImageService;
+        this.vietmapService = vietmapService;
     }
 
     // ----------------------------------------------------------------
@@ -349,6 +353,8 @@ public class ListingService {
             return null;
         }
 
+        assertPinWithinSelectedAdminArea(request);
+
         Address addr = new Address();
         addr.setUser(seller);
         String loc = request.getPickupLocationName().trim();
@@ -369,6 +375,85 @@ public class ListingService {
         addr.setCreatedAt(now);
         addr.setUpdatedAt(now);
         return addressRepository.save(addr);
+    }
+
+    private void assertPinWithinSelectedAdminArea(CreateListingRequest request) {
+        if (request == null) return;
+        if (request.getPickupLat() == null || request.getPickupLng() == null) return;
+
+        String chosenProvince = normalizeVi(request.getPickupProvince());
+        String chosenDistrict = normalizeVi(request.getPickupDistrict());
+        String chosenWard = normalizeVi(request.getPickupWard());
+        if (chosenProvince.isEmpty() && chosenDistrict.isEmpty() && chosenWard.isEmpty()) {
+            return; // không chọn khu vực hành chính => không validate
+        }
+
+        // 1) Prefer bbox validation (most robust against reverse naming quirks)
+        try {
+            var bboxOpt = vietmapService.osmAdminBbox(
+                    request.getPickupProvince(),
+                    request.getPickupDistrict(),
+                    request.getPickupWard()
+            );
+            if (bboxOpt.isPresent()) {
+                var bb = bboxOpt.get();
+                double minLat = ((Number) bb.get("minLat")).doubleValue();
+                double maxLat = ((Number) bb.get("maxLat")).doubleValue();
+                double minLng = ((Number) bb.get("minLng")).doubleValue();
+                double maxLng = ((Number) bb.get("maxLng")).doubleValue();
+                double lat = request.getPickupLat().doubleValue();
+                double lng = request.getPickupLng().doubleValue();
+                boolean inside = lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+                if (inside) {
+                    return;
+                }
+            }
+        } catch (Exception ignored) {
+            // ignore bbox errors and fallback to reverse-name matching
+        }
+
+        Map<String, Object> rev = vietmapService.reverse(
+                request.getPickupLat().doubleValue(),
+                request.getPickupLng().doubleValue()
+        );
+        String addressText = normalizeVi(String.valueOf(rev.getOrDefault("addressText", "")));
+        String revProvince = normalizeVi(String.valueOf(rev.getOrDefault("province", "")));
+        String revDistrict = normalizeVi(String.valueOf(rev.getOrDefault("district", "")));
+        String revWard = normalizeVi(String.valueOf(rev.getOrDefault("ward", "")));
+
+        // Nếu Vietmap servicesKey chưa cấu hình (reverse trả rỗng) thì không chặn đăng tin.
+        // FE đã có fallback OSM để validate sớm; BE giữ soft-fail để tránh false-negative.
+        if (addressText.isEmpty() && revProvince.isEmpty() && revDistrict.isEmpty() && revWard.isEmpty()) {
+            log.warn("Pin validation skipped (reverse unavailable). lat={}, lng={}",
+                    request.getPickupLat(), request.getPickupLng());
+            return;
+        }
+
+        boolean provinceMatch = chosenProvince.isEmpty()
+                || (!revProvince.isEmpty() && (revProvince.contains(chosenProvince) || chosenProvince.contains(revProvince)))
+                || addressText.contains(chosenProvince);
+        boolean districtMatch = chosenDistrict.isEmpty()
+                || (!revDistrict.isEmpty() && (revDistrict.contains(chosenDistrict) || chosenDistrict.contains(revDistrict)))
+                || addressText.contains(chosenDistrict);
+        boolean wardMatch = chosenWard.isEmpty()
+                || (!revWard.isEmpty() && (revWard.contains(chosenWard) || chosenWard.contains(revWard)))
+                || addressText.contains(chosenWard);
+
+        if (!(provinceMatch && districtMatch && wardMatch)) {
+            throw new SlifeException(
+                    ErrorCode.INVALID_INPUT,
+                    "Vị trí ghim không thuộc khu vực đã chọn. Vui lòng ghim lại trong đúng khu vực."
+            );
+        }
+    }
+
+    private static String normalizeVi(String s) {
+        if (s == null) return "";
+        String t = s.trim().toLowerCase();
+        if (t.isEmpty()) return "";
+        t = t.replace('đ', 'd');
+        t = Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return t;
     }
 
     private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved, boolean isFollowed) {

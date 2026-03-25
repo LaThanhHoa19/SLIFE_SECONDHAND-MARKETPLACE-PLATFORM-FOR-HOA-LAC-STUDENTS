@@ -17,6 +17,7 @@ import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
 import com.slife.marketplace.service.FollowService;
+import com.slife.marketplace.service.VietmapService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,9 @@ class ListingServiceTest {
     @Mock
     private ListingImageService listingImageService;
 
+    @Mock
+    private VietmapService vietmapService;
+
     private ListingService listingService;
 
     @BeforeEach
@@ -77,7 +81,8 @@ class ListingServiceTest {
                 addressRepository,
                 followService,
                 listingLikeRepository,
-                listingImageService
+                listingImageService,
+                vietmapService
         );
     }
 

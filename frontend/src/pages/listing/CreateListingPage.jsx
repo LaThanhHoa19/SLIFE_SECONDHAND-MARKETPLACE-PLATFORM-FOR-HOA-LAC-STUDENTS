@@ -29,6 +29,9 @@ function buildPayload(values, isDraft = false) {
     pickupAddressSupplement: values.pickupAddressSupplement?.trim() || null,
     pickupLat: values.pickupLat ? Number(values.pickupLat) : null,
     pickupLng: values.pickupLng ? Number(values.pickupLng) : null,
+    pickupProvince: values.pickupProvince?.trim() || null,
+    pickupDistrict: values.pickupDistrict?.trim() || null,
+    pickupWard: values.pickupWard?.trim() || null,
   };
 }
 
