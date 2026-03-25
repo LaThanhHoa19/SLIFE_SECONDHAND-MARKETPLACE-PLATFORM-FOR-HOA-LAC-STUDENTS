@@ -43,6 +43,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import { getListing, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
 import { fullImageUrl } from '../../utils/constants';
+import { unwrapApiData } from '../../utils/apiPayload';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
@@ -69,8 +70,7 @@ const GREEN = '#2ED573';
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 const getPayload = (res) => {
-    const body = res?.data;
-    return body?.data ?? body;
+    return unwrapApiData(res);
 };
 
 const toCurrency = (value) =>
