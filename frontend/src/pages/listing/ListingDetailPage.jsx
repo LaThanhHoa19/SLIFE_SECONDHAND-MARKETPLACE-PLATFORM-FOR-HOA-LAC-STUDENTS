@@ -40,16 +40,13 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 
-import { getListing, getListings, toggleListingLike } from '../../api/listingApi';
+import { getListing, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
-import { getUserById } from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
-import * as offerApi from '../../api/offerApi';
-
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
 import ListingComments from '../../components/listing/ListingComments';
@@ -124,6 +121,7 @@ export default function ListingDetailPage() {
     const [likeCount, setLikeCount] = useState(0);
     const [isLiked, setIsLiked] = useState(false);
     const [likeSubmitting, setLikeSubmitting] = useState(false);
+    const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [snackMsg, setSnackMsg] = useState('');
     const [snackType, setSnackType] = useState('success');
     const [snackAction, setSnackAction] = useState(null);
@@ -311,8 +309,23 @@ export default function ListingDetailPage() {
                 navigate('/login');
             },
             onSuccess: (nextIsFollowing) => {
+                const delta = nextIsFollowing ? 1 : -1;
+                const bumpFollowers = (obj) => {
+                    if (!obj || typeof obj !== 'object') return obj;
+                    const cur = Number(obj.followerCount ?? obj.follower_count ?? 0);
+                    return { ...obj, followerCount: Math.max(0, cur + delta) };
+                };
                 setSellerFollowed(nextIsFollowing);
-                setListing((prev) => (prev ? { ...prev, isFollowed: nextIsFollowing } : prev));
+                setListing((prev) =>
+                    prev
+                        ? {
+                            ...prev,
+                            isFollowed: nextIsFollowing,
+                            seller: bumpFollowers(prev.seller),
+                            sellerSummary: bumpFollowers(prev.sellerSummary),
+                        }
+                        : prev
+                );
                 showSnack(nextIsFollowing ? 'Đã theo dõi người bán.' : 'Đã bỏ theo dõi người bán.');
             },
             onError: (e) => {
@@ -321,45 +334,34 @@ export default function ListingDetailPage() {
         });
     }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, toggleFollow]);
 
-    const handleOffer = async () => {
-        if (!isAuthenticated) {
-            setSnackType('warning');
-            setSnackMsg('Bạn cần đăng nhập để trả giá.');
-            return;
-        }
-        const amount = Number(offerPrice.replace(/[^\d]/g, ''));
-        if (!amount || amount <= 0) {
-            setSnackType('error');
-            setSnackMsg('Vui lòng nhập giá hợp lệ.');
-            return;
-        }
-        try {
-            const res = await chatApi.getSession(listing.id);
-            const sessionId = res?.data?.data ?? res?.data;
-            if (sessionId) {
-                await chatApi.makeOffer(sessionId, amount);
-                setSnackType('success');
-                setSnackMsg('Đã gửi giá trả thành công!');
-                setOfferPrice('');
-                navigate(`/chat?sessionId=${sessionId}`);
-            }
-        } catch {
-            setSnackType('error');
-            setSnackMsg('Không thể trả giá lúc này.');
-        }
-    };
-
-    const handleToggleSave = () => {
+    const handleToggleSave = async () => {
         if (!isAuthenticated) {
             setSnackType('warning');
             setSnackMsg('Bạn cần đăng nhập để lưu tin.');
             return;
         }
-        // Gửi API update thực tế tại đây (gọi save API từ backend)
-        // Tạm thời update UX ngay lập tức
-        setIsSavedItem(!isSavedItem);
-        setSnackType('success');
-        setSnackMsg(!isSavedItem ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
+        if (!listing?.id || saveSubmitting) return;
+
+        const wasSaved = isSavedItem;
+        setIsSavedItem(!wasSaved);
+        setSaveSubmitting(true);
+
+        try {
+            if (wasSaved) {
+                await unsaveListing(listing.id);
+            } else {
+                await saveListing(listing.id);
+            }
+            setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
+            setSnackType('success');
+            setSnackMsg(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
+        } catch {
+            setIsSavedItem(wasSaved);
+            setSnackType('error');
+            setSnackMsg('Không cập nhật được trạng thái lưu tin. Thử lại sau.');
+        } finally {
+            setSaveSubmitting(false);
+        }
     };
 
     // ── Render loading / error ────────────────────────────────────────────────
@@ -464,6 +466,7 @@ export default function ListingDetailPage() {
                         onReport={handleReport}
                         isSaved={isSavedItem}
                         onToggleSave={handleToggleSave}
+                        saveDisabled={saveSubmitting}
                         likeCount={likeCount}
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
