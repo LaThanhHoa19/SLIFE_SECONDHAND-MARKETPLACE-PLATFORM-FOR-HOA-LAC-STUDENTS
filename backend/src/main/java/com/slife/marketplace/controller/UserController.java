@@ -1,5 +1,6 @@
 package com.slife.marketplace.controller;
 
+import com.slife.marketplace.dto.request.UpdateUserRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.UserProfileResponse;
 import com.slife.marketplace.entity.User;
@@ -11,6 +12,7 @@ import com.slife.marketplace.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 public class UserController {
@@ -46,6 +48,27 @@ public class UserController {
     @GetMapping("/api/users")
     public ResponseEntity<?> listUsers() {
         return ResponseEntity.ok(ApiResponse.success("Success", userRepository.findAll()));
+    }
+
+    @PutMapping("/api/users/me")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateMe(@RequestBody UpdateUserRequest request) {
+        User user = userService.updateCurrentUser(request);
+        UserProfileResponse body = followService.buildProfileForViewer(user, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", body));
+    }
+
+    @PostMapping(path = "/api/users/me/avatar", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> uploadMyAvatar(@RequestParam("file") MultipartFile file) {
+        User user = userService.uploadAvatar(file);
+        UserProfileResponse body = followService.buildProfileForViewer(user, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("Tải avatar thành công", body));
+    }
+
+    @PostMapping(path = "/api/users/me/cover", consumes = "multipart/form-data")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> uploadMyCover(@RequestParam("file") MultipartFile file) {
+        User user = userService.uploadCover(file);
+        UserProfileResponse body = followService.buildProfileForViewer(user, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("Tải ảnh bìa thành công", body));
     }
 
     @PutMapping("/api/users/{id}")
