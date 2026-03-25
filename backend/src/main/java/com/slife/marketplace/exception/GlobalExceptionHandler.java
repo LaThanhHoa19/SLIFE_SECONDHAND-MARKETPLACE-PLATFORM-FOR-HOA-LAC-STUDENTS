@@ -81,10 +81,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
-        log.error("Unexpected exception", ex);
+        log.error("Unexpected exception: " + ex.getMessage(), ex);
+        
+        // Print stack trace to a string for debugging
+        java.io.StringWriter sw = new java.io.StringWriter();
+        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+        ex.printStackTrace(pw);
+        String stackTrace = sw.toString();
+
         ApiResponse<Object> body = ApiResponse.error(
                 ErrorCode.INTERNAL_ERROR.getCode(),
-                ErrorCode.INTERNAL_ERROR.getMessage());
+                "Internal server error: " + ex.getMessage() + "\n" + stackTrace);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
