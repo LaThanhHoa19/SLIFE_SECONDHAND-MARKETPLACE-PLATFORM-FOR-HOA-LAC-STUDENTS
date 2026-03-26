@@ -19,6 +19,7 @@ import {
     SuspenseListingsPage,
     SuspenseListingDetailPage,
     SuspenseCreateListingPage,
+    SuspenseEditListingPage,
     SuspenseMyListingsPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
@@ -87,6 +88,15 @@ export default function AppRouter() {
                 <Route path="/feed" element={<SuspenseListingsPage />} />
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
+                <Route path="/profile/:id" element={<SuspenseProfilePage />} />
+                <Route
+                    path="/profile"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseProfilePage />
+                        </RouteGuard>
+                    }
+                />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
 
                 {/* Google OAuth2 redirect callback — no guard, no layout needed */}
@@ -102,6 +112,14 @@ export default function AppRouter() {
                     }
                 />
                 <Route
+                    path="/listings/:id/edit"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseEditListingPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
                     path="/my-listings"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
@@ -109,14 +127,7 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-                <Route
-                    path="/profile/:id"
-                    element={
-                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseProfilePage />
-                        </RouteGuard>
-                    }
-                />
+
                 <Route
                     path="/deals/:id"
                     element={
