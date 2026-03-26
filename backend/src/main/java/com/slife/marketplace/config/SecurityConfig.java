@@ -1,22 +1,30 @@
 package com.slife.marketplace.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.security.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.config.Customizer;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ObjectMapper objectMapper;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, ObjectMapper objectMapper) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.objectMapper = objectMapper;
     }
 
     @Bean
@@ -36,23 +44,17 @@ public class SecurityConfig {
                                 "/uploads/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/chat/**") // Cho phép Websocket nếu có tính năng chat
+                                "/chat/**")
                         .permitAll()
-
-                        // Các chức năng yêu cầu đăng nhập
-                        // Save listing: auth required
 
                         // Chức năng listing cá nhân
                         .requestMatchers("/api/listings/my/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/save").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/listings/*/like").authenticated()
-                        // Delete draft listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.DELETE, "/api/listings/*/draft").authenticated()
-                        // Repost / Renew listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/repost").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/renew").authenticated()
-                        // Hide / Unhide listing: chỉ seller mới được thực hiện
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/hide").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/listings/*/unhide").authenticated()
                         .requestMatchers("/api/me/**").authenticated()
@@ -61,14 +63,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
 
                         // Public truy cập (khách xem được)
-                        // /api/users/me must be checked before the wildcard below
-                        .requestMatchers(HttpMethod.GET, "/api/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/users/*/followers", "/api/users/*/following").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
-                        // Guest access
-                        .requestMatchers("/api/listings/**").permitAll()
-                        // Xem bình luận tin đăng không cần đăng nhập (POST/DELETE vẫn yêu cầu auth)
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/*/comments").permitAll()
 
                         // Admin-only
@@ -87,14 +84,8 @@ public class SecurityConfig {
                     );
                     response.getWriter().write(objectMapper.writeValueAsString(body));
                 }))
-                        // Admin-only
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        // Everything else requires authentication
-                        .anyRequest()
-                        .authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 }
-

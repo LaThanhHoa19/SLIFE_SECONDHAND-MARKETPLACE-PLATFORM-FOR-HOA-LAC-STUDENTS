@@ -374,6 +374,7 @@ public class ListingService {
         return response;
     }
 
+
     private Map<Long, Long> likeCountsForListingIds(Collection<Long> listingIds) {
         if (listingIds == null || listingIds.isEmpty()) {
             return Map.of();
@@ -449,6 +450,7 @@ public class ListingService {
         r.setIsLiked(currentUser != null
                 && listingLikeRepository.existsByUser_IdAndListing_Id(currentUser.getId(), r.getId()));
     }
+
 
     private Set<Long> resolveFollowedSellerIds(User currentUser, List<Listing> listings) {
         if (currentUser == null || listings == null || listings.isEmpty()) {
