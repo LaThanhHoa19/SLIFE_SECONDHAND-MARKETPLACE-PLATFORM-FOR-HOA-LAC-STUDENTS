@@ -294,23 +294,53 @@ export default function ProfilePage() {
             userId={followListUserId}
         />
 
-        <Box sx={{ maxWidth: DETAIL_PAGE_MAX_WIDTH, mx: 'auto' }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, mt: 2 }}>
-            <Box sx={{ p: 4, bgcolor: 'rgba(0,0,0,0.01)', borderRight: { md: '1px solid rgba(0,0,0,0.06)' } }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Giới thiệu</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
+        <Box sx={{ maxWidth: DETAIL_PAGE_MAX_WIDTH, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, gap: 3, mt: 3 }}>
+            {/* Sidebar: Giới thiệu + Xác minh */}
+            <Box sx={{ 
+              p: 3, 
+              borderRadius: 4, 
+              bgcolor: 'rgba(255, 255, 255, 0.03)', 
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              height: 'fit-content'
+            }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>Giới thiệu</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 4, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>{editing ? editForm.bio : bio}</Typography>
+              
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>Xác minh thông tin</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
-                  <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
+                  {phoneVerified 
+                    ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} /> 
+                    : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
+                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}</Typography>
                 </Box>
               </Box>
               {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
             </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+            {/* Main Content: Tabs + Content */}
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              bgcolor: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: 4,
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              overflow: 'hidden'
+            }}>
+              <Tabs 
+                value={tab} 
+                onChange={(_, v) => setTab(v)} 
+                sx={{ 
+                  px: 2, 
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                  '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
+                  '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
+                  '& .Mui-selected': { color: '#6366f1 !important' }
+                }}
+              >
                 {!isMe && <Tab label="Đang bán" />}
                 {!isMe && <Tab label="Đã bán" />}
                 <Tab label="Đánh giá" />
