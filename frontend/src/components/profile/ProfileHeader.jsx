@@ -1,4 +1,4 @@
-﻿import {useState} from 'react';
+import {useState} from 'react';
 import {
     Avatar,
     Box,
@@ -27,6 +27,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ForumIcon from '@mui/icons-material/Forum';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { useNavigate } from 'react-router-dom';
 
 const PURPLE = '#9D6EED';
 const GRADIENT = 'linear-gradient(135deg, #9D6EED 0%, #7B4FD9 100%)';
@@ -64,6 +65,7 @@ export default function ProfileHeader({
                                           followListUserId,
                                           onOpenFollowList,
                                       }) {
+    const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
@@ -90,7 +92,7 @@ export default function ProfileHeader({
 
     return (
         <>
-            {/* áº¢nh bÃ¬a */}
+            {/* Ảnh bìa */}
             <Box
                 sx={{
                     height: { xs: 200, sm: 260 },
@@ -130,7 +132,7 @@ export default function ProfileHeader({
                                 '&:hover': { bgcolor: '#fff' },
                             }}
                         >
-                            {uploadingCover ? 'Äang táº£i...' : 'Äá»•i áº£nh bÃ¬a'}
+                            {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
                         </Button>
                     </>
                 ) : (
@@ -168,7 +170,7 @@ export default function ProfileHeader({
                             }}
                         >
                             <MenuItem onClick={() => { handleMenuClose(); handleOpenReportDialog(); }} sx={{ color: '#ff5252', gap: 1 }}>
-                                <ReportIcon sx={{ fontSize: 18 }} /> BÃ¡o cÃ¡o
+                                <ReportIcon sx={{ fontSize: 18 }} /> Báo cáo
                             </MenuItem>
                         </Menu>
                     </Box>
@@ -187,7 +189,7 @@ export default function ProfileHeader({
                         border: '1px solid rgba(255, 255, 255, 0.3)',
                     }}
                 >
-                    {/* Avatar + tÃªn, ngÃ y tham gia, rating, Chat/BÃ¡o cÃ¡o */}
+                    {/* Avatar + tên, ngày tham gia, rating, Chat/Báo cáo */}
                     <Box sx={{ px: { xs: 2, sm: 4 }, pt: 4, pb: 4 }}>
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 3 }}>
                             <Box sx={{ position: 'relative' }}>
@@ -203,7 +205,7 @@ export default function ProfileHeader({
                                         fontSize: '3rem',
                                     }}
                                 >
-                                    {fullName.charAt(0).toUpperCase()}
+                                    {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
                                 </Avatar>
                                 {user.isOnline && (
                                     <Box sx={{
@@ -243,7 +245,7 @@ export default function ProfileHeader({
                                                 '&:hover': { bgcolor: '#835cd4' },
                                                 boxShadow: 3,
                                             }}
-                                            title="Äá»•i avatar"
+                                            title="Đổi avatar"
                                         >
                                             {uploadingAvatar ? (
                                                 <CircularProgress size={20} color="inherit" />
@@ -263,7 +265,7 @@ export default function ProfileHeader({
                                             </Typography>
                                             {user.isOnline && !isMe && (
                                                 <Typography variant="caption" sx={{ color: '#4caf50', fontWeight: 600, display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                                                    â— Äang hoáº¡t Ä‘á»™ng
+                                                    ● Đang hoạt động
                                                 </Typography>
                                             )}
                                         </Box>
@@ -288,7 +290,7 @@ export default function ProfileHeader({
                                                         '&:hover': { bgcolor: PURPLE, color: 'white' },
                                                         transition: 'all 0.2s ease'
                                                     }}
-                                                    title="Chia sáº»"
+                                                    title="Chia sẻ"
                                                 >
                                                     <ShareIcon fontSize="small" />
                                                 </IconButton>
@@ -310,7 +312,7 @@ export default function ProfileHeader({
                                                         '&:hover': { bgcolor: PURPLE, color: 'white' },
                                                         transition: 'all 0.2s ease'
                                                     }}
-                                                    title={isFollowing ? 'Bá» theo dÃµi' : 'Theo dÃµi'}
+                                                    title={isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}
                                                 >
                                                     {followLoading ? (
                                                         <CircularProgress size={18} color="inherit" />
@@ -332,28 +334,45 @@ export default function ProfileHeader({
                                                         '&:hover': { bgcolor: PURPLE, color: 'white' },
                                                         transition: 'all 0.3s ease'
                                                     }}
-                                                    title="Nháº¯n tin"
+                                                    title="Nhắn tin"
                                                 >
                                                     {chatLoading ? <CircularProgress size={18} color="inherit" /> : <ChatIcon fontSize="small" />}
                                                 </IconButton>
                                             </Box>
                                         ) : (
-                                            <Button
-                                                variant="outlined"
-                                                size="medium"
-                                                startIcon={editing ? <CloseIcon /> : <EditIcon />}
-                                                onClick={() => setEditing(!editing)}
-                                                sx={{
-                                                    textTransform: 'none',
-                                                    fontWeight: 600,
-                                                    borderRadius: 2,
-                                                    borderColor: PURPLE,
-                                                    color: PURPLE,
-                                                    '&:hover': { borderColor: '#835cd4', bgcolor: 'rgba(157, 110, 237, 0.05)' },
-                                                }}
-                                            >
-                                                {editing ? 'Há»§y' : 'Chá»‰nh sá»­a há»“ sÆ¡'}
-                                            </Button>
+                                            <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                                <Button
+                                                    variant="contained"
+                                                    size="medium"
+                                                    onClick={() => navigate('/my-listings')}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        fontWeight: 600,
+                                                        borderRadius: 2,
+                                                        bgcolor: PURPLE,
+                                                        color: 'white',
+                                                        '&:hover': { bgcolor: '#835cd4' },
+                                                    }}
+                                                >
+                                                    Quản lý bài đăng
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="medium"
+                                                    startIcon={editing ? <CloseIcon /> : <EditIcon />}
+                                                    onClick={() => setEditing(!editing)}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        fontWeight: 600,
+                                                        borderRadius: 2,
+                                                        borderColor: PURPLE,
+                                                        color: PURPLE,
+                                                        '&:hover': { borderColor: '#835cd4', bgcolor: 'rgba(157, 110, 237, 0.05)' },
+                                                    }}
+                                                >
+                                                    {editing ? 'Hủy' : 'Chỉnh sửa hồ sơ'}
+                                                </Button>
+                                            </Box>
                                         )}
                                     </Box>
                                 </Box>
@@ -368,7 +387,7 @@ export default function ProfileHeader({
                                     borderRadius: 3
                                 }}>
                                     <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">ÄÃ¡nh giÃ¡</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">Đánh giá</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Typography variant="h6" fontWeight={700}>{reputationScore}</Typography>
                                             <StarIcon sx={{ fontSize: 18, color: '#FFC107' }} />
@@ -376,7 +395,7 @@ export default function ProfileHeader({
                                         </Box>
                                     </Box>
                                     <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Pháº£n há»“i</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">Phản hồi</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <ForumIcon sx={{ fontSize: 18, color: PURPLE }} />
                                             <Typography variant="h6" fontWeight={700}>{user.responseRate || '98%'}</Typography>
@@ -395,13 +414,13 @@ export default function ProfileHeader({
                                         }}
                                         sx={statClickSx}
                                     >
-                                        <Typography variant="caption" color="text.secondary" display="block">NgÆ°á»i theo dÃµi</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">Người theo dõi</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <PeopleIcon sx={{ fontSize: 18, color: PURPLE }} />
                                             <Typography variant="h6" fontWeight={700}>
                                                 {user.followerCount != null
                                                     ? user.followerCount
-                                                    : (user.followers ?? 'â€”')}
+                                                    : (user.followers ?? '—')}
                                             </Typography>
                                         </Box>
                                     </Box>
@@ -418,19 +437,19 @@ export default function ProfileHeader({
                                         }}
                                         sx={statClickSx}
                                     >
-                                        <Typography variant="caption" color="text.secondary" display="block">Äang theo dÃµi</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">Đang theo dõi</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <PersonSearchIcon sx={{ fontSize: 18, color: PURPLE }} />
                                             <Typography variant="h6" fontWeight={700}>
-                                                {user.followingCount != null ? user.followingCount : 'â€”'}
+                                                {user.followingCount != null ? user.followingCount : '—'}
                                             </Typography>
                                         </Box>
                                     </Box>
                                     <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Äá»‹a chá»‰</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block">Địa chỉ</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
                                             <LocationOnIcon sx={{ fontSize: 18, color: PURPLE }} />
-                                            <Typography variant="body2" fontWeight={600} noWrap>{user.address || 'HÃ²a Láº¡c'}</Typography>
+                                            <Typography variant="body2" fontWeight={600} noWrap>{user.address || 'Hòa Lạc'}</Typography>
                                         </Box>
                                     </Box>
                                 </Box>
@@ -459,7 +478,7 @@ export default function ProfileHeader({
                             >
                                 <TextField
                                     fullWidth
-                                    label="Há» tÃªn"
+                                    label="Họ tên"
                                     value={editForm.fullName}
                                     onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
                                     sx={{ mb: 2 }}
@@ -467,7 +486,7 @@ export default function ProfileHeader({
                                 />
                                 <TextField
                                     fullWidth
-                                    label="Sá»‘ Ä‘iá»‡n thoáº¡i"
+                                    label="Số điện thoại"
                                     value={editForm.phoneNumber}
                                     onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
                                     sx={{ mb: 2 }}
@@ -477,7 +496,7 @@ export default function ProfileHeader({
                                     fullWidth
                                     multiline
                                     rows={3}
-                                    label="Giá»›i thiá»‡u"
+                                    label="Giới thiệu"
                                     value={editForm.bio}
                                     onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
                                     sx={{ mb: 2 }}
@@ -496,7 +515,7 @@ export default function ProfileHeader({
                                         boxShadow: '0 2px 8px rgba(157, 110, 237, 0.35)',
                                     }}
                                 >
-                                    LÆ°u thay Ä‘á»•i
+                                    Lưu thay đổi
                                 </Button>
                             </Box>
                         )}
@@ -512,4 +531,3 @@ export default function ProfileHeader({
         </>
     );
 }
-
