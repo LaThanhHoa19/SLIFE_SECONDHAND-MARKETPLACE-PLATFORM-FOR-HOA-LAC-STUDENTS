@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Data
 @Builder
@@ -23,6 +24,9 @@ public class ListingCardResponse {
     private Long sellerId;
     private String sellerName;
     private String sellerAvatarUrl;
+
+    /** Thời điểm đăng tin (feed/search card). */
+    private Instant createdAt;
 
     /** True if the current viewer follows the seller (false when anonymous or self). */
     private Boolean isFollowed;

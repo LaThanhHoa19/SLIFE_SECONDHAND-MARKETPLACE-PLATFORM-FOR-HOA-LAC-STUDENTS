@@ -14,6 +14,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import ImageUploader from '../common/ImageUploader';
+import { MAX_IMAGES_PER_LISTING } from '../../constants/listingLimits';
 import { getCategories } from '../../api/categoryApi';
 import { reverseGeocode, getGeoClientConfig } from '../../api/geoApi';
 import LocationPicker from './LocationPicker';
@@ -56,6 +57,94 @@ function normalize(str = '') {
         .replace(/đ/g, 'd');
 }
 
+/**
+ * Chuẩn hóa tên đơn vị hành chính để giảm false-negative:
+ * - bỏ tiền tố (tỉnh/thành phố/quận/huyện/phường/xã/thị trấn...)
+ * - gom khoảng trắng
+ */
+function canonicalAdminName(str = '') {
+    const n = normalize(str).trim().replace(/\s+/g, ' ');
+    if (!n) return '';
+    return n
+        .replace(/\b(thanh pho|tp|tinh)\b\s*/g, '')
+        .replace(/\b(quan|q)\b\s*/g, '')
+        .replace(/\b(huyen)\b\s*/g, '')
+        .replace(/\b(thi xa)\b\s*/g, '')
+        .replace(/\b(thi tran)\b\s*/g, '')
+        .replace(/\b(phuong|p)\b\s*/g, '')
+        .replace(/\b(xa)\b\s*/g, '')
+        .trim();
+}
+
+async function nominatimSearchOne(query) {
+    const q = (query || '').trim();
+    if (!q) return null;
+    try {
+        // Nominatim can be picky with VN admin prefixes; keep query concise and restrict to VN.
+        const url =
+            `https://nominatim.openstreetmap.org/search` +
+            `?q=${encodeURIComponent(q)}` +
+            `&format=jsonv2` +
+            `&limit=1` +
+            `&countrycodes=vn` +
+            `&addressdetails=1`;
+        const res = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
+        const data = await res.json();
+        const first = Array.isArray(data) ? data[0] : null;
+        return first || null;
+    } catch {
+        return null;
+    }
+}
+
+async function findAdminCenterAndBbox(adminLocation) {
+    if (!adminLocation) return null;
+    const ward = (adminLocation.ward?.name || '').trim();
+    const district = (adminLocation.district?.name || '').trim();
+    const province = (adminLocation.province?.name || '').trim();
+
+    // Try multiple query variants (with/without VN prefixes) to reduce false "not found"
+    const wardC = canonicalAdminName(ward);
+    const districtC = canonicalAdminName(district);
+    const provinceC = canonicalAdminName(province);
+
+    const candidates = [
+        [ward, district, province, 'Việt Nam'].filter(Boolean).join(', '),
+        [wardC, districtC, provinceC, 'Viet Nam'].filter(Boolean).join(', '),
+        [district, province, 'Việt Nam'].filter(Boolean).join(', '),
+        [districtC, provinceC, 'Viet Nam'].filter(Boolean).join(', '),
+        [province, 'Việt Nam'].filter(Boolean).join(', '),
+        [provinceC, 'Viet Nam'].filter(Boolean).join(', '),
+    ].filter((s, idx, arr) => s && arr.indexOf(s) === idx);
+
+    for (const q of candidates) {
+        const first = await nominatimSearchOne(q);
+        if (!first) continue;
+        const lat = parseFloat(first.lat);
+        const lng = parseFloat(first.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const bb = first.boundingbox;
+        let bbox = null;
+        if (Array.isArray(bb) && bb.length >= 4) {
+            const south = Number(bb[0]);
+            const north = Number(bb[1]);
+            const west = Number(bb[2]);
+            const east = Number(bb[3]);
+            if ([south, north, west, east].every(Number.isFinite)) {
+                bbox = {
+                    minLat: Math.min(south, north),
+                    maxLat: Math.max(south, north),
+                    minLng: Math.min(west, east),
+                    maxLng: Math.max(west, east),
+                    label: q,
+                };
+            }
+        }
+        return { lat, lng, zoom: 13, bbox };
+    }
+    return null;
+}
+
 function buildCategoryTree(flatList) {
     if (!Array.isArray(flatList) || flatList.length === 0) return [];
     const byId = new Map();
@@ -96,7 +185,7 @@ async function fetchOsmReverse(lat, lng) {
         const parts = [name, ward, district, province].filter(Boolean);
         const addressText = parts.join(', ');
         
-        return { province, district, addressText };
+        return { province, district, ward, addressText };
     } catch {
         return null;
     }
@@ -126,6 +215,8 @@ export default function ListingForm({
     existingImageUrls = [],
 }) {
     const [imageFiles, setImageFiles] = useState([]);
+    /** Luôn khớp mảng File mới nhất từ ImageUploader — dùng khi submit để tránh race với setState bất đồng bộ. */
+    const imageFilesRef = useRef([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
     const [categories, setCategories] = useState([]);
@@ -135,6 +226,7 @@ export default function ListingForm({
     // Admin location — state cho UI, ref cho click handler (tránh closure stale)
     const [adminLocation, setAdminLocation] = useState(null);
     const adminLocationRef = useRef(null);
+    const adminBboxRef = useRef(null); // { minLat, maxLat, minLng, maxLng, label }
 
     // Pending pin: chờ user xác nhận hoặc từ chối
     const [pendingPin, setPendingPin] = useState(null); // { lat, lng, addressText, districtHint? }
@@ -145,6 +237,7 @@ export default function ListingForm({
     const mapRef = useRef(null);
     const markerRef = useRef(null);       // marker đã xác nhận (đỏ mặc định Vietmap)
     const pendingMarkerRef = useRef(null); // marker đang chờ xác nhận (vàng SVG)
+    const pendingFlyToRef = useRef(null);  // { lat, lng, zoom }
 
     const { register, handleSubmit, watch, setValue, clearErrors, formState: { errors } } = useForm({
         defaultValues: {
@@ -230,27 +323,51 @@ export default function ListingForm({
             pendingMarkerRef.current.remove();
             pendingMarkerRef.current = null;
         }
-        // Dùng Nominatim (OSM, miễn phí) - Bỏ ward vì OSM nông thôn VN ít có ward
-        const query = [
-            adminLocation.district?.name,
-            adminLocation.province?.name,
-            'Việt Nam',
-        ].filter(Boolean).join(', ');
-        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`)
-            .then((r) => r.json())
-            .then((data) => {
-                const first = Array.isArray(data) ? data[0] : null;
-                if (!first) {
-                    console.log('Nominatim không tìm thấy:', query);
-                    return;
-                }
-                const lat = parseFloat(first.lat);
-                const lng = parseFloat(first.lon);
-                if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-                mapRef.current?.flyTo({ center: [lng, lat], zoom: 13, essential: true });
-            })
-            .catch((e) => console.error('Nominatim error:', e));
+        // Dùng Nominatim (OSM, miễn phí) để lấy center + bbox cho validate
+        (async () => {
+            const found = await findAdminCenterAndBbox(adminLocation);
+            if (!found) {
+                console.log(
+                    'Nominatim không tìm thấy:',
+                    adminLocation.ward?.name,
+                    adminLocation.district?.name,
+                    adminLocation.province?.name,
+                );
+                // Không có bbox => vẫn cho user ghim, validate sẽ fallback reverse-name
+                adminBboxRef.current = null;
+                return;
+            }
+            pendingFlyToRef.current = { lat: found.lat, lng: found.lng, zoom: found.zoom };
+            mapRef.current?.flyTo({ center: [found.lng, found.lat], zoom: found.zoom, essential: true });
+            adminBboxRef.current = found.bbox || null;
+        })().catch(() => {});
     }, [adminLocation]);
+
+    // Nếu user chọn khu vực trước khi map ready, chạy lại flyTo khi map sẵn sàng
+    useEffect(() => {
+        if (!mapReady || !mapRef.current) return;
+        const p = pendingFlyToRef.current;
+        if (!p) return;
+        pendingFlyToRef.current = null;
+        mapRef.current.flyTo({
+            center: [p.lng, p.lat],
+            zoom: p.zoom ?? 13,
+            essential: true,
+        });
+    }, [mapReady]);
+
+    function isPointInBbox(lat, lng, bbox) {
+        if (!bbox) return null;
+        const latNum = Number(lat);
+        const lngNum = Number(lng);
+        if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return null;
+        const inside =
+            latNum >= bbox.minLat &&
+            latNum <= bbox.maxLat &&
+            lngNum >= bbox.minLng &&
+            lngNum <= bbox.maxLng;
+        return inside;
+    }
 
     // Giá khi bật/tắt "Cho tặng" — không xóa giá lần đầu trên trang sửa (giá đã load từ API)
     const prevGiveawayRef = useRef(null);
@@ -292,7 +409,7 @@ export default function ListingForm({
             ...values,
             price: Number(values.price.toString().replace(/\D/g, ""))
         };
-        onSubmit?.(finalValues, imageFiles);
+        onSubmit?.(finalValues, imageFilesRef.current);
     };
 
     const handleSaveDraftSubmit = (values) => {
@@ -300,25 +417,46 @@ export default function ListingForm({
             ...values,
             price: Number(values.price.toString().replace(/\D/g, "")),
         };
-        onSaveDraft?.(finalValues, imageFiles);
+        onSaveDraft?.(finalValues, imageFilesRef.current);
     };
+
+    const hasAtLeastOneImage =
+        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
+
+    const existingImageCount = Array.isArray(existingImageUrls) ? existingImageUrls.length : 0;
+    const totalListingImages = imageFiles.length + existingImageCount;
+    const imageOverLimit = totalListingImages > MAX_IMAGES_PER_LISTING;
 
     const handleSaveDraftClick = (e) => {
         e.preventDefault();
         if (mode !== 'create') return;
         if (imageFiles.length === 0) {
             setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        }
+        const totalNow = imageFilesRef.current.length + existingImageCount;
+        if (totalNow > MAX_IMAGES_PER_LISTING) {
+            setImageError(
+                `Vui lòng không quá ${MAX_IMAGES_PER_LISTING} ảnh (hiện ${totalNow}). Xóa bớt ảnh trước khi lưu.`,
+            );
+            imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
         }
         handleSubmit(handleSaveDraftSubmit)(e);
     };
 
-    const hasAtLeastOneImage =
-        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
-
-    const handleFilesChange = useCallback((files) => {
-        setImageFiles(files);
-        if (files.length > 0) setImageError('');
-    }, []);
+    const handleFilesChange = useCallback(
+        (files) => {
+            imageFilesRef.current = files;
+            setImageFiles(files);
+            const ex = Array.isArray(existingImageUrls) ? existingImageUrls.length : 0;
+            if (files.length + ex <= MAX_IMAGES_PER_LISTING) {
+                setImageError('');
+            }
+        },
+        [existingImageUrls],
+    );
 
     const onFormSubmit = (e) => {
         e.preventDefault();
@@ -329,11 +467,24 @@ export default function ListingForm({
                     imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     return;
                 }
+                const totalNow = imageFilesRef.current.length + existingImageCount;
+                if (totalNow > MAX_IMAGES_PER_LISTING) {
+                    setImageError(
+                        `Vui lòng không quá ${MAX_IMAGES_PER_LISTING} ảnh (hiện ${totalNow}). Xóa bớt ảnh trước khi đăng.`,
+                    );
+                    imageSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    return;
+                }
                 handleFormSubmit(values);
             },
             () => {
                 if (!hasAtLeastOneImage) {
                     setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
+                } else if (imageFilesRef.current.length + existingImageCount > MAX_IMAGES_PER_LISTING) {
+                    const totalNow = imageFilesRef.current.length + existingImageCount;
+                    setImageError(
+                        `Vui lòng không quá ${MAX_IMAGES_PER_LISTING} ảnh (hiện ${totalNow}). Xóa bớt ảnh trước khi đăng.`,
+                    );
                 }
             }
         )(e);
@@ -368,6 +519,7 @@ export default function ListingForm({
             let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
             let reverseProvince = '';
             let reverseDistrict = '';
+            let reverseWard = '';
             try {
                 const res = await reverseGeocode({ lat, lng });
                 const data = res?.data?.data ?? res?.data;
@@ -378,6 +530,7 @@ export default function ListingForm({
                     if (line) addressText = line;
                     reverseProvince = (data.province || data.city || '').trim();
                     reverseDistrict = (data.district || '').trim();
+                    reverseWard = (data.ward || '').trim();
                 }
             } catch { /* ignore */ }
 
@@ -387,6 +540,7 @@ export default function ListingForm({
                 if (osm) {
                     reverseProvince = osm.province;
                     reverseDistrict = osm.district;
+                    reverseWard = osm.ward || '';
                     if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
                         addressText = osm.addressText;
                     }
@@ -397,6 +551,7 @@ export default function ListingForm({
 
             // Đọc adminLocation từ ref (không bị stale closure)
             const currentAdmin = adminLocationRef.current;
+            const bbox = adminBboxRef.current;
 
             if (!currentAdmin) {
                 // Chưa chọn khu vực — cho gim tự do
@@ -405,13 +560,18 @@ export default function ListingForm({
                 return;
             }
 
+            // Ưu tiên validate bằng bbox (ổn định hơn reverse name khi provider trả sai district)
+            const bboxInside = isPointInBbox(lat, lng, bbox);
+
             // So sánh text (normalize bỏ dấu)
             // LOẠI BỢ empty-string: 'anything'.includes('') luôn trả true
-            const chosenProvince = normalize(currentAdmin.province?.name || '');
-            const chosenDistrict = normalize(currentAdmin.district?.name || '');
-            const addrNorm = normalize(addressText);
-            const revProvinceNorm = normalize(reverseProvince);
-            const revDistrictNorm = normalize(reverseDistrict);
+            const chosenProvince = canonicalAdminName(currentAdmin.province?.name || '');
+            const chosenDistrict = canonicalAdminName(currentAdmin.district?.name || '');
+            const chosenWard = canonicalAdminName(currentAdmin.ward?.name || '');
+            const addrNorm = canonicalAdminName(addressText);
+            const revProvinceNorm = canonicalAdminName(reverseProvince);
+            const revDistrictNorm = canonicalAdminName(reverseDistrict);
+            const revWardNorm = canonicalAdminName(reverseWard);
 
             console.log('===== DEBUG VALIDATION =====');
             console.log('CHOSEN (Province|District):', chosenProvince, '|', chosenDistrict);
@@ -420,31 +580,31 @@ export default function ListingForm({
 
             // Match tỉnh: kiểm tra trong cả reverseProvince (nếu có) lẫn addressText
             const provinceMatch = !chosenProvince || (
-                (revProvinceNorm && (
-                    revProvinceNorm.includes(chosenProvince) ||
-                    chosenProvince.includes(revProvinceNorm)
-                )) ||
-                addrNorm.includes(chosenProvince) || addrNorm.includes(chosenProvince.replace('tinh ', '').replace('thanh pho ', ''))
+                (revProvinceNorm && (revProvinceNorm.includes(chosenProvince) || chosenProvince.includes(revProvinceNorm))) ||
+                addrNorm.includes(chosenProvince)
             );
             // Match huyện: kiểm tra trong cả reverseDistrict (nếu có) lẫn addressText
             const districtMatch = !chosenDistrict || (
-                (revDistrictNorm && (
-                    revDistrictNorm.includes(chosenDistrict) ||
-                    chosenDistrict.includes(revDistrictNorm)
-                )) ||
-                addrNorm.includes(chosenDistrict) || addrNorm.includes(chosenDistrict.replace('huyen ', '').replace('quan ', '').replace('thi xa ', '').replace('thanh pho ', ''))
+                (revDistrictNorm && (revDistrictNorm.includes(chosenDistrict) || chosenDistrict.includes(revDistrictNorm))) ||
+                addrNorm.includes(chosenDistrict)
+            );
+
+            // Ward: Vietmap reverse v3 đôi khi không trả ward riêng → fallback check trong addressText
+            const wardMatch = !chosenWard || (
+                (revWardNorm && (revWardNorm.includes(chosenWard) || chosenWard.includes(revWardNorm))) ||
+                addrNorm.includes(chosenWard)
             );
 
             console.log('MATCH RESULT:', { provinceMatch, districtMatch });
 
-            // Tạm ẩn validate theo yêu cầu
-            const isValid = true; // provinceMatch && districtMatch;
+            const isValid = provinceMatch && districtMatch && wardMatch;
+            const finalValid = bboxInside === null ? isValid : bboxInside;
             
             setPendingPin({
                 lat, lng, addressText,
-                districtHint: isValid ? null : currentAdmin.district?.name,
+                districtHint: finalValid ? null : currentAdmin.district?.name,
             });
-            setPinStatus(isValid ? 'valid' : 'invalid');
+            setPinStatus(finalValid ? 'valid' : 'invalid');
         };
 
         const initMap = () => {
@@ -471,6 +631,18 @@ export default function ListingForm({
             }
             map.once('load', () => {
                 if (!cancelled) setMapReady(true);
+                // Apply queued flyTo (if adminLocation picked earlier)
+                const p = pendingFlyToRef.current;
+                if (p && !cancelled) {
+                    pendingFlyToRef.current = null;
+                    try {
+                        map.flyTo({
+                            center: [p.lng, p.lat],
+                            zoom: p.zoom ?? 13,
+                            essential: true,
+                        });
+                    } catch { /* ignore */ }
+                }
             });
             map.on('click', onMapClick);
             mapRef.current = map;
@@ -601,7 +773,7 @@ export default function ListingForm({
                 }
                 setPendingPin(null); setPinStatus('idle');
                 let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                let reverseProvince = ''; let reverseDistrict = '';
+                let reverseProvince = ''; let reverseDistrict = ''; let reverseWard = '';
                 try {
                     const res = await reverseGeocode({ lat, lng });
                     const data = res?.data?.data ?? res?.data;
@@ -610,6 +782,7 @@ export default function ListingForm({
                         if (line) addressText = line;
                         reverseProvince = (data.province || data.city || '').trim();
                         reverseDistrict = (data.district || '').trim();
+                        reverseWard = (data.ward || '').trim();
                     }
                 } catch { /* ignore */ }
 
@@ -619,17 +792,23 @@ export default function ListingForm({
                     if (osm) {
                         reverseProvince = osm.province;
                         reverseDistrict = osm.district;
+                        reverseWard = osm.ward || '';
                         if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
                             addressText = osm.addressText;
                         }
                     }
                 }
                 const currentAdmin = adminLocationRef.current;
+                const bbox = adminBboxRef.current;
                 if (!currentAdmin) { setPendingPin({ lat, lng, addressText }); setPinStatus('valid'); return; }
-                const chosenProvince = normalize(currentAdmin.province?.name || '');
-                const chosenDistrict = normalize(currentAdmin.district?.name || '');
-                const addrNorm = normalize(addressText);
-                const revPN = normalize(reverseProvince); const revDN = normalize(reverseDistrict);
+
+                const bboxInside = isPointInBbox(lat, lng, bbox);
+                const chosenProvince = canonicalAdminName(currentAdmin.province?.name || '');
+                const chosenDistrict = canonicalAdminName(currentAdmin.district?.name || '');
+                const chosenWard = canonicalAdminName(currentAdmin.ward?.name || '');
+                const addrNorm = canonicalAdminName(addressText);
+                const revPN = canonicalAdminName(reverseProvince); const revDN = canonicalAdminName(reverseDistrict);
+                const revWN = canonicalAdminName(reverseWard);
 
                 console.log('===== DEBUG GPS VALIDATION =====');
                 console.log('CHOSEN (Province|District):', chosenProvince, '|', chosenDistrict);
@@ -638,20 +817,25 @@ export default function ListingForm({
 
                 const provinceMatch = !chosenProvince || (
                     (revPN && (revPN.includes(chosenProvince) || chosenProvince.includes(revPN))) ||
-                    addrNorm.includes(chosenProvince) || addrNorm.includes(chosenProvince.replace('tinh ', '').replace('thanh pho ', ''))
+                    addrNorm.includes(chosenProvince)
                 );
                 const districtMatch = !chosenDistrict || (
                     (revDN && (revDN.includes(chosenDistrict) || chosenDistrict.includes(revDN))) ||
-                    addrNorm.includes(chosenDistrict) || addrNorm.includes(chosenDistrict.replace('huyen ', '').replace('quan ', '').replace('thi xa ', '').replace('thanh pho ', ''))
+                    addrNorm.includes(chosenDistrict)
                 );
 
                 console.log('MATCH RESULT:', { provinceMatch, districtMatch });
 
-                // Tạm ẩn validate theo yêu cầu
-                const isValid = true; // provinceMatch && districtMatch;
+                const wardMatch = !chosenWard || (
+                    (revWN && (revWN.includes(chosenWard) || chosenWard.includes(revWN))) ||
+                    addrNorm.includes(chosenWard)
+                );
+
+                const isValid = provinceMatch && districtMatch && wardMatch;
+                const finalValid = bboxInside === null ? isValid : bboxInside;
                 
-                setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
-                setPinStatus(isValid ? 'valid' : 'invalid');
+                setPendingPin({ lat, lng, addressText, districtHint: finalValid ? null : currentAdmin.district?.name });
+                setPinStatus(finalValid ? 'valid' : 'invalid');
             },
             (err) => { setGpsLoading(false); alert(`Không lấy được GPS: ${err.message}`); },
             { enableHighAccuracy: true, timeout: 10000 }
@@ -693,7 +877,6 @@ export default function ListingForm({
             <Box mb={4}>
                 <ImageUploader
                     onFilesChange={handleFilesChange}
-                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
                     existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
                 />
 
@@ -1123,7 +1306,7 @@ export default function ListingForm({
                                 variant="outlined"
                                 fullWidth
                                 onClick={handleSaveDraftClick}
-                                disabled={savingDraft || submitting}
+                                disabled={savingDraft || submitting || imageOverLimit}
                                 sx={{
                                     backgroundColor: "#E0E0E0",
                                     color: "#201D26",
@@ -1143,7 +1326,7 @@ export default function ListingForm({
                             type="submit"
                             variant="contained"
                             fullWidth
-                            disabled={submitting}
+                            disabled={submitting || imageOverLimit}
                             sx={{
                                 backgroundColor: "#9D6EED",
                                 py: 1.1,
