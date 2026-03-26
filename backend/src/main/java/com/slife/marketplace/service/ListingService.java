@@ -1,10 +1,10 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
-import com.slife.marketplace.dto.response.PickupAddressResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.dto.response.PickupAddressResponse;
 import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Category;
 import com.slife.marketplace.entity.Listing;
@@ -28,9 +28,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.text.Normalizer;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.text.Normalizer;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -421,7 +421,6 @@ public class ListingService {
         // Server vẫn có thể validate lại khi bbox reverse ổn định.
         log.warn("Pin validation skipped (bbox unavailable). province='{}', district='{}', ward='{}'",
                 request.getPickupProvince(), request.getPickupDistrict(), request.getPickupWard());
-        return;
     }
 
     private static String normalizeVi(String s) {
