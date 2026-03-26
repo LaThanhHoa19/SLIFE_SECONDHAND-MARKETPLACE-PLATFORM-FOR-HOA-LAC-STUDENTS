@@ -13,9 +13,11 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.AddressRepository;
 import com.slife.marketplace.repository.CategoryRepository;
 import com.slife.marketplace.repository.ListingImageRepository;
+import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
 import com.slife.marketplace.service.FollowService;
+import com.slife.marketplace.service.VietmapService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,15 @@ class ListingServiceTest {
     @Mock
     private FollowService followService;
 
+    @Mock
+    private ListingLikeRepository listingLikeRepository;
+
+    @Mock
+    private ListingImageService listingImageService;
+
+    @Mock
+    private VietmapService vietmapService;
+
     private ListingService listingService;
 
     @BeforeEach
@@ -68,7 +79,10 @@ class ListingServiceTest {
                 savedListingRepository,
                 categoryRepository,
                 addressRepository,
-                followService
+                followService,
+                listingLikeRepository,
+                listingImageService,
+                vietmapService
         );
     }
 

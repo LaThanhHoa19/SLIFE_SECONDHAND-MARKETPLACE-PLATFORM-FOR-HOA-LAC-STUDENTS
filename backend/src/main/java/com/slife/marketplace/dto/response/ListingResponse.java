@@ -11,6 +11,7 @@ public class ListingResponse {
     private String condition;
     private String purpose;
     private String location;
+    private PickupAddressResponse pickupAddress;
     private java.time.Instant createdAt;
     private java.util.List<String> images;
     private Object sellerSummary;
