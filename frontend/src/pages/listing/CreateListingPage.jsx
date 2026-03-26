@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Alert, Snackbar } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
-import { createListingWithImages } from '../../api/listingApi';
+import { createListing, uploadImages } from '../../api/listingApi';
 
 function getPayload(res) {
   const body = res?.data;
@@ -29,10 +29,14 @@ function buildPayload(values, isDraft = false) {
     pickupAddressSupplement: values.pickupAddressSupplement?.trim() || null,
     pickupLat: values.pickupLat ? Number(values.pickupLat) : null,
     pickupLng: values.pickupLng ? Number(values.pickupLng) : null,
-    pickupProvince: values.pickupProvince?.trim() || null,
-    pickupDistrict: values.pickupDistrict?.trim() || null,
-    pickupWard: values.pickupWard?.trim() || null,
   };
+}
+
+async function uploadListingImages(id, imageFiles) {
+  if (!id || !imageFiles?.length) return;
+  const formData = new FormData();
+  imageFiles.forEach((f) => formData.append('images', f));
+  await uploadImages(id, formData);
 }
 
 export default function CreateListingPage() {
@@ -47,9 +51,10 @@ export default function CreateListingPage() {
     setSubmitting(true);
     try {
       const payload = buildPayload(values, false);
-      const res = await createListingWithImages(payload, imageFiles || []);
+      const res = await createListing(payload);
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
+      await uploadListingImages(id, imageFiles);
       if (id) {
         navigate(`/listings/${id}`, { replace: true });
       } else {
@@ -68,9 +73,10 @@ export default function CreateListingPage() {
     setSavingDraft(true);
     try {
       const payload = buildPayload(values, true);
-      const res = await createListingWithImages(payload, imageFiles || []);
+      const res = await createListing(payload);
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
+      await uploadListingImages(id, imageFiles);
       setDraftSuccess(true);
       // Sau 1.5s navigate về profile/drafts nếu có, hoặc ở lại trang
       setTimeout(() => {

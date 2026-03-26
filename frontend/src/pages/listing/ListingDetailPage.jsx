@@ -1,7 +1,7 @@
 /**
- * Trang chi tiáº¿t listing â€“ thiáº¿t káº¿ Ä‘á»“ng bá»™ vá»›i Feed (dark theme).
- * Bá»‘ cá»¥c: Gallery bÃªn trÃ¡i | ThÃ´ng tin + HÃ nh Ä‘á»™ng bÃªn pháº£i
- * Pháº§n bÃªn dÆ°á»›i: BÃ¬nh luáº­n | Tin khÃ¡c cá»§a ngÆ°á»i bÃ¡n | Tin tÆ°Æ¡ng tá»±
+ * Trang chi tiết listing – thiết kế đồng bộ với Feed (dark theme).
+ * Bố cục: Gallery bên trái | Thông tin + Hành động bên phải
+ * Phần bên dưới: Bình luận | Tin khác của người bán | Tin tương tự
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
@@ -57,7 +57,7 @@ import ListingSellerOtherListings from '../../components/listing/ListingSellerOt
 import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
 
-// â”€â”€â”€ Háº±ng sá»‘ mÃ u sáº¯c Ä‘á»“ng bá»™ vá»›i Feed â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Hằng số màu sắc đồng bộ với Feed ───────────────────────────────────────
 const DARK_BG = '#1C1B23';
 const CARD_BG = '#201D26';
 const CARD_BG2 = '#252230';
@@ -68,28 +68,28 @@ const PURPLE = '#9D6EED';
 const RED = '#FF4757';
 const GREEN = '#2ED573';
 
-// â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helper ──────────────────────────────────────────────────────────────────
 const getPayload = (res) => {
     return unwrapApiData(res);
 };
 
 const toCurrency = (value) =>
-    value == null ? 'â€”' : `${Number(value).toLocaleString('vi-VN')} â‚«`;
+    value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
 
 const CONDITION_MAP = {
-    NEW: { label: 'Má»›i', color: GREEN },
-    USED_LIKE_NEW: { label: 'NhÆ° má»›i', color: '#1DD3B0' },
-    USED_GOOD: { label: 'ÄÃ£ dÃ¹ng â€“ tá»‘t', color: PURPLE },
-    USED_FAIR: { label: 'ÄÃ£ dÃ¹ng', color: '#FFA502' },
+    NEW: { label: 'Mới', color: GREEN },
+    USED_LIKE_NEW: { label: 'Như mới', color: '#1DD3B0' },
+    USED_GOOD: { label: 'Đã dùng – tốt', color: PURPLE },
+    USED_FAIR: { label: 'Đã dùng', color: '#FFA502' },
 };
 
 const getConditionInfo = (condition) =>
-    CONDITION_MAP[condition] || { label: condition || 'KhÃ´ng rÃµ', color: TEXT_SEC };
+    CONDITION_MAP[condition] || { label: condition || 'Không rõ', color: TEXT_SEC };
 
 const getSeller = (listing) => {
     const s = listing?.sellerSummary ?? listing?.seller;
     if (s && typeof s === 'object') return s;
-    return { fullName: typeof s === 'string' ? s : 'NgÆ°á»i bÃ¡n' };
+    return { fullName: typeof s === 'string' ? s : 'Người bán' };
 };
 
 const getLocation = (listing) => {
@@ -103,7 +103,7 @@ const getLocation = (listing) => {
     return '';
 };
 
-// â”€â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -144,7 +144,7 @@ export default function ListingDetailPage() {
                 setLikeCount(Number(data?.likeCount ?? 0));
                 setIsLiked(!!data?.isLiked);
             })
-            .catch((err) => setError(err?.message || 'KhÃ´ng táº£i Ä‘Æ°á»£c tin.'))
+            .catch((err) => setError(err?.message || 'Không tải được tin.'))
             .finally(() => setLoading(false));
     }, [id]);
 
@@ -152,11 +152,11 @@ export default function ListingDetailPage() {
         setSellerFollowed(!!listing?.isFollowed);
     }, [listing?.id, listing?.isFollowed]);
 
-    // Load tin khÃ¡c cá»§a ngÆ°á»i bÃ¡n + tin tÆ°Æ¡ng tá»±
-    // Backend khÃ´ng há»— trá»£ sellerId param â†’ load toÃ n bá»™ rá»“i filter client-side
+    // Load tin khác của người bán + tin tương tự
+    // Backend không hỗ trợ sellerId param → load toàn bộ rồi filter client-side
     useEffect(() => {
         if (!listing) return;
-        // Láº¥y seller id tá»« listing.seller.id (theo Ä‘Ãºng field backend tráº£ vá»)
+        // Lấy seller id từ listing.seller.id (theo đúng field backend trả về)
         const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         const currentId = Number(id);
 
@@ -168,7 +168,7 @@ export default function ListingDetailPage() {
                     ? data.content
                     : Array.isArray(data) ? data : [];
 
-                // Tin khÃ¡c cá»§a cÃ¹ng ngÆ°á»i bÃ¡n (loáº¡i trá»« tin hiá»‡n táº¡i)
+                // Tin khác của cùng người bán (loại trừ tin hiện tại)
                 const bySellerRaw = sellerId
                     ? allList.filter((l) => {
                         const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
@@ -177,7 +177,7 @@ export default function ListingDetailPage() {
                     : [];
                 setSellerListings(bySellerRaw.slice(0, 6));
 
-                // Tin tÆ°Æ¡ng tá»±: cÃ¹ng Ä‘iá»u kiá»‡n sáº£n pháº©m hoáº·c má»©c giÃ¡ tÆ°Æ¡ng Ä‘á»“ng, loáº¡i trá»« tin hiá»‡n táº¡i vÃ  tin cá»§a cÃ¹ng seller
+                // Tin tương tự: cùng điều kiện sản phẩm hoặc mức giá tương đồng, loại trừ tin hiện tại và tin của cùng seller
                 const condition = listing?.condition ?? listing?.itemCondition;
                 const price = Number(listing?.price ?? 0);
                 const similar = allList
@@ -185,8 +185,8 @@ export default function ListingDetailPage() {
                         const lId = l.id ?? l.listingId;
                         if (lId === currentId) return false;
                         const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        if (String(lSellerId) === String(sellerId)) return false; // bá» tin cá»§a cÃ¹ng seller (Ä‘Ã£ cÃ³ section trÃªn)
-                        // Æ°u tiÃªn: cÃ¹ng condition hoáº·c giÃ¡ trong khoáº£ng Â±50%
+                        if (String(lSellerId) === String(sellerId)) return false; // bỏ tin của cùng seller (đã có section trên)
+                        // ưu tiên: cùng condition hoặc giá trong khoảng ±50%
                         const lCond = l?.condition ?? l?.itemCondition;
                         const lPrice = Number(l?.price ?? 0);
                         const sameCondition = condition && lCond === condition;
@@ -200,11 +200,11 @@ export default function ListingDetailPage() {
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
 
-    // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Handlers ─────────────────────────────────────────────────────────────
     const handleToggleLike = async () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ thÃ­ch tin.');
+            setSnackMsg('Bạn cần đăng nhập để thích tin.');
             return;
         }
         if (likeSubmitting) return;
@@ -235,7 +235,7 @@ export default function ListingDetailPage() {
             setIsLiked(prevLiked);
             setLikeCount(prevCount);
             setSnackType('error');
-            setSnackMsg('KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c lÆ°á»£t thÃ­ch. Thá»­ láº¡i sau.');
+            setSnackMsg('Không cập nhật được lượt thích. Thử lại sau.');
         } finally {
             setLikeSubmitting(false);
         }
@@ -246,7 +246,7 @@ export default function ListingDetailPage() {
         try {
             await navigator.clipboard.writeText(url);
             setSnackType('success');
-            setSnackMsg('ÄÃ£ sao chÃ©p link vÃ o clipboard!');
+            setSnackMsg('Đã sao chép link vào clipboard!');
         } catch {
             setSnackType('info');
             setSnackMsg(url);
@@ -256,7 +256,7 @@ export default function ListingDetailPage() {
     const handleReport = () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ bÃ¡o cÃ¡o tin.');
+            setSnackMsg('Bạn cần đăng nhập để báo cáo tin.');
             return;
         }
         navigate(`/report?targetType=LISTING&targetId=${id}`);
@@ -265,7 +265,7 @@ export default function ListingDetailPage() {
     const handleChat = async () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ nháº¯n tin.');
+            setSnackMsg('Bạn cần đăng nhập để nhắn tin.');
             return;
         }
         setStartingChat(true);
@@ -275,7 +275,7 @@ export default function ListingDetailPage() {
             if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
         } catch {
             setSnackType('error');
-            setSnackMsg('KhÃ´ng thá»ƒ má»Ÿ cuá»™c trÃ² chuyá»‡n. Thá»­ láº¡i sau.');
+            setSnackMsg('Không thể mở cuộc trò chuyện. Thử lại sau.');
         } finally {
             setStartingChat(false);
         }
@@ -284,7 +284,7 @@ export default function ListingDetailPage() {
     const handleShowPhone = () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ xem sá»‘ Ä‘iá»‡n thoáº¡i.');
+            setSnackMsg('Bạn cần đăng nhập để xem số điện thoại.');
             return;
         }
         setShowPhone(true);
@@ -305,7 +305,7 @@ export default function ListingDetailPage() {
             isFollowing: sellerFollowed,
             isAuthenticated,
             onUnauthenticated: () => {
-                showSnack('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ theo dÃµi ngÆ°á»i bÃ¡n.', 'warning');
+                showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
                 navigate('/login');
             },
             onSuccess: (nextIsFollowing) => {
@@ -326,10 +326,10 @@ export default function ListingDetailPage() {
                         }
                         : prev
                 );
-                showSnack(nextIsFollowing ? 'ÄÃ£ theo dÃµi ngÆ°á»i bÃ¡n.' : 'ÄÃ£ bá» theo dÃµi ngÆ°á»i bÃ¡n.');
+                showSnack(nextIsFollowing ? 'Đã theo dõi người bán.' : 'Đã bỏ theo dõi người bán.');
             },
             onError: (e) => {
-                showSnack(e?.message || 'KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c tráº¡ng thÃ¡i theo dÃµi.', 'error');
+                showSnack(e?.message || 'Không cập nhật được trạng thái theo dõi.', 'error');
             },
         });
     }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, toggleFollow]);
@@ -337,7 +337,7 @@ export default function ListingDetailPage() {
     const handleToggleSave = async () => {
         if (!isAuthenticated) {
             setSnackType('warning');
-            setSnackMsg('Báº¡n cáº§n Ä‘Äƒng nháº­p Ä‘á»ƒ lÆ°u tin.');
+            setSnackMsg('Bạn cần đăng nhập để lưu tin.');
             return;
         }
         if (!listing?.id || saveSubmitting) return;
@@ -354,17 +354,17 @@ export default function ListingDetailPage() {
             }
             setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
             setSnackType('success');
-            setSnackMsg(!wasSaved ? 'ÄÃ£ lÆ°u tin rao' : 'ÄÃ£ bá» lÆ°u tin rao');
+            setSnackMsg(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao');
         } catch {
             setIsSavedItem(wasSaved);
             setSnackType('error');
-            setSnackMsg('KhÃ´ng cáº­p nháº­t Ä‘Æ°á»£c tráº¡ng thÃ¡i lÆ°u tin. Thá»­ láº¡i sau.');
+            setSnackMsg('Không cập nhật được trạng thái lưu tin. Thử lại sau.');
         } finally {
             setSaveSubmitting(false);
         }
     };
 
-    // â”€â”€ Render loading / error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Render loading / error ────────────────────────────────────────────────
     if (loading) {
         return (
             <Box sx={{ px: 2, py: 3, maxWidth: 1100, mx: 'auto' }}>
@@ -384,19 +384,19 @@ export default function ListingDetailPage() {
     if (error || !listing) {
         return (
             <Box sx={{ p: 4, textAlign: 'center' }}>
-                <Typography color="error" sx={{ mb: 2 }}>{error || 'KhÃ´ng tÃ¬m tháº¥y tin.'}</Typography>
+                <Typography color="error" sx={{ mb: 2 }}>{error || 'Không tìm thấy tin.'}</Typography>
                 <Button
                     startIcon={<ArrowBackIosNewIcon />}
                     onClick={() => navigate(-1)}
                     sx={{ bgcolor: CARD_BG, color: TEXT_PRI, '&:hover': { bgcolor: CARD_BG2 } }}
                 >
-                    Quay láº¡i
+                    Quay lại
                 </Button>
             </Box>
         );
     }
 
-    // â”€â”€ Dáº«n xuáº¥t dá»¯ liá»‡u â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Dẫn xuất dữ liệu ─────────────────────────────────────────────────────
     const images = (listing?.images ?? []).map((p) => fullImageUrl(p)).filter(Boolean);
     const seller = getSeller(listing);
     const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id ?? listing?.sellerId;
@@ -404,13 +404,13 @@ export default function ListingDetailPage() {
     const locationText = getLocation(listing);
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
     const phoneNumber = isAuthenticated && showPhone
-        ? (listing.sellerPhone || seller?.phoneNumber || 'KhÃ´ng cÃ³ SÄT')
+        ? (listing.sellerPhone || seller?.phoneNumber || 'Không có SĐT')
         : null;
     const pickupAddress = listing?.pickupAddress;
 
     return (
         <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
-            {/* Ná»‘i Ä‘uÃ´i cha-con (Breadcrumbs) */}
+            {/* Nối đuôi cha-con (Breadcrumbs) */}
             <Breadcrumbs
                 separator={<NavigateNextIcon sx={{ fontSize: 16, color: TEXT_SEC }} />}
                 sx={{ mb: 2.5 }}
@@ -435,7 +435,7 @@ export default function ListingDetailPage() {
                         '&:hover': { color: TEXT_PRI }
                     }}
                 >
-                    {listing.category?.name || 'Tin Ä‘Äƒng'}
+                    {listing.category?.name || 'Tin đăng'}
                 </Link>
                 <Typography color={TEXT_PRI} fontSize={13} fontWeight={500} sx={{
                     maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
@@ -444,16 +444,16 @@ export default function ListingDetailPage() {
                 </Typography>
             </Breadcrumbs>
 
-            {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          KHá»I CHÃNH: Layout lÆ°á»›i Ä‘á»ƒ Ä‘áº£m báº£o cÃ¡c thÃ nh pháº§n ngang hÃ ng nhau
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+            {/* ═══════════════════════════════════════════════════════════════
+          KHỐI CHÍNH: Layout lưới để đảm bảo các thành phần ngang hàng nhau
+      ══════════════════════════════════════════════════════════════ */}
             <Box
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: { xs: '1fr', md: '5.5fr 4.5fr' },
                     gap: { xs: 3, md: 4 },
                     mb: 4,
-                    alignItems: 'stretch' // Äáº£m báº£o cÃ¡c cell trong cÃ¹ng row cÃ³ chiá»u cao báº±ng nhau
+                    alignItems: 'stretch' // Đảm bảo các cell trong cùng row có chiều cao bằng nhau
                 }}
             >
                 {/* Row 1: Gallery (Split Large Image & Thumbs) | Info Block */}
@@ -527,7 +527,7 @@ export default function ListingDetailPage() {
                     listing={listing}
                 />
 
-                {/* Row 3: Comments | Trá»‘ng (BÃ¬nh luáº­n rá»™ng báº±ng Gallery) */}
+                {/* Row 3: Comments | Trống (Bình luận rộng bằng Gallery) */}
                 <Card
                     sx={{
                         bgcolor: CARD_BG, border: `1px solid ${BORDER}`,
@@ -541,17 +541,17 @@ export default function ListingDetailPage() {
                         onNotify={showSnack}
                     />
                 </Card>
-                <Box /> {/* Ã” trá»‘ng Ä‘á»ƒ giá»¯ grid 2 cá»™t */}
+                <Box /> {/* Ô trống để giữ grid 2 cột */}
             </Box>
 
-            {/* Xem trÆ°á»›c vá»‹ trÃ­ háº¹n (map Vietmap + nÃºt má»Ÿ Google Maps) */}
+            {/* Xem trước vị trí hẹn (map Vietmap + nút mở Google Maps) */}
             {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null && (
                 <Box sx={{ maxWidth: 1200, mx: 'auto', mb: 4 }}>
                     <Typography
                         variant="h6"
                         sx={{ mb: 1.5, color: TEXT_PRI, fontSize: 18, fontWeight: 600 }}
                     >
-                        Vá»‹ trÃ­ Ä‘iá»ƒm háº¹n (xem trÆ°á»›c)
+                        Vị trí điểm hẹn (xem trước)
                     </Typography>
                     <ListingPickupMapPreview
                         lat={pickupAddress.lat}
@@ -561,13 +561,13 @@ export default function ListingDetailPage() {
                 </Box>
             )}
 
-            {/* Tin Ä‘Äƒng tÆ°Æ¡ng tá»± â€“ luÃ´n hiá»‡n, grid 4 cá»™t */}
+            {/* Tin đăng tương tự – luôn hiện, grid 4 cột */}
             <ListingSimilar
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
             />
 
-            {/* Banner Quáº£ng CÃ¡o */}
+            {/* Banner Quảng Cáo */}
             <Box
                 sx={{
                     mt: 6, mb: 2,
@@ -588,7 +588,7 @@ export default function ListingDetailPage() {
                 />
             </Box>
 
-            {/* Snackbar thÃ´ng bÃ¡o */}
+            {/* Snackbar thông báo */}
             <Snackbar
                 open={!!snackMsg}
                 autoHideDuration={3000}

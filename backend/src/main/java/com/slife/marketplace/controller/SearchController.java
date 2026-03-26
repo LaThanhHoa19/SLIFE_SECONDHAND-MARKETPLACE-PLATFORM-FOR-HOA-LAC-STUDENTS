@@ -62,7 +62,6 @@ public class SearchController {
                 .toList();
         listingService.enrichWithLikeMetadata(content, viewerUser);
 
-
         PagedResponse<ListingResponse> body = new PagedResponse<>();
         body.setContent(content);
         body.setTotalElements(pageResult.getTotalElements());

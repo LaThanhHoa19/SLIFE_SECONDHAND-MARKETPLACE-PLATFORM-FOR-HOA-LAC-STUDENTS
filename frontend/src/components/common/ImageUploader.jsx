@@ -1,18 +1,17 @@
 /**
  * ImageUploader — chọn và preview nhiều ảnh, trả về File[] qua onFilesChange.
- * Hiển thị hết ảnh đã chọn; nếu tổng (ảnh cũ + ảnh mới) vượt giới hạn thì cảnh báo và form sẽ chặn đăng.
- *
  * Props:
  *   onFilesChange  – (files: File[]) => void
+ *   maxFiles       – tối đa số ảnh (default 10)
  *   maxSizeMB      – dung lượng tối đa mỗi ảnh MB (default 5)
  */
-import { useState, useLayoutEffect, useId, useMemo, useRef } from 'react';
-import { Alert, Box, Typography, IconButton } from '@mui/material';
+import { useState, useEffect, useId, useMemo } from 'react';
+import { Box, Typography, IconButton } from '@mui/material';
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
-import { MAX_IMAGES_PER_LISTING } from '../../constants/listingLimits';
 
+const MAX_FILES = 10;
 const MAX_SIZE_MB = 5;
 
 const TILE = {
@@ -33,6 +32,7 @@ function normalizeExisting(existingImages, existingImageUrls) {
 
 export default function ImageUploader({
   onFilesChange,
+  maxFiles = MAX_FILES,
   maxSizeMB = MAX_SIZE_MB,
   existingImages,
   existingImageUrls = [],
@@ -42,21 +42,12 @@ export default function ImageUploader({
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [removingId, setRemovingId] = useState(null);
-  const [invalidHint, setInvalidHint] = useState(null);
+  const cap = Math.max(0, Math.min(maxFiles, MAX_FILES));
 
   const resolvedExisting = useMemo(
     () => normalizeExisting(existingImages, existingImageUrls),
     [existingImages, existingImageUrls],
   );
-
-  const existingCount = resolvedExisting.length;
-  const totalCount = existingCount + files.length;
-  const isOverLimit = totalCount > MAX_IMAGES_PER_LISTING;
-  /** Chỉ cho chọn thêm khi chưa đủ giới hạn (khi đã vượt thì khóa để người dùng xóa bớt trước). */
-  const canAddMoreFiles = totalCount < MAX_IMAGES_PER_LISTING;
-
-  const onFilesChangeRef = useRef(onFilesChange);
-  onFilesChangeRef.current = onFilesChange;
 
   const handleRemoveExisting = async (imageId) => {
     if (imageId == null || !onRemoveExistingImage) return;
@@ -68,22 +59,20 @@ export default function ImageUploader({
     }
   };
 
-  // useLayoutEffect: báo parent trước paint — tránh submit ngay sau khi xóa ảnh mà state cha vẫn còn mảng cũ (race với useEffect).
-  // Chỉ phụ thuộc `files` — không để `onFilesChange` trong deps (identity đổi mỗi render → lặp vô hạn).
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (files.length === 0) {
       setPreviews([]);
-      onFilesChangeRef.current?.([]);
+      if (onFilesChange) onFilesChange([]);
       return;
     }
 
     const urls = files.map((file) => URL.createObjectURL(file));
     setPreviews(urls);
 
-    onFilesChangeRef.current?.(files);
+    if (onFilesChange) onFilesChange(files);
 
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
-  }, [files]);
+  }, [files, onFilesChange]);
 
   const handleAddImages = (e) => {
     const selected = Array.from(e.target.files || []);
@@ -91,29 +80,18 @@ export default function ImageUploader({
     const validFiles = selected.filter(
       (file) => file.type.startsWith('image/') && file.size <= maxSizeMB * 1024 * 1024,
     );
-    const skippedInvalid = selected.length - validFiles.length;
 
-    setFiles((prev) => [...prev, ...validFiles]);
-
-    if (skippedInvalid > 0) {
-      setInvalidHint(
-        `${skippedInvalid} tệp không được thêm (chỉ ảnh, mỗi ảnh ≤ ${maxSizeMB}MB).`,
-      );
-    } else {
-      setInvalidHint(null);
-    }
-
+    setFiles((prev) => [...prev, ...validFiles].slice(0, cap));
     e.target.value = '';
   };
 
   const removeImage = (index) => {
-    setInvalidHint(null);
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const hasExisting = resolvedExisting.length > 0;
   const showUnifiedGrid = hasExisting || files.length > 0;
-  const showBigDropzone = !showUnifiedGrid && canAddMoreFiles;
+  const showBigDropzone = !showUnifiedGrid && cap > 0;
 
   const addTile = (
     <label htmlFor={inputId} style={{ display: 'block' }}>
@@ -136,39 +114,13 @@ export default function ImageUploader({
     </label>
   );
 
-  const subtitle =
-    existingCount > 0
-      ? `Ảnh sản phẩm (Tối đa ${MAX_IMAGES_PER_LISTING} ảnh — ${existingCount} ảnh cũ + ${files.length} ảnh mới = ${totalCount}; mỗi ảnh ≤ ${maxSizeMB}MB)`
-      : `Ảnh sản phẩm (Tối đa ${MAX_IMAGES_PER_LISTING} ảnh, mỗi ảnh ≤ ${maxSizeMB}MB)`;
-
   return (
     <Box>
       <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1.5 }}>
-        {subtitle}
+        Ảnh sản phẩm (Tối đa {MAX_FILES} ảnh, mỗi ảnh ≤ {maxSizeMB}MB)
       </Typography>
 
-      {invalidHint && (
-        <Alert severity="warning" onClose={() => setInvalidHint(null)} sx={{ mb: 1.5 }}>
-          {invalidHint}
-        </Alert>
-      )}
-
-      {isOverLimit && (
-        <Alert severity="error" sx={{ mb: 1.5 }}>
-          Bạn đang có {totalCount} ảnh (tối đa {MAX_IMAGES_PER_LISTING}). Vui lòng xóa bớt ảnh trước khi đăng
-          bài.
-        </Alert>
-      )}
-
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        id={inputId}
-        hidden
-        disabled={!canAddMoreFiles}
-        onChange={handleAddImages}
-      />
+      <input type="file" accept="image/*" multiple id={inputId} hidden onChange={handleAddImages} />
 
       {showBigDropzone && (
         <label htmlFor={inputId} style={{ display: 'block' }}>
@@ -196,7 +148,7 @@ export default function ImageUploader({
 
       {showUnifiedGrid && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-          {canAddMoreFiles && addTile}
+          {files.length < cap && addTile}
 
           {hasExisting &&
             resolvedExisting.map((item, i) => (
@@ -237,41 +189,35 @@ export default function ImageUploader({
               </Box>
             ))}
 
-          {previews.map((url, index) => {
-            const file = files[index];
-            const key = file
-              ? `new-${index}-${file.name}-${file.size}-${file.lastModified}`
-              : `new-${index}-${url}`;
-            return (
-              <Box
-                key={key}
+          {previews.map((url, index) => (
+            <Box
+              key={url}
+              sx={{
+                width: TILE.size,
+                height: TILE.size,
+                borderRadius: TILE.radius,
+                overflow: 'hidden',
+                position: 'relative',
+                flexShrink: 0,
+              }}
+            >
+              <img src={url} alt={`preview-${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <IconButton
+                size="small"
+                onClick={() => removeImage(index)}
                 sx={{
-                  width: TILE.size,
-                  height: TILE.size,
-                  borderRadius: TILE.radius,
-                  overflow: 'hidden',
-                  position: 'relative',
-                  flexShrink: 0,
+                  position: 'absolute',
+                  top: 4,
+                  right: 4,
+                  background: 'rgba(0,0,0,0.5)',
+                  color: '#fff',
+                  '&:hover': { background: 'rgba(0,0,0,0.7)' },
                 }}
               >
-                <img src={url} alt={`preview-${index}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <IconButton
-                  size="small"
-                  onClick={() => removeImage(index)}
-                  sx={{
-                    position: 'absolute',
-                    top: 4,
-                    right: 4,
-                    background: 'rgba(0,0,0,0.5)',
-                    color: '#fff',
-                    '&:hover': { background: 'rgba(0,0,0,0.7)' },
-                  }}
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            );
-          })}
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ))}
         </Box>
       )}
     </Box>
@@ -280,6 +226,7 @@ export default function ImageUploader({
 
 ImageUploader.propTypes = {
   onFilesChange: PropTypes.func,
+  maxFiles: PropTypes.number,
   maxSizeMB: PropTypes.number,
   existingImages: PropTypes.arrayOf(PropTypes.object),
   existingImageUrls: PropTypes.arrayOf(PropTypes.string),

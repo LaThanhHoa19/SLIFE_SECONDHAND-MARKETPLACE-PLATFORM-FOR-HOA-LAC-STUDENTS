@@ -77,13 +77,11 @@ public class SecurityConfig {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setCharacterEncoding("UTF-8");
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-
                     BaseResponse<Object> body = new BaseResponse<>(
                             "FORBIDDEN",
                             "Bạn không có quyền truy cập tính năng này",
                             null
                     );
-
                     response.getWriter().write(objectMapper.writeValueAsString(body));
                 }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

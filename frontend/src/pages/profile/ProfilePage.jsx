@@ -20,7 +20,6 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
 import * as userApi from '../../api/userApi';
-import * as followApi from '../../api/followApi';
 import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
 import { createReport } from '../../api/reportApi';
@@ -37,7 +36,7 @@ import ReviewList from '../../components/profile/ReviewList';
 import ListingSection from '../../components/profile/ListingSection';
 
 // Mock Data
-import { MOCK_REVIEWS } from './mockData';
+import { MOCK_REVIEWS, MOCK_SELLING, MOCK_SOLD, mockSeller } from './mockData';
 
 function getPayload(res) {
   return unwrapApiData(res);
@@ -113,13 +112,7 @@ export default function ProfilePage() {
         const res = await userApi.getUserById(id);
         setProfileUser(getPayload(res));
       } else {
-        try {
-          const res = await userApi.getUserById(id);
-          const data = getPayload(res);
-          setProfileUser(data);
-        } catch(err) {
-          setError('Không tải được thông tin người dùng.');
-        }
+        setProfileUser(mockSeller(id));
       }
     } catch (err) {
       setError(err?.message || 'Không tải được thông tin người dùng.');
@@ -136,9 +129,15 @@ export default function ProfilePage() {
       const res = await getListings({ sellerId: profileUser.id, size: 50 });
       const data = getPayload(res);
       const list = Array.isArray(data) ? data : data?.content ?? [];
-      setListings(list);
-    } catch (err) {
-      console.error("Failed to load listings:", err);
+      const name = profileUser?.fullName ?? profileUser?.full_name;
+      const filtered = name
+          ? list.filter((item) => {
+            const sellerName = item.sellerSummary ?? item.seller?.fullName ?? item.seller?.full_name;
+            return sellerName === name;
+          })
+          : list;
+      setListings(filtered);
+    } catch {
       setListings([]);
     } finally {
       setListingsLoading(false);
@@ -294,53 +293,23 @@ export default function ProfilePage() {
             userId={followListUserId}
         />
 
-        <Box sx={{ maxWidth: DETAIL_PAGE_MAX_WIDTH, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, gap: 3, mt: 3 }}>
-            {/* Sidebar: Giới thiệu + Xác minh */}
-            <Box sx={{ 
-              p: 3, 
-              borderRadius: 4, 
-              bgcolor: 'rgba(255, 255, 255, 0.03)', 
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              height: 'fit-content'
-            }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>Giới thiệu</Typography>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 4, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>{editing ? editForm.bio : bio}</Typography>
-              
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>Xác minh thông tin</Typography>
+        <Box sx={{ maxWidth: DETAIL_PAGE_MAX_WIDTH, mx: 'auto' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, mt: 2 }}>
+            <Box sx={{ p: 4, bgcolor: 'rgba(0,0,0,0.01)', borderRight: { md: '1px solid rgba(0,0,0,0.06)' } }}>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Giới thiệu</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', mb: 4 }}>{editing ? editForm.bio : bio}</Typography>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>Xác minh thông tin</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  {phoneVerified 
-                    ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} /> 
-                    : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}</Typography>
+                  {phoneVerified ? <CheckCircleIcon fontSize="small" color="success" /> : <WarningAmberIcon fontSize="small" color="warning" />}
+                  <Typography variant="body2">{phoneVerified ? 'SĐT đã xác minh' : 'SĐT chưa xác minh'}</Typography>
                 </Box>
               </Box>
               {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
             </Box>
 
-            {/* Main Content: Tabs + Content */}
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              bgcolor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 4,
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              overflow: 'hidden'
-            }}>
-              <Tabs 
-                value={tab} 
-                onChange={(_, v) => setTab(v)} 
-                sx={{ 
-                  px: 2, 
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                  '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
-                  '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
-                  '& .Mui-selected': { color: '#6366f1 !important' }
-                }}
-              >
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
                 {!isMe && <Tab label="Đang bán" />}
                 {!isMe && <Tab label="Đã bán" />}
                 <Tab label="Đánh giá" />

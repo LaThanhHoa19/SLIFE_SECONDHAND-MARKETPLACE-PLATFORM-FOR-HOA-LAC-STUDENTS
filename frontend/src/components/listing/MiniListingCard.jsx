@@ -17,14 +17,7 @@ export default function MiniListingCard({ listing }) {
   const navigate = useNavigate();
   const id = listing?.id ?? listing?.listingId;
   const images = Array.isArray(listing?.images) ? listing.images : [];
-  const thumb =
-    images[0] ||
-    listing?.thumbnailUrl ||
-    listing?.thumbnail_url ||
-    listing?.imageUrl ||
-    listing?.image_url ||
-    null;
-  const thumbSrc = thumb ? fullImageUrl(thumb) : null;
+  const thumbSrc = images[0] ? fullImageUrl(images[0]) : null;
 
   return (
     <Card
