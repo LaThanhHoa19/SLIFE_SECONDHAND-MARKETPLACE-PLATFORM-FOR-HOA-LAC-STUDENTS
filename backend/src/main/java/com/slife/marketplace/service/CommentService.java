@@ -78,10 +78,6 @@ public class CommentService {
             throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
         }
 
-        if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            throw new SlifeException(ErrorCode.FORBIDDEN, "Only listing owner can reply to comments");
-        }
-
         Comment reply = new Comment();
         reply.setContent(text);
         reply.setCreatedAt(Instant.now());

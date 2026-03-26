@@ -44,6 +44,14 @@ public class CreateListingRequest {
     private BigDecimal pickupLat;
     private BigDecimal pickupLng;
 
+    /**
+     * Khu vực hành chính user đã chọn (từ LocationPicker).
+     * Dùng để validate pin có nằm đúng khu vực khi đăng tin.
+     */
+    private String pickupProvince;
+    private String pickupDistrict;
+    private String pickupWard;
+
     public boolean isDraftMode() {
         return Boolean.TRUE.equals(isDraft);
     }

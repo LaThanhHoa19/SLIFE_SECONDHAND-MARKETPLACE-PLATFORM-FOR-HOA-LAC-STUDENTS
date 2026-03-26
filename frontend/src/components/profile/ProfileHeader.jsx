@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {useState} from 'react';
 import {
     Avatar,
     Box,
@@ -27,9 +27,10 @@ import PeopleIcon from '@mui/icons-material/People';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ForumIcon from '@mui/icons-material/Forum';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { useNavigate } from 'react-router-dom';
 
-const PURPLE = '#9D6EED';
-const GRADIENT = 'linear-gradient(135deg, #9D6EED 0%, #7B4FD9 100%)';
+const PURPLE = '#6366f1';
+const GRADIENT = 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)';
 
 export default function ProfileHeader({
                                           user,
@@ -64,6 +65,7 @@ export default function ProfileHeader({
                                           followListUserId,
                                           onOpenFollowList,
                                       }) {
+    const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
@@ -118,15 +120,16 @@ export default function ProfileHeader({
                             size="small"
                             sx={{
                                 position: 'absolute',
-                                bottom: 16,
+                                top: 16,
                                 right: 16,
                                 textTransform: 'none',
                                 borderRadius: 2,
-                                fontWeight: 600,
-                                bgcolor: 'rgba(255,255,255,0.9)',
+                                fontWeight: 700,
+                                bgcolor: 'rgba(255,255,255,0.7)',
                                 backdropFilter: 'blur(10px)',
                                 color: 'grey.900',
-                                border: '1px solid rgba(255,255,255,0.3)',
+                                border: '1px solid rgba(255,255,255,0.4)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                                 '&:hover': { bgcolor: '#fff' },
                             }}
                         >
@@ -181,10 +184,14 @@ export default function ProfileHeader({
                     sx={{
                         borderRadius: 4,
                         overflow: 'hidden',
-                        bgcolor: 'rgba(255, 255, 255, 0.8)',
-                        backdropFilter: 'blur(20px)',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        bgcolor: 'rgba(255, 255, 255, 0.85)',
+                        backdropFilter: 'blur(30px) saturate(180%)',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.6)',
+                        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                        '&:hover': {
+                            boxShadow: '0 30px 80px rgba(0,0,0,0.12)',
+                        }
                     }}
                 >
                     {/* Avatar + tên, ngày tham gia, rating, Chat/Báo cáo */}
@@ -203,7 +210,7 @@ export default function ProfileHeader({
                                         fontSize: '3rem',
                                     }}
                                 >
-                                    {fullName.charAt(0).toUpperCase()}
+                                    {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
                                 </Avatar>
                                 {user.isOnline && (
                                     <Box sx={{
@@ -240,8 +247,8 @@ export default function ProfileHeader({
                                                 borderRadius: '50%',
                                                 bgcolor: PURPLE,
                                                 color: 'white',
-                                                '&:hover': { bgcolor: '#835cd4' },
-                                                boxShadow: 3,
+                                                '&:hover': { bgcolor: '#4f46e5' },
+                                                boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
                                             }}
                                             title="Đổi avatar"
                                         >
@@ -338,50 +345,68 @@ export default function ProfileHeader({
                                                 </IconButton>
                                             </Box>
                                         ) : (
-                                            <Button
-                                                variant="outlined"
-                                                size="medium"
-                                                startIcon={editing ? <CloseIcon /> : <EditIcon />}
-                                                onClick={() => setEditing(!editing)}
-                                                sx={{
-                                                    textTransform: 'none',
-                                                    fontWeight: 600,
-                                                    borderRadius: 2,
-                                                    borderColor: PURPLE,
-                                                    color: PURPLE,
-                                                    '&:hover': { borderColor: '#835cd4', bgcolor: 'rgba(157, 110, 237, 0.05)' },
-                                                }}
-                                            >
-                                                {editing ? 'Hủy' : 'Chỉnh sửa hồ sơ'}
-                                            </Button>
+                                            <Box sx={{ display: 'flex', gap: 1.5 }}>
+                                                <Button
+                                                    variant="contained"
+                                                    size="medium"
+                                                    onClick={() => navigate('/my-listings')}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        fontWeight: 600,
+                                                        borderRadius: 2,
+                                                        bgcolor: PURPLE,
+                                                        color: 'white',
+                                                        '&:hover': { bgcolor: '#835cd4' },
+                                                    }}
+                                                >
+                                                    Quản lý bài đăng
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="medium"
+                                                    startIcon={editing ? <CloseIcon /> : <EditIcon />}
+                                                    onClick={() => setEditing(!editing)}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        fontWeight: 600,
+                                                        borderRadius: 2,
+                                                        borderColor: PURPLE,
+                                                        color: PURPLE,
+                                                        borderWidth: 2,
+                                                        '&:hover': { 
+                                                            borderColor: '#4f46e5', 
+                                                            bgcolor: 'rgba(99, 102, 241, 0.08)',
+                                                            borderWidth: 2,
+                                                        },
+                                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    }}
+                                                >
+                                                    {editing ? 'Hủy' : 'Chỉnh sửa hồ sơ'}
+                                                </Button>
+                                            </Box>
                                         )}
                                     </Box>
                                 </Box>
 
                                 <Box sx={{
                                     display: 'grid',
-                                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(5, 1fr)' },
-                                    gap: 2,
+                                    gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(3, 1fr)' },
+                                    gap: 3,
                                     mt: 3,
-                                    p: 2,
-                                    bgcolor: 'rgba(157, 110, 237, 0.05)',
-                                    borderRadius: 3
+                                    p: 3,
+                                    background: 'rgba(99, 102, 241, 0.03)',
+                                    borderRadius: 4,
+                                    border: '1px solid rgba(99, 102, 241, 0.1)',
                                 }}>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Đánh giá</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <Typography variant="h6" fontWeight={700}>{reputationScore}</Typography>
-                                            <StarIcon sx={{ fontSize: 18, color: '#FFC107' }} />
-                                            <Typography variant="caption" color="text.secondary">({ratingCount})</Typography>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} display="block">Đánh giá</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.5 }}>
+                                            <Typography variant="h5" fontWeight={800} color="grey.900">{reputationScore}</Typography>
+                                            <StarIcon sx={{ fontSize: 22, color: '#f59e0b' }} />
+                                            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mt: 0.5 }}>({ratingCount})</Typography>
                                         </Box>
                                     </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Phản hồi</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <ForumIcon sx={{ fontSize: 18, color: PURPLE }} />
-                                            <Typography variant="h6" fontWeight={700}>{user.responseRate || '98%'}</Typography>
-                                        </Box>
-                                    </Box>
+
                                     <Box
                                         role={canOpenFollowList ? 'button' : undefined}
                                         tabIndex={canOpenFollowList ? 0 : undefined}
@@ -393,18 +418,19 @@ export default function ProfileHeader({
                                                 onOpenFollowList('followers');
                                             }
                                         }}
-                                        sx={statClickSx}
+                                        sx={{ ...statClickSx, textAlign: 'center' }}
                                     >
-                                        <Typography variant="caption" color="text.secondary" display="block">Người theo dõi</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <PeopleIcon sx={{ fontSize: 18, color: PURPLE }} />
-                                            <Typography variant="h6" fontWeight={700}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} display="block">Người theo dõi</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 0.5 }}>
+                                            <PeopleIcon sx={{ fontSize: 22, color: PURPLE }} />
+                                            <Typography variant="h5" fontWeight={800} color="grey.900">
                                                 {user.followerCount != null
                                                     ? user.followerCount
                                                     : (user.followers ?? '—')}
                                             </Typography>
                                         </Box>
                                     </Box>
+
                                     <Box
                                         role={canOpenFollowList ? 'button' : undefined}
                                         tabIndex={canOpenFollowList ? 0 : undefined}
@@ -416,21 +442,14 @@ export default function ProfileHeader({
                                                 onOpenFollowList('following');
                                             }
                                         }}
-                                        sx={statClickSx}
+                                        sx={{ ...statClickSx, textAlign: 'center' }}
                                     >
-                                        <Typography variant="caption" color="text.secondary" display="block">Đang theo dõi</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <PersonSearchIcon sx={{ fontSize: 18, color: PURPLE }} />
-                                            <Typography variant="h6" fontWeight={700}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} display="block">Đang theo dõi</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mt: 0.5 }}>
+                                            <PersonSearchIcon sx={{ fontSize: 22, color: PURPLE }} />
+                                            <Typography variant="h5" fontWeight={800} color="grey.900">
                                                 {user.followingCount != null ? user.followingCount : '—'}
                                             </Typography>
-                                        </Box>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary" display="block">Địa chỉ</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, overflow: 'hidden' }}>
-                                            <LocationOnIcon sx={{ fontSize: 18, color: PURPLE }} />
-                                            <Typography variant="body2" fontWeight={600} noWrap>{user.address || 'Hòa Lạc'}</Typography>
                                         </Box>
                                     </Box>
                                 </Box>

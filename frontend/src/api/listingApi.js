@@ -21,6 +21,21 @@ export const toggleListingLike = (id) => axiosClient.post(`/api/listings/${id}/l
 export const saveListing = (id) => axiosClient.post(`/api/listings/${id}/save`);
 export const unsaveListing = (id) => axiosClient.delete(`/api/listings/${id}/save`);
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
+
+/** Tạo tin + ảnh trong một request (multipart) — backend rollback nếu vượt giới hạn ảnh. */
+export const createListingWithImages = (payload, imageFiles = [], onUploadProgress) => {
+    const formData = new FormData();
+    formData.append(
+        'payload',
+        new Blob([JSON.stringify(payload)], { type: 'application/json' }),
+    );
+    (imageFiles || []).forEach((f) => {
+        if (f) formData.append('images', f);
+    });
+    const config = {};
+    if (onUploadProgress) config.onUploadProgress = onUploadProgress;
+    return axiosClient.post('/api/listings', formData, config);
+};
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);

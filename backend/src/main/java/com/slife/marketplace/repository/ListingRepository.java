@@ -76,6 +76,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             l.seller.id,
             l.seller.fullName,
             l.seller.avatarUrl,
+            l.createdAt,
             false,
             0L,
             false
