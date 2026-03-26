@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Avatar, Box, IconButton, InputAdornment, TextField, Typography, 
   CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText,
@@ -25,8 +25,201 @@ export const PURPLE = '#9D6EED';
 const BUBBLE_BG = 'rgba(255, 255, 255, 0.04)';
 const BUBBLE_BORDER = 'rgba(255, 255, 255, 0.08)';
 
+function CommentItem({
+  comment,
+  depth = 0,
+  currentUser,
+  editingComment,
+  setEditingComment,
+  handleUpdate,
+  setReplyingTo,
+  setSelectedComment,
+  setDeleteConfirmOpen,
+  editInputRef,
+}) {
+  const author = comment.author || {};
+  const authorId = author.userId || author.id;
+  const isMyComment = String(authorId) === String(currentUser?.id ?? currentUser?.userId);
+  const isEditing = editingComment?.id === comment.id;
+  const [menuAnchor, setMenuAnchor] = useState(null);
+
+  return (
+    <Box sx={{ mb: 2.5, position: 'relative' }}>
+      <Box sx={{ display: 'flex', gap: 1.2 }}>
+        <Avatar
+          component={RouterLink}
+          to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
+          src={fullImageUrl(author.avatarUrl)}
+          sx={{
+            width: 34, height: 34, mt: 0.1, cursor: 'pointer', textDecoration: 'none',
+            bgcolor: PURPLE, border: isMyComment ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`
+          }}
+        >
+          {author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
+        </Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {isEditing ? (
+            <Box
+              sx={{
+                width: '100%', p: 1, borderRadius: '16px', border: `1px solid ${PURPLE}`,
+                animation: 'pulse-glow 2s infinite',
+                '@keyframes pulse-glow': {
+                  '0%': { boxShadow: `0 0 0 0 ${PURPLE}22` },
+                  '50%': { boxShadow: `0 0 10px 0 ${PURPLE}44` },
+                  '100%': { boxShadow: `0 0 0 0 ${PURPLE}22` },
+                }
+              }}
+            >
+              <TextField
+                fullWidth
+                multiline
+                size="small"
+                inputRef={editInputRef}
+                value={editingComment.content}
+                onChange={(e) =>
+                  setEditingComment((prev) => (
+                    prev ? { ...prev, content: e.target.value } : prev
+                  ))
+                }
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'transparent', color: TEXT_PRI, fontSize: 14,
+                    '& fieldset': { border: 'none' },
+                  }
+                }}
+              />
+              <Box sx={{ mt: 1, display: 'flex', gap: 2, px: 1 }}>
+                <Typography
+                  fontSize={11} fontWeight={700} color={PURPLE}
+                  sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+                  onClick={handleUpdate}
+                >
+                  LUU
+                </Typography>
+                <Typography
+                  fontSize={11} fontWeight={600} color={TEXT_SEC}
+                  sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}
+                  onClick={() => setEditingComment(null)}
+                >
+                  HUY
+                </Typography>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', maxWidth: '100%' }}>
+              <Box
+                sx={{
+                  bgcolor: BUBBLE_BG,
+                  borderRadius: '16px', px: 1.8, py: 1.2,
+                  border: `1px solid ${BUBBLE_BORDER}`,
+                  maxWidth: '100%',
+                  position: 'relative',
+                  '&:hover .more-btn': { opacity: 1 }
+                }}
+              >
+                <Typography
+                  component={RouterLink}
+                  to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
+                  fontSize={12}
+                  fontWeight={800}
+                  color={PURPLE}
+                  sx={{ mb: 0.1, textDecoration: 'none', cursor: 'pointer', '&:hover': { color: '#fff' } }}
+                >
+                  {author.fullName || 'Nguoi dung'}
+                </Typography>
+                <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word', fontWeight: 400 }}>
+                  {comment.content}
+                </Typography>
+              </Box>
+
+              {isMyComment && (
+                <IconButton
+                  size="small"
+                  className="more-btn"
+                  onClick={(e) => setMenuAnchor(e.currentTarget)}
+                  sx={{
+                    ml: 0.5, color: TEXT_SEC, opacity: 0,
+                    transition: 'opacity 0.2s',
+                    '&:hover': { color: PURPLE }
+                  }}
+                >
+                  <MoreIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
+            </Box>
+          )}
+
+          <Box sx={{ display: 'flex', gap: 2.2, alignItems: 'center', mt: 0.6, pl: 1 }}>
+            <Typography fontSize={11} color={TEXT_SEC} sx={{ fontWeight: 500 }}>
+              {formatDate(comment.createdAt)}
+            </Typography>
+            <Typography sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}>
+              Thich
+            </Typography>
+            <Typography
+              sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}
+              onClick={() => {
+                setReplyingTo({ id: comment.id, name: author.fullName || 'Nguoi dung' });
+                document.getElementById('comment-input')?.focus();
+              }}
+            >
+              Phan hoi
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {isMyComment && (
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={() => setMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          PaperProps={{
+            sx: {
+              bgcolor: '#1E1B28', border: `1px solid ${BORDER}`, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              '& .MuiMenuItem-root': { fontSize: 13, py: 1, px: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }
+            }
+          }}
+        >
+          <MenuItem onClick={() => { setEditingComment({ id: comment.id, content: comment.content }); setMenuAnchor(null); }}>
+            <ListItemIcon><EditIcon fontSize="small" sx={{ color: TEXT_SEC }} /></ListItemIcon>
+            <ListItemText sx={{ color: TEXT_PRI }}>Sua</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={() => { setSelectedComment(comment); setDeleteConfirmOpen(true); setMenuAnchor(null); }}>
+            <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: '#FF4D4D' }} /></ListItemIcon>
+            <ListItemText sx={{ color: '#FF4D4D' }}>Xoa</ListItemText>
+          </MenuItem>
+        </Menu>
+      )}
+
+      {comment.replies && comment.replies.length > 0 && (
+        <Box sx={{ pl: 4.5, mt: 2, borderLeft: `1px solid ${BORDER}`, ml: 2 }}>
+          {comment.replies.map(reply => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              currentUser={currentUser}
+              editingComment={editingComment}
+              setEditingComment={setEditingComment}
+              handleUpdate={handleUpdate}
+              setReplyingTo={setReplyingTo}
+              setSelectedComment={setSelectedComment}
+              setDeleteConfirmOpen={setDeleteConfirmOpen}
+              editInputRef={editInputRef}
+            />
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 export default function ListingComments({ listingId, onNotify }) {
   const { user: currentUser } = useAuth();
+  const editInputRef = useRef(null);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +248,17 @@ export default function ListingComments({ listingId, onNotify }) {
   useEffect(() => {
     fetchComments();
   }, [fetchComments]);
+
+  useEffect(() => {
+    if (!editingComment?.id || !editInputRef.current) return;
+    requestAnimationFrame(() => {
+      const input = editInputRef.current.querySelector('textarea, input');
+      if (!input) return;
+      input.focus();
+      const len = input.value?.length ?? 0;
+      input.setSelectionRange(len, len);
+    });
+  }, [editingComment?.id]);
 
   const handleSubmit = async () => {
     if (!text.trim() || submitting) return;
@@ -101,176 +305,10 @@ export default function ListingComments({ listingId, onNotify }) {
       await fetchComments(true);
       if (onNotify) onNotify('Đã cập nhật bình luận!');
     } catch (err) {
-      if (onNotify) onNotify('Không thể cập nhật bình luận.', 'error');
+      if (onNotify) onNotify(err?.response?.data?.message || 'Không thể cập nhật bình luận.', 'error');
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const CommentItem = ({ comment, depth = 0 }) => {
-    const author = comment.author || {};
-    const authorId = author.userId || author.id;
-    const isMyComment = String(authorId) === String(currentUser?.id ?? currentUser?.userId);
-    const isEditing = editingComment?.id === comment.id;
-
-    const [menuAnchor, setMenuAnchor] = useState(null);
-
-    return (
-      <Box sx={{ mb: 2.5, position: 'relative' }}>
-        <Box sx={{ display: 'flex', gap: 1.2 }}>
-          <Avatar
-            component={RouterLink}
-            to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
-            src={fullImageUrl(author.avatarUrl)}
-            sx={{ 
-              width: 34, height: 34, mt: 0.1, cursor: 'pointer', textDecoration: 'none', 
-              bgcolor: PURPLE, border: isMyComment ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`
-            }}
-          >
-            {author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            {isEditing ? (
-              <Box 
-                sx={{ 
-                  width: '100%', p: 1, borderRadius: '16px', border: `1px solid ${PURPLE}`,
-                  animation: 'pulse-glow 2s infinite',
-                  '@keyframes pulse-glow': {
-                    '0%': { boxShadow: `0 0 0 0 ${PURPLE}22` },
-                    '50%': { boxShadow: `0 0 10px 0 ${PURPLE}44` },
-                    '100%': { boxShadow: `0 0 0 0 ${PURPLE}22` },
-                  }
-                }}
-              >
-                <TextField
-                  fullWidth
-                  multiline
-                  size="small"
-                  autoFocus
-                  value={editingComment.content}
-                  onChange={(e) => setEditingComment({ ...editingComment, content: e.target.value })}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'transparent', color: TEXT_PRI, fontSize: 14,
-                      '& fieldset': { border: 'none' },
-                    }
-                  }}
-                />
-                <Box sx={{ mt: 1, display: 'flex', gap: 2, px: 1 }}>
-                  <Typography 
-                    fontSize={11} fontWeight={700} color={PURPLE} 
-                    sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
-                    onClick={handleUpdate}
-                  >
-                    LƯU
-                  </Typography>
-                  <Typography 
-                    fontSize={11} fontWeight={600} color={TEXT_SEC} 
-                    sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}
-                    onClick={() => setEditingComment(null)}
-                  >
-                    HỦY
-                  </Typography>
-                </Box>
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', maxWidth: '100%' }}>
-                <Box
-                  sx={{
-                    bgcolor: BUBBLE_BG,
-                    borderRadius: '16px', px: 1.8, py: 1.2,
-                    border: `1px solid ${BUBBLE_BORDER}`,
-                    maxWidth: '100%',
-                    position: 'relative',
-                    '&:hover .more-btn': { opacity: 1 }
-                  }}
-                >
-                  <Typography 
-                    component={RouterLink}
-                    to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
-                    fontSize={12} 
-                    fontWeight={800} 
-                    color={PURPLE} 
-                    sx={{ mb: 0.1, textDecoration: 'none', cursor: 'pointer', '&:hover': { color: '#fff' } }}
-                  >
-                    {author.fullName || 'Người dùng'}
-                  </Typography>
-                  <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word', fontWeight: 400 }}>
-                    {comment.content}
-                  </Typography>
-                </Box>
-                
-                {isMyComment && (
-                  <IconButton 
-                    size="small" 
-                    className="more-btn"
-                    onClick={(e) => setMenuAnchor(e.currentTarget)}
-                    sx={{ 
-                      ml: 0.5, color: TEXT_SEC, opacity: 0, 
-                      transition: 'opacity 0.2s',
-                      '&:hover': { color: PURPLE } 
-                    }}
-                  >
-                    <MoreIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                )}
-              </Box>
-            )}
-            
-            <Box sx={{ display: 'flex', gap: 2.2, alignItems: 'center', mt: 0.6, pl: 1 }}>
-              <Typography fontSize={11} color={TEXT_SEC} sx={{ fontWeight: 500 }}>
-                {formatDate(comment.createdAt)}
-              </Typography>
-              <Typography sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}>
-                Thích
-              </Typography>
-              <Typography 
-                sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}
-                onClick={() => {
-                  setReplyingTo({ id: comment.id, name: author.fullName || 'Người dùng' });
-                  document.getElementById('comment-input')?.focus();
-                }}
-              >
-                Phản hồi
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-
-        {isMyComment && (
-          <Menu
-            anchorEl={menuAnchor}
-            open={Boolean(menuAnchor)}
-            onClose={() => setMenuAnchor(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-            PaperProps={{
-              sx: {
-                bgcolor: '#1E1B28', border: `1px solid ${BORDER}`, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                '& .MuiMenuItem-root': { fontSize: 13, py: 1, px: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }
-              }
-            }}
-          >
-            <MenuItem onClick={() => { setEditingComment({ id: comment.id, content: comment.content }); setMenuAnchor(null); }}>
-              <ListItemIcon><EditIcon fontSize="small" sx={{ color: TEXT_SEC }} /></ListItemIcon>
-              <ListItemText sx={{ color: TEXT_PRI }}>Sửa</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => { setSelectedComment(comment); setDeleteConfirmOpen(true); setMenuAnchor(null); }}>
-              <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: '#FF4D4D' }} /></ListItemIcon>
-              <ListItemText sx={{ color: '#FF4D4D' }}>Xóa</ListItemText>
-            </MenuItem>
-          </Menu>
-        )}
-
-        {comment.replies && comment.replies.length > 0 && (
-          <Box sx={{ pl: 4.5, mt: 2, borderLeft: `1px solid ${BORDER}`, ml: 2 }}>
-            {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} depth={depth + 1} />
-            ))}
-          </Box>
-        )}
-      </Box>
-    );
   };
 
   return (
@@ -341,7 +379,20 @@ export default function ListingComments({ listingId, onNotify }) {
           <Typography fontSize={13} color={TEXT_SEC} textAlign="center" sx={{ py: 4 }}>Chưa có gì ở đây. Hãy mở lời trước nhé!</Typography>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', pb: 2 }}>
-            {comments.map((c) => (<CommentItem key={c.id} comment={c} />))}
+            {comments.map((c) => (
+              <CommentItem
+                key={c.id}
+                comment={c}
+                currentUser={currentUser}
+                editingComment={editingComment}
+                setEditingComment={setEditingComment}
+                handleUpdate={handleUpdate}
+                setReplyingTo={setReplyingTo}
+                setSelectedComment={setSelectedComment}
+                setDeleteConfirmOpen={setDeleteConfirmOpen}
+                editInputRef={editInputRef}
+              />
+            ))}
           </Box>
         )}
       </Box>
