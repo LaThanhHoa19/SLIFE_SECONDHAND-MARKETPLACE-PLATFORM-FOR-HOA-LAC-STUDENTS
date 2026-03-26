@@ -507,7 +507,7 @@ export default function ChatPage() {
           sx={{
             display: 'flex',
             flex: 1,
-            minHeight: 0, // Cho phép content con scroll đúng
+            minHeight: 0,
             height: '100%',
             maxWidth: DETAIL_PAGE_MAX_WIDTH,
             mx: 'auto',
@@ -587,8 +587,6 @@ export default function ChatPage() {
                       messages.map((m) => {
                         const normalizedMsg = {
                           ...m,
-                          // Bubble component dựa vào isFromCurrentUser để căn khung/bgcolor.
-                          // Nếu backend không set sẵn, suy ra từ senderId.
                           isFromCurrentUser:
                               m.isFromCurrentUser === true ||
                               (currentUserId != null && m.senderId === currentUserId),

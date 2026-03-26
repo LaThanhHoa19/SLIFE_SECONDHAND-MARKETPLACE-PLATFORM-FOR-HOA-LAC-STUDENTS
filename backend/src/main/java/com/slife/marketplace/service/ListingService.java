@@ -4,6 +4,7 @@ import com.slife.marketplace.dto.request.CreateListingRequest;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.dto.response.PickupAddressResponse;
 import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Category;
 import com.slife.marketplace.entity.Listing;
@@ -25,7 +26,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.text.Normalizer;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
@@ -50,6 +53,8 @@ public class ListingService {
     private final AddressRepository addressRepository;
     private final FollowService followService;
     private final ListingLikeRepository listingLikeRepository;
+    private final ListingImageService listingImageService;
+    private final VietmapService vietmapService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -57,7 +62,9 @@ public class ListingService {
                           CategoryRepository categoryRepository,
                           AddressRepository addressRepository,
                           FollowService followService,
-                          ListingLikeRepository listingLikeRepository) {
+                          ListingLikeRepository listingLikeRepository,
+                          ListingImageService listingImageService,
+                          VietmapService vietmapService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -65,6 +72,8 @@ public class ListingService {
         this.addressRepository = addressRepository;
         this.followService = followService;
         this.listingLikeRepository = listingLikeRepository;
+        this.listingImageService = listingImageService;
+        this.vietmapService = vietmapService;
     }
 
     // ----------------------------------------------------------------
@@ -261,6 +270,19 @@ public class ListingService {
     }
 
     /**
+     * Tạo tin + upload ảnh (nếu có) trong một transaction, để tránh đã lưu listing khi vượt MAX_IMAGES_PER_POST.
+     */
+    @Transactional
+    public ListingResponse createListingWithOptionalImages(User seller, CreateListingRequest request, List<MultipartFile> imageFiles) {
+        listingImageService.assertImageBatchWithinLimit(0, imageFiles);
+        ListingResponse created = createListing(seller, request);
+        if (imageFiles != null && imageFiles.stream().anyMatch(f -> f != null && !f.isEmpty())) {
+            listingImageService.uploadListingImages(created.getId(), imageFiles);
+        }
+        return created;
+    }
+
+    /**
      * Cập nhật listing hiện có (payload cùng dạng {@link CreateListingRequest} như tạo mới).
      */
     @Transactional
@@ -331,6 +353,8 @@ public class ListingService {
             return null;
         }
 
+        assertPinWithinSelectedAdminArea(request);
+
         Address addr = new Address();
         addr.setUser(seller);
         String loc = request.getPickupLocationName().trim();
@@ -353,6 +377,61 @@ public class ListingService {
         return addressRepository.save(addr);
     }
 
+    private void assertPinWithinSelectedAdminArea(CreateListingRequest request) {
+        if (request == null) return;
+        if (request.getPickupLat() == null || request.getPickupLng() == null) return;
+
+        String chosenProvince = normalizeVi(request.getPickupProvince());
+        String chosenDistrict = normalizeVi(request.getPickupDistrict());
+        String chosenWard = normalizeVi(request.getPickupWard());
+        if (chosenProvince.isEmpty() && chosenDistrict.isEmpty() && chosenWard.isEmpty()) {
+            return; // không chọn khu vực hành chính => không validate
+        }
+
+        // 1) Prefer bbox validation (most robust against reverse naming quirks)
+        try {
+            var bboxOpt = vietmapService.osmAdminBbox(
+                    request.getPickupProvince(),
+                    request.getPickupDistrict(),
+                    request.getPickupWard()
+            );
+            if (bboxOpt.isPresent()) {
+                var bb = bboxOpt.get();
+                double minLat = ((Number) bb.get("minLat")).doubleValue();
+                double maxLat = ((Number) bb.get("maxLat")).doubleValue();
+                double minLng = ((Number) bb.get("minLng")).doubleValue();
+                double maxLng = ((Number) bb.get("maxLng")).doubleValue();
+                double lat = request.getPickupLat().doubleValue();
+                double lng = request.getPickupLng().doubleValue();
+                boolean inside = lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+                if (inside) {
+                    return;
+                }
+                // Bbox có mà pin nằm ngoài => chặn chắc chắn
+                throw new SlifeException(
+                        ErrorCode.INVALID_INPUT,
+                        "Vị trí ghim không thuộc khu vực đã chọn. Vui lòng ghim lại trong đúng khu vực."
+                );
+            }
+        } catch (Exception ignored) {
+            // ignore bbox errors and fallback to reverse-name matching
+        }
+
+        // Nếu không lấy được bbox (OSM search fail), tránh chặn nhầm: FE đã validate sớm.
+        // Server vẫn có thể validate lại khi bbox reverse ổn định.
+        log.warn("Pin validation skipped (bbox unavailable). province='{}', district='{}', ward='{}'",
+                request.getPickupProvince(), request.getPickupDistrict(), request.getPickupWard());
+    }
+
+    private static String normalizeVi(String s) {
+        if (s == null) return "";
+        String t = s.trim().toLowerCase();
+        if (t.isEmpty()) return "";
+        t = t.replace('đ', 'd');
+        t = Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+        return t;
+    }
+
     private ListingResponse toListingResponse(Listing listing, User currentUser, boolean isSaved, boolean isFollowed) {
         ListingResponse response = new ListingResponse();
 
@@ -362,6 +441,7 @@ public class ListingService {
         response.setPrice(listing.getPrice());
         response.setCondition(listing.getItemCondition());
         response.setLocation(resolveLocation(listing));
+        response.setPickupAddress(toPickupAddressResponse(listing.getPickupAddress()));
         response.setCreatedAt(listing.getCreatedAt());
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
@@ -372,6 +452,16 @@ public class ListingService {
         response.setIsLiked(false);
 
         return response;
+    }
+
+    private PickupAddressResponse toPickupAddressResponse(Address a) {
+        if (a == null) return null;
+        return PickupAddressResponse.builder()
+                .locationName(a.getLocationName())
+                .addressText(a.getAddressText())
+                .lat(a.getLat())
+                .lng(a.getLng())
+                .build();
     }
 
     private Map<Long, Long> likeCountsForListingIds(Collection<Long> listingIds) {

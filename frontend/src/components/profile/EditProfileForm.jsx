@@ -88,14 +88,6 @@ export default function EditProfileForm({ formData, handleChange, errors, handle
         {/* Right Column: Bio & Address */}
         <Grid item xs={12} md={6}>
           <StyledTextField
-            label="Địa chỉ"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="Nhập địa chỉ của bạn"
-          />
-
-          <StyledTextField
             label="Giới thiệu bản thân"
             name="bio"
             value={formData.bio}

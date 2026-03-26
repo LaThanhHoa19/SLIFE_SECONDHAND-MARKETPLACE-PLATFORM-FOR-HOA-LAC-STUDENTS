@@ -44,6 +44,7 @@ public class FollowService {
         this.listingRepository = listingRepository;
     }
 
+
     private static final int FOLLOW_LIST_MAX_PAGE_SIZE = 50;
 
     @Transactional(readOnly = true)
@@ -73,6 +74,7 @@ public class FollowService {
     private static int clampPageSize(int size) {
         return Math.max(1, Math.min(size, FOLLOW_LIST_MAX_PAGE_SIZE));
     }
+
 
     @Transactional(readOnly = true)
     public long countFollowers(Long userId) {
