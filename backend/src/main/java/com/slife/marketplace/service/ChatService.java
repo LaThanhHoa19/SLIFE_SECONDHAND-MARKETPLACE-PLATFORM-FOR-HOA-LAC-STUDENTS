@@ -679,6 +679,8 @@ public class ChatService {
         String status = seen ? "SEEN" : (delivered ? "DELIVERED" : "SENT");
         Instant deliveredAt = m.getSentAt();
         Instant seenAt = seen ? (m.getUpdatedAt() != null ? m.getUpdatedAt() : m.getSentAt()) : null;
+        Message replyToMsg = (replyToId != null && refs != null) ? refs.get(replyToId) : null;
+        Message quoteMsg = (quoteId != null && refs != null) ? refs.get(quoteId) : null;
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .sessionId(sessionUuid)
@@ -699,9 +701,9 @@ public class ChatService {
                 .offerAmount(offer != null ? offer.getAmount() : null)
                 .offerStatus(offer != null ? offer.getStatus() : null)
                 .replyToMessageId(replyToId)
-                .replyTo(toReference(refs.get(replyToId)))
+                .replyTo(toReference(replyToMsg))
                 .quoteMessageId(quoteId)
-                .quote(toReference(refs.get(quoteId)))
+                .quote(toReference(quoteMsg))
                 .build();
     }
 
