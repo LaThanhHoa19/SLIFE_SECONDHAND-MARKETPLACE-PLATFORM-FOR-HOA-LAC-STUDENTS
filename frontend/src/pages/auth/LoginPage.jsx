@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
@@ -19,6 +19,7 @@ const GOOGLE_CLIENT_ID_FALLBACK =
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const googleBtnRef = useRef(null);
   const [urlError, setUrlError] = useState('');
   const [googleError, setGoogleError] = useState('');
@@ -35,6 +36,10 @@ export default function LoginPage() {
       import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
   const getRedirectTarget = () => {
+    // Priority 1: State from navigate ({ state: { from: pathname } })
+    if (location.state?.from) return location.state.from;
+
+    // Priority 2: Query parameter (?redirect=...)
     const params = new URLSearchParams(window.location.search);
     const redirect = params.get('redirect');
     return redirect ? decodeURIComponent(redirect) : '/feed';
