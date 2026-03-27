@@ -215,7 +215,7 @@ export default function Header({ onToggleSidebar }) {
     const handleLogout = () => {
         handleUserMenuClose();
         logout();
-        navigate('/');
+        navigate('/feed');
     };
 
 
