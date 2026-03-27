@@ -24,6 +24,8 @@ import { useAuth } from '../../hooks/useAuth';
 import * as userApi from '../../api/userApi';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { useToast } from '../../context/ToastContext';
+import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 const textFieldSx = {
     '& .MuiInputBase-input': { color: '#fff' },
@@ -205,18 +207,15 @@ export default function AdminProfilePage() {
                 });
                 if (updateAuthUser) updateAuthUser(updated);
 
-                setSnackbar({ open: true, message: 'Đã lưu hồ sơ.' });
+                showToast('Đã lưu hồ sơ.', 'success');
                 closeProfileEdit();
             } catch (err) {
-                setSnackbar({
-                    open: true,
-                    message: err?.message || err?.raw?.response?.data?.message || 'Cập nhật hồ sơ thất bại.',
-                });
+                showToast(err?.message || err?.raw?.response?.data?.message || 'Cập nhật hồ sơ thất bại.', 'error');
             } finally {
                 setProfileSaving(false);
             }
         },
-        [validateProfileForm, closeProfileEdit, profileForm, updateAuthUser],
+        [validateProfileForm, closeProfileEdit, profileForm, updateAuthUser, showToast],
     );
 
     return (

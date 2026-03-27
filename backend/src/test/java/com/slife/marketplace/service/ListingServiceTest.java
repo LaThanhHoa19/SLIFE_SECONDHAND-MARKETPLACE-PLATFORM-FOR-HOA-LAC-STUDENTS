@@ -59,6 +59,9 @@ class ListingServiceTest {
     private FollowService followService;
 
     @Mock
+    private BlockService blockService;
+
+    @Mock
     private ListingLikeRepository listingLikeRepository;
 
     private ListingService listingService;
@@ -72,6 +75,7 @@ class ListingServiceTest {
                 categoryRepository,
                 addressRepository,
                 followService,
+                blockService,
                 listingLikeRepository
         );
     }
