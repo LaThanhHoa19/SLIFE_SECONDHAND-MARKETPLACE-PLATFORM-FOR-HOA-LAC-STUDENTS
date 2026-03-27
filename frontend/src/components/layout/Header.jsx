@@ -34,11 +34,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
+import { uiTokens } from '../../theme/uiTokens';
 
-const HEADER_BG = 'linear-gradient(180deg, #171522 0%, #141225 100%)';
-const ACCENT = '#a78bfa';
+const HEADER_BG = uiTokens.colors.surface.appHeader;
+const ACCENT = uiTokens.colors.brand.textSoft;
 const ACCENT_HOVER = '#8b5cf6';
-const ACCENT_SUBTLE = 'rgba(167, 139, 250, 0.15)';
+const ACCENT_SUBTLE = uiTokens.colors.brand.accentSubtle;
 
 const Search = styled('div')(({ theme }) => ({
     position: 'relative',
