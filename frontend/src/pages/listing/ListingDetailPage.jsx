@@ -55,6 +55,7 @@ import ListingRightInfoBlock from '../../components/listing/ListingRightInfoBloc
 import ListingSellerOtherListings from '../../components/listing/ListingSellerOtherListings';
 import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
+import ReportDialog from '../../components/report/ReportDialog';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#1C1B23';
@@ -138,6 +139,7 @@ export default function ListingDetailPage() {
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
     const [sellerFollowed, setSellerFollowed] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
 
     // Load listing
     useEffect(() => {
@@ -281,7 +283,7 @@ export default function ListingDetailPage() {
             navigate('/login', { state: { from: location.pathname } });
             return;
         }
-        navigate(`/report?targetType=LISTING&targetId=${id}`);
+        setReportOpen(true);
     };
 
     const handleChat = async () => {
@@ -605,6 +607,13 @@ export default function ListingDetailPage() {
                 loadingRelated={loadingRelated}
             />
 
+            <ReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                targetType="LISTING"
+                targetId={id}
+                targetTitle={listing?.title}
+            />
         </Box>
     );
 }
