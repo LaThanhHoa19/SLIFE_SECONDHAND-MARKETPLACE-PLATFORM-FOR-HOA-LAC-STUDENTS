@@ -51,7 +51,7 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
         height: 'fit-content' // Eliminate empty purple space
       }}
     >
-      <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', ml: 2 }}>
         <Typography fontSize={15} fontWeight={700} color={TEXT_PRI}>
           Tin rao khác của{' '}
           <Box
@@ -88,7 +88,7 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
       </Box>
 
       {loadingRelated ? (
-        <Box sx={{ display: 'flex', gap: 1.2, overflowX: 'auto' }}>
+        <Box sx={{ display: 'flex', gap: 1.2, overflowX: 'auto', ml: 2 }}>
           {[1, 2, 3].map((n) => (
             <Skeleton key={n} variant="rectangular" width={120} height={150}
               sx={{ bgcolor: '#2A2535', borderRadius: '10px', flexShrink: 0 }} />
@@ -97,14 +97,14 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
       ) : displayListings.length === 0 ? (
         <Box
           sx={{
-            bgcolor: CARD_BG2, borderRadius: '10px',
+            bgcolor: CARD_BG2, borderRadius: '10px', mx: 2,
             p: 2, textAlign: 'center', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}
         >
           <Typography fontSize={13} color={TEXT_SEC}>Chưa có tin đăng nào khác.</Typography>
         </Box>
       ) : (
-        <Box sx={{ position: 'relative', mx: -1 }}>
+        <Box sx={{ position: 'relative', mx: -1, ml: 1 }}>
           <Box
             ref={scrollRef}
             onScroll={checkScroll}
@@ -125,7 +125,7 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
                   scrollSnapAlign: 'start'
                 }}
               >
-                <MiniListingCard listing={l} />
+                <MiniListingCard listing={l} compact />
               </Box>
             ))}
           </Box>
