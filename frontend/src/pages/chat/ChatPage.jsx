@@ -252,6 +252,7 @@ function Bubble({ msg, onAccept, onReject }) {
   const isMe = msg.isFromCurrentUser === true;
   const isSystem = msg.messageType === 'DEAL_CONFIRMATION';
   const isPending = !!msg._pending;
+  const isHighlighted = msg._highlighted === true;
 
   if (isSystem) {
     return (
@@ -296,7 +297,11 @@ function Bubble({ msg, onAccept, onReject }) {
               color: isMe ? 'primary.contrastText' : 'text.primary',
               borderRadius: isMe ? '18px 6px 18px 18px' : '6px 18px 18px 18px',
               border: '1px solid',
-              borderColor: isMe ? 'transparent' : alpha(theme.palette.divider, 0.5),
+              borderColor: isHighlighted
+                  ? alpha(theme.palette.warning.main, 0.9)
+                  : isMe
+                      ? 'transparent'
+                      : alpha(theme.palette.divider, 0.5),
               boxShadow: isMe ? '0 2px 8px rgba(0,0,0,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
             }}
         >
@@ -348,12 +353,14 @@ export default function ChatPage() {
   const { user: currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const sessionIdFromUrl = searchParams.get('sessionId');
+  const messageIdFromUrl = searchParams.get('messageId');
   const currentUserId = currentUser?.id ?? currentUser?.user_id;
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState(sessionIdFromUrl || null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -428,7 +435,15 @@ export default function ChatPage() {
     setNewOpponentMsgCount(0);
     prevMessagesForDiffRef.current = [];
     didInitialScrollForSessionRef.current = false;
+    setHighlightedMessageId(null);
   }, [activeSessionId]);
+
+  // Khi deep-link đổi messageId (kể cả cùng session), cho phép chạy lại flow scroll-to-message.
+  useEffect(() => {
+    if (!messageIdFromUrl) return;
+    didInitialScrollForSessionRef.current = false;
+    setHighlightedMessageId(null);
+  }, [messageIdFromUrl]);
 
   // Lần đầu có lịch sử sau đổi session: cuộn đáy ngay trong layout; sau đó mới đếm tin đối phương khi không ở đáy.
   useLayoutEffect(() => {
@@ -443,7 +458,13 @@ export default function ChatPage() {
         return;
       }
       didInitialScrollForSessionRef.current = true;
-      if (el) {
+      const targetId = messageIdFromUrl ? String(messageIdFromUrl) : null;
+      const targetEl = targetId ? document.getElementById(`chat-msg-${targetId}`) : null;
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: 'auto', block: 'center' });
+        setHighlightedMessageId(targetId);
+        window.setTimeout(() => setHighlightedMessageId(null), 2500);
+      } else if (el) {
         el.scrollTop = el.scrollHeight;
       }
       setNewOpponentMsgCount(0);
@@ -485,7 +506,7 @@ export default function ChatPage() {
       setNewOpponentMsgCount((c) => c + addedFromOther);
     }
     prevMessagesForDiffRef.current = messages.slice();
-  }, [messages, activeSessionId, historyLoading, currentUserId, updateJumpToLatestVisibility]);
+  }, [messages, activeSessionId, historyLoading, currentUserId, updateJumpToLatestVisibility, messageIdFromUrl]);
 
   // Cập nhật nút “Mới nhất” khi nội dung đổi (không tự cuộn).
   useEffect(() => {
@@ -642,27 +663,71 @@ export default function ChatPage() {
       setMessages([]);
       return;
     }
+
     let cancelled = false;
     setHistoryLoading(true);
-    chatApi
-        .getHistory(activeSessionId, 0, 30)
-        .then((res) => {
+
+    const loadHistory = async () => {
+      try {
+        const targetId = messageIdFromUrl ? String(messageIdFromUrl) : null;
+        const pageSize = 30;
+
+        // Bình thường: chỉ lấy page 0.
+        if (!targetId) {
+          const res = await chatApi.getHistory(activeSessionId, 0, pageSize);
           if (cancelled) return;
           const body = res?.data;
           const page = body?.data ?? body;
           const content = page?.content ?? (Array.isArray(page) ? page : []);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
-        })
-        .catch(() => {
-          if (!cancelled) setMessages([]);
-        })
-        .finally(() => {
-          if (!cancelled) setHistoryLoading(false);
-        });
+          return;
+        }
+
+        // Deep-link: tải thêm trang để tăng khả năng chứa message mục tiêu.
+        const maxPagesToScan = 8;
+        const aggregated = [];
+        let found = false;
+
+        for (let p = 0; p < maxPagesToScan; p += 1) {
+          const res = await chatApi.getHistory(activeSessionId, p, pageSize);
+          if (cancelled) return;
+          const body = res?.data;
+          const page = body?.data ?? body;
+          const content = Array.isArray(page?.content)
+              ? page.content
+              : Array.isArray(page)
+                  ? page
+                  : [];
+
+          if (content.length === 0) break;
+          aggregated.push(...content);
+
+          if (content.some((m) => String(m?.id) === targetId)) {
+            found = true;
+            break;
+          }
+          if (content.length < pageSize) break;
+        }
+
+        if (cancelled) return;
+        const base = aggregated.length > 0 ? aggregated : [];
+        setMessages([...base].reverse());
+
+        if (!found && import.meta.env.DEV) {
+          console.warn('[Chat] target messageId not found in scanned history:', targetId);
+        }
+      } catch {
+        if (!cancelled) setMessages([]);
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
     return () => {
       cancelled = true;
     };
-  }, [activeSessionId]);
+  }, [activeSessionId, messageIdFromUrl]);
 
   // Poll message history every 3 s (fallback when WS is unreliable)
   useEffect(() => {
@@ -1214,6 +1279,8 @@ export default function ChatPage() {
                           const prev = idx > 0 ? messages[idx - 1] : null;
                           const showDay =
                               idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
+                          const mid = m?.id != null ? String(m.id) : null;
+                          const isHighlighted = mid != null && String(highlightedMessageId) === mid;
                           return (
                               <Fragment key={`msg-${idx}-${m.id}-${m._pending ? 'p' : 's'}`}>
                                 {showDay && m.timestamp && (
@@ -1229,11 +1296,13 @@ export default function ChatPage() {
                                       />
                                     </Box>
                                 )}
-                                <Bubble
-                                    msg={{ ...m, isFromCurrentUser: msgIsMe }}
-                                    onAccept={handleAccept}
-                                    onReject={handleReject}
-                                />
+                                <div id={mid ? `chat-msg-${mid}` : undefined}>
+                                  <Bubble
+                                      msg={{ ...m, isFromCurrentUser: msgIsMe, _highlighted: isHighlighted }}
+                                      onAccept={handleAccept}
+                                      onReject={handleReject}
+                                  />
+                                </div>
                               </Fragment>
                           );
                         })
