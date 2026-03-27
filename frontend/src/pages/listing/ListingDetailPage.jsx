@@ -513,32 +513,8 @@ export default function ListingDetailPage() {
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
                         likeDisabled={likeSubmitting}
-                        hideThumbs={true}
+                        hideThumbs={false}
                     />
-                    {/* Thumbnails below large image */}
-                    {images.length > 1 && (
-                        <Box
-                            sx={{
-                                display: 'flex', gap: 1, mt: 1.5,
-                                overflowX: 'auto', pb: 0.5,
-                                '::-webkit-scrollbar': { height: 4 },
-                                '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
-                            }}
-                        >
-                            {images.map((img, i) => (
-                                <Box
-                                    key={i}
-                                    sx={{
-                                        flexShrink: 0, width: 64, height: 64, borderRadius: '8px', overflow: 'hidden',
-                                        border: `2px solid ${BORDER}`, cursor: 'pointer',
-                                        '&:hover': { borderColor: PURPLE }
-                                    }}
-                                >
-                                    <Box component="img" src={img} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
                 </Box>
 
                 <Box sx={{ height: '100%' }}>
