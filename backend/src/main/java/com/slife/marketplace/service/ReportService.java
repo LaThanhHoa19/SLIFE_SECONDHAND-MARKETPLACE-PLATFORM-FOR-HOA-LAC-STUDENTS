@@ -311,11 +311,73 @@ public class ReportService {
 
     private ReportResponseDTO toReportResponseDTO(Report report) {
         String reporterName = report.getReporter() != null ? report.getReporter().getFullName() : null;
+        TargetContext ctx = resolveTargetContext(report);
         return new ReportResponseDTO(
                 report.getId(),
                 reporterName,
                 report.getTargetType(),
+                report.getTargetId(),
+                ctx.preview(),
+                ctx.listingId(),
+                ctx.conversationId(),
                 report.getReason(),
                 report.getCreatedAt());
     }
+
+    private TargetContext resolveTargetContext(Report report) {
+        String targetType = report.getTargetType() != null ? report.getTargetType().toUpperCase(Locale.ROOT) : "";
+        Long targetId = report.getTargetId();
+        if (targetId == null) return new TargetContext(null, null, null);
+        try {
+            if ("LISTING".equals(targetType)) {
+                return listingRepository.findById(targetId)
+                        .map(l -> new TargetContext(truncate(l.getTitle(), 120), l.getId(), null))
+                        .orElse(new TargetContext("[Listing not found]", null, null));
+            }
+            if ("COMMENT".equals(targetType)) {
+                return commentRepository.findById(targetId)
+                        .map(c -> {
+                            Long listingId = c.getListing() != null ? c.getListing().getId() : null;
+                            String preview = (c.getContent() == null || c.getContent().isBlank())
+                                    ? "[Image-only comment]"
+                                    : truncate(c.getContent(), 120);
+                            return new TargetContext(preview, listingId, null);
+                        })
+                        .orElse(new TargetContext("[Comment not found]", null, null));
+            }
+            if ("MESSAGE".equals(targetType)) {
+                return messageRepository.findById(targetId)
+                        .map(m -> {
+                            Long convId = m.getConversation() != null ? m.getConversation().getId() : null;
+                            Long listingId = (m.getConversation() != null && m.getConversation().getListing() != null)
+                                    ? m.getConversation().getListing().getId()
+                                    : null;
+                            String preview;
+                            if (m.getMessageType() != null && m.getMessageType().name().equals("IMAGE")) {
+                                preview = "[Image message]";
+                            } else {
+                                preview = truncate(m.getContent(), 120);
+                            }
+                            return new TargetContext(preview, listingId, convId);
+                        })
+                        .orElse(new TargetContext("[Message not found]", null, null));
+            }
+            if ("USER".equals(targetType)) {
+                return userRepository.findById(targetId)
+                        .map(u -> new TargetContext(u.getFullName(), null, null))
+                        .orElse(new TargetContext("[User not found]", null, null));
+            }
+        } catch (Exception ex) {
+            log.warn("resolveTargetContext failed reportId={} type={} targetId={}: {}",
+                    report.getId(), targetType, targetId, ex.getMessage());
+        }
+        return new TargetContext(null, null, null);
+    }
+
+    private String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max) + "...";
+    }
+
+    private record TargetContext(String preview, Long listingId, Long conversationId) {}
 }
