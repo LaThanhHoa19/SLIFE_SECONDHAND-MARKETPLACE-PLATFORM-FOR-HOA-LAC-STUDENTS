@@ -18,6 +18,7 @@ import {
     InputAdornment,
     Pagination as MuiPagination,
     Skeleton,
+    Snackbar,
     Stack,
     Tab,
     Tabs,
@@ -47,8 +48,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteDraft, getMyListings, hideListing, renewListing, repostListing, unhideListing } from '../../api/myListingApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
-import { useToast } from '../../context/ToastContext';
-import { DANGER_DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -480,7 +479,7 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost
                         <Stack direction="row" alignItems="center" gap={0.4}>
                             <LocationIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }} />
                             <Typography fontSize={12} color="rgba(255,255,255,0.28)"
-                                        sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {listing.location}
                             </Typography>
                         </Stack>
@@ -513,15 +512,15 @@ export default function MyListingsPage() {
     const [totalElements,  setTotalElements]  = useState(0);
     const [isLoading,      setLoading]        = useState(false);
     const [error,          setError]          = useState(null);
+    const [snackbar,       setSnackbar]       = useState({ open: false, message: '', severity: 'info' });
     const [tabCounts,      setTabCounts]      = useState({});
     const [searchQuery,    setSearchQuery]    = useState('');
     const [deleteDialog,   setDeleteDialog]   = useState({ open: false, listingId: null });
     const [isDeleting,     setIsDeleting]     = useState(false);
-    const { showToast } = useToast();
     const abortRef = useRef(null);
 
     const showSnackbar = (message, severity = 'info') =>
-        showToast(message, severity);
+        setSnackbar({ open: true, message, severity });
 
     // Fetch count cho tất cả tabs song song (dùng size=1 để lấy totalElements)
     const fetchTabCounts = useCallback(async () => {
@@ -659,7 +658,7 @@ export default function MyListingsPage() {
         ? listings.filter(l =>
             l.title?.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
             l.location?.toLowerCase().includes(searchQuery.toLowerCase().trim())
-        )
+          )
         : listings;
 
     return (
@@ -902,7 +901,8 @@ export default function MyListingsPage() {
                 onClose={handleCancelDelete}
                 PaperProps={{
                     sx: {
-                        ...DANGER_DARK_DIALOG_PAPER_PROPS.sx,
+                        bgcolor: '#1e1a2e',
+                        border: '1px solid rgba(255,71,87,0.25)',
                         borderRadius: '16px',
                         px: 0.5,
                         minWidth: 340,
@@ -972,6 +972,22 @@ export default function MyListingsPage() {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* ── Snackbar feedback ── */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3500}
+                onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    severity={snackbar.severity}
+                    onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+                    sx={{ borderRadius: '10px', fontWeight: 500 }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
 
             {/* ── Pagination ── */}
             {!isLoading && !error && totalPages > 1 && (

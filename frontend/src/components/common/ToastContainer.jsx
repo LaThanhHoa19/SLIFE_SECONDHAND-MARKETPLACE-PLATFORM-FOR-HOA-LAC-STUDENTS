@@ -16,39 +16,43 @@ import { useEffect, useRef, useState } from 'react';
 const VARIANTS = {
     success: {
         Icon: SuccessIcon,
-        iconBg: 'rgba(46,213,115,0.18)',
-        iconColor: '#A7F3C0',
-        accent: '#2ED573',
+        gradient: 'linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%)',
+        iconBg: '#059669',
+        iconColor: '#fff',
+        accent: '#059669',
         title: 'Thành công',
-        progressColor: '#2ED573',
-        shadow: '0 14px 36px rgba(46,213,115,0.18)',
+        progressColor: '#059669',
+        shadow: '0 20px 60px rgba(5, 150, 105, 0.2)',
     },
     error: {
         Icon: ErrorIcon,
-        iconBg: 'rgba(255,71,87,0.18)',
-        iconColor: '#FCA5A5',
-        accent: '#FF4757',
+        gradient: 'linear-gradient(135deg, #ffe4e6 0%, #fff1f2 100%)',
+        iconBg: '#e11d48',
+        iconColor: '#fff',
+        accent: '#e11d48',
         title: 'Lỗi',
-        progressColor: '#FF4757',
-        shadow: '0 14px 36px rgba(255,71,87,0.18)',
+        progressColor: '#e11d48',
+        shadow: '0 20px 60px rgba(225, 29, 72, 0.2)',
     },
     warning: {
         Icon: WarningIcon,
-        iconBg: 'rgba(255,165,2,0.2)',
-        iconColor: '#FCD34D',
-        accent: '#FFA502',
+        gradient: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)',
+        iconBg: '#d97706',
+        iconColor: '#fff',
+        accent: '#d97706',
         title: 'Cảnh báo',
-        progressColor: '#FFA502',
-        shadow: '0 14px 36px rgba(255,165,2,0.18)',
+        progressColor: '#d97706',
+        shadow: '0 20px 60px rgba(217, 119, 6, 0.2)',
     },
     info: {
         Icon: InfoIcon,
-        iconBg: 'rgba(157,110,237,0.2)',
-        iconColor: '#DDD6FE',
-        accent: '#9D6EED',
+        gradient: 'linear-gradient(135deg, #ede9fe 0%, #f5f3ff 100%)',
+        iconBg: '#7C3AED',
+        iconColor: '#fff',
+        accent: '#7C3AED',
         title: 'Thông báo',
-        progressColor: '#9D6EED',
-        shadow: '0 14px 36px rgba(157,110,237,0.18)',
+        progressColor: '#7C3AED',
+        shadow: '0 20px 60px rgba(124, 58, 237, 0.2)',
     },
 };
 
@@ -78,10 +82,9 @@ function ProgressBar({ color, duration }) {
     );
 }
 
-function ToastItem({ toast, onDismiss }) {
+function ToastItem({ toast, onDismiss, duration }) {
     const v = VARIANTS[toast.variant] ?? VARIANTS.info;
     const { Icon } = v;
-    const duration = toast.duration ?? 4000;
 
     return (
         <Box
@@ -91,15 +94,14 @@ function ToastItem({ toast, onDismiss }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
-                width: 350,
-                px: 1.75,
-                pt: 1.15,
-                pb: 1.9,
-                borderRadius: '14px',
-                background: 'linear-gradient(180deg, rgba(24,22,32,0.98) 0%, rgba(20,18,28,0.98) 100%)',
-                border: '1px solid rgba(255,255,255,0.1)',
+                width: 360,
+                px: 2,
+                pt: 1.75,
+                pb: 2.5,
+                borderRadius: '16px',
+                background: v.gradient,
+                border: `1px solid ${v.accent}22`,
                 boxShadow: v.shadow,
-                backdropFilter: 'blur(10px)',
                 transform: toast.exiting ? 'translateX(calc(100% + 32px)) scale(0.95)' : 'translateX(0) scale(1)',
                 opacity: toast.exiting ? 0 : 1,
                 transition: 'transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease',
@@ -111,33 +113,23 @@ function ToastItem({ toast, onDismiss }) {
                 overflow: 'hidden',
             }}
         >
-            <Box
-                sx={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 4,
-                    bgcolor: v.accent,
-                }}
-            />
             {/* Icon circle */}
             <Box sx={{
-                width: 38, height: 38, borderRadius: '11px',
+                width: 40, height: 40, borderRadius: '12px',
                 bgcolor: v.iconBg, display: 'flex',
                 alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
-                boxShadow: `inset 0 0 0 1px ${v.accent}55`,
+                boxShadow: `0 4px 12px ${v.accent}44`,
             }}>
-                <Icon sx={{ fontSize: 20, color: v.iconColor }} />
+                <Icon sx={{ fontSize: 22, color: v.iconColor }} />
             </Box>
 
             {/* Text */}
             <Box flex={1} sx={{ overflow: 'hidden', mr: 0.5 }}>
-                <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#fff', lineHeight: 1.2, mb: 0.2 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '13px', color: v.accent, lineHeight: 1.2, mb: 0.4 }}>
                     {v.title}
                 </Typography>
-                <Typography sx={{ fontSize: '12.8px', color: 'rgba(255,255,255,0.72)', lineHeight: 1.42, wordBreak: 'break-word' }}>
+                <Typography sx={{ fontSize: '13px', color: '#374151', lineHeight: 1.5, wordBreak: 'break-word' }}>
                     {toast.message}
                 </Typography>
             </Box>
@@ -148,11 +140,11 @@ function ToastItem({ toast, onDismiss }) {
                 onClick={() => onDismiss(toast.id)}
                 sx={{
                     alignSelf: 'flex-start',
-                    mt: -0.3,
+                    mt: -0.25,
                     mr: -0.5,
-                    color: 'rgba(255,255,255,0.42)',
+                    color: '#9ca3af',
                     width: 26, height: 26,
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.88)' },
+                    '&:hover': { bgcolor: 'rgba(0,0,0,0.08)', color: '#374151' },
                 }}
             >
                 <CloseIcon sx={{ fontSize: 15 }} />
@@ -164,24 +156,24 @@ function ToastItem({ toast, onDismiss }) {
     );
 }
 
-export default function ToastContainer({ toasts, onDismiss }) {
+export default function ToastContainer({ toasts, onDismiss, duration = 4000 }) {
     if (!toasts.length) return null;
 
     return (
         <Box sx={{
             position: 'fixed',
-            bottom: 22,
-            right: 22,
+            bottom: 28,
+            right: 28,
             zIndex: 9999,
             display: 'flex',
             flexDirection: 'column',
-            gap: 1,
+            gap: 1.25,
             alignItems: 'flex-end',
             pointerEvents: 'none',
             '& > *': { pointerEvents: 'auto' },
         }}>
             {toasts.map(toast => (
-                <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />
+                <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} duration={duration} />
             ))}
         </Box>
     );
@@ -190,4 +182,5 @@ export default function ToastContainer({ toasts, onDismiss }) {
 ToastContainer.propTypes = {
     toasts: PropTypes.array.isRequired,
     onDismiss: PropTypes.func.isRequired,
+    duration: PropTypes.number,
 };

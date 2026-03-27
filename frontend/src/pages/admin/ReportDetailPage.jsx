@@ -7,6 +7,7 @@ import {
   Chip,
   CircularProgress,
   IconButton,
+  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -14,7 +15,6 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getReports, processReport } from '../../api/reportApi';
-import { useToast } from '../../context/ToastContext';
 
 // —— Dữ liệu demo + helpers (cùng file; ReportManagementPage import các export cần thiết) ——
 
@@ -178,7 +178,7 @@ export default function ReportDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [adminNote, setAdminNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const { showToast } = useToast();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const loadReport = useCallback(async () => {
     const idStr = reportIdParam;
@@ -234,7 +234,11 @@ export default function ReportDetailPage() {
         const nextStatus = action === 'APPROVE' ? 'RESOLVED' : 'REJECTED';
         writeDemoOverride(id, { status: nextStatus });
         setReport((r) => (r ? { ...r, status: nextStatus } : r));
-        showToast(action === 'APPROVE' ? 'Đã duyệt (dữ liệu demo).' : 'Đã từ chối (dữ liệu demo).', 'success');
+        setSnackbar({
+          open: true,
+          message: action === 'APPROVE' ? 'Đã duyệt (dữ liệu demo).' : 'Đã từ chối (dữ liệu demo).',
+          severity: 'success',
+        });
       } finally {
         setSubmitting(false);
       }
@@ -247,10 +251,18 @@ export default function ReportDetailPage() {
         action,
         note: adminNote.trim() || undefined,
       });
-      showToast(action === 'APPROVE' ? 'Đã duyệt báo cáo.' : 'Đã từ chối báo cáo.', 'success');
+      setSnackbar({
+        open: true,
+        message: action === 'APPROVE' ? 'Đã duyệt báo cáo.' : 'Đã từ chối báo cáo.',
+        severity: 'success',
+      });
       await loadReport();
     } catch (error) {
-      showToast(error?.message || 'Không xử lý được báo cáo.', 'error');
+      setSnackbar({
+        open: true,
+        message: error?.message || 'Không xử lý được báo cáo.',
+        severity: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -258,24 +270,24 @@ export default function ReportDetailPage() {
 
   if (isLoading) {
     return (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight={320}>
-          <CircularProgress sx={{ color: '#8B5CF6' }} />
-        </Box>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={320}>
+        <CircularProgress sx={{ color: '#8B5CF6' }} />
+      </Box>
     );
   }
 
   if (!report || loadError) {
     return (
-        <Box>
-          <Button
-              startIcon={<ArrowBackIcon />}
-              onClick={handleBack}
-              sx={{ color: 'rgba(255,255,255,0.85)', textTransform: 'none', mb: 2 }}
-          >
-            Quay lại danh sách
-          </Button>
-          <Alert severity="error">{loadError || 'Không tìm thấy báo cáo.'}</Alert>
-        </Box>
+      <Box>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+          sx={{ color: 'rgba(255,255,255,0.85)', textTransform: 'none', mb: 2 }}
+        >
+          Quay lại danh sách
+        </Button>
+        <Alert severity="error">{loadError || 'Không tìm thấy báo cáo.'}</Alert>
+      </Box>
     );
   }
 
@@ -283,125 +295,139 @@ export default function ReportDetailPage() {
   const canAct = isPendingRow(report);
 
   return (
-      <Box>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-          <IconButton
-              aria-label="Quay lại"
-              onClick={handleBack}
-              sx={{ color: 'rgba(255,255,255,0.85)', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
-            Xem xét báo cáo
-            {rid != null ? ` #${rid}` : ''}
+    <Box>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+        <IconButton
+          aria-label="Quay lại"
+          onClick={handleBack}
+          sx={{ color: 'rgba(255,255,255,0.85)', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
+          Xem xét báo cáo
+          {rid != null ? ` #${rid}` : ''}
+        </Typography>
+      </Stack>
+
+      <Box
+        sx={{
+          bgcolor: '#19191B',
+          border: '1px solid #3E3E42',
+          borderRadius: 1,
+          p: 2.5,
+          maxWidth: 640,
+        }}
+      >
+        <Stack spacing={1.5} sx={{ mb: 2 }}>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+            <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Người báo cáo: </Box>
+            {report.reporterName || '-'}
           </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+            <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+              {reportTargetType(report) === 'LISTING' ? 'Bài đăng bị báo cáo' : 'Người bị báo cáo'}:{' '}
+            </Box>
+            {reportedDisplay(report)}
+          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+            <Typography variant="body2" component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+              Trạng thái:
+            </Typography>
+            <Chip
+              label={statusLabel(report.status)}
+              size="small"
+              sx={{
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 999,
+                ...statusChipSx(report.status),
+              }}
+            />
+          </Stack>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+            <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Thời gian: </Box>
+            {formatReportDate(report.createdAt)}
+          </Typography>
+          <Box>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 0.5 }}>
+              Lý do
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'rgba(255,255,255,0.92)',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.1)',
+              }}
+            >
+              {(report.reason && String(report.reason).trim()) || '—'}
+            </Typography>
+          </Box>
         </Stack>
 
-        <Box
+        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 1 }}>
+          Duyệt: ghi nhận vi phạm và áp dụng xử lý theo quy định. Từ chối: báo cáo không được chấp nhận.
+        </Typography>
+        <TextField
+          label="Ghi chú nội bộ (tùy chọn)"
+          value={adminNote}
+          onChange={(e) => setAdminNote(e.target.value)}
+          fullWidth
+          multiline
+          minRows={2}
+          placeholder="Ghi chú cho hồ sơ xử lý..."
+          disabled={submitting || !canAct}
+          sx={{
+            mb: 2,
+            '& .MuiOutlinedInput-root': { color: '#fff' },
+            '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
+          }}
+        />
+
+        <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => submitProcess('REJECT')}
+            disabled={submitting || !canAct}
+          >
+            {submitting ? 'Đang xử lý...' : 'Từ chối'}
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => submitProcess('APPROVE')}
+            disabled={submitting || !canAct}
             sx={{
-              bgcolor: '#19191B',
-              border: '1px solid #3E3E42',
-              borderRadius: 1,
-              p: 2.5,
-              maxWidth: 640,
+              bgcolor: '#8B5CF6',
+              color: '#fff',
+              '&:hover': { bgcolor: '#7c3aed' },
+              '&.Mui-disabled': { bgcolor: 'rgba(139,92,246,0.35)', color: 'rgba(255,255,255,0.5)' },
             }}
-        >
-          <Stack spacing={1.5} sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-              <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Người báo cáo: </Box>
-              {report.reporterName || '-'}
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-              <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>
-                {reportTargetType(report) === 'LISTING' ? 'Bài đăng bị báo cáo' : 'Người bị báo cáo'}:{' '}
-              </Box>
-              {reportedDisplay(report)}
-            </Typography>
-            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
-              <Typography variant="body2" component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>
-                Trạng thái:
-              </Typography>
-              <Chip
-                  label={statusLabel(report.status)}
-                  size="small"
-                  sx={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    borderRadius: 999,
-                    ...statusChipSx(report.status),
-                  }}
-              />
-            </Stack>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-              <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Thời gian: </Box>
-              {formatReportDate(report.createdAt)}
-            </Typography>
-            <Box>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 0.5 }}>
-                Lý do
-              </Typography>
-              <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'rgba(255,255,255,0.92)',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    p: 1.5,
-                    borderRadius: 1,
-                    bgcolor: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                  }}
-              >
-                {(report.reason && String(report.reason).trim()) || '—'}
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 1 }}>
-            Duyệt: ghi nhận vi phạm và áp dụng xử lý theo quy định. Từ chối: báo cáo không được chấp nhận.
-          </Typography>
-          <TextField
-              label="Ghi chú nội bộ (tùy chọn)"
-              value={adminNote}
-              onChange={(e) => setAdminNote(e.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-              placeholder="Ghi chú cho hồ sơ xử lý..."
-              disabled={submitting || !canAct}
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': { color: '#fff' },
-                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-              }}
-          />
-
-          <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
-            <Button
-                variant="outlined"
-                color="error"
-                onClick={() => submitProcess('REJECT')}
-                disabled={submitting || !canAct}
-            >
-              {submitting ? 'Đang xử lý...' : 'Từ chối'}
-            </Button>
-            <Button
-                variant="contained"
-                onClick={() => submitProcess('APPROVE')}
-                disabled={submitting || !canAct}
-                sx={{
-                  bgcolor: '#8B5CF6',
-                  color: '#fff',
-                  '&:hover': { bgcolor: '#7c3aed' },
-                  '&.Mui-disabled': { bgcolor: 'rgba(139,92,246,0.35)', color: 'rgba(255,255,255,0.5)' },
-                }}
-            >
-              Duyệt
-            </Button>
-          </Stack>
-        </Box>
-
+          >
+            Duyệt
+          </Button>
+        </Stack>
       </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }

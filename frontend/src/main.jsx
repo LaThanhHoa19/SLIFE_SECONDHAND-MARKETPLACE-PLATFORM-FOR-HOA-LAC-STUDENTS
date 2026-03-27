@@ -13,7 +13,6 @@ import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
-import ToastProvider from './context/ToastContext';
 import { NotificationProvider } from './providers/NotificationProvider';
 import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
 import theme from './theme/theme';
@@ -27,9 +26,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                 <AuthProvider>
                     <AuthErrorBoundary>
                         <NotificationProvider>
-                            <ToastProvider>
-                                <App />
-                            </ToastProvider>
+                            <App />
                         </NotificationProvider>
                     </AuthErrorBoundary>
                 </AuthProvider>

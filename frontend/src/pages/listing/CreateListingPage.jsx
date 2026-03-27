@@ -4,11 +4,10 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Alert } from '@mui/material';
+import { Box, Alert, Snackbar } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
 import { createListing, uploadImages } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
-import { useToast } from '../../context/ToastContext';
 
 const getPayload = unwrapApiData;
 
@@ -43,7 +42,7 @@ export default function CreateListingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [error, setError] = useState('');
-  const { showToast } = useToast();
+  const [draftSuccess, setDraftSuccess] = useState(false);
 
   const handleSubmit = async (values, imageFiles) => {
     setError('');
@@ -76,7 +75,7 @@ export default function CreateListingPage() {
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
       await uploadListingImages(id, imageFiles);
-      showToast('Đã lưu nháp thành công!', 'success');
+      setDraftSuccess(true);
       // Sau 1.5s navigate về profile/drafts nếu có, hoặc ở lại trang
       setTimeout(() => {
         if (id) navigate(`/listings/${id}`, { replace: true });
@@ -104,6 +103,13 @@ export default function CreateListingPage() {
             submitting={submitting}
             savingDraft={savingDraft}
             mode="create"
+        />
+        <Snackbar
+            open={draftSuccess}
+            autoHideDuration={2000}
+            onClose={() => setDraftSuccess(false)}
+            message="Đã lưu nháp thành công!"
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         />
       </Box>
   );

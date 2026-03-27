@@ -34,12 +34,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
-import { uiTokens } from '../../theme/uiTokens';
 
-const HEADER_BG = uiTokens.colors.surface.appHeader;
-const ACCENT = uiTokens.colors.brand.textSoft;
+const HEADER_BG = 'linear-gradient(180deg, #171522 0%, #141225 100%)';
+const ACCENT = '#a78bfa';
 const ACCENT_HOVER = '#8b5cf6';
-const ACCENT_SUBTLE = uiTokens.colors.brand.accentSubtle;
+const ACCENT_SUBTLE = 'rgba(167, 139, 250, 0.15)';
 
 const Search = styled('div')(({ theme }) => ({
     position: 'relative',
@@ -245,7 +244,9 @@ export default function Header({ onToggleSidebar }) {
                         >
                             <MenuIcon />
                         </IconButton>
-                    ) : null}
+                    ) : (
+                        <Box sx={{ width: 40, height: 40 }} />
+                    )}
                     <Typography
                         variant="h6"
                         sx={{

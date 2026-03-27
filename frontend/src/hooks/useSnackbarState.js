@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { useToast } from '../context/ToastContext';
 
 const INITIAL_SNACKBAR = {
     open: false,
@@ -10,18 +9,15 @@ const INITIAL_SNACKBAR = {
 
 export default function useSnackbarState() {
     const [snackbar, setSnackbar] = useState(INITIAL_SNACKBAR);
-    const { showToast } = useToast();
 
     const showSnackbar = useCallback((message, severity = 'success', action = null) => {
-        showToast(message || '', severity);
-        // Backward-compatible shape for legacy callers; UI render is delegated to global Toast.
         setSnackbar({
-            open: false,
+            open: true,
             message: message || '',
             severity,
             action,
         });
-    }, [showToast]);
+    }, []);
 
     const closeSnackbar = useCallback(() => {
         setSnackbar((prev) => ({ ...prev, open: false }));

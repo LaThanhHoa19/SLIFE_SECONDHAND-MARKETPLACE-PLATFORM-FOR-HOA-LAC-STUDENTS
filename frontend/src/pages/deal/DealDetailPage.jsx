@@ -5,11 +5,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
+    Alert,
     Box,
     Button,
     CircularProgress,
     Divider,
     InputAdornment,
+    Snackbar,
     Stack,
     TextField,
     Tooltip,
@@ -28,7 +30,6 @@ import { useAuth } from '../../hooks/useAuth';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
-import { useToast } from '../../context/ToastContext';
 
 // ── Design tokens (đồng bộ ListingForm) ──────────────────────────────────────
 
@@ -211,7 +212,6 @@ export default function DealDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
-    const { showToast } = useToast();
 
     const [deal, setDeal] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -222,8 +222,10 @@ export default function DealDetailPage() {
 
     const [reminderSending, setReminderSending] = useState(false);
     const [pickupTimeLocal, setPickupTimeLocal] = useState('');
+    const [snack, setSnack] = useState({ open: false, message: '', severity: 'success' });
+
     const showSnack = (message, severity = 'success') =>
-        showToast(message, severity);
+        setSnack({ open: true, message, severity });
 
     useEffect(() => {
         if (!id) return;
@@ -609,6 +611,22 @@ export default function DealDetailPage() {
                 onClose={() => setConfirmOpen(false)}
             />
 
+            {/* Snackbar */}
+            <Snackbar
+                open={snack.open}
+                autoHideDuration={4000}
+                onClose={() => setSnack((s) => ({ ...s, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    severity={snack.severity}
+                    onClose={() => setSnack((s) => ({ ...s, open: false }))}
+                    variant="filled"
+                    sx={{ width: '100%' }}
+                >
+                    {snack.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }

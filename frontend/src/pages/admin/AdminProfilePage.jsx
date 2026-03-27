@@ -12,6 +12,7 @@ import {
     Grid,
     IconButton,
     InputAdornment,
+    Snackbar,
     Stack,
     TextField,
     Typography,
@@ -22,8 +23,6 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useAuth } from '../../hooks/useAuth';
 import { fullImageUrl } from '../../utils/constants';
-import { useToast } from '../../context/ToastContext';
-import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 const textFieldSx = {
     '& .MuiInputBase-input': { color: '#fff' },
@@ -99,7 +98,7 @@ export default function AdminProfilePage() {
     const [showCurrent, setShowCurrent] = useState(false);
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const { showToast } = useToast();
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
 
     const [profileEditOpen, setProfileEditOpen] = useState(false);
     const [profileForm, setProfileForm] = useState({
@@ -152,10 +151,10 @@ export default function AdminProfilePage() {
         (e) => {
             e?.preventDefault?.();
             if (!validatePasswordForm()) return;
-            showToast('Đã cập nhật mật khẩu (mock — chưa gọi API).', 'success');
+            setSnackbar({ open: true, message: 'Đã cập nhật mật khẩu (mock — chưa gọi API).' });
             closePwdDialog();
         },
-        [validatePasswordForm, closePwdDialog, showToast],
+        [validatePasswordForm, closePwdDialog],
     );
 
     const openProfileEdit = useCallback(() => {
@@ -196,10 +195,10 @@ export default function AdminProfilePage() {
                 phone: profileForm.phone?.trim() ?? '',
                 bio: profileForm.bio?.trim() ?? '',
             });
-            showToast('Đã lưu hồ sơ (mock — chưa gọi API).', 'success');
+            setSnackbar({ open: true, message: 'Đã lưu hồ sơ (mock — chưa gọi API).' });
             closeProfileEdit();
         },
-        [validateProfileForm, closeProfileEdit, profileForm, showToast],
+        [validateProfileForm, closeProfileEdit, profileForm],
     );
 
     return (
@@ -310,7 +309,13 @@ export default function AdminProfilePage() {
                 onClose={closeProfileEdit}
                 fullWidth
                 maxWidth="sm"
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#25232C',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                    },
+                }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>Chỉnh sửa hồ sơ</DialogTitle>
                 <form onSubmit={handleSubmitProfileEdit}>
@@ -390,7 +395,13 @@ export default function AdminProfilePage() {
                 onClose={closePwdDialog}
                 fullWidth
                 maxWidth="sm"
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#25232C',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                    },
+                }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>Đổi mật khẩu</DialogTitle>
                 <form onSubmit={handleSubmitPassword}>
@@ -500,6 +511,13 @@ export default function AdminProfilePage() {
                 </form>
             </Dialog>
 
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={4000}
+                onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+                message={snackbar.message}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            />
         </Box>
     );
 }

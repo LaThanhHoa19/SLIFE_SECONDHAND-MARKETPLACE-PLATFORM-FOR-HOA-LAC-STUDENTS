@@ -26,7 +26,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 
 import { createAdminCategory, deleteAdminCategory, getAdminCategories, updateAdminCategory } from '../../api/categoryAdminApi';
-import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 const ROOT_PARENT_ID = null;
 
@@ -427,7 +426,7 @@ export default function CategoryManagementPage() {
             )}
 
             {/* Create/Edit dialog */}
-            <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth PaperProps={DARK_DIALOG_PAPER_PROPS}>
+            <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
                 <DialogTitle>
                     {dialogMode === 'edit' ? 'Sửa danh mục' : dialogMode === 'createChild' ? 'Thêm danh mục con' : 'Thêm danh mục gốc'}
                 </DialogTitle>
@@ -482,7 +481,7 @@ export default function CategoryManagementPage() {
             </Dialog>
 
             {/* Delete confirm dialog */}
-            <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth PaperProps={DARK_DIALOG_PAPER_PROPS}>
+            <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
                 <DialogTitle>Xác nhận xóa</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2">

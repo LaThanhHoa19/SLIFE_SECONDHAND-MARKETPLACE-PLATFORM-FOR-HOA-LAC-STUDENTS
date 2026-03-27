@@ -10,6 +10,7 @@ import {
     DialogTitle,
     IconButton,
     InputAdornment,
+    Snackbar,
     Stack,
     Table,
     TableBody,
@@ -24,8 +25,6 @@ import {
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
-import { useToast } from '../../context/ToastContext';
-import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 const TABLE_SURFACE = '#19191B';
 const TABLE_BORDER = '#3E3E42';
@@ -166,7 +165,7 @@ export default function ConfigurationManagementPage() {
     const [editing, setEditing] = useState(null);
     const [draftValue, setDraftValue] = useState('');
     const [fieldError, setFieldError] = useState('');
-    const { showToast } = useToast();
+    const [snackbar, setSnackbar] = useState({ open: false, message: '' });
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const openEdit = useCallback((row) => {
@@ -209,7 +208,7 @@ export default function ConfigurationManagementPage() {
                     : r,
             ),
         );
-        showToast('Đã cập nhật (mock — chưa gửi API).', 'success');
+        setSnackbar({ open: true, message: 'Đã cập nhật (mock — chưa gửi API).' });
         closeEdit();
     }, [editing, draftValue, closeEdit]);
 
@@ -231,9 +230,9 @@ export default function ConfigurationManagementPage() {
         const id = deleteTarget.config_id;
         setRows((prev) => prev.filter((r) => r.config_id !== id));
         if (editing?.config_id === id) closeEdit();
-        showToast('Đã xóa dòng (mock — chưa gọi API).', 'success');
+        setSnackbar({ open: true, message: 'Đã xóa dòng (mock — chưa gọi API).' });
         setDeleteTarget(null);
-    }, [deleteTarget, editing, closeEdit, showToast]);
+    }, [deleteTarget, editing, closeEdit]);
 
     return (
         <Box>
@@ -342,7 +341,13 @@ export default function ConfigurationManagementPage() {
                 onClose={closeEdit}
                 fullWidth
                 maxWidth="sm"
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#25232C',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                    },
+                }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>
                     {editing ? CONFIG_LABELS[editing.config_name] || editing.config_name : 'Sửa cấu hình'}
@@ -403,7 +408,13 @@ export default function ConfigurationManagementPage() {
             <Dialog
                 open={Boolean(deleteTarget)}
                 onClose={closeDeleteConfirm}
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#25232C',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#fff',
+                    },
+                }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>Xóa cấu hình?</DialogTitle>
                 <DialogContent>
@@ -430,6 +441,13 @@ export default function ConfigurationManagementPage() {
                 </DialogActions>
             </Dialog>
 
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={4000}
+                onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+                message={snackbar.message}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            />
         </Box>
     );
 }

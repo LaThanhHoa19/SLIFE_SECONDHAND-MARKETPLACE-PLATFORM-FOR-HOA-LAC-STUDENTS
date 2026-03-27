@@ -85,18 +85,8 @@ export default function StitchLandingPage() {
                     Nền tảng mua bán ký gửi dành riêng cho sinh viên FPT University. An toàn, tiết kiệm và cực kỳ tiện lợi ngay trong Campus.
                   </p>
                   <div className="flex flex-wrap justify-center lg:justify-start gap-4">
-                    <button
-                        onClick={() => navigate('/feed')}
-                        className="px-8 py-4 bg-primary text-white rounded-full font-bold text-lg shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all animate-sparkle"
-                    >
-                      Khám phá ngay
-                    </button>
-                    <button
-                        onClick={() => navigate('/listings/new')}
-                        className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 transition-all animate-sparkle"
-                    >
-                      Đăng tin bán
-                    </button>
+                    <button className="px-8 py-4 bg-primary text-white rounded-full font-bold text-lg shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all animate-sparkle">Khám phá ngay</button>
+                    <button className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 transition-all animate-sparkle">Đăng tin bán</button>
                   </div>
                 </div>
                 <div className="flex-1 relative w-full aspect-square md:aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border-8 border-white dark:border-slate-800">

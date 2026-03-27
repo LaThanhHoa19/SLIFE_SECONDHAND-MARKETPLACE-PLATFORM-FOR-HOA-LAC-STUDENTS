@@ -1,12 +1,14 @@
 /** Card hiển thị listing theo layout feed (header + content + media + actions). */
 import { useEffect, useState } from 'react';
 import {
+    Alert,
     Avatar,
     Box,
     Card,
     CardContent,
     CircularProgress,
     IconButton,
+    Snackbar,
     Stack,
     Tooltip,
     Typography,
@@ -30,7 +32,7 @@ import { formatDate } from '../../utils/formatDate';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
-import { useToast } from '../../context/ToastContext';
+import useSnackbarState from '../../hooks/useSnackbarState';
 import { getListingShareInfo, saveListing, toggleListingLike, unsaveListing } from '../../api/listingApi';
 import CommentModal from './CommentModal';
 
@@ -124,7 +126,7 @@ export default function ListingCard({
     const [isSaved, setIsSaved] = useState(() => !!(listing?.isSaved ?? listing?.is_saved));
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
-    const { showToast } = useToast();
+    const { snackbar, showSnackbar, closeSnackbar } = useSnackbarState();
 
     useEffect(() => {
         setFollowed(!!listing?.isFollowed);
@@ -225,11 +227,11 @@ export default function ListingCard({
                 return;
             }
             await navigator.clipboard.writeText(shareUrl);
-            showToast('Đã sao chép liên kết bài đăng.', 'success');
+            showSnackbar('Đã sao chép liên kết bài đăng.', 'success');
         } catch {
             // Final fallback: manual copy dialog.
             window.prompt('Sao chép liên kết bài đăng:', shareUrl);
-            showToast('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
+            showSnackbar('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
         } finally {
             window.setTimeout(() => setShareSubmitting(false), 800);
         }
@@ -254,10 +256,10 @@ export default function ListingCard({
             }
             const nextSaved = !wasSaved;
             onPatchListing?.(id, { isSaved: nextSaved });
-            showToast(nextSaved ? 'Đã lưu tin.' : 'Đã bỏ lưu tin.', 'success');
+            showSnackbar(nextSaved ? 'Đã lưu tin.' : 'Đã bỏ lưu tin.', 'success');
         } catch {
             setIsSaved(wasSaved);
-            showToast('Không cập nhật được trạng thái lưu.', 'error');
+            showSnackbar('Không cập nhật được trạng thái lưu.', 'error');
         } finally {
             setSaveSubmitting(false);
         }
@@ -492,6 +494,21 @@ export default function ListingCard({
                 listingId={id}
                 listingTitle={listing?.title}
             />
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={1800}
+                onClose={closeSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={closeSnackbar}
+                    severity={snackbar.severity}
+                    variant="filled"
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Card>
     );
 }
