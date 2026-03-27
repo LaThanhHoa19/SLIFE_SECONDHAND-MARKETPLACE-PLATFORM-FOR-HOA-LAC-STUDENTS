@@ -8,6 +8,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api")
 public class DealController {
@@ -32,9 +34,27 @@ public class DealController {
         return ResponseEntity.ok(ApiResponse.success("Đã từ chối lượt trả giá", response));
     }
 
+    @GetMapping("/deals/{id}")
+    public ResponseEntity<ApiResponse<DealResponse>> getDeal(@PathVariable Long id) {
+        DealResponse response = dealService.getDealById(id);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * List deals of current user by role.
+     * role=buyer (default): deals proposed by current user
+     * role=seller: deals on listings owned by current user
+     */
+    @GetMapping("/deals")
+    public ResponseEntity<ApiResponse<List<DealResponse>>> listMyDeals(
+            @RequestParam(name = "role", defaultValue = "buyer") String role) {
+        List<DealResponse> data = dealService.listMyDeals(role);
+        return ResponseEntity.ok(ApiResponse.success("OK", data));
+    }
+
     @DeleteMapping("/deals/{id}")
     public ResponseEntity<ApiResponse<Void>> cancelDeal(@PathVariable Long id) {
         dealService.cancelDeal(id);
         return ResponseEntity.ok(ApiResponse.success("Đã hủy lượt trả giá", null));
     }
-}
+}
