@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
 
 import java.util.List;
 
@@ -42,6 +43,19 @@ public class ReportController {
     public ResponseEntity<BaseResponse<List<ReportResponseDTO>>> getPendingReports() {
         List<ReportResponseDTO> reports = reportService.getPendingReports();
         return ResponseEntity.ok(BaseResponse.success("OK", reports));
+    }
+
+    @GetMapping("/api/admin/reports/page")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BaseResponse<Page<ReportResponseDTO>>> getReportsPage(
+            @RequestParam(required = false) String targetType,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir) {
+        Page<ReportResponseDTO> result = reportService.getAdminReports(targetType, status, page, size, sortBy, sortDir);
+        return ResponseEntity.ok(BaseResponse.success("OK", result));
     }
 
     @PatchMapping("/api/admin/reports/{id}")

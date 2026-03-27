@@ -12,18 +12,25 @@ import com.slife.marketplace.dto.request.ReportRequest;
 import com.slife.marketplace.dto.request.ResolveReportRequest;
 import com.slife.marketplace.dto.response.ReportResponse;
 import com.slife.marketplace.dto.response.ReportResponseDTO;
+import com.slife.marketplace.entity.Comment;
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.Message;
 import com.slife.marketplace.entity.Report;
+import com.slife.marketplace.entity.ReportImage;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.CommentRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.MessageRepository;
+import com.slife.marketplace.repository.ReportImageRepository;
 import com.slife.marketplace.repository.ReportRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,45 +43,58 @@ import java.util.Set;
 public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
-    private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "USER");
+    private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "POST", "USER", "COMMENT", "MESSAGE");
     private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "DISMISSED");
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
 
     private final ReportRepository reportRepository;
+    private final ReportImageRepository reportImageRepository;
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    private final MessageRepository messageRepository;
     private final NotificationService notificationService;
     private final ConfigService configService;
 
     public ReportService(ReportRepository reportRepository,
+                         ReportImageRepository reportImageRepository,
                          ListingRepository listingRepository,
                          UserRepository userRepository,
+                         CommentRepository commentRepository,
+                         MessageRepository messageRepository,
                          NotificationService notificationService,
                          ConfigService configService) {
         this.reportRepository = reportRepository;
+        this.reportImageRepository = reportImageRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
+        this.messageRepository = messageRepository;
         this.notificationService = notificationService;
         this.configService = configService;
     }
 
     @Transactional
     public ReportResponse createReport(User reporter, ReportRequest request) {
-        String targetType = request.getTargetType().toUpperCase();
-        if (!VALID_TARGET_TYPES.contains(targetType)) {
+        String rawTargetType = request.getTargetType() != null ? request.getTargetType().trim().toUpperCase(Locale.ROOT) : "";
+        if (!VALID_TARGET_TYPES.contains(rawTargetType)) {
             throw new SlifeException(ErrorCode.REPORT_INVALID_TARGET);
         }
+        // Alias: POST is the same as LISTING in our schema.
+        String targetType = "POST".equals(rawTargetType) ? "LISTING" : rawTargetType;
 
         if (reportRepository.existsByReporter_IdAndTargetTypeAndTargetId(
                 reporter.getId(), targetType, request.getTargetId())) {
             throw new SlifeException(ErrorCode.REPORT_DUPLICATE);
         }
 
-        if ("LISTING".equals(targetType)) {
-            return createListingReport(reporter, request, targetType);
-        } else {
-            return createUserReport(reporter, request, targetType);
-        }
+        return switch (targetType) {
+            case "LISTING" -> createListingReport(reporter, request, targetType);
+            case "USER" -> createUserReport(reporter, request, targetType);
+            case "COMMENT" -> createCommentReport(reporter, request, targetType);
+            case "MESSAGE" -> createMessageReport(reporter, request, targetType);
+            default -> throw new SlifeException(ErrorCode.REPORT_INVALID_TARGET);
+        };
     }
 
     @Transactional(readOnly = true)
@@ -94,6 +114,29 @@ public class ReportService {
                 .stream()
                 .map(this::toReportResponseDTO)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReportResponseDTO> getAdminReports(String targetType, String status, int page, int size,
+                                                   String sortBy, String sortDir) {
+        String normalizedTargetType = (targetType != null && !targetType.isBlank())
+                ? targetType.trim().toUpperCase(Locale.ROOT)
+                : null;
+        if ("POST".equals(normalizedTargetType)) normalizedTargetType = "LISTING";
+        String normalizedStatus = (status != null && !status.isBlank())
+                ? status.trim().toUpperCase(Locale.ROOT)
+                : null;
+
+        String resolvedSortBy = resolveSortBy(sortBy);
+        Sort.Direction dir = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.min(Math.max(size, 1), 100),
+                Sort.by(dir, resolvedSortBy)
+        );
+
+        return reportRepository.findAdminReports(normalizedTargetType, normalizedStatus, pageable)
+                .map(this::toReportResponseDTO);
     }
 
     @Transactional
@@ -148,7 +191,7 @@ public class ReportService {
         }
 
         Report report = buildReport(reporter, targetType, request);
-        Report saved = reportRepository.save(report);
+        Report saved = persistReportWithEvidence(report, request.getEvidenceImage());
 
         notificationService.notifyListingReported(listing.getSeller(), reporter, listing.getId(), listing.getTitle());
         log.info("Listing report created: reportId={} listingId={} by userId={}", saved.getId(), listing.getId(), reporter.getId());
@@ -165,9 +208,45 @@ public class ReportService {
         }
 
         Report report = buildReport(reporter, targetType, request);
-        Report saved = reportRepository.save(report);
+        Report saved = persistReportWithEvidence(report, request.getEvidenceImage());
 
         log.info("User report created: reportId={} targetUserId={} by userId={}", saved.getId(), targetUser.getId(), reporter.getId());
+        return ReportResponse.from(saved);
+    }
+
+    private ReportResponse createCommentReport(User reporter, ReportRequest request, String targetType) {
+        Comment comment = commentRepository.findById(request.getTargetId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.COMMENT_NOT_FOUND));
+        if (comment.getUser() != null && comment.getUser().getId() != null
+                && comment.getUser().getId().equals(reporter.getId())) {
+            throw new SlifeException(ErrorCode.REPORT_SELF);
+        }
+        Report report = buildReport(reporter, targetType, request);
+        Report saved = persistReportWithEvidence(report, request.getEvidenceImage());
+        Long listingId = comment.getListing() != null ? comment.getListing().getId() : null;
+        log.info("Comment report created: reportId={} commentId={} listingId={} by userId={}",
+                saved.getId(), comment.getId(), listingId, reporter.getId());
+        return ReportResponse.from(saved);
+    }
+
+    private ReportResponse createMessageReport(User reporter, ReportRequest request, String targetType) {
+        Message message = messageRepository.findById(request.getTargetId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.MESSAGE_NOT_FOUND));
+
+        // Only conversation participants can report a message.
+        if (!isConversationParticipant(message.getConversation(), reporter)) {
+            throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT);
+        }
+        if (message.getSender() != null && message.getSender().getId() != null
+                && message.getSender().getId().equals(reporter.getId())) {
+            throw new SlifeException(ErrorCode.REPORT_SELF);
+        }
+
+        Report report = buildReport(reporter, targetType, request);
+        Report saved = persistReportWithEvidence(report, request.getEvidenceImage());
+        Long convId = message.getConversation() != null ? message.getConversation().getId() : null;
+        log.info("Message report created: reportId={} messageId={} conversationId={} by userId={}",
+                saved.getId(), message.getId(), convId, reporter.getId());
         return ReportResponse.from(saved);
     }
 
@@ -181,6 +260,41 @@ public class ReportService {
         report.setCreatedAt(Instant.now());
         report.setUpdatedAt(Instant.now());
         return report;
+    }
+
+    private Report persistReportWithEvidence(Report report, String evidenceImage) {
+        Report saved = reportRepository.save(report);
+        if (evidenceImage != null && !evidenceImage.isBlank()) {
+            ReportImage img = new ReportImage();
+            img.setReport(saved);
+            img.setImageUrl(evidenceImage.trim());
+            img.setCreatedAt(Instant.now());
+            img.setUpdatedAt(Instant.now());
+            reportImageRepository.save(img);
+        }
+        return saved;
+    }
+
+    private boolean isConversationParticipant(com.slife.marketplace.entity.Conversation conv, User user) {
+        if (conv == null || user == null) return false;
+        Long uid = user.getId();
+        if (uid == null) return false;
+        try {
+            if (conv.getUserId1() != null && uid.equals(conv.getUserId1().getId())) return true;
+            if (conv.getUserId2() != null && uid.equals(conv.getUserId2().getId())) return true;
+            if (conv.getListing() != null && conv.getListing().getSeller() != null && uid.equals(conv.getListing().getSeller().getId())) return true;
+        } catch (Exception ignored) {
+            // defensive: lazy loading edge
+        }
+        // Email-based fallback (for some legacy paths)
+        String ue = user.getEmail() != null ? user.getEmail().trim().toLowerCase(Locale.ROOT) : "";
+        if (!ue.isBlank()) {
+            String e1 = conv.getUserId1() != null && conv.getUserId1().getEmail() != null ? conv.getUserId1().getEmail().trim().toLowerCase(Locale.ROOT) : "";
+            String e2 = conv.getUserId2() != null && conv.getUserId2().getEmail() != null ? conv.getUserId2().getEmail().trim().toLowerCase(Locale.ROOT) : "";
+            if (!e1.isBlank() && e1.equals(ue)) return true;
+            return !e2.isBlank() && e2.equals(ue);
+        }
+        return false;
     }
 
     private String normalizeAction(String action) {
@@ -221,11 +335,85 @@ public class ReportService {
 
     private ReportResponseDTO toReportResponseDTO(Report report) {
         String reporterName = report.getReporter() != null ? report.getReporter().getFullName() : null;
+        TargetContext ctx = resolveTargetContext(report);
         return new ReportResponseDTO(
                 report.getId(),
                 reporterName,
                 report.getTargetType(),
+                report.getTargetId(),
+                ctx.preview(),
+                ctx.listingId(),
+                ctx.conversationId(),
                 report.getReason(),
                 report.getCreatedAt());
     }
+
+    private TargetContext resolveTargetContext(Report report) {
+        String targetType = report.getTargetType() != null ? report.getTargetType().toUpperCase(Locale.ROOT) : "";
+        Long targetId = report.getTargetId();
+        if (targetId == null) return new TargetContext(null, null, null);
+        try {
+            if ("LISTING".equals(targetType)) {
+                return listingRepository.findById(targetId)
+                        .map(l -> new TargetContext(truncate(l.getTitle(), 120), l.getId(), null))
+                        .orElse(new TargetContext("[Listing not found]", null, null));
+            }
+            if ("COMMENT".equals(targetType)) {
+                return commentRepository.findById(targetId)
+                        .map(c -> {
+                            Long listingId = c.getListing() != null ? c.getListing().getId() : null;
+                            String preview = (c.getContent() == null || c.getContent().isBlank())
+                                    ? "[Image-only comment]"
+                                    : truncate(c.getContent(), 120);
+                            return new TargetContext(preview, listingId, null);
+                        })
+                        .orElse(new TargetContext("[Comment not found]", null, null));
+            }
+            if ("MESSAGE".equals(targetType)) {
+                return messageRepository.findById(targetId)
+                        .map(m -> {
+                            Long convId = m.getConversation() != null ? m.getConversation().getId() : null;
+                            Long listingId = (m.getConversation() != null && m.getConversation().getListing() != null)
+                                    ? m.getConversation().getListing().getId()
+                                    : null;
+                            String preview;
+                            if (m.getMessageType() != null && m.getMessageType().name().equals("IMAGE")) {
+                                preview = "[Image message]";
+                            } else {
+                                preview = truncate(m.getContent(), 120);
+                            }
+                            return new TargetContext(preview, listingId, convId);
+                        })
+                        .orElse(new TargetContext("[Message not found]", null, null));
+            }
+            if ("USER".equals(targetType)) {
+                return userRepository.findById(targetId)
+                        .map(u -> new TargetContext(u.getFullName(), null, null))
+                        .orElse(new TargetContext("[User not found]", null, null));
+            }
+        } catch (Exception ex) {
+            log.warn("resolveTargetContext failed reportId={} type={} targetId={}: {}",
+                    report.getId(), targetType, targetId, ex.getMessage());
+        }
+        return new TargetContext(null, null, null);
+    }
+
+    private String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max) + "...";
+    }
+
+    private String resolveSortBy(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return "createdAt";
+        return switch (sortBy.trim()) {
+            case "reportId", "id" -> "id";
+            case "status" -> "status";
+            case "targetType" -> "targetType";
+            case "updatedAt" -> "updatedAt";
+            case "createdAt" -> "createdAt";
+            default -> "createdAt";
+        };
+    }
+
+    private record TargetContext(String preview, Long listingId, Long conversationId) {}
 }

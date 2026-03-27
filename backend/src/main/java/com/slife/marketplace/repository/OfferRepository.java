@@ -17,6 +17,8 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
 
     Page<Offer> findByListing_IdAndBuyer_IdOrderByCreatedAtDesc(Long listingId, Long buyerId, Pageable pageable);
 
+    List<Offer> findByListing_IdAndStatusOrderByCreatedAtDesc(Long listingId, String status);
+
     /** BR-35: Count how many offers a buyer has submitted for a listing (across all conversations). */
     @Query("SELECT COUNT(o) FROM Offer o WHERE o.buyer.id = :buyerId AND o.listing.id = :listingId")
     long countByBuyerIdAndListingId(@Param("buyerId") Long buyerId, @Param("listingId") Long listingId);

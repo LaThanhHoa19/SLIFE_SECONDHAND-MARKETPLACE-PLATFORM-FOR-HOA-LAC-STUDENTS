@@ -29,17 +29,20 @@ public class FollowService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
     private final BlockRepository blockRepository;
+    private final BlockService blockService;
     private final NotificationService notificationService;
     private final ListingRepository listingRepository;
 
     public FollowService(FollowRepository followRepository,
                          UserRepository userRepository,
                          BlockRepository blockRepository,
+                         BlockService blockService,
                          NotificationService notificationService,
                          ListingRepository listingRepository) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
+        this.blockService = blockService;
         this.notificationService = notificationService;
         this.listingRepository = listingRepository;
     }
@@ -159,8 +162,12 @@ public class FollowService {
         dto.setListingCount(listingRepository.countBySeller_IdAndStatus(profileUser.getId(), "ACTIVE"));
         if (viewerUserId != null && !viewerUserId.equals(profileUser.getId())) {
             dto.setIsFollowedByViewer(isFollowing(viewerUserId, profileUser.getId()));
+            dto.setIsBlockedByViewer(blockService.isBlockedByCurrentUser(viewerUserId, profileUser.getId()));
+            dto.setHasBlockedViewer(blockService.isBlockedByCurrentUser(profileUser.getId(), viewerUserId));
         } else {
             dto.setIsFollowedByViewer(null);
+            dto.setIsBlockedByViewer(null);
+            dto.setHasBlockedViewer(null);
         }
         return dto;
     }

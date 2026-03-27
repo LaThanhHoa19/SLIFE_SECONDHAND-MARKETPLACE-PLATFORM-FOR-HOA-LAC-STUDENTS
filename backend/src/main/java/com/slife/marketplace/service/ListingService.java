@@ -50,6 +50,7 @@ public class ListingService {
     private final CategoryRepository categoryRepository;
     private final AddressRepository addressRepository;
     private final FollowService followService;
+    private final BlockService blockService;
     private final ListingLikeRepository listingLikeRepository;
 
     public ListingService(ListingRepository listingRepository,
@@ -58,6 +59,7 @@ public class ListingService {
                           CategoryRepository categoryRepository,
                           AddressRepository addressRepository,
                           FollowService followService,
+                          BlockService blockService,
                           ListingLikeRepository listingLikeRepository) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
@@ -65,6 +67,7 @@ public class ListingService {
         this.categoryRepository = categoryRepository;
         this.addressRepository = addressRepository;
         this.followService = followService;
+        this.blockService = blockService;
         this.listingLikeRepository = listingLikeRepository;
     }
 
@@ -102,7 +105,9 @@ public class ListingService {
                 ? new HashSet<>(savedListingRepository.findListingIdsByUserId(currentUser.getId()))
                 : Set.of();
 
-        List<Listing> listings = pageResult.getContent();
+        List<Listing> listings = pageResult.getContent().stream()
+                .filter(l -> !isSellerBlockingViewer(l.getSeller(), currentUser))
+                .toList();
         Set<Long> followedSellerIds = resolveFollowedSellerIds(currentUser, listings);
 
         List<ListingResponse> content = listings.stream()
@@ -142,7 +147,11 @@ public class ListingService {
                 listingRepository.findAllActiveListingCards(sellerId, pageable);
 
         List<com.slife.marketplace.dto.response.ListingCardResponse> content =
-                new java.util.ArrayList<>(pageResult.getContent());
+                pageResult.getContent().stream()
+                        .filter(card -> currentUser == null
+                                || card.getSellerId() == null
+                                || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
+                        .collect(Collectors.toCollection(java.util.ArrayList::new));
         if (currentUser != null && !content.isEmpty()) {
             Set<Long> sellerIds = content.stream()
                     .map(com.slife.marketplace.dto.response.ListingCardResponse::getSellerId)
@@ -508,6 +517,16 @@ public class ListingService {
             return false;
         }
         return followService.isFollowing(currentUser.getId(), listing.getSeller().getId());
+    }
+
+    private boolean isSellerBlockingViewer(User seller, User viewer) {
+        if (seller == null || viewer == null || seller.getId() == null || viewer.getId() == null) {
+            return false;
+        }
+        if (seller.getId().equals(viewer.getId())) {
+            return false;
+        }
+        return blockService.isBlockedByCurrentUser(seller.getId(), viewer.getId());
     }
 
     private Object buildSellerSummary(Listing listing) {
