@@ -34,29 +34,10 @@ import useListings from '../../hooks/useListings';
 import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
 import { useAuth } from '../../hooks/useAuth';
-
-function buildCategoryTree(flatList) {
-    if (!Array.isArray(flatList) || flatList.length === 0) return [];
-    const byId = new Map();
-    flatList.forEach((c) => {
-        const id = c.id ?? c.categoryId;
-        byId.set(id, { ...c, id, children: [] });
-    });
-    const roots = [];
-    flatList.forEach((c) => {
-        const node = byId.get(c.id ?? c.categoryId);
-        if (!node) return;
-        const parentId = c.parentId ?? c.parent_id ?? null;
-        if (parentId == null) {
-            roots.push(node);
-        } else {
-            const parent = byId.get(parentId);
-            if (parent) parent.children.push(node);
-            else roots.push(node);
-        }
-    });
-    return roots;
-}
+import { buildCategoryTree } from '../../utils/categoryTree';
+import CommunityCtaCard from '../../components/common/CommunityCtaCard';
+import CategoryTree from '../../components/common/CategoryTree';
+import { uiTokens } from '../../theme/uiTokens';
 
 export default function SearchPage() {
     const [searchParams] = useSearchParams();
@@ -71,6 +52,7 @@ export default function SearchPage() {
     const [draftMinPrice, setDraftMinPrice] = useState('');
     const [draftMaxPrice, setDraftMaxPrice] = useState('');
     const [advancedAnchorEl, setAdvancedAnchorEl] = useState(null);
+    const [expandedParents, setExpandedParents] = useState(new Set());
 
     const getEmptyDraft = useCallback(() => ({
         q: '',
@@ -613,17 +595,7 @@ export default function SearchPage() {
                             boxShadow: '0 18px 40px rgba(15,23,42,0.9)',
                         }}
                     >
-                        <Typography
-                            sx={{
-                                fontSize: 15,
-                                fontWeight: 600,
-                                color: '#E5E7EB',
-                                mb: 1,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 0.75,
-                            }}
-                        >
+                        <Typography sx={{ ...uiTokens.typography.bodySm, fontWeight: 600, color: '#E5E7EB', mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
                             <FlashOnIcon sx={{ fontSize: 18, color: '#60A5FA' }} />
                             Gợi ý nhanh
                         </Typography>
@@ -675,77 +647,18 @@ export default function SearchPage() {
                         </Box>
                     </Box>
 
-                    {/* Banner cộng đồng – reuse design from RightPanel */}
-                    <Box
-                        sx={{
-                            background: 'linear-gradient(145deg, #6D28D9 0%, #8B5CF6 50%, #A78BFA 100%)',
-                            borderRadius: 3,
-                            p: 2.25,
-                            mt: 1.5,
-                            position: 'relative',
-                            overflow: 'hidden',
-                            boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
+                    <CommunityCtaCard
+                        sx={{ mt: 1.5, borderRadius: 3 }}
+                        onAction={() => {
+                            if (!isAuthenticated) {
+                                navigate('/login', {
+                                    state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' },
+                                });
+                                return;
+                            }
+                            navigate('/listings/new');
                         }}
-                    >
-                        <Typography
-                            sx={{
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: '#EDE9FE',
-                                lineHeight: 1.45,
-                                mb: 1.5,
-                                pr: 4,
-                            }}
-                        >
-                            Tham gia cộng đồng mua bán cùng SLIFE!
-                        </Typography>
-                        <Button
-                            onClick={() => {
-                                if (!isAuthenticated) {
-                                    navigate('/login', {
-                                        state: {
-                                            from: '/listings/new',
-                                            message: 'Bạn cần đăng nhập để đăng tin',
-                                        },
-                                    });
-                                    return;
-                                }
-                                navigate('/listings/new');
-                            }}
-                            sx={{
-                                bgcolor: '#FFF',
-                                color: '#6D28D9',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                px: 2,
-                                py: 0.75,
-                                borderRadius: '10px',
-                                textTransform: 'none',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                                transition: 'transform 0.15s, box-shadow 0.15s',
-                                '&:hover': {
-                                    bgcolor: '#FFF',
-                                    transform: 'translateY(-1px)',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
-                                },
-                            }}
-                        >
-                            Đăng tin ngay
-                        </Button>
-                        <Typography
-                            sx={{
-                                position: 'absolute',
-                                right: 12,
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                fontSize: 32,
-                                opacity: 0.35,
-                                pointerEvents: 'none',
-                            }}
-                        >
-                            📢
-                        </Typography>
-                    </Box>
+                    />
                 </Box>
             </Box>
 
@@ -851,59 +764,31 @@ export default function SearchPage() {
                     >
                         Tất cả danh mục
                     </MenuItem>
-                    {categoryTree.map((parent, idx) => {
-                        const parentId = String(parent.id ?? parent.categoryId ?? parent.name);
-                        const hasChildren = Array.isArray(parent.children) && parent.children.length > 0;
-                        return (
-                            <Box
-                                key={parentId}
-                                sx={{
-                                    pb: 0.5,
-                                    borderBottom:
-                                        idx < categoryTree.length - 1 ? '1px solid rgba(55,65,81,0.8)' : 'none',
-                                    mb: 0.5,
-                                }}
-                            >
-                                <MenuItem
-                                    selected={draft.category === parentId}
-                                    onClick={() => {
-                                        setDraft((prev) => ({ ...prev, category: parentId }));
-                                        setCategoryAnchorEl(null);
-                                    }}
-                                    sx={{
-                                        fontSize: 13,
-                                        color: '#E5E7EB',
-                                        fontWeight: 600,
-                                        borderRadius: 1,
-                                    }}
-                                >
-                                    {parent.name}
-                                </MenuItem>
-                                {hasChildren &&
-                                    parent.children.map((child) => {
-                                        const childId = String(child.id ?? child.categoryId ?? child.name);
-                                        return (
-                                            <MenuItem
-                                                key={childId}
-                                                selected={draft.category === childId}
-                                                onClick={() => {
-                                                    setDraft((prev) => ({ ...prev, category: childId }));
-                                                    setCategoryAnchorEl(null);
-                                                }}
-                                                sx={{
-                                                    fontSize: 13,
-                                                    color: '#E5E7EB',
-                                                    pl: 3.5,
-                                                    borderRadius: 1,
-                                                }}
-                                            >
-                                                {child.name}
-                                            </MenuItem>
-                                        );
-                                    })}
-                            </Box>
-                        );
-                    })}
+                    <CategoryTree
+                        items={categoryTree}
+                        compact
+                        expandedParents={expandedParents}
+                        selectedCategory={draft.category}
+                        selectedSubcategory=""
+                        onToggleParent={(id) => {
+                            setExpandedParents((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(id)) next.delete(id);
+                                else next.add(id);
+                                return next;
+                            });
+                        }}
+                        onSelectCategory={(parent) => {
+                            const parentId = String(parent.id ?? parent.categoryId ?? parent.name);
+                            setDraft((prev) => ({ ...prev, category: parentId }));
+                            setCategoryAnchorEl(null);
+                        }}
+                        onSelectSubcategory={(_, child) => {
+                            const childId = String(child.id ?? child.categoryId ?? child.name);
+                            setDraft((prev) => ({ ...prev, category: childId }));
+                            setCategoryAnchorEl(null);
+                        }}
+                    />
                 </Box>
             </Popover>
 
