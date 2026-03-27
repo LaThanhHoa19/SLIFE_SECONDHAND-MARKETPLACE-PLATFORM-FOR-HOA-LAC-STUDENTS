@@ -189,8 +189,8 @@ export default function ListingDetailPage() {
                     const lId = l.id ?? l.listingId;
                     if (lId === currentId) return false;
                     const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                    if (String(lSellerId) === String(sellerId)) return false; 
-                    
+                    if (String(lSellerId) === String(sellerId)) return false;
+
                     const lCond = l?.condition ?? l?.itemCondition;
                     const lPrice = Number(l?.price ?? 0);
                     const sameCondition = condition && lCond === condition;
@@ -391,7 +391,7 @@ export default function ListingDetailPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {[1, 2, 3, 4].map((n) => (
                             <Skeleton key={n} variant="rectangular" height={n === 1 ? 32 : n === 2 ? 44 : 24}
-                                      sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
+                                sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
                         ))}
                     </Box>
                 </Box>
@@ -561,7 +561,25 @@ export default function ListingDetailPage() {
                         onNotify={showSnack}
                     />
                 </Card>
-                <Box /> {/* O trong de giu grid 2 cot */}
+                <Box
+                    sx={{
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        width: '100%',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.3s',
+                        '&:hover': { transform: 'scale(1.01)' },
+                        maxHeight: 400
+                    }}
+                >
+                    <Box
+                        component="img"
+                        src="/brand_advertisement_banner_v2.png"
+                        alt="Brand Advertisement"
+                        sx={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                </Box>
             </Box>
 
             {/* Xem truoc vi tri hen (map Vietmap + nut mo Google Maps) */}
@@ -586,27 +604,6 @@ export default function ListingDetailPage() {
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
             />
-
-            {/* Banner Quảng Cáo */}
-            <Box
-                sx={{
-                    mt: 6, mb: 2,
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    width: '100%',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                    cursor: 'pointer',
-                    transition: 'transform 0.3s',
-                    '&:hover': { transform: 'scale(1.01)' }
-                }}
-            >
-                <Box
-                    component="img"
-                    src="/brand_advertisement_banner_1773584721978.png" // Since I cannot move it easily, I'll refer to it (Agent should assume it's moved or accessible)
-                    alt="Brand Advertisement"
-                    sx={{ width: '100%', display: 'block' }}
-                />
-            </Box>
 
         </Box>
     );
