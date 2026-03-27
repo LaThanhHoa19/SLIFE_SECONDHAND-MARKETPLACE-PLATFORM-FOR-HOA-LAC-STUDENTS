@@ -15,8 +15,6 @@ import {
     IconButton,
     InputAdornment,
     Skeleton,
-    Snackbar,
-    Alert,
     TextField,
     Tooltip,
     Typography,
@@ -48,7 +46,7 @@ import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
-import useSnackbarState from '../../hooks/useSnackbarState';
+import { useToast } from '../../context/ToastContext';
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
 import ListingComments from '../../components/listing/ListingComments';
@@ -133,7 +131,7 @@ export default function ListingDetailPage() {
     const [likeSubmitting, setLikeSubmitting] = useState(false);
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
-    const { snackbar, showSnackbar, closeSnackbar } = useSnackbarState();
+    const { showToast } = useToast();
     const [sellerListings, setSellerListings] = useState([]);
     const [similarListings, setSimilarListings] = useState([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
@@ -212,7 +210,7 @@ export default function ListingDetailPage() {
     // Handlers
     const handleToggleLike = async () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để thích tin.', 'warning');
+            showToast('Bạn cần đăng nhập để thích tin.', 'warning');
             return;
         }
         if (likeSubmitting) return;
@@ -242,7 +240,7 @@ export default function ListingDetailPage() {
         } catch {
             setIsLiked(prevLiked);
             setLikeCount(prevCount);
-            showSnackbar('Không cập nhật được lượt thích. Thử lại sau.', 'error');
+            showToast('Không cập nhật được lượt thích. Thử lại sau.', 'error');
         } finally {
             setLikeSubmitting(false);
         }
@@ -268,10 +266,10 @@ export default function ListingDetailPage() {
                 return;
             }
             await navigator.clipboard.writeText(shareUrl);
-            showSnackbar('Đã sao chép liên kết bài đăng.', 'success');
+            showToast('Đã sao chép liên kết bài đăng.', 'success');
         } catch {
             window.prompt('Sao chép liên kết bài đăng:', shareUrl);
-            showSnackbar('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
+            showToast('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
         } finally {
             window.setTimeout(() => setShareSubmitting(false), 800);
         }
@@ -279,7 +277,7 @@ export default function ListingDetailPage() {
 
     const handleReport = () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
             return;
         }
         navigate(`/report?targetType=LISTING&targetId=${id}`);
@@ -287,7 +285,7 @@ export default function ListingDetailPage() {
 
     const handleChat = async () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
             return;
         }
         setStartingChat(true);
@@ -296,7 +294,7 @@ export default function ListingDetailPage() {
             const sessionId = res?.data?.data ?? res?.data;
             if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
         } catch {
-            showSnackbar('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
+            showToast('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
         } finally {
             setStartingChat(false);
         }
@@ -304,15 +302,15 @@ export default function ListingDetailPage() {
 
     const handleShowPhone = () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
+            showToast('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
             return;
         }
         setShowPhone(true);
     };
 
-    const showSnack = useCallback((msg, type = 'success', action = null) => {
-        showSnackbar(msg, type, action);
-    }, [showSnackbar]);
+    const showSnack = useCallback((msg, type = 'success') => {
+        showToast(msg, type);
+    }, [showToast]);
 
     const handleSellerFollowClick = useCallback(async () => {
         if (!listing) return;
@@ -354,7 +352,7 @@ export default function ListingDetailPage() {
 
     const handleToggleSave = async () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để lưu tin.', 'warning');
+            showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
             return;
         }
         if (!listing?.id || saveSubmitting) return;
@@ -370,10 +368,10 @@ export default function ListingDetailPage() {
                 await saveListing(listing.id);
             }
             setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
-            showSnackbar(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
+            showToast(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
         } catch {
             setIsSavedItem(wasSaved);
-            showSnackbar('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
+            showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
         } finally {
             setSaveSubmitting(false);
         }
@@ -630,35 +628,6 @@ export default function ListingDetailPage() {
                 />
             </Box>
 
-            {/* Snackbar thông báo */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={3000}
-                onClose={closeSnackbar}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    onClose={closeSnackbar}
-                    severity={snackbar.severity}
-                    variant="filled"
-                    sx={{
-                        borderRadius: '12px',
-                        bgcolor: snackbar.severity === 'warning' ? '#FF9F43' : undefined,
-                        color: '#fff',
-                        fontWeight: 500,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                        '& .MuiAlert-action': {
-                            alignItems: 'center',
-                            paddingTop: 0,
-                            paddingBottom: 0,
-                            marginLeft: 1
-                        }
-                    }}
-                    action={snackbar.action}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 }
