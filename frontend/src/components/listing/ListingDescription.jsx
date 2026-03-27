@@ -7,23 +7,13 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const PURPLE = '#9D6EED';
 
-const MOCK_HTML = `
-  <p>Mình cần pass lại món đồ này do không có nhu cầu sử dụng nữa. Ngoại hình <strong>NHƯ MỚI 99%</strong>, chưa qua sửa chữa, pin còn rất trâu (đã test kỹ ở nhiệt độ phòng và dùng các ứng dụng nặng).</p>
-  <p>Các tính năng nổi bật:</p>
-  <ul>
-    <li>Màn hình cực đẹp, độ sáng cao, chống chói tốt ngoài trời.</li>
-    <li>Thiết kế mỏng nhẹ, dễ dàng mang đi học ở giảng đường VNU.</li>
-    <li>Màu sắc nguyên bản, không trầy xước viền.</li>
-  </ul>
-  <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w0NzEyNjZ8MHwxfHNlYXJjaHwxfHxzbmVha2Vyc3xlbnwwfDB8fHwxNzAyNTMxMjg0fDA&ixlib=rb-4.0.3&q=80&w=600" alt="product preview" style="max-width: 100%; border-radius: 8px; margin: 12px 0;" />
-  <p><em>Lưu ý:</em> Bao test 7 ngày cho các bạn sinh viên yên tâm sử dụng. Fix nhẹ xăng xe cho bạn nào qua xem máy trực tiếp tại KTX Dom E nhé! Gọi điện hoặc nhắn tin trực tiếp để ép giá.</p>
-`;
-
 export default function ListingDescription({ description }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Nếu description rỗng thì xài mock để demo UI
-  const displayHtml = !description || description.length < 50 ? MOCK_HTML : description;
+  // Nếu description rỗng thì show thông báo fallback thay vì mock data
+  const displayHtml = description && description.trim().length > 0 
+    ? description 
+    : `<p style="color: rgba(255,255,255,0.4); font-style: italic;">Người rao không cung cấp mô tả chi tiết cho vật phẩm này.</p>`;
 
   return (
     <Card
