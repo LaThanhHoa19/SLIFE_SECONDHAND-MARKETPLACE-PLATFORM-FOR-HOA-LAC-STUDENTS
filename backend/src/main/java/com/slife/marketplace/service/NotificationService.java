@@ -1,8 +1,13 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.ChatMessageResponse;
+import com.slife.marketplace.dto.response.NotificationResponse;
+import com.slife.marketplace.entity.Conversation;
+import com.slife.marketplace.entity.Message;
 import com.slife.marketplace.entity.Notification;
 import com.slife.marketplace.entity.User;
+import com.slife.marketplace.repository.ConversationRepository;
+import com.slife.marketplace.repository.MessageRepository;
 import com.slife.marketplace.repository.NotificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,11 +35,17 @@ public class NotificationService {
     public static final String TYPE_FOLLOW   = "FOLLOW";
 
     private final NotificationRepository notificationRepository;
+    private final ConversationRepository conversationRepository;
+    private final MessageRepository messageRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     public NotificationService(NotificationRepository notificationRepository,
+                               ConversationRepository conversationRepository,
+                               MessageRepository messageRepository,
                                SimpMessagingTemplate messagingTemplate) {
         this.notificationRepository = notificationRepository;
+        this.conversationRepository = conversationRepository;
+        this.messageRepository = messageRepository;
         this.messagingTemplate = messagingTemplate;
     }
 
@@ -44,8 +55,11 @@ public class NotificationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyNewMessage(User recipient, ChatMessageResponse msg, String sessionId) {
         try {
+            // Persist a stable reference for deep-linking:
+            // store MESSAGE id (refId) so FE can open + scroll to exact message (no parsing display strings).
+            Long messageId = msg != null ? msg.getId() : null;
             Notification n = buildNotification(recipient, TYPE_MESSAGE,
-                    "CONVERSATION", null,
+                    "MESSAGE", messageId,
                     msg.getSenderName() + ": " + truncate(msg.getContent(), 60));
             notificationRepository.save(n);
             pushToUser(recipient.getEmail(), "/queue/messages", msg);
@@ -137,6 +151,12 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    public List<NotificationResponse> getNotificationResponses(Long userId) {
+        List<Notification> list = notificationRepository.findByUser_IdOrderByCreatedAtDesc(userId);
+        return list.stream().map(this::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUser_IdAndIsReadFalse(userId);
     }
@@ -166,6 +186,35 @@ public class NotificationService {
         n.setIsRead(false);
         n.setCreatedAt(Instant.now());
         return n;
+    }
+
+    private NotificationResponse toResponse(Notification n) {
+        NotificationResponse dto = NotificationResponse.from(n);
+        if (n.getRefType() == null || n.getRefId() == null) return dto;
+
+        String rt = n.getRefType().trim().toUpperCase();
+        try {
+            if ("CONVERSATION".equals(rt)) {
+                String sessionId = conversationRepository.findById(n.getRefId())
+                        .map(Conversation::getSessionUuid)
+                        .orElse(null);
+                dto.setSessionId(sessionId);
+                return dto;
+            }
+
+            // Optional: if later we store MESSAGE refId, we can resolve both messageId + sessionId
+            if ("MESSAGE".equals(rt)) {
+                dto.setMessageId(n.getRefId());
+                Message m = messageRepository.findById(n.getRefId()).orElse(null);
+                if (m != null && m.getConversation() != null) {
+                    dto.setSessionId(m.getConversation().getSessionUuid());
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("toResponse resolve deep-link failed notificationId={} refType={} refId={}",
+                    n.getId(), n.getRefType(), n.getRefId());
+        }
+        return dto;
     }
 
     private void pushToUser(String email, String destination, Object payload) {
