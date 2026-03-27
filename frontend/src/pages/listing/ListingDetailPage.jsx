@@ -162,49 +162,47 @@ export default function ListingDetailPage() {
     }, [listing?.id, listing?.isFollowed]);
 
     // Load tin khac cua nguoi ban + tin tuong tu
-    // Backend khong ho tro sellerId param -> load toan bo roi filter client-side
     useEffect(() => {
         if (!listing) return;
-        // Lay seller id tu listing.seller.id (theo dung field backend tra ve)
         const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         const currentId = Number(id);
 
         setLoadingRelated(true);
-        getListings({ size: 20 })
-            .then((res) => {
+
+        // Fetch seller's other listings directly if sellerId exists
+        const fetchSellerListings = sellerId
+            ? getListings({ sellerId, size: 10 }).then((res) => {
                 const data = getPayload(res);
-                const allList = Array.isArray(data?.content)
-                    ? data.content
-                    : Array.isArray(data) ? data : [];
-
-                // Tin khac cua cung nguoi ban (loai tru tin hien tai)
-                const bySellerRaw = sellerId
-                    ? allList.filter((l) => {
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        return String(lSellerId) === String(sellerId) && (l.id ?? l.listingId) !== currentId;
-                    })
-                    : [];
-                setSellerListings(bySellerRaw.slice(0, 6));
-
-                // Tin tuong tu: cung dieu kien san pham hoac muc gia tuong dong, loai tru tin hien tai va tin cua cung seller
-                const condition = listing?.condition ?? listing?.itemCondition;
-                const price = Number(listing?.price ?? 0);
-                const similar = allList
-                    .filter((l) => {
-                        const lId = l.id ?? l.listingId;
-                        if (lId === currentId) return false;
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        if (String(lSellerId) === String(sellerId)) return false; // bo tin cua cung seller (da co section tren)
-                        // uu tien: cung condition hoac gia trong khoang +-50%
-                        const lCond = l?.condition ?? l?.itemCondition;
-                        const lPrice = Number(l?.price ?? 0);
-                        const sameCondition = condition && lCond === condition;
-                        const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
-                        return sameCondition || similarPrice || true; // fallback: show all other listings
-                    })
-                    .slice(0, 4);
-                setSimilarListings(similar);
+                const list = data?.content || data || [];
+                setSellerListings(list.filter(l => (l.id ?? l.listingId) !== currentId).slice(0, 6));
             })
+            : Promise.resolve();
+
+        // Fetch general listings for "Similar" items
+        const fetchSimilarListings = getListings({ size: 20 }).then((res) => {
+            const data = getPayload(res);
+            const allList = data?.content || data || [];
+
+            const condition = listing?.condition ?? listing?.itemCondition;
+            const price = Number(listing?.price ?? 0);
+            const similar = allList
+                .filter((l) => {
+                    const lId = l.id ?? l.listingId;
+                    if (lId === currentId) return false;
+                    const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
+                    if (String(lSellerId) === String(sellerId)) return false; 
+                    
+                    const lCond = l?.condition ?? l?.itemCondition;
+                    const lPrice = Number(l?.price ?? 0);
+                    const sameCondition = condition && lCond === condition;
+                    const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
+                    return sameCondition || similarPrice || true;
+                })
+                .slice(0, 4);
+            setSimilarListings(similar);
+        });
+
+        Promise.all([fetchSellerListings, fetchSimilarListings])
             .catch(() => { })
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
