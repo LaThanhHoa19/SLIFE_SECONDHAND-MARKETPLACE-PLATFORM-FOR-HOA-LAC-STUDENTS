@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Alert,
     Button,
@@ -22,31 +22,26 @@ const GOOGLE_CLIENT_ID_FALLBACK =
     '318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com';
 
 export default function LoginPage() {
-    const navigate = useNavigate();
-    const googleBtnRef = useRef(null);
-    const [urlError, setUrlError] = useState('');
-    const [googleError, setGoogleError] = useState('');
-    const [googleReady, setGoogleReady] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const googleBtnRef = useRef(null);
+  const [urlError, setUrlError] = useState('');
+  const [googleError, setGoogleError] = useState('');
+  const [googleReady, setGoogleReady] = useState(false);
 
     const { googleLogin, authError } = useAuth();
     const GOOGLE_CLIENT_ID =
         import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
-    const getRedirectTarget = () => {
-        const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect');
-        return redirect ? decodeURIComponent(redirect) : '/feed';
-    };
+  const getRedirectTarget = () => {
+    // Priority 1: State from navigate ({ state: { from: pathname } })
+    if (location.state?.from) return location.state.from;
 
-    // Read ?google_error= from URL (set by backend on OAuth failure)
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const googleErr = params.get('google_error');
-        if (googleErr) {
-            setUrlError(decodeURIComponent(googleErr));
-            window.history.replaceState({}, '', '/login');
-        }
-    }, []);
+    // Priority 2: Query parameter (?redirect=...)
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect');
+    return redirect ? decodeURIComponent(redirect) : '/feed';
+  };
 
     const displayError = urlError || googleError || authError || '';
 

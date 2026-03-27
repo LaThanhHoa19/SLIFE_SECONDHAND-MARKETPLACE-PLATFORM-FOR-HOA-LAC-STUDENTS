@@ -23,7 +23,7 @@ import {
     PersonAdd as PersonAddIcon,
     PersonRemove as PersonRemoveIcon,
 } from '@mui/icons-material';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
@@ -109,6 +109,7 @@ export default function ListingCard({
                                         onPatchListing,
                                     }) {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const id = listing?.id ?? listing?.listingId ?? listing?.listing_id;
@@ -149,7 +150,8 @@ export default function ListingCard({
         e.preventDefault();
         if (!sellerId || isMe) return;
         if (!isAuthenticated) {
-            navigate('/login');
+            showToast('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         await toggleFollow({
@@ -169,7 +171,8 @@ export default function ListingCard({
         if (!id) return;
         // Dùng token (axios cũng gắn Bearer) — tránh trường hợp có JWT nhưng user object chưa hydrate.
         if (!token) {
-            navigate('/login');
+            showToast('Bạn cần đăng nhập để tiếp tục.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (likeSubmitting) return;
@@ -240,7 +243,8 @@ export default function ListingCard({
         e.preventDefault();
         if (!id || saveSubmitting) return;
         if (!token) {
-            navigate('/login');
+            showToast('Bạn cần đăng nhập để tiếp tục.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         const wasSaved = isSaved;
