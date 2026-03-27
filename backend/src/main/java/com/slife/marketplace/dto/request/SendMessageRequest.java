@@ -18,4 +18,10 @@ public class SendMessageRequest {
 
     /** URL returned by POST /chats/upload — required for IMAGE messages. */
     private String fileUrl;
+
+    /** Optional: reply to a previous message in the same session. */
+    private Long replyToMessageId;
+
+    /** Optional: quote a previous message in the same session. */
+    private Long quoteMessageId;
 }

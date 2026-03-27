@@ -13,11 +13,31 @@ export const RED = '#FF4757';
 export const toCurrency = (value) =>
   value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
 
-export default function MiniListingCard({ listing }) {
+export default function MiniListingCard({ listing, compact = false }) {
   const navigate = useNavigate();
   const id = listing?.id ?? listing?.listingId;
-  const images = Array.isArray(listing?.images) ? listing.images : [];
-  const thumbSrc = images[0] ? fullImageUrl(images[0]) : null;
+
+  // Handle various image field formats from backend.
+  const rawImages =
+    listing?.images ??
+    listing?.thumbnailUrl ??
+    listing?.thumbnail_url ??
+    listing?.imageUrl ??
+    listing?.image_url ??
+    listing?.image ??
+    listing?.listingImages ??
+    listing?.mainImage ??
+    null;
+
+  let thumbSrc = null;
+  if (Array.isArray(rawImages) && rawImages.length > 0) {
+    const first = rawImages[0];
+    const urlStr = typeof first === 'string' ? first : (first?.url ?? first?.imageUrl ?? first?.path);
+    thumbSrc = urlStr ? fullImageUrl(urlStr) : null;
+  } else if (typeof rawImages === 'string' && rawImages.trim().length > 0) {
+    const firstImg = rawImages.split(',')[0];
+    thumbSrc = firstImg ? fullImageUrl(firstImg) : null;
+  }
 
   return (
     <Card
@@ -30,8 +50,8 @@ export default function MiniListingCard({ listing }) {
         overflow: 'hidden',
         transition: 'transform 0.18s, box-shadow 0.18s',
         '&:hover': {
-          transform: 'translateY(-3px)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          transform: compact ? 'translateY(-1.5px)' : 'translateY(-3px)',
+          boxShadow: compact ? '0 4px 12px rgba(0,0,0,0.25)' : '0 8px 24px rgba(0,0,0,0.35)',
         },
       }}
     >

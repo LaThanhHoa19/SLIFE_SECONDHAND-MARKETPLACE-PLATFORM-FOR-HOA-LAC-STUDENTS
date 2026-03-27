@@ -91,6 +91,8 @@ public class ChatController {
                 request.getContent(),
                 request.getMessageType(),
                 request.getFileUrl(),
+                request.getReplyToMessageId(),
+                request.getQuoteMessageId(),
                 user);
         return ResponseEntity.ok(ApiResponse.success(Constants.MSG10, msg));
     }
@@ -171,6 +173,8 @@ public class ChatController {
                     request.getContent(),
                     request.getMessageType(),
                     request.getFileUrl(),
+                    request.getReplyToMessageId(),
+                    request.getQuoteMessageId(),
                     sender);
         } catch (Exception ex) {
             log.warn("wsSendMessage failed principal={}: {}", principal.getName(), ex.getMessage());

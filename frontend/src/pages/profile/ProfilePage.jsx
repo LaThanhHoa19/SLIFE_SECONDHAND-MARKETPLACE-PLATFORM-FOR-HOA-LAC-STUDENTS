@@ -3,13 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Tab,
   Tabs,
-  TextField,
   Typography,
   Button
 } from '@mui/material';
@@ -22,7 +17,6 @@ import * as userApi from '../../api/userApi';
 import * as followApi from '../../api/followApi';
 import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
-import { createReport } from '../../api/reportApi';
 import Loading from '../../components/common/Loading';
 import { fullImageUrl } from '../../utils/constants';
 import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
@@ -36,6 +30,7 @@ import FollowListDialog from '../../components/profile/FollowListDialog';
 import RatingSection from '../../components/profile/RatingSection';
 import ReviewList from '../../components/profile/ReviewList';
 import ListingSection from '../../components/profile/ListingSection';
+import ReportDialog from '../../components/report/ReportDialog';
 
 // Mock Data
 import { MOCK_REVIEWS } from './mockData';
@@ -73,9 +68,6 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportEvidence, setReportEvidence] = useState('');
-  const [reportSubmitting, setReportSubmitting] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const [followListOpen, setFollowListOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState('followers');
@@ -92,6 +84,7 @@ export default function ProfilePage() {
   const isMe = !id || id === 'me' || (currentUser && String(currentUser.id) === String(id));
 
   const loadUser = useCallback(async () => {
+    // Nếu là trang "me" mà không có user -> không làm gì (hoặc AppRouter sẽ đá ra login)
     if (!id && !currentUser) return;
     setLoading(true);
     setError(null);
@@ -236,20 +229,25 @@ export default function ProfilePage() {
     finally { setChatLoading(false); }
   };
 
-  const handleSubmitReport = async () => {
-    if (!profileUser?.id || !reportReason.trim()) return;
-    setReportSubmitting(true);
-    try {
-      await createReport({ targetType: 'USER', targetId: profileUser.id, reason: reportReason.trim(), evidenceImage: reportEvidence.trim() || undefined });
-      setReportDialogOpen(false);
-      setSuccessMessage('');
-      showToast('Đã gửi báo cáo người dùng này.', 'success');
-    } catch (err) { setError(err?.message || 'Gửi báo cáo thất bại.'); }
-    finally { setReportSubmitting(false); }
-  };
-
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
-  if (!profileUser) return <Box p={3} textAlign="center"><Typography>{isMe ? 'Bạn cần đăng nhập.' : 'Không tìm thấy người dùng.'}</Typography><Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(isMe ? '/login' : '/')}>{isMe ? 'Đăng nhập' : 'Về trang chủ'}</Button></Box>;
+  
+  if (!profileUser) {
+    const needLogin = !id || id === 'me';
+    return (
+      <Box p={3} textAlign="center">
+        <Typography>
+          {needLogin ? 'Vui lòng đăng nhập để xem trang cá nhân của bạn.' : 'Không tìm thấy người dùng.'}
+        </Typography>
+        <Button 
+          sx={{ mt: 2 }} 
+          variant="contained" 
+          onClick={() => navigate(needLogin ? '/login' : '/')}
+        >
+          {needLogin ? 'Đăng nhập' : 'Về trang chủ'}
+        </Button>
+      </Box>
+    );
+  }
 
   const user = isMe ? (profileUser ?? currentUser) : profileUser;
   const rawProfileId = user?.id;
@@ -359,24 +357,13 @@ export default function ProfilePage() {
           </Box>
         </Box>
 
-        <Dialog
+        <ReportDialog
             open={reportDialogOpen}
-            onClose={() => !reportSubmitting && setReportDialogOpen(false)}
-            maxWidth="xs"
-            fullWidth
-            PaperProps={DARK_DIALOG_PAPER_PROPS}
-        >
-          <DialogTitle>Báo cáo người dùng</DialogTitle>
-          <DialogContent dividers>
-            <Typography variant="body2" sx={{ mb: 2 }}>Mô tả lý do bạn báo cáo người dùng này.</Typography>
-            <TextField label="Lý do báo cáo" value={reportReason} onChange={(e) => setReportReason(e.target.value)} fullWidth multiline minRows={3} sx={{ mb: 2 }} autoFocus />
-            <TextField label="Link bằng chứng (tùy chọn)" value={reportEvidence} onChange={(e) => setReportEvidence(e.target.value)} fullWidth placeholder="Ví dụ: link ảnh, đoạn chat..." />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setReportDialogOpen(false)}>Hủy</Button>
-            <Button variant="contained" onClick={handleSubmitReport} disabled={reportSubmitting || !reportReason.trim()}>{reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo'}</Button>
-          </DialogActions>
-        </Dialog>
+            onClose={() => setReportDialogOpen(false)}
+            targetType="USER"
+            targetId={profileUser?.id}
+            targetTitle={profileUser?.fullName || profileUser?.full_name}
+        />
       </Box>
   );
 }

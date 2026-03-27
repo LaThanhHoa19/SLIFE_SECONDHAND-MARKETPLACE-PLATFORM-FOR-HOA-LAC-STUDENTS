@@ -4,7 +4,7 @@
  * Phan ben duoi: Binh luan | Tin khac cua nguoi ban | Tin tuong tu
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
     Avatar,
     Box,
@@ -55,6 +55,7 @@ import ListingRightInfoBlock from '../../components/listing/ListingRightInfoBloc
 import ListingSellerOtherListings from '../../components/listing/ListingSellerOtherListings';
 import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
+import ReportDialog from '../../components/report/ReportDialog';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#1C1B23';
@@ -115,6 +116,7 @@ function normalizeShareUrl(rawUrl, fallbackId) {
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -137,6 +139,7 @@ export default function ListingDetailPage() {
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
     const [sellerFollowed, setSellerFollowed] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
 
     // Load listing
     useEffect(() => {
@@ -160,49 +163,47 @@ export default function ListingDetailPage() {
     }, [listing?.id, listing?.isFollowed]);
 
     // Load tin khac cua nguoi ban + tin tuong tu
-    // Backend khong ho tro sellerId param -> load toan bo roi filter client-side
     useEffect(() => {
         if (!listing) return;
-        // Lay seller id tu listing.seller.id (theo dung field backend tra ve)
         const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         const currentId = Number(id);
 
         setLoadingRelated(true);
-        getListings({ size: 20 })
-            .then((res) => {
+
+        // Fetch seller's other listings directly if sellerId exists
+        const fetchSellerListings = sellerId
+            ? getListings({ sellerId, size: 10 }).then((res) => {
                 const data = getPayload(res);
-                const allList = Array.isArray(data?.content)
-                    ? data.content
-                    : Array.isArray(data) ? data : [];
-
-                // Tin khac cua cung nguoi ban (loai tru tin hien tai)
-                const bySellerRaw = sellerId
-                    ? allList.filter((l) => {
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        return String(lSellerId) === String(sellerId) && (l.id ?? l.listingId) !== currentId;
-                    })
-                    : [];
-                setSellerListings(bySellerRaw.slice(0, 6));
-
-                // Tin tuong tu: cung dieu kien san pham hoac muc gia tuong dong, loai tru tin hien tai va tin cua cung seller
-                const condition = listing?.condition ?? listing?.itemCondition;
-                const price = Number(listing?.price ?? 0);
-                const similar = allList
-                    .filter((l) => {
-                        const lId = l.id ?? l.listingId;
-                        if (lId === currentId) return false;
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        if (String(lSellerId) === String(sellerId)) return false; // bo tin cua cung seller (da co section tren)
-                        // uu tien: cung condition hoac gia trong khoang +-50%
-                        const lCond = l?.condition ?? l?.itemCondition;
-                        const lPrice = Number(l?.price ?? 0);
-                        const sameCondition = condition && lCond === condition;
-                        const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
-                        return sameCondition || similarPrice || true; // fallback: show all other listings
-                    })
-                    .slice(0, 4);
-                setSimilarListings(similar);
+                const list = data?.content || data || [];
+                setSellerListings(list.filter(l => (l.id ?? l.listingId) !== currentId).slice(0, 6));
             })
+            : Promise.resolve();
+
+        // Fetch general listings for "Similar" items
+        const fetchSimilarListings = getListings({ size: 20 }).then((res) => {
+            const data = getPayload(res);
+            const allList = data?.content || data || [];
+
+            const condition = listing?.condition ?? listing?.itemCondition;
+            const price = Number(listing?.price ?? 0);
+            const similar = allList
+                .filter((l) => {
+                    const lId = l.id ?? l.listingId;
+                    if (lId === currentId) return false;
+                    const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
+                    if (String(lSellerId) === String(sellerId)) return false;
+
+                    const lCond = l?.condition ?? l?.itemCondition;
+                    const lPrice = Number(l?.price ?? 0);
+                    const sameCondition = condition && lCond === condition;
+                    const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
+                    return sameCondition || similarPrice || true;
+                })
+                .slice(0, 4);
+            setSimilarListings(similar);
+        });
+
+        Promise.all([fetchSellerListings, fetchSimilarListings])
             .catch(() => { })
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
@@ -211,6 +212,7 @@ export default function ListingDetailPage() {
     const handleToggleLike = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để thích tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (likeSubmitting) return;
@@ -278,14 +280,16 @@ export default function ListingDetailPage() {
     const handleReport = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
-        navigate(`/report?targetType=LISTING&targetId=${id}`);
+        setReportOpen(true);
     };
 
     const handleChat = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setStartingChat(true);
@@ -303,6 +307,7 @@ export default function ListingDetailPage() {
     const handleShowPhone = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setShowPhone(true);
@@ -322,7 +327,7 @@ export default function ListingDetailPage() {
             isAuthenticated,
             onUnauthenticated: () => {
                 showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-                navigate('/login');
+                navigate('/login', { state: { from: location.pathname } });
             },
             onSuccess: (nextIsFollowing) => {
                 const delta = nextIsFollowing ? 1 : -1;
@@ -353,6 +358,7 @@ export default function ListingDetailPage() {
     const handleToggleSave = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (!listing?.id || saveSubmitting) return;
@@ -387,7 +393,7 @@ export default function ListingDetailPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {[1, 2, 3, 4].map((n) => (
                             <Skeleton key={n} variant="rectangular" height={n === 1 ? 32 : n === 2 ? 44 : 24}
-                                      sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
+                                sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
                         ))}
                     </Box>
                 </Box>
@@ -511,32 +517,8 @@ export default function ListingDetailPage() {
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
                         likeDisabled={likeSubmitting}
-                        hideThumbs={true}
+                        hideThumbs={false}
                     />
-                    {/* Thumbnails below large image */}
-                    {images.length > 1 && (
-                        <Box
-                            sx={{
-                                display: 'flex', gap: 1, mt: 1.5,
-                                overflowX: 'auto', pb: 0.5,
-                                '::-webkit-scrollbar': { height: 4 },
-                                '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
-                            }}
-                        >
-                            {images.map((img, i) => (
-                                <Box
-                                    key={i}
-                                    sx={{
-                                        flexShrink: 0, width: 64, height: 64, borderRadius: '8px', overflow: 'hidden',
-                                        border: `2px solid ${BORDER}`, cursor: 'pointer',
-                                        '&:hover': { borderColor: PURPLE }
-                                    }}
-                                >
-                                    <Box component="img" src={img} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
                 </Box>
 
                 <Box sx={{ height: '100%' }}>
@@ -581,7 +563,25 @@ export default function ListingDetailPage() {
                         onNotify={showSnack}
                     />
                 </Card>
-                <Box /> {/* O trong de giu grid 2 cot */}
+                <Box
+                    sx={{
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        width: '100%',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.3s',
+                        '&:hover': { transform: 'scale(1.01)' },
+                        maxHeight: 400
+                    }}
+                >
+                    <Box
+                        component="img"
+                        src="/brand_advertisement_banner_v2.png"
+                        alt="Brand Advertisement"
+                        sx={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                </Box>
             </Box>
 
             {/* Xem truoc vi tri hen (map Vietmap + nut mo Google Maps) */}
@@ -607,27 +607,13 @@ export default function ListingDetailPage() {
                 loadingRelated={loadingRelated}
             />
 
-            {/* Banner Quảng Cáo */}
-            <Box
-                sx={{
-                    mt: 6, mb: 2,
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    width: '100%',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                    cursor: 'pointer',
-                    transition: 'transform 0.3s',
-                    '&:hover': { transform: 'scale(1.01)' }
-                }}
-            >
-                <Box
-                    component="img"
-                    src="/brand_advertisement_banner_1773584721978.png" // Since I cannot move it easily, I'll refer to it (Agent should assume it's moved or accessible)
-                    alt="Brand Advertisement"
-                    sx={{ width: '100%', display: 'block' }}
-                />
-            </Box>
-
+            <ReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                targetType="LISTING"
+                targetId={id}
+                targetTitle={listing?.title}
+            />
         </Box>
     );
 }

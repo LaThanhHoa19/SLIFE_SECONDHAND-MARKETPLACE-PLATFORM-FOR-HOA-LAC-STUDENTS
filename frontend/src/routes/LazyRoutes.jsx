@@ -28,6 +28,7 @@ export const LazySearchPage = lazy(() => import('../pages/listing/SearchPage.jsx
 export const LazyListingDetailPage = lazy(() => import('../pages/listing/ListingDetailPage'));
 export const LazyCreateListingPage = lazy(() => import('../pages/listing/CreateListingPage'));
 export const LazyEditListingPage = lazy(() => import('../pages/listing/EditListingPage'));
+export const LazyDraftEditPublishPage = lazy(() => import('../pages/listing/DraftEditPublishPage'));
 export const LazyMyListingsPage = lazy(() => import('../pages/listing/MyListingsPage'));
 export const LazySavedListingsPage = lazy(() => import('../pages/listing/SavedListingsPage'));
 export const LazyProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
@@ -62,6 +63,7 @@ export const SuspenseSearchPage = withSuspense(LazySearchPage, "Đang tải kế
 export const SuspenseListingDetailPage = withSuspense(LazyListingDetailPage, "Đang tải chi tiết tin...");
 export const SuspenseCreateListingPage = withSuspense(LazyCreateListingPage, "Đang tải trang đăng tin...");
 export const SuspenseEditListingPage = withSuspense(LazyEditListingPage, "Đang tải trang chỉnh sửa tin...");
+export const SuspenseDraftEditPublishPage = withSuspense(LazyDraftEditPublishPage, "Đang tải bản nháp...");
 export const SuspenseMyListingsPage = withSuspense(LazyMyListingsPage, "Đang tải tin đăng của tôi...");
 export const SuspenseSavedListingsPage = withSuspense(LazySavedListingsPage, "Đang tải tin đã lưu...");
 export const SuspenseProfilePage = withSuspense(LazyProfilePage, "Đang tải trang cá nhân...");

@@ -2,6 +2,7 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.ChatMessageResponse;
 import com.slife.marketplace.dto.response.ChatSessionResponse;
+import com.slife.marketplace.dto.response.MessageReferenceResponse;
 import com.slife.marketplace.entity.*;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
@@ -42,6 +43,7 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final ListingRepository listingRepository;
     private final OfferRepository offerRepository;
+    private final BlockService blockService;
     private final UserService userService;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
@@ -54,6 +56,7 @@ public class ChatService {
                        MessageRepository messageRepository,
                        ListingRepository listingRepository,
                        OfferRepository offerRepository,
+                       BlockService blockService,
                        UserService userService,
                        NotificationService notificationService,
                        SimpMessagingTemplate messagingTemplate,
@@ -62,6 +65,7 @@ public class ChatService {
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
         this.offerRepository = offerRepository;
+        this.blockService = blockService;
         this.userService = userService;
         this.notificationService = notificationService;
         this.messagingTemplate = messagingTemplate;
@@ -86,6 +90,7 @@ public class ChatService {
         if (seller.getId().equals(buyer.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Seller cannot open chat with self");
         }
+        assertNoBlockBetween(buyer, seller);
         String sellerEmail = seller.getEmail() != null ? seller.getEmail().trim().toLowerCase() : "";
         String buyerEmail = buyer.getEmail() != null ? buyer.getEmail().trim().toLowerCase() : "";
         if (!sellerEmail.isEmpty() && sellerEmail.equals(buyerEmail)) {
@@ -191,8 +196,9 @@ public class ChatService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sentAt"));
         Page<Message> msgPage = messageRepository.findByConversation_IdOrderBySentAtDesc(conv.getId(), pageable);
         Map<Long, Offer> offerByMessageId = mapOfferProposalsToOffers(msgPage.getContent(), conv);
+        Map<Long, Message> refs = mapReferencedMessages(msgPage.getContent());
         List<ChatMessageResponse> rows = msgPage.getContent().stream()
-                .map(m -> toMessageResponse(m, conv.getSessionUuid(), current, offerByMessageId.get(m.getId())))
+                .map(m -> toMessageResponse(m, conv.getSessionUuid(), current, offerByMessageId.get(m.getId()), refs))
                 .toList();
         return new PageImpl<>(rows, pageable, msgPage.getTotalElements());
     }
@@ -239,28 +245,36 @@ public class ChatService {
      */
     @Transactional
     public ChatMessageResponse sendMessage(String sessionId, String content,
-                                           MessageType messageType, String fileUrl, User sender) {
+                                           MessageType messageType, String fileUrl,
+                                           Long replyToMessageId, Long quoteMessageId,
+                                           User sender) {
         checkNotBannedOrRestricted(sender);
         enforceRateLimit(sender);
 
         Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, sender);
+        User other = getOtherParticipant(conv, sender);
+        if (other != null) {
+            assertNoBlockBetween(sender, other);
+        }
 
         if (messageType == null) messageType = MessageType.TEXT;
         String resolvedContent = resolveContent(content, messageType, fileUrl);
 
-        Message msg = buildMessage(conv, sender, resolvedContent, messageType, fileUrl);
+        Message replyTo = resolveReferenceMessage(replyToMessageId, conv);
+        Message quote = resolveReferenceMessage(quoteMessageId, conv);
+        Message msg = buildMessage(conv, sender, resolvedContent, messageType, fileUrl, replyTo, quote);
         messageRepository.save(msg);
 
         conv.setLastMessageAt(msg.getSentAt());
         conversationRepository.save(conv);
         lastMessageByUser.put(sender.getId(), msg.getSentAt());
 
-        ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), sender);
+        Map<Long, Message> refs = mapReferencedMessages(List.of(msg));
+        ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), sender, null, refs);
 
         // Push real-time to the other participant
-        User other = getOtherParticipant(conv, sender);
         if (other != null) {
             notificationService.notifyNewMessage(other, response, sessionId);
         }
@@ -326,6 +340,10 @@ public class ChatService {
         Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, buyer);
+        User other = getOtherParticipant(conv, buyer);
+        if (other != null) {
+            assertNoBlockBetween(buyer, other);
+        }
 
         Listing listing = conv.getListing();
         if (listing == null) throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
@@ -352,13 +370,14 @@ public class ChatService {
 
         // Create OFFER_PROPOSAL message
         String content = "💰 Trả giá: " + amount.toPlainString() + "đ";
-        Message msg = buildMessage(conv, buyer, content, MessageType.OFFER_PROPOSAL, null);
+        Message msg = buildMessage(conv, buyer, content, MessageType.OFFER_PROPOSAL, null, null, null);
         messageRepository.save(msg);
 
         conv.setLastMessageAt(msg.getSentAt());
         conversationRepository.save(conv);
 
-        ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), buyer, offer);
+        Map<Long, Message> refs = mapReferencedMessages(List.of(msg));
+        ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), buyer, offer, refs);
 
         User seller = getOtherParticipant(conv, buyer);
         if (seller != null) {
@@ -397,6 +416,10 @@ public class ChatService {
                     .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         }
         ensureParticipant(conv, seller);
+        User buyer = offer.getBuyer();
+        if (buyer != null) {
+            assertNoBlockBetween(seller, buyer);
+        }
         // Seller must not be the buyer
         if (offer.getBuyer().getId().equals(seller.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
@@ -420,27 +443,29 @@ public class ChatService {
             }
             // System DEAL_CONFIRMATION message
             Message sysMsg = buildMessage(conv, seller, Constants.DEAL_CONFIRMED_MSG,
-                    MessageType.DEAL_CONFIRMATION, null);
+                    MessageType.DEAL_CONFIRMATION, null, null, null);
             messageRepository.save(sysMsg);
             conv.setLastMessageAt(sysMsg.getSentAt());
             conversationRepository.save(conv);
-            response = toMessageResponse(sysMsg, sessionId, seller, offer);
+            Map<Long, Message> refs = mapReferencedMessages(List.of(sysMsg));
+            response = toMessageResponse(sysMsg, sessionId, seller, offer, refs);
 
             // Notify both parties
-            User buyer = offer.getBuyer();
+            User acceptedBuyer = offer.getBuyer();
             if (listing != null) {
-                notificationService.notifyDealConfirmed(buyer, seller,
+                notificationService.notifyDealConfirmed(acceptedBuyer, seller,
                         listing.getId(), listing.getTitle());
             }
             log.info("respondToOffer ACCEPTED offerId={} listingId={}", offerId,
                     listing != null ? listing.getId() : null);
         } else {
             // Rejected: just a short TEXT message
-            Message rejMsg = buildMessage(conv, seller, "❌ Offer bị từ chối.", MessageType.TEXT, null);
+            Message rejMsg = buildMessage(conv, seller, "❌ Offer bị từ chối.", MessageType.TEXT, null, null, null);
             messageRepository.save(rejMsg);
             conv.setLastMessageAt(rejMsg.getSentAt());
             conversationRepository.save(conv);
-            response = toMessageResponse(rejMsg, sessionId, seller);
+            Map<Long, Message> refs = mapReferencedMessages(List.of(rejMsg));
+            response = toMessageResponse(rejMsg, sessionId, seller, null, refs);
             log.info("respondToOffer REJECTED offerId={}", offerId);
         }
 
@@ -494,6 +519,48 @@ public class ChatService {
         }
     }
 
+    private void assertNoBlockBetween(User a, User b) {
+        if (a == null || b == null) return;
+        if (blockService.isBlockedEitherDirection(a.getId(), b.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Chat is blocked between these users");
+        }
+    }
+
+    private Message resolveReferenceMessage(Long refId, Conversation conv) {
+        if (refId == null) return null;
+        return messageRepository.findByIdAndConversation_IdAndDeletedAtIsNull(refId, conv.getId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Referenced message not found in this session"));
+    }
+
+    private Map<Long, Message> mapReferencedMessages(List<Message> messages) {
+        if (messages == null || messages.isEmpty()) return Map.of();
+        Set<Long> ids = new HashSet<>();
+        for (Message m : messages) {
+            if (m.getReplyToMessage() != null && m.getReplyToMessage().getId() != null) {
+                ids.add(m.getReplyToMessage().getId());
+            }
+            if (m.getQuoteMessage() != null && m.getQuoteMessage().getId() != null) {
+                ids.add(m.getQuoteMessage().getId());
+            }
+        }
+        if (ids.isEmpty()) return Map.of();
+        return messageRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Message::getId, x -> x, (a, b) -> a));
+    }
+
+    private MessageReferenceResponse toReference(Message m) {
+        if (m == null) return null;
+        User sender = m.getSender();
+        return MessageReferenceResponse.builder()
+                .id(m.getId())
+                .senderId(sender != null ? sender.getId() : null)
+                .senderName(sender != null ? sender.getFullName() : null)
+                .content(m.getContent())
+                .messageType(m.getMessageType())
+                .fileUrl(m.getFileUrl())
+                .build();
+    }
+
     private void enforceRateLimit(User sender) {
         Instant now = Instant.now();
         Instant last = lastMessageByUser.get(sender.getId());
@@ -513,13 +580,16 @@ public class ChatService {
     }
 
     private Message buildMessage(Conversation conv, User sender, String content,
-                                  MessageType type, String fileUrl) {
+                                  MessageType type, String fileUrl,
+                                  Message replyTo, Message quote) {
         Message msg = new Message();
         msg.setConversation(conv);
         msg.setSender(sender);
         msg.setContent(content);
         msg.setMessageType(type);
         msg.setFileUrl(fileUrl);
+        msg.setReplyToMessage(replyTo);
+        msg.setQuoteMessage(quote);
         msg.setSentAt(Instant.now());
         msg.setIsRead(false);
         return msg;
@@ -595,12 +665,22 @@ public class ChatService {
     }
 
     private ChatMessageResponse toMessageResponse(Message m, String sessionUuid, User currentUser) {
-        return toMessageResponse(m, sessionUuid, currentUser, null);
+        return toMessageResponse(m, sessionUuid, currentUser, null, Map.of());
     }
 
-    private ChatMessageResponse toMessageResponse(Message m, String sessionUuid, User currentUser, Offer offer) {
+    private ChatMessageResponse toMessageResponse(Message m, String sessionUuid, User currentUser, Offer offer,
+                                                  Map<Long, Message> refs) {
         User sender = m.getSender();
         boolean fromCurrent = currentUser != null && isCurrentParticipant(sender, currentUser);
+        Long replyToId = m.getReplyToMessage() != null ? m.getReplyToMessage().getId() : null;
+        Long quoteId = m.getQuoteMessage() != null ? m.getQuoteMessage().getId() : null;
+        boolean delivered = true; // persisted in DB => delivered
+        boolean seen = Boolean.TRUE.equals(m.getIsRead());
+        String status = seen ? "SEEN" : (delivered ? "DELIVERED" : "SENT");
+        Instant deliveredAt = m.getSentAt();
+        Instant seenAt = seen ? (m.getUpdatedAt() != null ? m.getUpdatedAt() : m.getSentAt()) : null;
+        Message replyToMsg = (replyToId != null && refs != null) ? refs.get(replyToId) : null;
+        Message quoteMsg = (quoteId != null && refs != null) ? refs.get(quoteId) : null;
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .sessionId(sessionUuid)
@@ -612,9 +692,18 @@ public class ChatService {
                 .isFromCurrentUser(fromCurrent)
                 .messageType(m.getMessageType())
                 .fileUrl(m.getFileUrl())
+                .isDelivered(delivered)
+                .isSeen(seen)
+                .deliveryStatus(status)
+                .deliveredAt(deliveredAt)
+                .seenAt(seenAt)
                 .offerId(offer != null ? offer.getId() : null)
                 .offerAmount(offer != null ? offer.getAmount() : null)
                 .offerStatus(offer != null ? offer.getStatus() : null)
+                .replyToMessageId(replyToId)
+                .replyTo(toReference(replyToMsg))
+                .quoteMessageId(quoteId)
+                .quote(toReference(quoteMsg))
                 .build();
     }
 

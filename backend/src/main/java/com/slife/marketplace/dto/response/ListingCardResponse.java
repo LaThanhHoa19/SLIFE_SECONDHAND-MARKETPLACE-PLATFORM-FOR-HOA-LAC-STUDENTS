@@ -24,7 +24,9 @@ public class ListingCardResponse {
     private String sellerName;
     private String sellerAvatarUrl;
 
-    /** True if the current viewer follows the seller (false when anonymous or self). */
+    /**
+     * True if the current viewer follows the seller (false when anonymous or self).
+     */
     private Boolean isFollowed;
 
     /** True if the current viewer saved this listing (false when anonymous). */

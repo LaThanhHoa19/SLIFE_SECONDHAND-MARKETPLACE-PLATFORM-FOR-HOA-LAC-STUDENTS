@@ -13,6 +13,7 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.service.ListingService;
+import com.slife.marketplace.service.BlockService;
 import com.slife.marketplace.service.ListingImageService;
 import com.slife.marketplace.service.ListingLikeService;
 import com.slife.marketplace.service.SavedListingService;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class ListingController {
 
     private final ListingService listingService;
+    private final BlockService blockService;
     private final UserService userService;
     private final ListingRepository listingRepository;
     private final SavedListingService savedListingService;
@@ -40,12 +42,14 @@ public class ListingController {
     private String frontendUrl;
 
     public ListingController(ListingService listingService,
+                             BlockService blockService,
                              UserService userService,
                              ListingRepository listingRepository,
                              SavedListingService savedListingService,
                              ListingImageService listingImageService,
                              ListingLikeService listingLikeService) {
         this.listingService = listingService;
+        this.blockService = blockService;
         this.userService = userService;
         this.listingRepository = listingRepository;
         this.savedListingService = savedListingService;
@@ -134,6 +138,13 @@ public class ListingController {
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 
         User currentUser = userService.getCurrentUserOptional().orElse(null);
+        if (currentUser != null
+                && listing.getSeller() != null
+                && listing.getSeller().getId() != null
+                && !listing.getSeller().getId().equals(currentUser.getId())
+                && blockService.isBlockedByCurrentUser(listing.getSeller().getId(), currentUser.getId())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
 
         ListingResponse response = listingService.buildListingResponse(listing, currentUser, isSaved);
@@ -227,6 +238,13 @@ public class ListingController {
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 
         User currentUser = userService.getCurrentUserOptional().orElse(null);
+        if (currentUser != null
+                && listing.getSeller() != null
+                && listing.getSeller().getId() != null
+                && !listing.getSeller().getId().equals(currentUser.getId())
+                && blockService.isBlockedByCurrentUser(listing.getSeller().getId(), currentUser.getId())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
         ListingResponse listingData = listingService.buildListingResponse(listing, currentUser, isSaved);
 
