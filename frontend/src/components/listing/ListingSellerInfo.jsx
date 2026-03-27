@@ -35,62 +35,51 @@ export default function ListingSellerInfo({
                     }}
                 />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
-                        fontSize={15}
-                        fontWeight={700}
-                        color={TEXT_PRI}
-                        sx={{
-                            cursor: 'pointer',
-                            '&:hover': { color: PURPLE },
-                            mb: 0.5,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                        }}
-                        onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
-                    >
-                        {seller?.fullName || 'Người bán'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip
-                            label="Xem trang"
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography
+                            fontSize={18}
+                            fontWeight={800}
+                            color={TEXT_PRI}
+                            sx={{
+                                cursor: 'pointer',
+                                '&:hover': { color: PURPLE },
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}
                             onClick={() => {
                                 const targetId = sellerId ?? seller?.id;
-                                if (!targetId) return;
-                                const currentUser = JSON.parse(localStorage.getItem('user'));
-                                if (String(targetId) === String(currentUser?.id)) navigate('/profile');
-                                else navigate(`/profile/${targetId}`);
+                                if (targetId) navigate(`/profile/${targetId}`);
                             }}
-                            sx={{
-                                height: 22, fontSize: 11, fontWeight: 600,
-                                bgcolor: `${PURPLE}22`, color: PURPLE,
-                                '&:hover': { bgcolor: `${PURPLE}44` }, cursor: 'pointer'
-                            }}
-                        />
+                        >
+                            {seller?.fullName || 'Người bán'}
+                        </Typography>
+
                         {showFollow && (
                             <Tooltip title={isFollowed ? 'Bỏ theo dõi' : 'Theo dõi người bán'}>
-                <span>
-                  <IconButton
-                      size="small"
-                      disabled={followLoading}
-                      onClick={() => onFollowClick?.()}
-                      sx={{
-                          width: 30,
-                          height: 30,
-                          color: isFollowed ? PURPLE : TEXT_SEC,
-                          border: `1px solid ${isFollowed ? PURPLE : 'rgba(255,255,255,0.15)'}`,
-                          '&:hover': { bgcolor: `${PURPLE}22`, color: PURPLE },
-                      }}
-                  >
-                    {followLoading ? (
-                        <CircularProgress size={16} color="inherit" />
-                    ) : isFollowed ? (
-                        <PersonRemoveIcon sx={{ fontSize: 18 }} />
-                    ) : (
-                        <PersonAddIcon sx={{ fontSize: 18 }} />
-                    )}
-                  </IconButton>
-                </span>
+                                <span>
+                                    <IconButton
+                                        size="small"
+                                        disabled={followLoading}
+                                        onClick={() => onFollowClick?.()}
+                                        sx={{
+                                            width: 32,
+                                            height: 32,
+                                            color: isFollowed ? PURPLE : TEXT_SEC,
+                                            border: `1px solid ${isFollowed ? PURPLE : 'rgba(255,255,255,0.15)'}`,
+                                            bgcolor: isFollowed ? `${PURPLE}11` : 'transparent',
+                                            '&:hover': { bgcolor: `${PURPLE}22`, color: PURPLE },
+                                        }}
+                                    >
+                                        {followLoading ? (
+                                            <CircularProgress size={16} color="inherit" />
+                                        ) : isFollowed ? (
+                                            <PersonRemoveIcon sx={{ fontSize: 18 }} />
+                                        ) : (
+                                            <PersonAddIcon sx={{ fontSize: 18 }} />
+                                        )}
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                         )}
                     </Box>
