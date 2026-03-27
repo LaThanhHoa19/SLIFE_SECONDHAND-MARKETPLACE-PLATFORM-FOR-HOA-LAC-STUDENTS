@@ -145,14 +145,8 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
-                <Route
-                    path="/profile/:id"
-                    element={
-                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseProfilePage />
-                        </RouteGuard>
-                    }
-                />
+                <Route path="/profile/:id" element={<SuspenseProfilePage />} />
+
                 <Route
                     path="/deals/:id"
                     element={

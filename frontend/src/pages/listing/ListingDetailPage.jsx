@@ -4,7 +4,7 @@
  * Phan ben duoi: Binh luan | Tin khac cua nguoi ban | Tin tuong tu
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
     Avatar,
     Box,
@@ -15,8 +15,6 @@ import {
     IconButton,
     InputAdornment,
     Skeleton,
-    Snackbar,
-    Alert,
     TextField,
     Tooltip,
     Typography,
@@ -48,7 +46,7 @@ import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { formatDate } from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
-import useSnackbarState from '../../hooks/useSnackbarState';
+import { useToast } from '../../context/ToastContext';
 import MiniListingCard from '../../components/listing/MiniListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
 import ListingComments from '../../components/listing/ListingComments';
@@ -117,6 +115,7 @@ function normalizeShareUrl(rawUrl, fallbackId) {
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -133,7 +132,7 @@ export default function ListingDetailPage() {
     const [likeSubmitting, setLikeSubmitting] = useState(false);
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
-    const { snackbar, showSnackbar, closeSnackbar } = useSnackbarState();
+    const { showToast } = useToast();
     const [sellerListings, setSellerListings] = useState([]);
     const [similarListings, setSimilarListings] = useState([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
@@ -162,49 +161,47 @@ export default function ListingDetailPage() {
     }, [listing?.id, listing?.isFollowed]);
 
     // Load tin khac cua nguoi ban + tin tuong tu
-    // Backend khong ho tro sellerId param -> load toan bo roi filter client-side
     useEffect(() => {
         if (!listing) return;
-        // Lay seller id tu listing.seller.id (theo dung field backend tra ve)
         const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         const currentId = Number(id);
 
         setLoadingRelated(true);
-        getListings({ size: 20 })
-            .then((res) => {
+
+        // Fetch seller's other listings directly if sellerId exists
+        const fetchSellerListings = sellerId
+            ? getListings({ sellerId, size: 10 }).then((res) => {
                 const data = getPayload(res);
-                const allList = Array.isArray(data?.content)
-                    ? data.content
-                    : Array.isArray(data) ? data : [];
-
-                // Tin khac cua cung nguoi ban (loai tru tin hien tai)
-                const bySellerRaw = sellerId
-                    ? allList.filter((l) => {
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        return String(lSellerId) === String(sellerId) && (l.id ?? l.listingId) !== currentId;
-                    })
-                    : [];
-                setSellerListings(bySellerRaw.slice(0, 6));
-
-                // Tin tuong tu: cung dieu kien san pham hoac muc gia tuong dong, loai tru tin hien tai va tin cua cung seller
-                const condition = listing?.condition ?? listing?.itemCondition;
-                const price = Number(listing?.price ?? 0);
-                const similar = allList
-                    .filter((l) => {
-                        const lId = l.id ?? l.listingId;
-                        if (lId === currentId) return false;
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        if (String(lSellerId) === String(sellerId)) return false; // bo tin cua cung seller (da co section tren)
-                        // uu tien: cung condition hoac gia trong khoang +-50%
-                        const lCond = l?.condition ?? l?.itemCondition;
-                        const lPrice = Number(l?.price ?? 0);
-                        const sameCondition = condition && lCond === condition;
-                        const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
-                        return sameCondition || similarPrice || true; // fallback: show all other listings
-                    })
-                    .slice(0, 4);
-                setSimilarListings(similar);
+                const list = data?.content || data || [];
+                setSellerListings(list.filter(l => (l.id ?? l.listingId) !== currentId).slice(0, 6));
             })
+            : Promise.resolve();
+
+        // Fetch general listings for "Similar" items
+        const fetchSimilarListings = getListings({ size: 20 }).then((res) => {
+            const data = getPayload(res);
+            const allList = data?.content || data || [];
+
+            const condition = listing?.condition ?? listing?.itemCondition;
+            const price = Number(listing?.price ?? 0);
+            const similar = allList
+                .filter((l) => {
+                    const lId = l.id ?? l.listingId;
+                    if (lId === currentId) return false;
+                    const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
+                    if (String(lSellerId) === String(sellerId)) return false; 
+                    
+                    const lCond = l?.condition ?? l?.itemCondition;
+                    const lPrice = Number(l?.price ?? 0);
+                    const sameCondition = condition && lCond === condition;
+                    const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
+                    return sameCondition || similarPrice || true;
+                })
+                .slice(0, 4);
+            setSimilarListings(similar);
+        });
+
+        Promise.all([fetchSellerListings, fetchSimilarListings])
             .catch(() => { })
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
@@ -212,7 +209,8 @@ export default function ListingDetailPage() {
     // Handlers
     const handleToggleLike = async () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để thích tin.', 'warning');
+            showToast('Bạn cần đăng nhập để thích tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (likeSubmitting) return;
@@ -242,7 +240,7 @@ export default function ListingDetailPage() {
         } catch {
             setIsLiked(prevLiked);
             setLikeCount(prevCount);
-            showSnackbar('Không cập nhật được lượt thích. Thử lại sau.', 'error');
+            showToast('Không cập nhật được lượt thích. Thử lại sau.', 'error');
         } finally {
             setLikeSubmitting(false);
         }
@@ -268,10 +266,10 @@ export default function ListingDetailPage() {
                 return;
             }
             await navigator.clipboard.writeText(shareUrl);
-            showSnackbar('Đã sao chép liên kết bài đăng.', 'success');
+            showToast('Đã sao chép liên kết bài đăng.', 'success');
         } catch {
             window.prompt('Sao chép liên kết bài đăng:', shareUrl);
-            showSnackbar('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
+            showToast('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
         } finally {
             window.setTimeout(() => setShareSubmitting(false), 800);
         }
@@ -279,7 +277,8 @@ export default function ListingDetailPage() {
 
     const handleReport = () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         navigate(`/report?targetType=LISTING&targetId=${id}`);
@@ -287,7 +286,8 @@ export default function ListingDetailPage() {
 
     const handleChat = async () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setStartingChat(true);
@@ -296,7 +296,7 @@ export default function ListingDetailPage() {
             const sessionId = res?.data?.data ?? res?.data;
             if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
         } catch {
-            showSnackbar('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
+            showToast('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
         } finally {
             setStartingChat(false);
         }
@@ -304,15 +304,16 @@ export default function ListingDetailPage() {
 
     const handleShowPhone = () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
+            showToast('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setShowPhone(true);
     };
 
-    const showSnack = useCallback((msg, type = 'success', action = null) => {
-        showSnackbar(msg, type, action);
-    }, [showSnackbar]);
+    const showSnack = useCallback((msg, type = 'success') => {
+        showToast(msg, type);
+    }, [showToast]);
 
     const handleSellerFollowClick = useCallback(async () => {
         if (!listing) return;
@@ -324,7 +325,7 @@ export default function ListingDetailPage() {
             isAuthenticated,
             onUnauthenticated: () => {
                 showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-                navigate('/login');
+                navigate('/login', { state: { from: location.pathname } });
             },
             onSuccess: (nextIsFollowing) => {
                 const delta = nextIsFollowing ? 1 : -1;
@@ -354,7 +355,8 @@ export default function ListingDetailPage() {
 
     const handleToggleSave = async () => {
         if (!isAuthenticated) {
-            showSnackbar('Bạn cần đăng nhập để lưu tin.', 'warning');
+            showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (!listing?.id || saveSubmitting) return;
@@ -370,10 +372,10 @@ export default function ListingDetailPage() {
                 await saveListing(listing.id);
             }
             setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
-            showSnackbar(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
+            showToast(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
         } catch {
             setIsSavedItem(wasSaved);
-            showSnackbar('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
+            showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
         } finally {
             setSaveSubmitting(false);
         }
@@ -513,32 +515,8 @@ export default function ListingDetailPage() {
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
                         likeDisabled={likeSubmitting}
-                        hideThumbs={true}
+                        hideThumbs={false}
                     />
-                    {/* Thumbnails below large image */}
-                    {images.length > 1 && (
-                        <Box
-                            sx={{
-                                display: 'flex', gap: 1, mt: 1.5,
-                                overflowX: 'auto', pb: 0.5,
-                                '::-webkit-scrollbar': { height: 4 },
-                                '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
-                            }}
-                        >
-                            {images.map((img, i) => (
-                                <Box
-                                    key={i}
-                                    sx={{
-                                        flexShrink: 0, width: 64, height: 64, borderRadius: '8px', overflow: 'hidden',
-                                        border: `2px solid ${BORDER}`, cursor: 'pointer',
-                                        '&:hover': { borderColor: PURPLE }
-                                    }}
-                                >
-                                    <Box component="img" src={img} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
                 </Box>
 
                 <Box sx={{ height: '100%' }}>
@@ -630,35 +608,6 @@ export default function ListingDetailPage() {
                 />
             </Box>
 
-            {/* Snackbar thông báo */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={3000}
-                onClose={closeSnackbar}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert
-                    onClose={closeSnackbar}
-                    severity={snackbar.severity}
-                    variant="filled"
-                    sx={{
-                        borderRadius: '12px',
-                        bgcolor: snackbar.severity === 'warning' ? '#FF9F43' : undefined,
-                        color: '#fff',
-                        fontWeight: 500,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                        '& .MuiAlert-action': {
-                            alignItems: 'center',
-                            paddingTop: 0,
-                            paddingBottom: 0,
-                            marginLeft: 1
-                        }
-                    }}
-                    action={snackbar.action}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
         </Box>
     );
 }

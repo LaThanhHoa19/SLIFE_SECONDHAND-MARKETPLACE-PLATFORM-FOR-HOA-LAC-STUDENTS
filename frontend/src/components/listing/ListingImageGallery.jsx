@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Tooltip, Typography, Dialog, DialogContent, Slide, AppBar, Toolbar, Zoom } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -9,8 +9,16 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import ShareIcon from '@mui/icons-material/Share';
 import FlagIcon from '@mui/icons-material/Flag';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import CloseIcon from '@mui/icons-material/Close';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import React from 'react';
+
+const Transition = React.forwardRef(function Transition(props, ref) {
+    return <Slide direction="up" ref={ref} {...props} />;
+});
 
 export const BORDER = 'rgba(255,255,255,0.07)';
+export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const PURPLE = '#9D6EED';
 export const RED = '#FF4757';
@@ -31,16 +39,32 @@ export default function ListingImageGallery({
                                                 hideThumbs = false,
                                             }) {
     const [activeIdx, setActiveIdx] = useState(0);
+    const [openZoom, setOpenZoom] = useState(false);
     const count = images.length;
     const src = count > 0 ? images[activeIdx] : null;
 
-    const prev = () => setActiveIdx((i) => (i - 1 + count) % count);
-    const next = () => setActiveIdx((i) => (i + 1) % count);
+    // Reset index when listing changes
+    React.useEffect(() => {
+        setActiveIdx(0);
+    }, [listingId]);
+
+    const prev = (e) => {
+        e?.stopPropagation();
+        setActiveIdx((i) => (i - 1 + count) % count);
+    };
+    const next = (e) => {
+        e?.stopPropagation();
+        setActiveIdx((i) => (i + 1) % count);
+    };
+
+    const handleOpenZoom = () => setOpenZoom(true);
+    const handleCloseZoom = () => setOpenZoom(false);
 
     return (
         <Box>
             {/* Ảnh chính */}
             <Box
+                onClick={src ? handleOpenZoom : undefined}
                 sx={{
                     position: 'relative',
                     width: '100%',
@@ -48,19 +72,39 @@ export default function ListingImageGallery({
                     borderRadius: '16px',
                     overflow: 'hidden',
                     bgcolor: '#2A2535',
+                    cursor: src ? 'zoom-in' : 'default',
+                    '&:hover .zoom-overlay': { opacity: 1 },
                 }}
             >
                 {src ? (
-                    <Box
-                        component="img"
-                        src={src}
-                        alt={`${title} ${activeIdx + 1}`}
-                        sx={{
-                            position: 'absolute', inset: 0,
-                            width: '100%', height: '100%', objectFit: 'cover',
-                            transition: 'opacity 0.2s',
-                        }}
-                    />
+                    <>
+                        <Box
+                            component="img"
+                            src={src}
+                            alt={`${title} ${activeIdx + 1}`}
+                            sx={{
+                                position: 'absolute', inset: 0,
+                                width: '100%', height: '100%', objectFit: 'cover',
+                                transition: 'all 0.3s ease-in-out',
+                            }}
+                        />
+                        <Box
+                            className="zoom-overlay"
+                            sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                bgcolor: 'rgba(0,0,0,0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: 0,
+                                transition: 'opacity 0.2s',
+                                pointerEvents: 'none',
+                            }}
+                        >
+                            <ZoomInIcon sx={{ fontSize: 48, color: '#fff', filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.5))' }} />
+                        </Box>
+                    </>
                 ) : (
                     <Box
                         sx={{
@@ -240,6 +284,131 @@ export default function ListingImageGallery({
                     ))}
                 </Box>
             )}
+            {/* Fullscreen Zoom Dialog */}
+            <Dialog
+                open={openZoom}
+                onClose={handleCloseZoom}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{
+                    sx: { 
+                        bgcolor: 'rgb(15, 14, 20)', 
+                        color: '#fff', 
+                        borderRadius: '24px',
+                        overflow: 'hidden',
+                        border: `1px solid ${BORDER}`,
+                        boxShadow: '0 24px 64px rgba(0,0,0,0.8)'
+                    }
+                }}
+            >
+                <Box
+                    sx={{
+                        p: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderBottom: `1px solid ${BORDER}`
+                    }}
+                >
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ color: TEXT_PRI, ml: 1 }}>
+                        {title}
+                    </Typography>
+                    <IconButton
+                        onClick={handleCloseZoom}
+                        sx={{ color: TEXT_SEC, '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.05)' } }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </Box>
+                <DialogContent
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        p: { xs: 1, md: 3 },
+                        bgcolor: 'rgba(255,255,255,0.02)',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        minHeight: '60vh'
+                    }}
+                >
+                    {count > 1 && (
+                        <>
+                            <IconButton
+                                onClick={prev}
+                                sx={{
+                                    position: 'absolute', left: { xs: 8, md: 24 }, zIndex: 2,
+                                    bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', width: 44, height: 44,
+                                    backdropFilter: 'blur(4px)',
+                                    '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.1)' },
+                                }}
+                            >
+                                <ChevronLeftIcon sx={{ fontSize: 28 }} />
+                            </IconButton>
+                            <IconButton
+                                onClick={next}
+                                sx={{
+                                    position: 'absolute', right: { xs: 8, md: 24 }, zIndex: 2,
+                                    bgcolor: 'rgba(0,0,0,0.4)', color: '#fff', width: 44, height: 44,
+                                    backdropFilter: 'blur(4px)',
+                                    '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.1)' },
+                                }}
+                            >
+                                <ChevronRightIcon sx={{ fontSize: 28 }} />
+                            </IconButton>
+                        </>
+                    )}
+                    <Box
+                        component="img"
+                        src={src}
+                        sx={{
+                            maxWidth: '100%',
+                            maxHeight: '75vh',
+                            objectFit: 'contain',
+                            borderRadius: '12px',
+                            boxShadow: '0 12px 48px rgba(0,0,0,0.5)'
+                        }}
+                    />
+                    
+                    {/* Floating thumbnails in zoom mode */}
+                    {count > 1 && (
+                        <Box
+                           sx={{
+                               position: 'absolute',
+                               bottom: 30,
+                               left: '50%',
+                               transform: 'translateX(-50%)',
+                               display: 'flex',
+                               gap: 1.5,
+                               p: 1.5,
+                               bgcolor: 'rgba(0,0,0,0.5)',
+                               borderRadius: '12px',
+                               backdropFilter: 'blur(10px)',
+                               maxWidth: '90vw',
+                               overflowX: 'auto',
+                               '::-webkit-scrollbar': { display: 'none' }
+                           }}
+                        >
+                            {images.map((img, i) => (
+                                <Box
+                                    key={i}
+                                    onClick={() => setActiveIdx(i)}
+                                    sx={{
+                                        width: 60, height: 60, borderRadius: '8px', overflow: 'hidden',
+                                        border: `2px solid ${i === activeIdx ? PURPLE : 'transparent'}`,
+                                        cursor: 'pointer', flexShrink: 0,
+                                        transition: 'all 0.2s',
+                                        '&:hover': { opacity: 0.8, transform: 'scale(1.05)' }
+                                    }}
+                                >
+                                    <Box component="img" src={img} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+                </DialogContent>
+            </Dialog>
         </Box>
     );
 }
