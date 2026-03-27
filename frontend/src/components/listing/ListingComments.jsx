@@ -13,7 +13,7 @@ import {
 } from '@mui/icons-material';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import * as listingApi from '../../api/listingApi';
 
@@ -27,12 +27,15 @@ const BUBBLE_BORDER = 'rgba(255, 255, 255, 0.08)';
 
 export default function ListingComments({ listingId, onNotify }) {
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [text, setText] = useState('');
   const [replyingTo, setReplyingTo] = useState(null); // { id, name }
   const [editingComment, setEditingComment] = useState(null); // { id, content }
+  const [showAll, setShowAll] = useState(false);
   
   // States for parent-level management
   const [selectedComment, setSelectedComment] = useState(null);
@@ -44,7 +47,9 @@ export default function ListingComments({ listingId, onNotify }) {
     try {
       const res = await listingApi.getComments(listingId);
       const data = res?.data?.data || res?.data || [];
-      setComments(Array.isArray(data) ? data : []);
+      // Sắp xếp mới nhất lên đầu
+      const sorted = Array.isArray(data) ? [...data].sort((a,b) => (b.id - a.id)) : [];
+      setComments(sorted);
     } catch (err) {
       console.error('Failed to fetch comments:', err);
     } finally {
@@ -57,6 +62,7 @@ export default function ListingComments({ listingId, onNotify }) {
   }, [fetchComments]);
 
   const handleSubmit = async () => {
+    if (!currentUser) return;
     if (!text.trim() || submitting) return;
     setSubmitting(true);
     try {
@@ -285,54 +291,75 @@ export default function ListingComments({ listingId, onNotify }) {
           {comments.length > 0 ? `${comments.length} bình luận` : 'Chưa có bình luận'}
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 3.5 }}>
-          <Avatar
-            src={fullImageUrl(currentUser?.avatarUrl)}
-            sx={{ width: 38, height: 38, bgcolor: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}` }}
-          >
-            {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
-          </Avatar>
-          <TextField
-            fullWidth
-            size="small"
-            multiline
-            maxRows={4}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
-            }}
-            id="comment-input"
-            placeholder={replyingTo ? `Phản hồi ${replyingTo.name}...` : "Để lại lời nhắn..."}
-            variant="outlined"
-            disabled={submitting}
-            InputProps={{
-              startAdornment: replyingTo && (
-                <InputAdornment position="start">
-                  <Box sx={{ bgcolor: `${PURPLE}22`, color: PURPLE, px: 1.2, py: 0.4, borderRadius: '8px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    @{replyingTo.name}
-                    <IconButton size="small" onClick={() => setReplyingTo(null)} sx={{ p: 0, color: PURPLE }}><CloseIcon sx={{ fontSize: 14 }} /></IconButton>
-                  </Box>
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton size="small" onClick={handleSubmit} disabled={!text.trim() || submitting} sx={{ color: text.trim() ? PURPLE : TEXT_SEC, transition: 'all 0.2s' }}>
-                    {submitting ? <CircularProgress size={18} color="inherit" /> : <SendIcon sx={{ fontSize: 18 }} />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                bgcolor: 'rgba(255,255,255,0.03)', borderRadius: '20px', color: TEXT_PRI, padding: '8px 14px',
-                '& fieldset': { border: `1px solid ${BORDER}` },
-                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-                '&.Mui-focused fieldset': { borderColor: PURPLE, borderWidth: '1px' },
-              },
-              '& input::placeholder': { color: TEXT_SEC, opacity: 0.6 },
-            }}
-          />
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 3 }}>
+          {currentUser ? (
+            <>
+              <Avatar
+                src={fullImageUrl(currentUser?.avatarUrl)}
+                sx={{ width: 38, height: 38, mt: 0.5, bgcolor: 'rgba(255,255,255,0.05)', border: `1px solid ${BORDER}` }}
+              >
+                {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
+              </Avatar>
+              <TextField
+                fullWidth
+                multiline
+                rows={1}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+                }}
+                id="comment-input"
+                placeholder={replyingTo ? `Phản hồi ${replyingTo.name}...` : "Để lại lời nhắn..."}
+                variant="outlined"
+                disabled={submitting}
+                InputProps={{
+                  startAdornment: replyingTo && (
+                    <InputAdornment position="start">
+                      <Box sx={{ bgcolor: `${PURPLE}22`, color: PURPLE, px: 1.2, py: 0.4, borderRadius: '8px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        @{replyingTo.name}
+                        <IconButton size="small" onClick={() => setReplyingTo(null)} sx={{ p: 0, color: PURPLE }}><CloseIcon sx={{ fontSize: 14 }} /></IconButton>
+                      </Box>
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={handleSubmit} disabled={!text.trim() || submitting} sx={{ color: text.trim() ? PURPLE : TEXT_SEC, transition: 'all 0.2s', opacity: text.trim() ? 1 : 0.6 }}>
+                        {submitting ? <CircularProgress size={18} color="inherit" /> : <SendIcon sx={{ fontSize: 18 }} />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'rgba(255,255,255,0.03)', borderRadius: '20px', color: TEXT_PRI, padding: '8px 14px',
+                    '& fieldset': { border: `1px solid ${BORDER}` },
+                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
+                    '&.Mui-focused fieldset': { borderColor: PURPLE, borderWidth: '1px' },
+                  },
+                  '& input::placeholder': { color: TEXT_SEC, opacity: 0.6 },
+                }}
+              />
+            </>
+          ) : (
+            <Box 
+              onClick={() => navigate('/login', { state: { from: location.pathname } })}
+              sx={{
+                width: '100%', cursor: 'pointer', p: 1.8, px: 2.5,
+                bgcolor: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '20px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                transition: 'all 0.2s',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.15)' }
+              }}
+            >
+              <Typography fontSize={14} color={TEXT_SEC} sx={{ fontStyle: 'italic', opacity: 0.6 }}>
+                Vui lòng{' '}
+                <Box component="span" sx={{ color: PURPLE, fontWeight: 800, textDecoration: 'underline' }}>Đăng nhập</Box>
+                {' '}để bình luận tin đăng này...
+              </Typography>
+              <SendIcon sx={{ fontSize: 18, color: TEXT_SEC, opacity: 0.6 }} />
+            </Box>
+          )}
         </Box>
 
         {loading ? (
@@ -341,7 +368,31 @@ export default function ListingComments({ listingId, onNotify }) {
           <Typography fontSize={13} color={TEXT_SEC} textAlign="center" sx={{ py: 4 }}>Chưa có gì ở đây. Hãy mở lời trước nhé!</Typography>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', pb: 2 }}>
-            {comments.map((c) => (<CommentItem key={c.id} comment={c} />))}
+            {(showAll ? comments : comments.slice(0, 3)).map((c) => (<CommentItem key={c.id} comment={c} />))}
+            
+            {comments.length > 3 && !showAll && (
+              <Typography 
+                onClick={() => setShowAll(true)}
+                fontSize={13}
+                fontWeight={700}
+                sx={{ 
+                  color: '#fff', 
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  mt: 2,
+                  py: 1,
+                  bgcolor: 'rgba(255,255,255,0.05)',
+                  borderRadius: '12px',
+                  width: 'fit-content',
+                  px: 3,
+                  mx: 'auto',
+                  transition: 'all 0.2s',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', color: PURPLE }
+                }}
+              >
+                Xem thêm {comments.length - 3} bình luận khác
+              </Typography>
+            )}
           </Box>
         )}
       </Box>

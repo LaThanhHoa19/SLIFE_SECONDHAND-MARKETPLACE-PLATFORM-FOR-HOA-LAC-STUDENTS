@@ -92,6 +92,7 @@ export default function ProfilePage() {
   const isMe = !id || id === 'me' || (currentUser && String(currentUser.id) === String(id));
 
   const loadUser = useCallback(async () => {
+    // Nếu là trang "me" mà không có user -> không làm gì (hoặc AppRouter sẽ đá ra login)
     if (!id && !currentUser) return;
     setLoading(true);
     setError(null);
@@ -249,7 +250,24 @@ export default function ProfilePage() {
   };
 
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
-  if (!profileUser) return <Box p={3} textAlign="center"><Typography>{isMe ? 'Bạn cần đăng nhập.' : 'Không tìm thấy người dùng.'}</Typography><Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(isMe ? '/login' : '/')}>{isMe ? 'Đăng nhập' : 'Về trang chủ'}</Button></Box>;
+  
+  if (!profileUser) {
+    const needLogin = !id || id === 'me';
+    return (
+      <Box p={3} textAlign="center">
+        <Typography>
+          {needLogin ? 'Vui lòng đăng nhập để xem trang cá nhân của bạn.' : 'Không tìm thấy người dùng.'}
+        </Typography>
+        <Button 
+          sx={{ mt: 2 }} 
+          variant="contained" 
+          onClick={() => navigate(needLogin ? '/login' : '/')}
+        >
+          {needLogin ? 'Đăng nhập' : 'Về trang chủ'}
+        </Button>
+      </Box>
+    );
+  }
 
   const user = isMe ? (profileUser ?? currentUser) : profileUser;
   const rawProfileId = user?.id;
