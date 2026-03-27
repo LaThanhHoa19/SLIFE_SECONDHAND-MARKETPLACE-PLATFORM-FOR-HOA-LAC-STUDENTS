@@ -35,62 +35,51 @@ export default function ListingSellerInfo({
                     }}
                 />
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
-                        fontSize={15}
-                        fontWeight={700}
-                        color={TEXT_PRI}
-                        sx={{
-                            cursor: 'pointer',
-                            '&:hover': { color: PURPLE },
-                            mb: 0.5,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                        }}
-                        onClick={() => sellerId && navigate(`/profile/${sellerId}`)}
-                    >
-                        {seller?.fullName || 'Người bán'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Chip
-                            label="Xem trang"
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography
+                            fontSize={18}
+                            fontWeight={800}
+                            color={TEXT_PRI}
+                            sx={{
+                                cursor: 'pointer',
+                                '&:hover': { color: PURPLE },
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}
                             onClick={() => {
                                 const targetId = sellerId ?? seller?.id;
-                                if (!targetId) return;
-                                const currentUser = JSON.parse(localStorage.getItem('user'));
-                                if (String(targetId) === String(currentUser?.id)) navigate('/profile');
-                                else navigate(`/profile/${targetId}`);
+                                if (targetId) navigate(`/profile/${targetId}`);
                             }}
-                            sx={{
-                                height: 22, fontSize: 11, fontWeight: 600,
-                                bgcolor: `${PURPLE}22`, color: PURPLE,
-                                '&:hover': { bgcolor: `${PURPLE}44` }, cursor: 'pointer'
-                            }}
-                        />
+                        >
+                            {seller?.fullName || 'Người bán'}
+                        </Typography>
+
                         {showFollow && (
                             <Tooltip title={isFollowed ? 'Bỏ theo dõi' : 'Theo dõi người bán'}>
-                <span>
-                  <IconButton
-                      size="small"
-                      disabled={followLoading}
-                      onClick={() => onFollowClick?.()}
-                      sx={{
-                          width: 30,
-                          height: 30,
-                          color: isFollowed ? PURPLE : TEXT_SEC,
-                          border: `1px solid ${isFollowed ? PURPLE : 'rgba(255,255,255,0.15)'}`,
-                          '&:hover': { bgcolor: `${PURPLE}22`, color: PURPLE },
-                      }}
-                  >
-                    {followLoading ? (
-                        <CircularProgress size={16} color="inherit" />
-                    ) : isFollowed ? (
-                        <PersonRemoveIcon sx={{ fontSize: 18 }} />
-                    ) : (
-                        <PersonAddIcon sx={{ fontSize: 18 }} />
-                    )}
-                  </IconButton>
-                </span>
+                                <span>
+                                    <IconButton
+                                        size="small"
+                                        disabled={followLoading}
+                                        onClick={() => onFollowClick?.()}
+                                        sx={{
+                                            width: 32,
+                                            height: 32,
+                                            color: isFollowed ? PURPLE : TEXT_SEC,
+                                            border: `1px solid ${isFollowed ? PURPLE : 'rgba(255,255,255,0.15)'}`,
+                                            bgcolor: isFollowed ? `${PURPLE}11` : 'transparent',
+                                            '&:hover': { bgcolor: `${PURPLE}22`, color: PURPLE },
+                                        }}
+                                    >
+                                        {followLoading ? (
+                                            <CircularProgress size={16} color="inherit" />
+                                        ) : isFollowed ? (
+                                            <PersonRemoveIcon sx={{ fontSize: 18 }} />
+                                        ) : (
+                                            <PersonAddIcon sx={{ fontSize: 18 }} />
+                                        )}
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                         )}
                     </Box>
@@ -111,7 +100,7 @@ export default function ListingSellerInfo({
                 {/* Đã bán */}
                 <Box sx={{ textAlign: 'center' }}>
                     <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
-                        {seller?.totalSold ?? 10}
+                        {Number(seller?.totalSold ?? seller?.total_sold ?? 0)}
                     </Typography>
                     <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>Đã bán</Typography>
                 </Box>
@@ -119,12 +108,12 @@ export default function ListingSellerInfo({
                 <Box sx={{ textAlign: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.3 }}>
                         <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
-                            {Number(seller?.reputationScore ?? 5).toFixed(1)}
+                            {Number(seller?.reputationScore ?? seller?.reputation_score ?? 0).toFixed(1)}
                         </Typography>
                         <StarIcon sx={{ fontSize: 14, color: '#FFC107', mt: -0.2 }} />
                     </Box>
                     <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>
-                        {seller?.reviewCount ?? 34} đánh giá
+                        {Number(seller?.reviewCount ?? seller?.review_count ?? 0)} đánh giá
                     </Typography>
                 </Box>
             </Box>

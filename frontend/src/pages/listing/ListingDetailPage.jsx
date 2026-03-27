@@ -4,7 +4,7 @@
  * Phan ben duoi: Binh luan | Tin khac cua nguoi ban | Tin tuong tu
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
     Avatar,
     Box,
@@ -115,6 +115,7 @@ function normalizeShareUrl(rawUrl, fallbackId) {
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -160,49 +161,47 @@ export default function ListingDetailPage() {
     }, [listing?.id, listing?.isFollowed]);
 
     // Load tin khac cua nguoi ban + tin tuong tu
-    // Backend khong ho tro sellerId param -> load toan bo roi filter client-side
     useEffect(() => {
         if (!listing) return;
-        // Lay seller id tu listing.seller.id (theo dung field backend tra ve)
         const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
         const currentId = Number(id);
 
         setLoadingRelated(true);
-        getListings({ size: 20 })
-            .then((res) => {
+
+        // Fetch seller's other listings directly if sellerId exists
+        const fetchSellerListings = sellerId
+            ? getListings({ sellerId, size: 10 }).then((res) => {
                 const data = getPayload(res);
-                const allList = Array.isArray(data?.content)
-                    ? data.content
-                    : Array.isArray(data) ? data : [];
-
-                // Tin khac cua cung nguoi ban (loai tru tin hien tai)
-                const bySellerRaw = sellerId
-                    ? allList.filter((l) => {
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        return String(lSellerId) === String(sellerId) && (l.id ?? l.listingId) !== currentId;
-                    })
-                    : [];
-                setSellerListings(bySellerRaw.slice(0, 6));
-
-                // Tin tuong tu: cung dieu kien san pham hoac muc gia tuong dong, loai tru tin hien tai va tin cua cung seller
-                const condition = listing?.condition ?? listing?.itemCondition;
-                const price = Number(listing?.price ?? 0);
-                const similar = allList
-                    .filter((l) => {
-                        const lId = l.id ?? l.listingId;
-                        if (lId === currentId) return false;
-                        const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                        if (String(lSellerId) === String(sellerId)) return false; // bo tin cua cung seller (da co section tren)
-                        // uu tien: cung condition hoac gia trong khoang +-50%
-                        const lCond = l?.condition ?? l?.itemCondition;
-                        const lPrice = Number(l?.price ?? 0);
-                        const sameCondition = condition && lCond === condition;
-                        const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
-                        return sameCondition || similarPrice || true; // fallback: show all other listings
-                    })
-                    .slice(0, 4);
-                setSimilarListings(similar);
+                const list = data?.content || data || [];
+                setSellerListings(list.filter(l => (l.id ?? l.listingId) !== currentId).slice(0, 6));
             })
+            : Promise.resolve();
+
+        // Fetch general listings for "Similar" items
+        const fetchSimilarListings = getListings({ size: 20 }).then((res) => {
+            const data = getPayload(res);
+            const allList = data?.content || data || [];
+
+            const condition = listing?.condition ?? listing?.itemCondition;
+            const price = Number(listing?.price ?? 0);
+            const similar = allList
+                .filter((l) => {
+                    const lId = l.id ?? l.listingId;
+                    if (lId === currentId) return false;
+                    const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
+                    if (String(lSellerId) === String(sellerId)) return false; 
+                    
+                    const lCond = l?.condition ?? l?.itemCondition;
+                    const lPrice = Number(l?.price ?? 0);
+                    const sameCondition = condition && lCond === condition;
+                    const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
+                    return sameCondition || similarPrice || true;
+                })
+                .slice(0, 4);
+            setSimilarListings(similar);
+        });
+
+        Promise.all([fetchSellerListings, fetchSimilarListings])
             .catch(() => { })
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
@@ -211,6 +210,7 @@ export default function ListingDetailPage() {
     const handleToggleLike = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để thích tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (likeSubmitting) return;
@@ -278,6 +278,7 @@ export default function ListingDetailPage() {
     const handleReport = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         navigate(`/report?targetType=LISTING&targetId=${id}`);
@@ -286,6 +287,7 @@ export default function ListingDetailPage() {
     const handleChat = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setStartingChat(true);
@@ -303,6 +305,7 @@ export default function ListingDetailPage() {
     const handleShowPhone = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setShowPhone(true);
@@ -322,7 +325,7 @@ export default function ListingDetailPage() {
             isAuthenticated,
             onUnauthenticated: () => {
                 showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-                navigate('/login');
+                navigate('/login', { state: { from: location.pathname } });
             },
             onSuccess: (nextIsFollowing) => {
                 const delta = nextIsFollowing ? 1 : -1;
@@ -353,6 +356,7 @@ export default function ListingDetailPage() {
     const handleToggleSave = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (!listing?.id || saveSubmitting) return;
@@ -511,32 +515,8 @@ export default function ListingDetailPage() {
                         isLiked={isLiked}
                         onToggleLike={handleToggleLike}
                         likeDisabled={likeSubmitting}
-                        hideThumbs={true}
+                        hideThumbs={false}
                     />
-                    {/* Thumbnails below large image */}
-                    {images.length > 1 && (
-                        <Box
-                            sx={{
-                                display: 'flex', gap: 1, mt: 1.5,
-                                overflowX: 'auto', pb: 0.5,
-                                '::-webkit-scrollbar': { height: 4 },
-                                '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
-                            }}
-                        >
-                            {images.map((img, i) => (
-                                <Box
-                                    key={i}
-                                    sx={{
-                                        flexShrink: 0, width: 64, height: 64, borderRadius: '8px', overflow: 'hidden',
-                                        border: `2px solid ${BORDER}`, cursor: 'pointer',
-                                        '&:hover': { borderColor: PURPLE }
-                                    }}
-                                >
-                                    <Box component="img" src={img} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
                 </Box>
 
                 <Box sx={{ height: '100%' }}>
