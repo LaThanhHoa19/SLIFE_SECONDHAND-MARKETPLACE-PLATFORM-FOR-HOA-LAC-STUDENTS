@@ -111,7 +111,7 @@ export default function ListingSellerInfo({
                 {/* Đã bán */}
                 <Box sx={{ textAlign: 'center' }}>
                     <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
-                        {seller?.totalSold ?? 10}
+                        {Number(seller?.totalSold ?? seller?.total_sold ?? 0)}
                     </Typography>
                     <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>Đã bán</Typography>
                 </Box>
@@ -119,12 +119,12 @@ export default function ListingSellerInfo({
                 <Box sx={{ textAlign: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.3 }}>
                         <Typography fontSize={16} fontWeight={800} color={TEXT_PRI}>
-                            {Number(seller?.reputationScore ?? 5).toFixed(1)}
+                            {Number(seller?.reputationScore ?? seller?.reputation_score ?? 0).toFixed(1)}
                         </Typography>
                         <StarIcon sx={{ fontSize: 14, color: '#FFC107', mt: -0.2 }} />
                     </Box>
                     <Typography fontSize={12} color={TEXT_SEC} sx={{ mt: -0.2 }}>
-                        {seller?.reviewCount ?? 34} đánh giá
+                        {Number(seller?.reviewCount ?? seller?.review_count ?? 0)} đánh giá
                     </Typography>
                 </Box>
             </Box>
