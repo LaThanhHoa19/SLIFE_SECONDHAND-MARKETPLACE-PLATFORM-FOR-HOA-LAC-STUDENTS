@@ -35,4 +35,12 @@ public class ChatMessageResponse {
     private Long offerId;
     private BigDecimal offerAmount;
     private String offerStatus;
+
+    /** Reply reference (one-level preview). */
+    private Long replyToMessageId;
+    private MessageReferenceResponse replyTo;
+
+    /** Quote reference (one-level preview). */
+    private Long quoteMessageId;
+    private MessageReferenceResponse quote;
 }
