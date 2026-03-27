@@ -12,52 +12,13 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const PURPLE = '#9D6EED';
 
-const MOCK_SELLER_LISTINGS = [
-  {
-    id: 'm1',
-    title: 'Balo laptop siêu bền',
-    price: 150000,
-    images: ['https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&q=80'],
-    createdAt: new Date(Date.now() - 86400000).toISOString()
-  },
-  {
-    id: 'm2',
-    title: 'Bàn phím cơ DareU',
-    price: 350000,
-    images: ['https://images.unsplash.com/photo-1595225476474-87563907a212?w=500&q=80'],
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
-  },
-  {
-    id: 'm3',
-    title: 'Giáo trình Giải tích 1',
-    price: 30000,
-    images: ['https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&q=80'],
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString()
-  },
-  {
-    id: 'm4',
-    title: 'Áo lớp chuyên Toán',
-    isGiveaway: true,
-    price: 0,
-    images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&q=80'],
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
-  },
-  {
-    id: 'm5',
-    title: 'Tai nghe Sony WH-1000XM4',
-    price: 2500000,
-    images: ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'],
-    createdAt: new Date(Date.now() - 86400000 * 6).toISOString()
-  }
-];
-
 export default function ListingSellerOtherListings({ sellerListings, loadingRelated, seller, listing }) {
   const navigate = useNavigate();
   const scrollRef = useRef(null);
   const [showLeft, setShowLeft] = useState(false);
   const [showRight, setShowRight] = useState(true);
 
-  const displayListings = sellerListings?.length > 0 ? sellerListings : MOCK_SELLER_LISTINGS;
+  const displayListings = Array.isArray(sellerListings) ? sellerListings : [];
 
   const checkScroll = () => {
     if (scrollRef.current) {
