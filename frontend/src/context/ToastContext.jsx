@@ -14,10 +14,12 @@ import ToastContainer from '../components/common/ToastContainer';
 const ToastContext = createContext(null);
 
 let idCounter = 0;
+const TOAST_DEDUPE_WINDOW_MS = 1200;
 
 export function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([]);
     const timersRef = useRef({});
+    const recentRef = useRef({ key: '', at: 0, id: null });
 
     const dismiss = useCallback((id) => {
         clearTimeout(timersRef.current[id]);
@@ -29,14 +31,45 @@ export function ToastProvider({ children }) {
     const showToast = useCallback((message, variant = 'info', options = {}) => {
         const id = ++idCounter;
         const duration = options.duration ?? 4000;
+        const text = String(message || '').trim();
+        const key = `${variant}:${text}`;
+        const now = Date.now();
+        const latest = recentRef.current;
 
-        setToasts(prev => [...prev.slice(-4), { id, message, variant, exiting: false }]);
+        const existing = toasts.find(
+            (t) => !t.exiting && `${t.variant}:${String(t.message || '').trim()}` === key,
+        );
+        if (existing) {
+            if (duration > 0) {
+                clearTimeout(timersRef.current[existing.id]);
+                timersRef.current[existing.id] = setTimeout(() => dismiss(existing.id), duration);
+            }
+            recentRef.current = { key, at: now, id: existing.id };
+            return existing.id;
+        }
+
+        // Prevent duplicate toast spam for rapid repeated actions.
+        if (
+            latest.key === key &&
+            now - latest.at < TOAST_DEDUPE_WINDOW_MS &&
+            latest.id != null
+        ) {
+            if (duration > 0) {
+                clearTimeout(timersRef.current[latest.id]);
+                timersRef.current[latest.id] = setTimeout(() => dismiss(latest.id), duration);
+            }
+            recentRef.current = { ...latest, at: now };
+            return latest.id;
+        }
+
+        setToasts(prev => [...prev.slice(-4), { id, message: text, variant, exiting: false, duration }]);
 
         if (duration > 0) {
             timersRef.current[id] = setTimeout(() => dismiss(id), duration);
         }
+        recentRef.current = { key, at: now, id };
         return id;
-    }, [dismiss]);
+    }, [dismiss, toasts]);
 
     return (
         <ToastContext.Provider value={{ showToast, dismiss }}>
@@ -51,3 +84,5 @@ export function useToast() {
     if (!ctx) throw new Error('useToast must be used inside ToastProvider');
     return ctx;
 }
+
+export default ToastProvider;
