@@ -7,7 +7,6 @@ import {
   Chip,
   CircularProgress,
   IconButton,
-  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -15,6 +14,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getReports, processReport } from '../../api/reportApi';
+import { useToast } from '../../context/ToastContext';
 
 // —— Dữ liệu demo + helpers (cùng file; ReportManagementPage import các export cần thiết) ——
 
@@ -178,7 +178,7 @@ export default function ReportDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [adminNote, setAdminNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const { showToast } = useToast();
 
   const loadReport = useCallback(async () => {
     const idStr = reportIdParam;
@@ -234,11 +234,7 @@ export default function ReportDetailPage() {
         const nextStatus = action === 'APPROVE' ? 'RESOLVED' : 'REJECTED';
         writeDemoOverride(id, { status: nextStatus });
         setReport((r) => (r ? { ...r, status: nextStatus } : r));
-        setSnackbar({
-          open: true,
-          message: action === 'APPROVE' ? 'Đã duyệt (dữ liệu demo).' : 'Đã từ chối (dữ liệu demo).',
-          severity: 'success',
-        });
+        showToast(action === 'APPROVE' ? 'Đã duyệt (dữ liệu demo).' : 'Đã từ chối (dữ liệu demo).', 'success');
       } finally {
         setSubmitting(false);
       }
@@ -251,18 +247,10 @@ export default function ReportDetailPage() {
         action,
         note: adminNote.trim() || undefined,
       });
-      setSnackbar({
-        open: true,
-        message: action === 'APPROVE' ? 'Đã duyệt báo cáo.' : 'Đã từ chối báo cáo.',
-        severity: 'success',
-      });
+      showToast(action === 'APPROVE' ? 'Đã duyệt báo cáo.' : 'Đã từ chối báo cáo.', 'success');
       await loadReport();
     } catch (error) {
-      setSnackbar({
-        open: true,
-        message: error?.message || 'Không xử lý được báo cáo.',
-        severity: 'error',
-      });
+      showToast(error?.message || 'Không xử lý được báo cáo.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -414,20 +402,6 @@ export default function ReportDetailPage() {
           </Stack>
         </Box>
 
-        <Snackbar
-            open={snackbar.open}
-            autoHideDuration={4000}
-            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        >
-          <Alert
-              severity={snackbar.severity}
-              onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-              sx={{ width: '100%' }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
       </Box>
   );
 }

@@ -18,7 +18,6 @@ import {
     InputAdornment,
     Pagination as MuiPagination,
     Skeleton,
-    Snackbar,
     Stack,
     Tab,
     Tabs,
@@ -48,6 +47,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteDraft, getMyListings, hideListing, renewListing, repostListing, unhideListing } from '../../api/myListingApi';
 import { fullImageUrl } from '../../utils/constants';
 import { formatDate } from '../../utils/formatDate';
+import { useToast } from '../../context/ToastContext';
+import { DANGER_DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -512,15 +513,15 @@ export default function MyListingsPage() {
     const [totalElements,  setTotalElements]  = useState(0);
     const [isLoading,      setLoading]        = useState(false);
     const [error,          setError]          = useState(null);
-    const [snackbar,       setSnackbar]       = useState({ open: false, message: '', severity: 'info' });
     const [tabCounts,      setTabCounts]      = useState({});
     const [searchQuery,    setSearchQuery]    = useState('');
     const [deleteDialog,   setDeleteDialog]   = useState({ open: false, listingId: null });
     const [isDeleting,     setIsDeleting]     = useState(false);
+    const { showToast } = useToast();
     const abortRef = useRef(null);
 
     const showSnackbar = (message, severity = 'info') =>
-        setSnackbar({ open: true, message, severity });
+        showToast(message, severity);
 
     // Fetch count cho tất cả tabs song song (dùng size=1 để lấy totalElements)
     const fetchTabCounts = useCallback(async () => {
@@ -901,8 +902,7 @@ export default function MyListingsPage() {
                 onClose={handleCancelDelete}
                 PaperProps={{
                     sx: {
-                        bgcolor: '#1e1a2e',
-                        border: '1px solid rgba(255,71,87,0.25)',
+                        ...DANGER_DARK_DIALOG_PAPER_PROPS.sx,
                         borderRadius: '16px',
                         px: 0.5,
                         minWidth: 340,
@@ -972,22 +972,6 @@ export default function MyListingsPage() {
                     </Button>
                 </DialogActions>
             </Dialog>
-
-            {/* ── Snackbar feedback ── */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={3500}
-                onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            >
-                <Alert
-                    severity={snackbar.severity}
-                    onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-                    sx={{ borderRadius: '10px', fontWeight: 500 }}
-                >
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
 
             {/* ── Pagination ── */}
             {!isLoading && !error && totalPages > 1 && (
