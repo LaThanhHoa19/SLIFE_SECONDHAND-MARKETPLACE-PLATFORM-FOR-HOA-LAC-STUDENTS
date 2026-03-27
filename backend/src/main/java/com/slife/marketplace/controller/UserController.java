@@ -7,6 +7,7 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.UserRepository;
+import com.slife.marketplace.service.BlockService;
 import com.slife.marketplace.service.FollowService;
 import com.slife.marketplace.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,16 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final FollowService followService;
+    private final BlockService blockService;
     private final UserService userService;
 
-    public UserController(UserRepository userRepository, FollowService followService, UserService userService) {
+    public UserController(UserRepository userRepository,
+                          FollowService followService,
+                          BlockService blockService,
+                          UserService userService) {
         this.userRepository = userRepository;
         this.followService = followService;
+        this.blockService = blockService;
         this.userService = userService;
     }
 
@@ -41,6 +47,12 @@ public class UserController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
         Long viewerId = userService.getCurrentUserOptional().map(User::getId).orElse(null);
+        if (viewerId != null
+                && !viewerId.equals(user.getId())
+                && blockService.isBlockedByCurrentUser(user.getId(), viewerId)) {
+            // Hide profile as if it doesn't exist for blocked viewer.
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
         UserProfileResponse body = followService.buildProfileForViewer(user, viewerId);
         return ResponseEntity.ok(ApiResponse.success("Success", body));
     }

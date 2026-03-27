@@ -42,6 +42,7 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final ListingRepository listingRepository;
     private final OfferRepository offerRepository;
+    private final BlockService blockService;
     private final UserService userService;
     private final NotificationService notificationService;
     private final SimpMessagingTemplate messagingTemplate;
@@ -54,6 +55,7 @@ public class ChatService {
                        MessageRepository messageRepository,
                        ListingRepository listingRepository,
                        OfferRepository offerRepository,
+                       BlockService blockService,
                        UserService userService,
                        NotificationService notificationService,
                        SimpMessagingTemplate messagingTemplate,
@@ -62,6 +64,7 @@ public class ChatService {
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
         this.offerRepository = offerRepository;
+        this.blockService = blockService;
         this.userService = userService;
         this.notificationService = notificationService;
         this.messagingTemplate = messagingTemplate;
@@ -86,6 +89,7 @@ public class ChatService {
         if (seller.getId().equals(buyer.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Seller cannot open chat with self");
         }
+        assertNoBlockBetween(buyer, seller);
         String sellerEmail = seller.getEmail() != null ? seller.getEmail().trim().toLowerCase() : "";
         String buyerEmail = buyer.getEmail() != null ? buyer.getEmail().trim().toLowerCase() : "";
         if (!sellerEmail.isEmpty() && sellerEmail.equals(buyerEmail)) {
@@ -246,6 +250,10 @@ public class ChatService {
         Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, sender);
+        User other = getOtherParticipant(conv, sender);
+        if (other != null) {
+            assertNoBlockBetween(sender, other);
+        }
 
         if (messageType == null) messageType = MessageType.TEXT;
         String resolvedContent = resolveContent(content, messageType, fileUrl);
@@ -260,7 +268,6 @@ public class ChatService {
         ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), sender);
 
         // Push real-time to the other participant
-        User other = getOtherParticipant(conv, sender);
         if (other != null) {
             notificationService.notifyNewMessage(other, response, sessionId);
         }
@@ -326,6 +333,10 @@ public class ChatService {
         Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, buyer);
+        User other = getOtherParticipant(conv, buyer);
+        if (other != null) {
+            assertNoBlockBetween(buyer, other);
+        }
 
         Listing listing = conv.getListing();
         if (listing == null) throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
@@ -397,6 +408,10 @@ public class ChatService {
                     .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         }
         ensureParticipant(conv, seller);
+        User buyer = offer.getBuyer();
+        if (buyer != null) {
+            assertNoBlockBetween(seller, buyer);
+        }
         // Seller must not be the buyer
         if (offer.getBuyer().getId().equals(seller.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
@@ -427,9 +442,9 @@ public class ChatService {
             response = toMessageResponse(sysMsg, sessionId, seller, offer);
 
             // Notify both parties
-            User buyer = offer.getBuyer();
+            User acceptedBuyer = offer.getBuyer();
             if (listing != null) {
-                notificationService.notifyDealConfirmed(buyer, seller,
+                notificationService.notifyDealConfirmed(acceptedBuyer, seller,
                         listing.getId(), listing.getTitle());
             }
             log.info("respondToOffer ACCEPTED offerId={} listingId={}", offerId,
@@ -491,6 +506,13 @@ public class ChatService {
         if (user.getStatus() != null &&
                 ("BANNED".equals(user.getStatus()) || "RESTRICTED".equals(user.getStatus()))) {
             throw new SlifeException(ErrorCode.USER_BANNED_OR_RESTRICTED);
+        }
+    }
+
+    private void assertNoBlockBetween(User a, User b) {
+        if (a == null || b == null) return;
+        if (blockService.isBlockedEitherDirection(a.getId(), b.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Chat is blocked between these users");
         }
     }
 
