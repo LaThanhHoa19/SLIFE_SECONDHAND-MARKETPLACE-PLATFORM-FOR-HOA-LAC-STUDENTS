@@ -244,9 +244,7 @@ export default function Header({ onToggleSidebar }) {
                         >
                             <MenuIcon />
                         </IconButton>
-                    ) : (
-                        <Box sx={{ width: 40, height: 40 }} />
-                    )}
+                    ) : null}
                     <Typography
                         variant="h6"
                         sx={{

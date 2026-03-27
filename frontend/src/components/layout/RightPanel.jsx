@@ -9,8 +9,6 @@ import {
     ListItemButton,
     Popover,
     Skeleton,
-    ToggleButton,
-    ToggleButtonGroup,
 } from '@mui/material';
 import {
     LocationOn as LocationOnIcon,
@@ -34,7 +32,6 @@ import {
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
 
 const CATEGORY_ICONS = {
@@ -55,6 +52,14 @@ const CATEGORY_ICONS = {
     'đồ dùng học tập': BookIcon,
     'sách': BookIcon,
 };
+
+const HOA_LAC_THACH_THAT_LOCATIONS = [
+    'Thạch Hòa',
+    'Tân Xã',
+    'Bình Yên',
+    'Hạ Bằng',
+    'Đồng Trúc',
+];
 
 const getCategoryIcon = (name = '') => {
     const key = name.toLowerCase().trim();
@@ -99,8 +104,6 @@ export default function RightPanel() {
     const [locAnchorEl, setLocAnchorEl] = useState(null);
     const locOpen = Boolean(locAnchorEl);
 
-    const selectedSort = searchParams.get('sort') || '';
-    const selectedCondition = searchParams.get('condition') || '';
     const selectedCategory = searchParams.get('category') || '';
     const selectedSubcategory = searchParams.get('subcategory') || '';
 
@@ -118,24 +121,9 @@ export default function RightPanel() {
     const selectedLocation = searchParams.get('location') || '';
     const locationLabel = selectedLocation || 'Tất cả xã';
 
-    const setParam = (key, value) => {
-        const params = new URLSearchParams(searchParams);
-        if (value) {
-            params.set(key, value);
-        } else {
-            params.delete(key);
-        }
-        params.delete('page');
-        navigate(`/feed?${params.toString()}`);
-    };
-
     useEffect(() => {
-        getLocations()
-            .then(({ data: res }) => {
-                const list = res?.data ?? res ?? [];
-                setLocations(Array.isArray(list) ? list : []);
-            })
-            .catch(() => setLocations([]));
+        // Chỉ dùng danh sách xã chuẩn trong phạm vi Hòa Lạc/Thạch Thất.
+        setLocations(HOA_LAC_THACH_THAT_LOCATIONS);
     }, []);
 
     useEffect(() => {
@@ -240,137 +228,6 @@ export default function RightPanel() {
                 </IconButton>
             </Box>
 
-            {/* Sort theo giá */}
-            <Box
-                sx={{
-                    bgcolor: 'rgba(42,39,51,0.6)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    px: 2,
-                    py: 1.5,
-                    mt: 0.5,
-                }}
-            >
-                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', mb: 1 }}>
-                    Sắp xếp theo giá
-                </Typography>
-                <ToggleButtonGroup
-                    exclusive
-                    fullWidth
-                    value={selectedSort}
-                    onChange={(_, val) => setParam('sort', val ?? '')}
-                    sx={{ gap: 1 }}
-                >
-                    <ToggleButton
-                        value="price,asc"
-                        sx={{
-                            flex: 1,
-                            py: 0.8,
-                            borderRadius: '8px !important',
-                            border: '1px solid rgba(255,255,255,0.1) !important',
-                            color: 'rgba(255,255,255,0.6)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            textTransform: 'none',
-                            '&.Mui-selected': {
-                                bgcolor: 'rgba(157,110,237,0.2)',
-                                color: '#9D6EED',
-                                borderColor: '#9D6EED !important',
-                            },
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                        }}
-                    >
-                        Giá thấp → cao
-                    </ToggleButton>
-                    <ToggleButton
-                        value="price,desc"
-                        sx={{
-                            flex: 1,
-                            py: 0.8,
-                            borderRadius: '8px !important',
-                            border: '1px solid rgba(255,255,255,0.1) !important',
-                            color: 'rgba(255,255,255,0.6)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            textTransform: 'none',
-                            '&.Mui-selected': {
-                                bgcolor: 'rgba(157,110,237,0.2)',
-                                color: '#9D6EED',
-                                borderColor: '#9D6EED !important',
-                            },
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                        }}
-                    >
-                        Giá cao → thấp
-                    </ToggleButton>
-                </ToggleButtonGroup>
-            </Box>
-
-            {/* Tình trạng */}
-            <Box
-                sx={{
-                    bgcolor: 'rgba(42,39,51,0.6)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    px: 2,
-                    py: 1.5,
-                }}
-            >
-                <Typography sx={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', mb: 1 }}>
-                    Tình trạng
-                </Typography>
-                <ToggleButtonGroup
-                    exclusive
-                    fullWidth
-                    value={selectedCondition}
-                    onChange={(_, val) => setParam('condition', val ?? '')}
-                    sx={{ gap: 1 }}
-                >
-                    <ToggleButton
-                        value="USED"
-                        sx={{
-                            flex: 1,
-                            py: 0.8,
-                            borderRadius: '8px !important',
-                            border: '1px solid rgba(255,255,255,0.1) !important',
-                            color: 'rgba(255,255,255,0.6)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            textTransform: 'none',
-                            '&.Mui-selected': {
-                                bgcolor: 'rgba(157,110,237,0.2)',
-                                color: '#9D6EED',
-                                borderColor: '#9D6EED !important',
-                            },
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                        }}
-                    >
-                        Đã sử dụng
-                    </ToggleButton>
-                    <ToggleButton
-                        value="NEW"
-                        sx={{
-                            flex: 1,
-                            py: 0.8,
-                            borderRadius: '8px !important',
-                            border: '1px solid rgba(255,255,255,0.1) !important',
-                            color: 'rgba(255,255,255,0.6)',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            textTransform: 'none',
-                            '&.Mui-selected': {
-                                bgcolor: 'rgba(157,110,237,0.2)',
-                                color: '#9D6EED',
-                                borderColor: '#9D6EED !important',
-                            },
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                        }}
-                    >
-                        Mới
-                    </ToggleButton>
-                </ToggleButtonGroup>
-            </Box>
-
             {/* Location Popover */}
             <Popover
                 open={locOpen}
@@ -381,43 +238,63 @@ export default function RightPanel() {
                 slotProps={{
                     paper: {
                         sx: {
-                            mt: 1.5,
-                            minWidth: 260,
-                            maxWidth: 320,
+                            mt: 1,
+                            width: locAnchorEl?.clientWidth ? `${locAnchorEl.clientWidth}px` : 320,
+                            minWidth: 280,
+                            maxWidth: 340,
                             maxHeight: 320,
                             overflow: 'hidden',
-                            borderRadius: '16px',
-                            boxShadow: '0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)',
-                            bgcolor: 'rgba(28,26,34,0.98)',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            borderRadius: '14px',
+                            boxShadow: '0 20px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06)',
+                            bgcolor: 'rgba(20,18,30,0.9)',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.08)',
                         },
                     },
                 }}
             >
-                <Box sx={{ px: 2, py: 1.75, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <Typography sx={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', fontWeight: 500, mb: 0.25 }}>
+                <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                    <Typography sx={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', fontWeight: 600, mb: 0.25, letterSpacing: '0.01em' }}>
                         Chọn xã hiển thị tin (khu vực Hòa Lạc)
                     </Typography>
-                    <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+                    <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#fff' }}>
                         Hòa Lạc · Thạch Thất, Hà Nội
                     </Typography>
                 </Box>
-                <List disablePadding sx={{ py: 1, maxHeight: 240, overflowY: 'auto' }}>
+                <List
+                    disablePadding
+                    sx={{
+                        py: 0.75,
+                        maxHeight: 240,
+                        overflowY: 'auto',
+                        px: 0.75,
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'rgba(196,181,253,0.55) rgba(255,255,255,0.04)',
+                        '&::-webkit-scrollbar': { width: 6 },
+                        '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.04)', borderRadius: 8 },
+                        '&::-webkit-scrollbar-thumb': { background: 'rgba(196,181,253,0.55)', borderRadius: 8 },
+                    }}
+                >
                     <ListItemButton
                         selected={!selectedLocation}
                         onClick={() => handleSelectLocation('')}
                         sx={{
-                            mx: 1,
                             borderRadius: '10px',
-                            py: 1.25,
-                            px: 2,
-                            '&.Mui-selected': { bgcolor: 'rgba(157,110,237,0.15)', '&:hover': { bgcolor: 'rgba(157,110,237,0.2)' } },
-                            '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                            py: 1,
+                            px: 1.5,
+                            mb: 0.25,
+                            transition: 'all 0.2s',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(167,139,250,0.2)',
+                                '&:hover': { bgcolor: 'rgba(167,139,250,0.26)' },
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
                         }}
                     >
-                        <Typography sx={{ fontSize: '14px', fontWeight: !selectedLocation ? 600 : 400, color: !selectedLocation ? '#B794F6' : 'rgba(255,255,255,0.85)' }}>
+                        <Typography sx={{ fontSize: '14px', fontWeight: !selectedLocation ? 700 : 500, color: !selectedLocation ? '#D8B4FE' : 'rgba(255,255,255,0.88)' }}>
                             Tất cả xã
                         </Typography>
+                        {!selectedLocation && <CheckCircleIcon sx={{ ml: 'auto', fontSize: 16, color: '#C4B5FD' }} />}
                     </ListItemButton>
                     {locations.map((loc) => (
                         <ListItemButton
@@ -425,17 +302,22 @@ export default function RightPanel() {
                             selected={selectedLocation === loc}
                             onClick={() => handleSelectLocation(loc)}
                             sx={{
-                                mx: 1,
                                 borderRadius: '10px',
-                                py: 1.25,
-                                px: 2,
-                                '&.Mui-selected': { bgcolor: 'rgba(157,110,237,0.15)', '&:hover': { bgcolor: 'rgba(157,110,237,0.2)' } },
-                                '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
+                                py: 1,
+                                px: 1.5,
+                                mb: 0.25,
+                                transition: 'all 0.2s',
+                                '&.Mui-selected': {
+                                    bgcolor: 'rgba(167,139,250,0.2)',
+                                    '&:hover': { bgcolor: 'rgba(167,139,250,0.26)' },
+                                },
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
                             }}
                         >
-                            <Typography sx={{ fontSize: '14px', fontWeight: selectedLocation === loc ? 600 : 400, color: selectedLocation === loc ? '#B794F6' : 'rgba(255,255,255,0.85)' }}>
+                            <Typography sx={{ fontSize: '14px', fontWeight: selectedLocation === loc ? 700 : 500, color: selectedLocation === loc ? '#D8B4FE' : 'rgba(255,255,255,0.88)' }}>
                                 {loc}
                             </Typography>
+                            {selectedLocation === loc && <CheckCircleIcon sx={{ ml: 'auto', fontSize: 16, color: '#C4B5FD' }} />}
                         </ListItemButton>
                     ))}
                 </List>
