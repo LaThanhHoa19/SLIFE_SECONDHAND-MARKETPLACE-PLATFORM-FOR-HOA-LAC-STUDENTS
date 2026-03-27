@@ -498,7 +498,7 @@ export default function ListingCard({
                 open={snackbar.open}
                 autoHideDuration={1800}
                 onClose={closeSnackbar}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             >
                 <Alert
                     onClose={closeSnackbar}

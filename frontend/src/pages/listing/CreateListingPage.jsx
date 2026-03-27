@@ -109,7 +109,7 @@ export default function CreateListingPage() {
             autoHideDuration={2000}
             onClose={() => setDraftSuccess(false)}
             message="Đã lưu nháp thành công!"
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         />
       </Box>
   );

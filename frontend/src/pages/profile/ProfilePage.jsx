@@ -312,8 +312,8 @@ export default function ProfilePage() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   {phoneVerified
-                    ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
-                    : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
+                      ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
+                      : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}</Typography>
                 </Box>
               </Box>
@@ -331,15 +331,15 @@ export default function ProfilePage() {
               overflow: 'hidden'
             }}>
               <Tabs
-                value={tab}
-                onChange={(_, v) => setTab(v)}
-                sx={{
-                  px: 2,
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                  '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
-                  '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
-                  '& .Mui-selected': { color: '#6366f1 !important' }
-                }}
+                  value={tab}
+                  onChange={(_, v) => setTab(v)}
+                  sx={{
+                    px: 2,
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
+                    '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
+                    '& .Mui-selected': { color: '#6366f1 !important' }
+                  }}
               >
                 {!isMe && <Tab label="Đang bán" />}
                 {!isMe && <Tab label="Đã bán" />}
@@ -354,7 +354,7 @@ export default function ProfilePage() {
           </Box>
         </Box>
 
-        <Snackbar open={!!successMessage} autoHideDuration={4000} onClose={() => setSuccessMessage('')} message={successMessage} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
+        <Snackbar open={!!successMessage} autoHideDuration={4000} onClose={() => setSuccessMessage('')} message={successMessage} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} />
         <Dialog open={reportDialogOpen} onClose={() => !reportSubmitting && setReportDialogOpen(false)} maxWidth="xs" fullWidth>
           <DialogTitle>Báo cáo người dùng</DialogTitle>
           <DialogContent dividers>

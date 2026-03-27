@@ -446,7 +446,7 @@ export default function ConfigurationManagementPage() {
                 autoHideDuration={4000}
                 onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
                 message={snackbar.message}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             />
         </Box>
     );

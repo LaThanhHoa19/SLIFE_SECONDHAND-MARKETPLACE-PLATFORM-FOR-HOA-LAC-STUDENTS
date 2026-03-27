@@ -616,7 +616,7 @@ export default function DealDetailPage() {
                 open={snack.open}
                 autoHideDuration={4000}
                 onClose={() => setSnack((s) => ({ ...s, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             >
                 <Alert
                     severity={snack.severity}

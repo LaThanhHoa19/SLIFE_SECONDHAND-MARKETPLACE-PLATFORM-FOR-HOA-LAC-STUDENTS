@@ -479,7 +479,7 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost
                         <Stack direction="row" alignItems="center" gap={0.4}>
                             <LocationIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }} />
                             <Typography fontSize={12} color="rgba(255,255,255,0.28)"
-                                sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {listing.location}
                             </Typography>
                         </Stack>
@@ -658,7 +658,7 @@ export default function MyListingsPage() {
         ? listings.filter(l =>
             l.title?.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
             l.location?.toLowerCase().includes(searchQuery.toLowerCase().trim())
-          )
+        )
         : listings;
 
     return (
@@ -978,7 +978,7 @@ export default function MyListingsPage() {
                 open={snackbar.open}
                 autoHideDuration={3500}
                 onClose={() => setSnackbar(s => ({ ...s, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             >
                 <Alert
                     severity={snackbar.severity}
