@@ -674,6 +674,11 @@ public class ChatService {
         boolean fromCurrent = currentUser != null && isCurrentParticipant(sender, currentUser);
         Long replyToId = m.getReplyToMessage() != null ? m.getReplyToMessage().getId() : null;
         Long quoteId = m.getQuoteMessage() != null ? m.getQuoteMessage().getId() : null;
+        boolean delivered = true; // persisted in DB => delivered
+        boolean seen = Boolean.TRUE.equals(m.getIsRead());
+        String status = seen ? "SEEN" : (delivered ? "DELIVERED" : "SENT");
+        Instant deliveredAt = m.getSentAt();
+        Instant seenAt = seen ? (m.getUpdatedAt() != null ? m.getUpdatedAt() : m.getSentAt()) : null;
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .sessionId(sessionUuid)
@@ -685,6 +690,11 @@ public class ChatService {
                 .isFromCurrentUser(fromCurrent)
                 .messageType(m.getMessageType())
                 .fileUrl(m.getFileUrl())
+                .isDelivered(delivered)
+                .isSeen(seen)
+                .deliveryStatus(status)
+                .deliveredAt(deliveredAt)
+                .seenAt(seenAt)
                 .offerId(offer != null ? offer.getId() : null)
                 .offerAmount(offer != null ? offer.getAmount() : null)
                 .offerStatus(offer != null ? offer.getStatus() : null)

@@ -31,6 +31,14 @@ public class ChatMessageResponse {
     /** URL for IMAGE messages. */
     private String fileUrl;
 
+    /** Delivery state metadata (SCRUM-226). */
+    private Boolean isDelivered;
+    private Boolean isSeen;
+    /** SENT | DELIVERED | SEEN */
+    private String deliveryStatus;
+    private Instant deliveredAt;
+    private Instant seenAt;
+
     /** Populated for OFFER_PROPOSAL messages. */
     private Long offerId;
     private BigDecimal offerAmount;
