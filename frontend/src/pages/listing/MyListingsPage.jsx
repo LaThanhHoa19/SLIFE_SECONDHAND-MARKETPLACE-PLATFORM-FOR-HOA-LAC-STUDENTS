@@ -316,7 +316,7 @@ function MyListingCard({ listing, activeTab, onHide, onUnhide, onRenew, onRepost
                                     <ActionButton
                                         icon={<EditIcon sx={{ fontSize: 12, color: '#fff' }} />}
                                         label="Chỉnh sửa &amp; Đăng"
-                                        onClick={() => navigate('/listings/new')}
+                                        onClick={() => id && navigate(`/drafts/${id}/publish`)}
                                         color="#9D6EED"
                                         borderColor="rgba(157,110,237,0.35)"
                                         bgColor="rgba(157,110,237,0.1)"

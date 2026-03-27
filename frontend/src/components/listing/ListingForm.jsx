@@ -122,6 +122,8 @@ export default function ListingForm({
     submitting = false,
     savingDraft = false,
     mode = 'create',
+    /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
+    submitLabel,
     /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
     existingImageUrls = [],
 }) {
@@ -1156,7 +1158,7 @@ export default function ListingForm({
                                 }
                             }}
                         >
-                            {submitting ? 'ĐANG XỬ LÝ...' : mode === 'create' ? 'ĐĂNG TIN' : 'CẬP NHẬT'}
+                            {submitting ? 'ĐANG XỬ LÝ...' : (submitLabel || (mode === 'create' ? 'ĐĂNG TIN' : 'CẬP NHẬT'))}
                         </Button>
                     </Stack>
                 </Grid>
