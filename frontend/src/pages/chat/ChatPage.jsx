@@ -106,6 +106,7 @@ function Bubble({ msg, onAccept, onReject }) {
   const isMe     = msg.isFromCurrentUser === true;
   const isSystem = msg.messageType === 'DEAL_CONFIRMATION';
   const isPending = !!msg._pending;
+  const deliveryStatus = msg.deliveryStatus || (msg.isRead ? 'SEEN' : 'DELIVERED');
 
   if (isSystem) {
     return (
@@ -147,7 +148,7 @@ function Bubble({ msg, onAccept, onReject }) {
             </Typography>
             {isMe && (
                 <Typography variant="caption">
-                  {isPending ? '⏳' : msg.isRead ? '✓✓' : '✓'}
+                  {isPending ? '⏳' : deliveryStatus === 'SEEN' ? '✓✓' : '✓'}
                 </Typography>
             )}
           </Box>
@@ -172,6 +173,7 @@ export default function ChatPage() {
   const [sessionsVersion, setSessionsVersion] = useState(0);
   /** STOMP chưa gắn state — false để poll session vẫn chạy; khi có WS set true và tắt poll trùng. */
   const [wsConnected] = useState(false);
+  const readSyncRef = useRef({ sessionId: null, inFlight: false });
 
   // Sync activeSessionId with URL param
   useEffect(() => {
@@ -263,6 +265,33 @@ export default function ChatPage() {
     const interval = setInterval(fetchHistory, 3000);
     return () => clearInterval(interval);
   }, [activeSessionId, fetchHistory]);
+
+  // Mark incoming unread messages as read (drives SEEN state for sender).
+  useEffect(() => {
+    if (!activeSessionId || !Array.isArray(messages) || messages.length === 0) return;
+    const hasUnreadIncoming = messages.some(
+        (m) => !m.isFromCurrentUser && m.senderId !== currentUserId && m.isRead === false
+    );
+    if (!hasUnreadIncoming) return;
+    if (readSyncRef.current.inFlight && readSyncRef.current.sessionId === activeSessionId) return;
+
+    readSyncRef.current = { sessionId: activeSessionId, inFlight: true };
+    chatApi
+        .markSessionRead(activeSessionId)
+        .then(() => {
+          setMessages((prev) =>
+              prev.map((m) =>
+                  !m.isFromCurrentUser && m.senderId !== currentUserId ? { ...m, isRead: true, isSeen: true, deliveryStatus: 'SEEN' } : m
+              )
+          );
+        })
+        .catch((err) => {
+          if (import.meta.env.DEV) console.warn('[Chat] markSessionRead failed', err?.message ?? err);
+        })
+        .finally(() => {
+          readSyncRef.current = { sessionId: activeSessionId, inFlight: false };
+        });
+  }, [activeSessionId, messages, currentUserId]);
 
   const handleSend = async () => {
     const text = (inputText || '').trim();

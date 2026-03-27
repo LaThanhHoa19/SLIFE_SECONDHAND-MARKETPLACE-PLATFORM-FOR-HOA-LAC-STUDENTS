@@ -51,17 +51,23 @@ public class OfferController {
     }
 
     @GetMapping("/api/listings/{id}/offers")
-    public ResponseEntity<?> m2(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<PagedResponse<OfferResponse>>> getOffersForListing(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        PagedResponse<OfferResponse> data = offerService.getOffersForListing(id, page, size);
+        return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
     @PutMapping("/api/offers/{id}/accept")
-    public ResponseEntity<?> m3(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<OfferResponse>> acceptOffer(@PathVariable("id") Long id) {
+        OfferResponse data = offerService.acceptOffer(id);
+        return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 
     @PutMapping("/api/offers/{id}/reject")
-    public ResponseEntity<?> m4(@PathVariable Long id) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<OfferResponse>> rejectOffer(@PathVariable("id") Long id) {
+        OfferResponse data = offerService.rejectOffer(id);
+        return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 }

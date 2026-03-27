@@ -24,29 +24,45 @@ public class Deal {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
+    @JoinColumn(name = "conversation_id", nullable = false)
+    private Conversation conversation;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     @JoinColumn(name = "listing_id", nullable = false)
     private Listing listing;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "buyer_id", nullable = false)
-    private User buyer;
+    @JoinColumn(name = "proposed_by_id", nullable = false)
+    private User proposedBy;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "offer_id")
+    private Offer offer;
 
     @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @OnDelete(action = OnDeleteAction.CASCADE)
-    @JoinColumn(name = "seller_id", nullable = false)
-    private User seller;
-
-    @NotNull
-    @Column(name = "offered_price", nullable = false, precision = 12, scale = 2)
-    private BigDecimal offeredPrice;
+    @Column(name = "deal_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal dealPrice;
 
     @NotNull
     @ColumnDefault("'PENDING'")
-    @Column(name = "status", nullable = false, length = 20)
-    private String status; // PENDING, ACCEPTED, REJECTED, CANCELLED
+    @Column(name = "status", nullable = false)
+    private String status; // PENDING, CONFIRMED, COMPLETED, CANCELLED
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "pickup_time")
+    private LocalDateTime pickupTime;
+
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "reminder_sent", nullable = false)
+    private Boolean reminderSent = false;
 
     @NotNull
     @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
@@ -64,10 +80,42 @@ public class Deal {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
         if (status == null) status = "PENDING";
+        if (reminderSent == null) reminderSent = false;
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // ---- Backward-compatible aliases for existing code paths ----
+    @Transient
+    public User getBuyer() {
+        return proposedBy;
+    }
+
+    @Transient
+    public void setBuyer(User buyer) {
+        this.proposedBy = buyer;
+    }
+
+    @Transient
+    public User getSeller() {
+        return listing != null ? listing.getSeller() : null;
+    }
+
+    @Transient
+    public void setSeller(User ignored) {
+        // Seller is derived from listing.seller in current schema.
+    }
+
+    @Transient
+    public BigDecimal getOfferedPrice() {
+        return dealPrice;
+    }
+
+    @Transient
+    public void setOfferedPrice(BigDecimal offeredPrice) {
+        this.dealPrice = offeredPrice;
     }
 }

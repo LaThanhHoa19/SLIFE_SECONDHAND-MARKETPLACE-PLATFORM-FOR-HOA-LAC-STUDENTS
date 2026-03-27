@@ -39,5 +39,13 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             "ORDER BY r.createdAt DESC")
     List<Report> findPendingReportsWithReporter();
 
+    @Query("SELECT r FROM Report r " +
+            "LEFT JOIN r.reporter reporter " +
+            "WHERE (:targetType IS NULL OR r.targetType = :targetType) " +
+            "AND (:status IS NULL OR r.status = :status)")
+    Page<Report> findAdminReports(@Param("targetType") String targetType,
+                                  @Param("status") String status,
+                                  Pageable pageable);
+
     long countByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);
 }

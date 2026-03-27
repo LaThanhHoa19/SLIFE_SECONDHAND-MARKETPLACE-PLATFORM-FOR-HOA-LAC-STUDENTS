@@ -11,4 +11,8 @@ import java.util.Optional;
 public interface DealRepository extends JpaRepository<Deal, Long> {
     Optional<Deal> findByIdAndDeletedAtIsNull(Long id);
     List<Deal> findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull(String status, LocalDateTime updatedAt);
+
+    List<Deal> findByProposedBy_IdAndDeletedAtIsNullOrderByCreatedAtDesc(Long proposedById);
+
+    List<Deal> findByListing_Seller_IdAndDeletedAtIsNullOrderByCreatedAtDesc(Long sellerId);
 }

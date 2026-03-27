@@ -14,6 +14,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     Page<Message> findByConversation_IdOrderBySentAtDesc(Long conversationId, Pageable pageable);
 
+    java.util.Optional<Message> findByIdAndConversation_IdAndDeletedAtIsNull(Long id, Long conversationId);
+
     void deleteByConversation_Id(Long conversationId);
 
     /** Mark all unread messages in a conversation as read (UC-26 read receipts). */
