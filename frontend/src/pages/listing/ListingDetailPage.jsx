@@ -189,8 +189,8 @@ export default function ListingDetailPage() {
                     const lId = l.id ?? l.listingId;
                     if (lId === currentId) return false;
                     const lSellerId = l?.sellerSummary?.userId ?? l?.sellerSummary?.id ?? l?.seller?.id;
-                    if (String(lSellerId) === String(sellerId)) return false; 
-                    
+                    if (String(lSellerId) === String(sellerId)) return false;
+
                     const lCond = l?.condition ?? l?.itemCondition;
                     const lPrice = Number(l?.price ?? 0);
                     const sameCondition = condition && lCond === condition;
