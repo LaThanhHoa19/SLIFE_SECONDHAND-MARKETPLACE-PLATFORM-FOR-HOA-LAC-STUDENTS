@@ -184,12 +184,52 @@ function formatSessionTimeShort(iso) {
   return d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' });
 }
 
-function getDeliveryLabel(msg, isPending) {
-  if (isPending) return '⏳';
+/** Nhãn + tooltip cho trạng thái tin gửi đi (rõ hơn ✓/✓✓). */
+function getDeliveryReceiptInfo(msg, isPending) {
+  if (isPending) {
+    return {
+      short: 'Đang gửi…',
+      tooltip: 'Đang gửi tin nhắn, vui lòng chờ vài giây.',
+    };
+  }
   const status = String(msg?.deliveryStatus || '').toUpperCase();
-  if (status === 'SEEN' || msg?.isSeen) return '✓✓';
-  if (status === 'DELIVERED' || msg?.isDelivered) return '✓✓';
-  return '✓';
+  const seen = status === 'SEEN' || msg?.isSeen === true;
+  const delivered = status === 'DELIVERED' || msg?.isDelivered === true;
+
+  const formatReceiptMoment = (iso) => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString('vi-VN', {
+        day: 'numeric',
+        month: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  if (seen) {
+    const when = formatReceiptMoment(msg?.seenAt) || formatReceiptMoment(msg?.timestamp);
+    return {
+      short: 'Đã xem',
+      tooltip: when
+          ? `Đối phương đã xem lúc ${when}.`
+          : 'Đối phương đã mở cuộc trò chuyện và thấy tin nhắn này.',
+    };
+  }
+  if (delivered) {
+    return {
+      short: 'Đã nhận',
+      tooltip:
+          'Tin đã tới thiết bị của đối phương nhưng họ chưa mở chat hoặc chưa đọc tới đây.',
+    };
+  }
+  return {
+    short: 'Đã gửi',
+    tooltip: 'Tin đã được lưu; trạng thái chi tiết sẽ cập nhật khi đối phương nhận và xem.',
+  };
 }
 
 function getReferencePreview(ref, fallbackId) {
@@ -517,8 +557,8 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
               </Typography>
           )}
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, opacity: 0.65 }}>
-            <Typography variant="caption">
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
+            <Typography variant="caption" sx={{ opacity: 0.7 }}>
               {msg.timestamp
                   ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
                     hour: '2-digit',
@@ -526,11 +566,28 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
                   })
                   : '…'}
             </Typography>
-            {isMe && (
-                <Typography variant="caption">
-                  {getDeliveryLabel(msg, isPending)}
-                </Typography>
-            )}
+            {isMe && (() => {
+              const receipt = getDeliveryReceiptInfo(msg, isPending);
+              return (
+                  <Tooltip title={receipt.tooltip} arrow placement="top">
+                    <Typography
+                        variant="caption"
+                        component="span"
+                        sx={{
+                          opacity: 0.9,
+                          fontWeight: isPending ? 500 : 600,
+                          fontSize: '0.7rem',
+                          cursor: 'help',
+                          textDecoration: 'underline',
+                          textDecorationStyle: 'dotted',
+                          textUnderlineOffset: '3px',
+                        }}
+                    >
+                      {receipt.short}
+                    </Typography>
+                  </Tooltip>
+              );
+            })()}
           </Box>
         </Paper>
         {isMe && bubbleMenu}
