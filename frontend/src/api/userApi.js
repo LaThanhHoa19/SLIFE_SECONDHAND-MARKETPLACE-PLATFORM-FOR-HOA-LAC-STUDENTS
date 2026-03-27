@@ -19,5 +19,8 @@ export const uploadCover = (file) => {
   return axiosClient.post('/api/users/me/cover', form);
 };
 
-export const blockUser = (userId, reason) => axiosClient.post(`/api/users/${userId}/block`, { reason });
+export const blockUser = (userId) => axiosClient.post(`/api/users/${userId}/block`);
+export const unblockUser = (userId) => axiosClient.delete(`/api/users/${userId}/block`);
+export const getBlockStatus = (userId) => axiosClient.get(`/api/users/${userId}/block`);
+export const getMyBlockedUsers = (params = {}) => axiosClient.get('/api/users/me/blocks', { params });
 export const getAdminUsers = () => axiosClient.get('/api/admin/users');

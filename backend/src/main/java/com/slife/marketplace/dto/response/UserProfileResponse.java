@@ -42,6 +42,12 @@ public class UserProfileResponse {
      */
     private Boolean isFollowedByViewer;
 
+    /** True if authenticated viewer blocked this user. */
+    private Boolean isBlockedByViewer;
+
+    /** True if this user blocked the authenticated viewer. */
+    private Boolean hasBlockedViewer;
+
     public static UserProfileResponse fromUser(User user) {
         UserProfileResponse r = new UserProfileResponse();
         if (user == null) {

@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 
 @Service
 public class OfferService {
@@ -260,12 +261,141 @@ public class OfferService {
         offerRepository.save(offer);
 
         Deal deal = new Deal();
+        deal.setConversation(resolveConversationForOffer(offer));
         deal.setListing(offer.getListing());
         deal.setBuyer(offer.getBuyer());
-        deal.setSeller(offer.getListing().getSeller());
+        deal.setOffer(offer);
         deal.setOfferedPrice(offer.getAmount());
         deal.setStatus("PENDING");
         return dealRepository.save(deal);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<OfferResponse> getOffersForListing(Long listingId, int page, int size) {
+        User currentUser = userService.getCurrentUser();
+        if (listingId == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "listingId is required");
+        }
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        assertSellerCanReview(currentUser, listing);
+
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(50, Math.max(1, size));
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Offer> offerPage = offerRepository.findByListing_IdOrderByCreatedAtDesc(listingId, pageable);
+        List<OfferResponse> content = offerPage.getContent().stream().map(this::toResponse).toList();
+        return new PagedResponse<>(
+                content,
+                offerPage.getNumber(),
+                offerPage.getSize(),
+                offerPage.getTotalElements(),
+                offerPage.getTotalPages()
+        );
+    }
+
+    @Transactional
+    public OfferResponse acceptOffer(Long offerId) {
+        User currentUser = userService.getCurrentUser();
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));
+        Listing listing = offer.getListing();
+        if (listing == null) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
+        assertSellerCanReview(currentUser, listing);
+
+        if (!STATUS_PENDING.equals(offer.getStatus())) {
+            throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
+        }
+
+        Instant now = Instant.now();
+        offer.setStatus(STATUS_ACCEPTED);
+        offer.setUpdatedAt(now);
+        offerRepository.save(offer);
+
+        // Reject all remaining pending offers of this listing when one offer is accepted.
+        List<Offer> pendingOffers = offerRepository.findByListing_IdAndStatusOrderByCreatedAtDesc(listing.getId(), STATUS_PENDING);
+        for (Offer other : pendingOffers) {
+            if (!other.getId().equals(offer.getId())) {
+                other.setStatus(STATUS_REJECTED);
+                other.setUpdatedAt(now);
+            }
+        }
+        if (!pendingOffers.isEmpty()) {
+            offerRepository.saveAll(pendingOffers);
+        }
+
+        listing.setStatus("SOLD");
+        listing.setUpdatedAt(now);
+        listingRepository.save(listing);
+
+        Deal deal = new Deal();
+        deal.setConversation(resolveConversationForOffer(offer));
+        deal.setListing(listing);
+        deal.setBuyer(offer.getBuyer());
+        deal.setOffer(offer);
+        deal.setOfferedPrice(offer.getAmount());
+        deal.setStatus("PENDING");
+        dealRepository.save(deal);
+
+        notificationService.notifyDealConfirmed(
+                offer.getBuyer(),
+                listing.getSeller(),
+                listing.getId(),
+                listing.getTitle()
+        );
+        return toResponse(offer);
+    }
+
+    @Transactional
+    public OfferResponse rejectOffer(Long offerId) {
+        User currentUser = userService.getCurrentUser();
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));
+        Listing listing = offer.getListing();
+        if (listing == null) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
+        assertSellerCanReview(currentUser, listing);
+
+        if (!STATUS_PENDING.equals(offer.getStatus())) {
+            throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
+        }
+
+        offer.setStatus(STATUS_REJECTED);
+        offer.setUpdatedAt(Instant.now());
+        offerRepository.save(offer);
+        return toResponse(offer);
+    }
+
+    private void assertSellerCanReview(User currentUser, Listing listing) {
+        if (listing.getSeller() == null || listing.getSeller().getId() == null) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, Constants.MSG23);
+        }
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, Constants.MSG23);
+        }
+    }
+
+    private Conversation resolveConversationForOffer(Offer offer) {
+        Listing listing = offer.getListing();
+        User buyer = offer.getBuyer();
+        if (listing == null || listing.getSeller() == null || listing.getId() == null || buyer == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer is missing listing/buyer context");
+        }
+        return conversationRepository.findActiveByListingAndParticipants(
+                        listing.getId(), buyer.getId(), listing.getSeller().getId())
+                .orElseGet(() -> {
+                    Conversation conv = new Conversation();
+                    conv.setUserId1(buyer);
+                    conv.setUserId2(listing.getSeller());
+                    conv.setListing(listing);
+                    conv.setStatus(Conversation.STATUS_ACTIVE);
+                    conv.setCreatedAt(Instant.now());
+                    conv.ensureSessionUuid();
+                    return conversationRepository.save(conv);
+                });
     }
 
     private OfferResponse toResponse(Offer offer) {

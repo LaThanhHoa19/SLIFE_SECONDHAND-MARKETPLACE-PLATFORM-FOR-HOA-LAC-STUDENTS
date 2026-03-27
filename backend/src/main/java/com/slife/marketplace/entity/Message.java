@@ -62,4 +62,12 @@ public class Message {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_message_id")
+    private Message replyToMessage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "quote_message_id")
+    private Message quoteMessage;
+
 }

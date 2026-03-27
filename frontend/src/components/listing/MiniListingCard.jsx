@@ -16,18 +16,27 @@ export const toCurrency = (value) =>
 export default function MiniListingCard({ listing, compact = false }) {
   const navigate = useNavigate();
   const id = listing?.id ?? listing?.listingId;
-  
-  // Handle various image field formats from backend
-  const rawImages = listing?.images ?? listing?.imageUrl ?? listing?.image ?? listing?.listingImages ?? listing?.mainImage ?? listing?.thumbnailUrl;
-  let thumbSrc = null;
 
+  // Handle various image field formats from backend.
+  const rawImages =
+    listing?.images ??
+    listing?.thumbnailUrl ??
+    listing?.thumbnail_url ??
+    listing?.imageUrl ??
+    listing?.image_url ??
+    listing?.image ??
+    listing?.listingImages ??
+    listing?.mainImage ??
+    null;
+
+  let thumbSrc = null;
   if (Array.isArray(rawImages) && rawImages.length > 0) {
     const first = rawImages[0];
     const urlStr = typeof first === 'string' ? first : (first?.url ?? first?.imageUrl ?? first?.path);
-    thumbSrc = fullImageUrl(urlStr);
+    thumbSrc = urlStr ? fullImageUrl(urlStr) : null;
   } else if (typeof rawImages === 'string' && rawImages.trim().length > 0) {
     const firstImg = rawImages.split(',')[0];
-    thumbSrc = fullImageUrl(firstImg);
+    thumbSrc = firstImg ? fullImageUrl(firstImg) : null;
   }
 
   return (
