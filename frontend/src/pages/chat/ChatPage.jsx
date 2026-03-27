@@ -11,7 +11,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import SockJS from 'sockjs-client';
 import { Client as StompClient } from '@stomp/stompjs';
 import {
@@ -29,6 +30,9 @@ import {
   Fab,
   IconButton,
   List,
+  Menu,
+  MenuItem,
+  ListItemIcon,
   Popover,
   ListItemButton,
   ListItemText,
@@ -40,6 +44,10 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
+import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -176,6 +184,81 @@ function formatSessionTimeShort(iso) {
   return d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' });
 }
 
+function getDeliveryLabel(msg, isPending) {
+  if (isPending) return '⏳';
+  const status = String(msg?.deliveryStatus || '').toUpperCase();
+  if (status === 'SEEN' || msg?.isSeen) return '✓✓';
+  if (status === 'DELIVERED' || msg?.isDelivered) return '✓✓';
+  return '✓';
+}
+
+function getReferencePreview(ref, fallbackId) {
+  if (!ref) {
+    if (fallbackId != null) return `[Tin nhắn #${fallbackId}]`;
+    return '[Tin nhắn]';
+  }
+  if (ref.content && String(ref.content).trim()) return String(ref.content).trim();
+  if (ref.messageType === 'IMAGE' && ref.fileUrl) return '[Hình ảnh]';
+  if (fallbackId != null) return `[Tin nhắn #${fallbackId}]`;
+  return '[Tin nhắn]';
+}
+
+function getMessageDomId(id) {
+  if (id == null) return null;
+  return `chat-msg-${String(id)}`;
+}
+
+/** Điền replyTo / quote từ messages trong phiên khi BE/WS chỉ trả id (đủ cho tin của chính mình). */
+function enrichMessagesForDisplay(msgs) {
+  const byId = new Map();
+  for (const m of msgs) {
+    const key = m?.id != null ? String(m.id) : null;
+    if (key && !key.startsWith('tmp_')) byId.set(key, m);
+  }
+  return msgs.map((m) => {
+    let replyTo = m.replyTo;
+    let quote = m.quote;
+
+    const rid = m.replyToMessageId != null ? String(m.replyToMessageId) : null;
+    if (rid && byId.has(rid)) {
+      const src = byId.get(rid);
+      const hasPreview =
+          (replyTo && (String(replyTo.content || '').trim() !== '' || replyTo.fileUrl)) ||
+          replyTo?.messageType === 'IMAGE';
+      if (!hasPreview) {
+        replyTo = {
+          id: src.id,
+          senderId: src.senderId,
+          senderName: src.senderName,
+          content: src.content,
+          messageType: src.messageType,
+          fileUrl: src.fileUrl,
+        };
+      }
+    }
+
+    const qid = m.quoteMessageId != null ? String(m.quoteMessageId) : null;
+    if (qid && byId.has(qid)) {
+      const src = byId.get(qid);
+      const hasPreview =
+          (quote && (String(quote.content || '').trim() !== '' || quote.fileUrl)) ||
+          quote?.messageType === 'IMAGE';
+      if (!hasPreview) {
+        quote = {
+          id: src.id,
+          senderId: src.senderId,
+          senderName: src.senderName,
+          content: src.content,
+          messageType: src.messageType,
+          fileUrl: src.fileUrl,
+        };
+      }
+    }
+
+    return { ...m, replyTo, quote };
+  });
+}
+
 // ── sub-components ────────────────────────────────────────────────────────────
 
 function ImageBubble({ fileUrl }) {
@@ -247,12 +330,19 @@ function OfferBubble({ msg, onAccept, onReject }) {
   );
 }
 
-function Bubble({ msg, onAccept, onReject }) {
+function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMessage }) {
   const theme = useTheme();
+  const [menuAnchor, setMenuAnchor] = useState(null);
   const isMe = msg.isFromCurrentUser === true;
   const isSystem = msg.messageType === 'DEAL_CONFIRMATION';
   const isPending = !!msg._pending;
   const isHighlighted = msg._highlighted === true;
+  const quoteRefId = msg?.quote?.id ?? msg?.quoteMessageId ?? null;
+  const remindRefId = msg?.replyTo?.id ?? msg?.replyToMessageId ?? null;
+  const stableMessageId = msg?.id != null && !String(msg.id).startsWith('tmp');
+  const showReport = !isMe && stableMessageId && typeof onReportMessage === 'function';
+  const showBubbleMenu =
+      !isPending && stableMessageId && (Boolean(onReply) || showReport);
 
   if (isSystem) {
     return (
@@ -275,15 +365,84 @@ function Bubble({ msg, onAccept, onReject }) {
     );
   }
 
+  const refAccent = quoteRefId ? theme.palette.info.main : theme.palette.warning.main;
+
+  const bubbleMenu = showBubbleMenu ? (
+      <>
+        <IconButton
+            size="small"
+            className="chat-bubble-actions"
+            aria-label="Thao tác tin nhắn"
+            onClick={(e) => setMenuAnchor(e.currentTarget)}
+            sx={{
+              mt: 0.25,
+              flexShrink: 0,
+              color: isMe ? 'primary.main' : 'text.secondary',
+            }}
+        >
+          <MoreHorizIcon fontSize="small" />
+        </IconButton>
+        <Menu
+            anchorEl={menuAnchor}
+            open={Boolean(menuAnchor)}
+            onClose={() => setMenuAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: isMe ? 'right' : 'left' }}
+            transformOrigin={{ vertical: 'top', horizontal: isMe ? 'right' : 'left' }}
+        >
+          {onReply ? (
+              <MenuItem
+                  dense
+                  onClick={() => {
+                    onReply(msg);
+                    setMenuAnchor(null);
+                  }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <ReplyRoundedIcon fontSize="small" />
+                </ListItemIcon>
+                Nhắc lại
+              </MenuItem>
+          ) : null}
+          {showReport ? (
+              <MenuItem
+                  dense
+                  onClick={() => {
+                    onReportMessage(msg);
+                    setMenuAnchor(null);
+                  }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  <OutlinedFlagIcon fontSize="small" />
+                </ListItemIcon>
+                Báo cáo tin nhắn
+              </MenuItem>
+          ) : null}
+        </Menu>
+      </>
+  ) : null;
+
   return (
       <Box
+          className="chat-bubble-row"
           sx={{
             display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'flex-start',
             justifyContent: isMe ? 'flex-end' : 'flex-start',
+            gap: 0.25,
+            width: '100%',
             mb: 1,
             opacity: isPending ? 0.6 : 1,
+            '& .chat-bubble-actions': {
+              opacity: 0.55,
+              transition: 'opacity 160ms ease',
+            },
+            '&:hover .chat-bubble-actions': {
+              opacity: 1,
+            },
           }}
       >
+        {!isMe && bubbleMenu}
         <Paper
             elevation={0}
             sx={{
@@ -316,6 +475,38 @@ function Bubble({ msg, onAccept, onReject }) {
               </Typography>
           )}
 
+          {(quoteRefId || remindRefId) && (
+              <Box
+                  onClick={() => onJumpToMessage?.(quoteRefId || remindRefId)}
+                  sx={{
+                    mb: 0.75,
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: isMe ? alpha(theme.palette.common.white, 0.4) : alpha(refAccent, 0.45),
+                    bgcolor: isMe ? alpha(theme.palette.common.white, 0.14) : alpha(refAccent, 0.08),
+                    cursor: 'pointer',
+                  }}
+              >
+                <Typography
+                    variant="caption"
+                    sx={{
+                      opacity: 0.92,
+                      color: 'inherit',
+                      display: 'block',
+                      wordBreak: 'break-word',
+                    }}
+                >
+                  {quoteRefId ? 'Trích dẫn' : 'Nhắc lại'}:{' '}
+                  {getReferencePreview(
+                      quoteRefId ? msg?.quote : msg?.replyTo,
+                      quoteRefId || remindRefId
+                  ).slice(0, 80)}
+                </Typography>
+              </Box>
+          )}
+
           {msg.messageType === 'IMAGE' ? (
               <ImageBubble fileUrl={msg.fileUrl} />
           ) : msg.messageType === 'OFFER_PROPOSAL' ? (
@@ -337,11 +528,12 @@ function Bubble({ msg, onAccept, onReject }) {
             </Typography>
             {isMe && (
                 <Typography variant="caption">
-                  {isPending ? '⏳' : msg.isRead ? '✓✓' : '✓'}
+                  {getDeliveryLabel(msg, isPending)}
                 </Typography>
             )}
           </Box>
         </Paper>
+        {isMe && bubbleMenu}
       </Box>
   );
 }
@@ -350,8 +542,10 @@ function Bubble({ msg, onAccept, onReject }) {
 
 export default function ChatPage() {
   const theme = useTheme();
-  const { user: currentUser } = useAuth();
-  const [searchParams] = useSearchParams();
+  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const navigate = useNavigate();
+  const { user: currentUser, token: authToken } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sessionIdFromUrl = searchParams.get('sessionId');
   const messageIdFromUrl = searchParams.get('messageId');
   const currentUserId = currentUser?.id ?? currentUser?.user_id;
@@ -369,6 +563,7 @@ export default function ChatPage() {
   const [wsConnected, setWsConnected] = useState(false);
   const [typingLabel, setTypingLabel] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
+  const [composerRef, setComposerRef] = useState(null);
 
   // Offer dialog
   const [offerOpen, setOfferOpen] = useState(false);
@@ -407,6 +602,8 @@ export default function ChatPage() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  const displayMessages = useMemo(() => enrichMessagesForDisplay(messages), [messages]);
 
   const scrollToBottom = useCallback((behavior = 'smooth') => {
     requestAnimationFrame(() => {
@@ -729,18 +926,26 @@ export default function ChatPage() {
     };
   }, [activeSessionId, messageIdFromUrl]);
 
-  // Poll message history every 3 s (fallback when WS is unreliable)
+  // Poll message history every 3 s only when WS is disconnected.
   useEffect(() => {
-    if (!activeSessionId) return;
+    if (!activeSessionId || wsConnected) return;
     const interval = setInterval(fetchHistory, 3000);
     return () => clearInterval(interval);
-  }, [activeSessionId, fetchHistory]);
+  }, [activeSessionId, fetchHistory, wsConnected]);
+
+  useEffect(() => {
+    if (!activeSessionId) return;
+    chatApi.markSessionRead(activeSessionId).catch(() => {});
+  }, [activeSessionId]);
 
   // ── WebSocket (STOMP) ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!activeSessionId || !currentUser) return;
     const token =
-        localStorage.getItem('token') || sessionStorage.getItem('token');
+        authToken ||
+        localStorage.getItem('slife_access_token') ||
+        localStorage.getItem('token') ||
+        sessionStorage.getItem('token');
 
     const client = new StompClient({
       // JwtHandshakeHandler (BE) chỉ đọc JWT từ query ?token= trên SockJS handshake
@@ -757,15 +962,16 @@ export default function ChatPage() {
         client.subscribe(`/topic/chat.${activeSessionId}`, (frame) => {
           try {
             const msg = JSON.parse(frame.body);
-            if (msg.type === 'TYPING') {
-              if (!msg.isFromCurrentUser) {
-                setTypingLabel(
-                    msg.isTyping ? `${msg.senderName || 'Đối phương'} đang nhập...` : ''
-                );
+            if (msg?.event === 'TYPING' || msg?.type === 'TYPING') {
+              const senderEmail = (msg?.senderEmail || '').toLowerCase();
+              const myEmail = (currentUser?.email || '').toLowerCase();
+              const isSelfTyping = !!senderEmail && !!myEmail && senderEmail === myEmail;
+              if (!isSelfTyping) {
+                setTypingLabel(msg?.isTyping ? 'Đối phương đang nhập...' : '');
               }
               return;
             }
-            if (msg.type === 'READ') {
+            if (msg?.event === 'READ' || msg?.type === 'READ') {
               fetchHistory();
               return;
             }
@@ -791,7 +997,7 @@ export default function ChatPage() {
       setWsConnected(false);
       setTypingLabel('');
     };
-  }, [activeSessionId, currentUser, fetchHistory]);
+  }, [activeSessionId, currentUser, fetchHistory, authToken]);
 
   // ── Typing indicator ──────────────────────────────────────────────────────
   const stopTyping = useCallback(() => {
@@ -846,7 +1052,11 @@ export default function ChatPage() {
     stopTyping();
     try {
       suppressOpponentDiffRef.current = true;
-      await chatApi.sendMessage(activeSessionId, text);
+      await chatApi.sendMessage(activeSessionId, text, 'TEXT', null, {
+        replyToMessageId: composerRef?.id ?? null,
+        quoteMessageId: null,
+      });
+      setComposerRef(null);
       await fetchHistory();
       fetchSessions();
       scrollToBottom('smooth');
@@ -863,6 +1073,53 @@ export default function ChatPage() {
       setSending(false);
     }
   };
+
+  const handleReplyMessage = (msg) => {
+    if (!msg?.id) return;
+    setComposerRef({
+      id: msg.id,
+      content: msg.content || '[Tin nhắn]',
+      senderName: msg.senderName || 'Người dùng',
+    });
+    inputRef.current?.focus();
+  };
+
+  const handleJumpToMessage = (messageId) => {
+    const domId = getMessageDomId(messageId);
+    if (!domId) return;
+    const el = document.getElementById(domId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedMessageId(String(messageId));
+    window.setTimeout(() => setHighlightedMessageId(null), 1800);
+  };
+
+  const handleReportMessage = useCallback(
+      (msg) => {
+        const mid = msg?.id;
+        if (mid == null || String(mid).startsWith('tmp')) return;
+        const q = new URLSearchParams({
+          targetType: 'MESSAGE',
+          targetId: String(mid),
+        });
+        if (activeSessionId) q.set('sessionId', activeSessionId);
+        navigate(`/report?${q.toString()}`);
+      },
+      [navigate, activeSessionId]
+  );
+
+  const handleChatMobileBack = useCallback(() => {
+    setActiveSessionId(null);
+    setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('sessionId');
+          next.delete('messageId');
+          return next;
+        },
+        { replace: true }
+    );
+  }, [setSearchParams]);
 
   // ── Image upload ──────────────────────────────────────────────────────────
   const handleFileChange = (e) => {
@@ -926,9 +1183,14 @@ export default function ChatPage() {
           activeSessionId,
           '[Hình ảnh]',
           'IMAGE',
-          fileUrl
+          fileUrl,
+          {
+            replyToMessageId: composerRef?.id ?? null,
+            quoteMessageId: null,
+          }
       );
       const msg = getData(msgRes);
+      setComposerRef(null);
 
       suppressOpponentDiffRef.current = true;
       setMessages((prev) => {
@@ -993,61 +1255,92 @@ export default function ChatPage() {
 
   const handleReject = async (offerId) => {
     try {
-      await chatApi.respondToOffer(offerId, 'REJECTED');
-      setMessages((prev) =>
-          prev.map((m) =>
-              m.offerId === offerId ? { ...m, offerStatus: 'REJECTED' } : m
-          )
-      );
+      const res = await chatApi.respondToOffer(offerId, 'REJECTED');
+      const msg = getData(res);
+      setMessages((prev) => {
+        const updated = prev.map((m) =>
+            m.offerId === offerId ? { ...m, offerStatus: 'REJECTED' } : m
+        );
+        return msg?.id && !updated.some((m) => m.id === msg.id)
+            ? [...updated, msg]
+            : updated;
+      });
+      await fetchHistory();
+      fetchSessions();
     } catch (err) {
       alert(err?.response?.data?.message || 'Lỗi');
     }
   };
 
   // ── render ────────────────────────────────────────────────────────────────
+  const showConversationMobile = Boolean(activeSessionId);
+  const listDisplay = { xs: showConversationMobile ? 'none' : 'flex', md: 'flex' };
+  const panelDisplay = { xs: showConversationMobile ? 'flex' : 'none', md: 'flex' };
+
   return (
       <Box
           sx={{
+            height: '100dvh',
+            width: '100%',
+            maxWidth: '100%',
+            mx: 0,
+            pt: 0,
+            px: 0,
             display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            height: { xs: 'calc(100dvh - 88px)', md: 'calc(100vh - 120px)' },
-            minHeight: { xs: 'calc(100dvh - 88px)', md: undefined },
-            maxWidth: 1120,
-            mx: 'auto',
-            pt: 2,
-            px: { xs: 0.5, sm: 1 },
-            gap: 2,
-            alignItems: 'stretch',
+            flexDirection: 'column',
             overflow: 'hidden',
             bgcolor:
                 theme.palette.mode === 'dark'
-                    ? alpha(theme.palette.common.black, 0.15)
-                    : alpha(theme.palette.primary.main, 0.04),
-            borderRadius: 3,
+                    ? '#0c0c10'
+                    : theme.palette.grey[100],
           }}
       >
-        {/* ── Session list ── */}
-        <Paper
-            elevation={2}
+        <Box
             sx={{
-              width: { xs: '100%', sm: 300 },
-              maxWidth: { xs: 320, sm: 300 },
-              flexShrink: 0,
-              maxHeight: { xs: '35dvh', md: 'none' },
+              flex: 1,
               display: 'flex',
-              flexDirection: 'column',
+              flexDirection: { xs: 'column', md: 'row' },
+              minHeight: 0,
               overflow: 'hidden',
-              borderRadius: 3,
             }}
         >
-          <Box sx={{ px: 2, pt: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+        {/* ── Session list ── */}
+        <Paper
+            elevation={0}
+            sx={{
+              width: { xs: '100%', md: 320 },
+              maxWidth: { xs: '100%', md: 320 },
+              flexShrink: 0,
+              display: listDisplay,
+              flexDirection: 'column',
+              overflow: 'hidden',
+              borderRadius: 0,
+              borderRight: { md: 1 },
+              borderColor: 'divider',
+            }}
+        >
+          <Box
+              sx={{
+                px: 1,
+                py: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                borderBottom: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+              }}
+          >
+            <IconButton size="small" aria-label="Về bảng tin" onClick={() => navigate('/feed')}>
+              <ArrowBackIcon />
+            </IconButton>
             <ChatBubbleOutlineIcon color="primary" fontSize="small" />
             <Typography variant="subtitle1" fontWeight={700}>
               Tin nhắn
             </Typography>
           </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ px: 2, pb: 1 }}>
-            Trao đổi nhanh như trên chợ — gửi ảnh, trả giá, hẹn xem hàng.
+          <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 1, display: 'block' }}>
+            Trao đổi nhanh — gửi ảnh, trả giá, hẹn xem hàng.
           </Typography>
           <Divider />
           {sessionsLoading ? (
@@ -1121,15 +1414,16 @@ export default function ChatPage() {
 
         {/* ── Chat panel ── */}
         <Paper
-            elevation={2}
+            elevation={0}
             sx={{
               flex: 1,
-              display: 'flex',
+              display: panelDisplay,
               flexDirection: 'column',
               minWidth: 0,
               minHeight: 0,
-              borderRadius: 3,
+              borderRadius: 0,
               overflow: 'hidden',
+              bgcolor: 'background.paper',
             }}
         >
           {!activeSessionId ? (
@@ -1159,19 +1453,24 @@ export default function ChatPage() {
                 {/* Header */}
                 <Box
                     sx={{
-                      px: 2,
-                      py: 1.5,
+                      px: { xs: 0.5, sm: 2 },
+                      py: 1.25,
                       borderBottom: 1,
                       borderColor: 'divider',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 1.5,
+                      gap: 1,
                       background: (t) =>
                           t.palette.mode === 'dark'
-                              ? alpha(t.palette.primary.main, 0.12)
-                              : alpha(t.palette.primary.main, 0.06),
+                              ? alpha(t.palette.common.black, 0.35)
+                              : alpha(t.palette.common.white, 0.95),
                     }}
                 >
+                  {!isMdUp ? (
+                      <IconButton size="small" aria-label="Danh sách hội thoại" onClick={handleChatMobileBack}>
+                        <ArrowBackIcon />
+                      </IconButton>
+                  ) : null}
                   <Avatar
                       sx={{
                         width: 44,
@@ -1262,7 +1561,7 @@ export default function ChatPage() {
                         <Box display="flex" justifyContent="center" py={2}>
                           <CircularProgress size={28} />
                         </Box>
-                    ) : messages.length === 0 ? (
+                    ) : displayMessages.length === 0 ? (
                         <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
                           <LightbulbOutlinedIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.7, mb: 1 }} />
                           <Typography variant="subtitle1" fontWeight={600} gutterBottom>
@@ -1274,9 +1573,9 @@ export default function ChatPage() {
                           </Typography>
                         </Box>
                     ) : (
-                        messages.map((m, idx) => {
+                        displayMessages.map((m, idx) => {
                           const msgIsMe = isMessageFromCurrentUser(m, currentUserId);
-                          const prev = idx > 0 ? messages[idx - 1] : null;
+                          const prev = idx > 0 ? displayMessages[idx - 1] : null;
                           const showDay =
                               idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
                           const mid = m?.id != null ? String(m.id) : null;
@@ -1296,11 +1595,14 @@ export default function ChatPage() {
                                       />
                                     </Box>
                                 )}
-                                <div id={mid ? `chat-msg-${mid}` : undefined}>
+                                <div id={getMessageDomId(mid)}>
                                   <Bubble
                                       msg={{ ...m, isFromCurrentUser: msgIsMe, _highlighted: isHighlighted }}
                                       onAccept={handleAccept}
                                       onReject={handleReject}
+                                      onReply={handleReplyMessage}
+                                      onJumpToMessage={handleJumpToMessage}
+                                      onReportMessage={handleReportMessage}
                                   />
                                 </div>
                               </Fragment>
@@ -1397,6 +1699,29 @@ export default function ChatPage() {
                       bgcolor: 'background.paper',
                     }}
                 >
+                  {composerRef && (
+                      <Box
+                          sx={{
+                            mx: 1.5,
+                            mt: 1,
+                            px: 1.25,
+                            py: 0.75,
+                            borderRadius: 1.5,
+                            border: '1px solid',
+                            borderColor: alpha(theme.palette.primary.main, 0.35),
+                            bgcolor: alpha(theme.palette.primary.main, 0.06),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1,
+                          }}
+                      >
+                        <Typography variant="caption" sx={{ minWidth: 0 }}>
+                          Nhắc lại {composerRef.senderName}: {(composerRef.content || '').slice(0, 80)}
+                        </Typography>
+                        <Button size="small" onClick={() => setComposerRef(null)}>Bỏ</Button>
+                      </Box>
+                  )}
                   <Popover
                       open={Boolean(suggestAnchorEl)}
                       anchorEl={suggestAnchorEl}
@@ -1564,6 +1889,7 @@ export default function ChatPage() {
               </>
           )}
         </Paper>
+        </Box>
 
         {/* ── Image preview dialog ── */}
         <Dialog open={previewOpen} onClose={cancelPreview} maxWidth="sm">
