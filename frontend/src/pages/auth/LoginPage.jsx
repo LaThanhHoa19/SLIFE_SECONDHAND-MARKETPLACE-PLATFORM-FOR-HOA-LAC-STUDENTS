@@ -33,12 +33,6 @@ export default function LoginPage() {
     const GOOGLE_CLIENT_ID =
         import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
-    const getRedirectTarget = () => {
-        const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect');
-        return redirect ? decodeURIComponent(redirect) : '/feed';
-    };
-
   const getRedirectTarget = () => {
     // Priority 1: State from navigate ({ state: { from: pathname } })
     if (location.state?.from) return location.state.from;

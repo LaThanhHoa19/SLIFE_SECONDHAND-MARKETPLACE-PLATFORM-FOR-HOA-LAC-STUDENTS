@@ -4,7 +4,7 @@
  * Phan ben duoi: Binh luan | Tin khac cua nguoi ban | Tin tuong tu
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
     Avatar,
     Box,
@@ -115,6 +115,7 @@ function normalizeShareUrl(rawUrl, fallbackId) {
 export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -209,6 +210,7 @@ export default function ListingDetailPage() {
     const handleToggleLike = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để thích tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (likeSubmitting) return;
@@ -276,6 +278,7 @@ export default function ListingDetailPage() {
     const handleReport = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         navigate(`/report?targetType=LISTING&targetId=${id}`);
@@ -284,6 +287,7 @@ export default function ListingDetailPage() {
     const handleChat = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setStartingChat(true);
@@ -301,6 +305,7 @@ export default function ListingDetailPage() {
     const handleShowPhone = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         setShowPhone(true);
@@ -320,7 +325,7 @@ export default function ListingDetailPage() {
             isAuthenticated,
             onUnauthenticated: () => {
                 showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-                navigate('/login');
+                navigate('/login', { state: { from: location.pathname } });
             },
             onSuccess: (nextIsFollowing) => {
                 const delta = nextIsFollowing ? 1 : -1;
@@ -351,6 +356,7 @@ export default function ListingDetailPage() {
     const handleToggleSave = async () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
             return;
         }
         if (!listing?.id || saveSubmitting) return;
