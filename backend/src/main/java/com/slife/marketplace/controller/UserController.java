@@ -76,8 +76,4 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/api/users/{id}/block")
-    public ResponseEntity<?> blockUser(@PathVariable Long id, @RequestParam boolean blocked) {
-        return ResponseEntity.ok().build();
-    }
 }
