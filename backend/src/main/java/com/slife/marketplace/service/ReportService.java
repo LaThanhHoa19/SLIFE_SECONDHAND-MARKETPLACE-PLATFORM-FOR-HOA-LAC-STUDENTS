@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,6 +114,29 @@ public class ReportService {
                 .stream()
                 .map(this::toReportResponseDTO)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReportResponseDTO> getAdminReports(String targetType, String status, int page, int size,
+                                                   String sortBy, String sortDir) {
+        String normalizedTargetType = (targetType != null && !targetType.isBlank())
+                ? targetType.trim().toUpperCase(Locale.ROOT)
+                : null;
+        if ("POST".equals(normalizedTargetType)) normalizedTargetType = "LISTING";
+        String normalizedStatus = (status != null && !status.isBlank())
+                ? status.trim().toUpperCase(Locale.ROOT)
+                : null;
+
+        String resolvedSortBy = resolveSortBy(sortBy);
+        Sort.Direction dir = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        PageRequest pageable = PageRequest.of(
+                Math.max(page, 0),
+                Math.min(Math.max(size, 1), 100),
+                Sort.by(dir, resolvedSortBy)
+        );
+
+        return reportRepository.findAdminReports(normalizedTargetType, normalizedStatus, pageable)
+                .map(this::toReportResponseDTO);
     }
 
     @Transactional
@@ -377,6 +401,18 @@ public class ReportService {
     private String truncate(String s, int max) {
         if (s == null) return null;
         return s.length() <= max ? s : s.substring(0, max) + "...";
+    }
+
+    private String resolveSortBy(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return "createdAt";
+        return switch (sortBy.trim()) {
+            case "reportId", "id" -> "id";
+            case "status" -> "status";
+            case "targetType" -> "targetType";
+            case "updatedAt" -> "updatedAt";
+            case "createdAt" -> "createdAt";
+            default -> "createdAt";
+        };
     }
 
     private record TargetContext(String preview, Long listingId, Long conversationId) {}
