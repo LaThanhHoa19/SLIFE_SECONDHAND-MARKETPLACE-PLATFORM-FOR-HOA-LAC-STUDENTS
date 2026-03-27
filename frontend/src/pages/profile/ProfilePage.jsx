@@ -7,7 +7,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Snackbar,
   Tab,
   Tabs,
   TextField,
@@ -28,6 +27,8 @@ import Loading from '../../components/common/Loading';
 import { fullImageUrl } from '../../utils/constants';
 import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { useToast } from '../../context/ToastContext';
+import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -68,7 +69,7 @@ export default function ProfilePage() {
   const [editForm, setEditForm] = useState({ fullName: '', phoneNumber: '', bio: '' });
   const [tab, setTab] = useState(0);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [, setSuccessMessage] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
@@ -80,6 +81,7 @@ export default function ProfilePage() {
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const { showToast } = useToast();
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
   const { followLoading, toggleFollow } = useFollowActions({
@@ -168,7 +170,8 @@ export default function ProfilePage() {
       setProfileUser((prev) => ({ ...prev, ...updated }));
       if (updateAuthUser) updateAuthUser(updated);
       setEditing(false);
-      setSuccessMessage('Đã lưu thay đổi.');
+      setSuccessMessage('');
+      showToast('Đã lưu thay đổi.', 'success');
     } catch (err) {
       setError(err?.message || err?.response?.data?.message || 'Cập nhật thất bại.');
     } finally { setSaving(false); }
@@ -188,7 +191,8 @@ export default function ProfilePage() {
       if (payload) {
         setProfileUser((prev) => ({ ...prev, ...payload }));
         if (!isCover && updateAuthUser) updateAuthUser(payload);
-        setSuccessMessage(`Đã cập nhật ${isCover ? 'ảnh bìa' : 'avatar'}.`);
+        setSuccessMessage('');
+        showToast(`Đã cập nhật ${isCover ? 'ảnh bìa' : 'avatar'}.`, 'success');
       }
     } catch (err) {
       setError(err?.message || 'Tải ảnh thất bại.');
@@ -239,7 +243,8 @@ export default function ProfilePage() {
     try {
       await createReport({ targetType: 'USER', targetId: profileUser.id, reason: reportReason.trim(), evidenceImage: reportEvidence.trim() || undefined });
       setReportDialogOpen(false);
-      setSuccessMessage('Đã gửi báo cáo người dùng này.');
+      setSuccessMessage('');
+      showToast('Đã gửi báo cáo người dùng này.', 'success');
     } catch (err) { setError(err?.message || 'Gửi báo cáo thất bại.'); }
     finally { setReportSubmitting(false); }
   };
@@ -330,8 +335,8 @@ export default function ProfilePage() {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   {phoneVerified
-                    ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
-                    : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
+                      ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
+                      : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
                   <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}</Typography>
                 </Box>
               </Box>
@@ -349,15 +354,15 @@ export default function ProfilePage() {
               overflow: 'hidden'
             }}>
               <Tabs
-                value={tab}
-                onChange={(_, v) => setTab(v)}
-                sx={{
-                  px: 2,
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                  '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
-                  '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
-                  '& .Mui-selected': { color: '#6366f1 !important' }
-                }}
+                  value={tab}
+                  onChange={(_, v) => setTab(v)}
+                  sx={{
+                    px: 2,
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
+                    '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
+                    '& .Mui-selected': { color: '#6366f1 !important' }
+                  }}
               >
                 {!isMe && <Tab label="Đang bán" />}
                 {!isMe && <Tab label="Đã bán" />}
@@ -372,8 +377,13 @@ export default function ProfilePage() {
           </Box>
         </Box>
 
-        <Snackbar open={!!successMessage} autoHideDuration={4000} onClose={() => setSuccessMessage('')} message={successMessage} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} />
-        <Dialog open={reportDialogOpen} onClose={() => !reportSubmitting && setReportDialogOpen(false)} maxWidth="xs" fullWidth>
+        <Dialog
+            open={reportDialogOpen}
+            onClose={() => !reportSubmitting && setReportDialogOpen(false)}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={DARK_DIALOG_PAPER_PROPS}
+        >
           <DialogTitle>Báo cáo người dùng</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body2" sx={{ mb: 2 }}>Mô tả lý do bạn báo cáo người dùng này.</Typography>
