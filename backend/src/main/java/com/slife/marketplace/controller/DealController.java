@@ -41,14 +41,15 @@ public class DealController {
     }
 
     /**
-     * List deals of current user by role.
-     * role=buyer (default): deals proposed by current user
-     * role=seller: deals on listings owned by current user
+     * List deals related to current user.
+     * type=proposed: deals do current user đề xuất (proposed_by)
+     * type=received: deals thuộc listing của current user (listing.seller)
+     * type omitted: trả về tất cả deals liên quan tới current user
      */
     @GetMapping("/deals")
     public ResponseEntity<ApiResponse<List<DealResponse>>> listMyDeals(
-            @RequestParam(name = "role", defaultValue = "buyer") String role) {
-        List<DealResponse> data = dealService.listMyDeals(role);
+            @RequestParam(name = "type", required = false) String type) {
+        List<DealResponse> data = dealService.listMyDeals(type);
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 

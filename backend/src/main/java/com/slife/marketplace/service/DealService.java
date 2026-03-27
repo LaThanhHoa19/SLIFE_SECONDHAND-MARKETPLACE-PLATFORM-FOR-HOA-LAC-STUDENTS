@@ -118,17 +118,46 @@ public class DealService {
         return mapToResponse(deal);
     }
 
+    /**
+     * Dự án không có role buyer/seller cố định.
+     * - type=proposed: deals do current user đề xuất (proposed_by)
+     * - type=received: deals thuộc listing của current user (listing.seller)
+     * - type omitted: trả về tất cả deals liên quan tới current user (merge + sort desc by createdAt)
+     */
     @Transactional(readOnly = true)
-    public List<DealResponse> listMyDeals(String role) {
+    public List<DealResponse> listMyDeals(String type) {
         User current = userService.getCurrentUser();
-        String r = role != null ? role.trim().toLowerCase() : "buyer";
-        List<Deal> deals;
-        if ("seller".equals(r)) {
-            deals = dealRepository.findByListing_Seller_IdAndDeletedAtIsNullOrderByCreatedAtDesc(current.getId());
-        } else {
-            deals = dealRepository.findByProposedBy_IdAndDeletedAtIsNullOrderByCreatedAtDesc(current.getId());
+        String t = type != null ? type.trim().toLowerCase() : "";
+        List<Deal> proposed = List.of();
+        List<Deal> received = List.of();
+
+        if (t.isEmpty() || "all".equals(t) || "proposed".equals(t)) {
+            proposed = dealRepository.findByProposedBy_IdAndDeletedAtIsNullOrderByCreatedAtDesc(current.getId());
         }
-        return deals.stream().map(this::mapToResponse).toList();
+        if (t.isEmpty() || "all".equals(t) || "received".equals(t)) {
+            received = dealRepository.findByListing_Seller_IdAndDeletedAtIsNullOrderByCreatedAtDesc(current.getId());
+        }
+
+        if (!t.isEmpty() && !"all".equals(t)) {
+            List<Deal> only = "received".equals(t) ? received : proposed;
+            return only.stream().map(this::mapToResponse).toList();
+        }
+
+        java.util.Map<Long, Deal> byId = new java.util.HashMap<>();
+        for (Deal d : proposed) if (d != null && d.getId() != null) byId.put(d.getId(), d);
+        for (Deal d : received) if (d != null && d.getId() != null) byId.put(d.getId(), d);
+
+        return byId.values().stream()
+                .sorted((a, b) -> {
+                    var la = a.getCreatedAt();
+                    var lb = b.getCreatedAt();
+                    if (la == null && lb == null) return 0;
+                    if (la == null) return 1;
+                    if (lb == null) return -1;
+                    return lb.compareTo(la);
+                })
+                .map(this::mapToResponse)
+                .toList();
     }
 
     private DealResponse mapToResponse(Deal deal) {
