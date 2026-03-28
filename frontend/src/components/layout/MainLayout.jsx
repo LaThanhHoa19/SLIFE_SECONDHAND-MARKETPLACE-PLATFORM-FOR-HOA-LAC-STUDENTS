@@ -5,7 +5,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { HEADER_HEIGHT, HEADER_GAP, SIDEBAR_WIDTH, CONTENT_MAX_WIDTH, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
+import { HEADER_HEIGHT, HEADER_GAP, SIDEBAR_WIDTH, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
 
 export default function MainLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -28,8 +28,8 @@ export default function MainLayout() {
                     flex: 1,
                     mt: isAdminRoute ? 0 : `${HEADER_HEIGHT + HEADER_GAP}px`,
                     width: '100%',
-                    maxWidth: isAdminRoute ? '100%' : CONTENT_MAX_WIDTH,
-                    mx: isAdminRoute ? 0 : 'auto',
+                    maxWidth: '100%',
+                    mx: 0,
                 }}
             >
                 {!isAdminRoute && <Sidebar open={sidebarOpen} />}
@@ -37,11 +37,12 @@ export default function MainLayout() {
                     component="main"
                     sx={{
                         flex: 1,
-                        transition: 'margin-left 0.3s',
+                        minWidth: 0,
+                        marginLeft: !isAdminRoute && sidebarOpen ? `${SIDEBAR_WIDTH}px` : 0,
+                        transition: 'margin-left 0.3s ease',
                         minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
                         display: 'flex',
                         flexDirection: 'column',
-                        minWidth: 0,
                     }}
                 >
                     <Box sx={{ flex: 1, px: isAdminRoute ? 0 : PAGE_PADDING_X, py: isAdminRoute ? 0 : PAGE_PADDING_Y }}>

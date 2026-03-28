@@ -1,4 +1,5 @@
 import { Box, Typography } from '@mui/material';
+import { STITCH_CARD, STITCH_CARD_BORDER, STITCH_PURPLE } from './myListingsConfig';
 
 export default function MyListingsEmptyState({ tab }) {
     const messages = {
@@ -17,11 +18,12 @@ export default function MyListingsEmptyState({ tab }) {
             py: 9,
             px: 3,
             borderRadius: '16px',
-            bgcolor: 'rgba(255,255,255,0.02)',
-            border: '1px dashed rgba(255,255,255,0.1)',
+            bgcolor: STITCH_CARD,
+            border: `1px dashed ${STITCH_CARD_BORDER}`,
+            boxShadow: `inset 0 0 0 1px rgba(157, 110, 237, 0.08)`,
         }}>
             <Typography fontSize={44} sx={{ mb: 1.5, lineHeight: 1 }}>{icon}</Typography>
-            <Typography fontSize={16} fontWeight={600} color="rgba(255,255,255,0.7)" sx={{ mb: 0.75 }}>
+            <Typography fontSize={16} fontWeight={700} color={STITCH_PURPLE} sx={{ mb: 0.75 }}>
                 {title}
             </Typography>
             <Typography fontSize={13.5} color="rgba(255,255,255,0.38)">{text}</Typography>

@@ -1,20 +1,15 @@
 import {
     Box,
-    Button,
-    Chip,
     IconButton,
     Stack,
     Tooltip,
     Typography,
 } from '@mui/material';
 import {
-    AccessTime as ClockIcon,
     Autorenew as RenewIcon,
     DeleteOutline as DeleteIcon,
     EditOutlined as EditIcon,
-    ErrorOutline as ReportedIcon,
     ImageNotSupported as NoImageIcon,
-    LocationOn as LocationIcon,
     Replay as RepostIcon,
     Visibility as UnhideIcon,
     VisibilityOff as HideIcon,
@@ -22,37 +17,27 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../../utils/constants';
 import { formatDate } from '../../../utils/formatDate';
-import { isRenewable, STATUS_COLORS, STATUS_LABELS, toCurrency } from './myListingsConfig';
+import {
+    isRenewable,
+    STATUS_BADGE_LABELS,
+    STITCH_ACTION_BAR_BG,
+    STITCH_CARD,
+    STITCH_CARD_BORDER,
+    STITCH_PRICE_CYAN,
+    STITCH_PURPLE,
+    toCurrency,
+} from './myListingsConfig';
+import { formatRelativeTimeVi } from './myListingsUtils';
 
-function ActionButton({ icon, label, onClick, color, borderColor, bgColor, hoverBg, disabled }) {
-    return (
-        <Button
-            type="button"
-            disabled={disabled}
-            onClick={onClick}
-            startIcon={icon}
-            sx={{
-                minWidth: 0,
-                px: 1.25,
-                py: 0.4,
-                borderRadius: '8px',
-                border: `1px solid ${borderColor}`,
-                bgcolor: bgColor,
-                color,
-                textTransform: 'none',
-                lineHeight: 1.2,
-                fontSize: 11.5,
-                fontWeight: 600,
-                gap: 0.5,
-                opacity: disabled ? 0.5 : 1,
-                '& .MuiButton-startIcon': { mr: 0, ml: 0 },
-                '&:hover': disabled ? {} : { bgcolor: hoverBg, borderColor: color },
-            }}
-        >
-            {label}
-        </Button>
-    );
-}
+const iconBtnSx = {
+    color: 'rgba(255,255,255,0.5)',
+    p: '7px',
+    borderRadius: '10px',
+    '&:hover': {
+        color: STITCH_PURPLE,
+        bgcolor: 'rgba(157, 110, 237, 0.14)',
+    },
+};
 
 export default function MyListingCard({
                                           listing,
@@ -67,297 +52,282 @@ export default function MyListingCard({
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const thumb = images[0];
-    const statusColor = STATUS_COLORS[listing?.status] || STATUS_COLORS.DRAFT;
+    const badge =
+        STATUS_BADGE_LABELS[listing?.status] ||
+        (listing?.status ? String(listing.status).toUpperCase() : 'TIN');
+
+    const goDetail = (e) => {
+        e?.stopPropagation?.();
+        navigate(`/listings/${id}`);
+    };
 
     return (
         <Box sx={{
+            borderRadius: '16px',
+            overflow: 'hidden',
+            bgcolor: STITCH_CARD,
+            border: `1px solid ${STITCH_CARD_BORDER}`,
             display: 'flex',
-            gap: 2.5,
-            p: 2.5,
-            borderRadius: '14px',
-            bgcolor: '#262130',
-            border: '1px solid rgba(255,255,255,0.07)',
-            transition: 'border-color 0.2s, box-shadow 0.2s, transform 0.15s',
+            flexDirection: 'column',
+            height: '100%',
+            transition: 'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.2s',
             '&:hover': {
-                borderColor: 'rgba(157,110,237,0.4)',
-                boxShadow: '0 4px 24px rgba(157,110,237,0.1)',
-                transform: 'translateY(-1px)',
+                transform: 'translateY(-3px)',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(157, 110, 237, 0.12)',
+                borderColor: 'rgba(157, 110, 237, 0.22)',
             },
         }}>
 
+            {/* Ảnh vuông — giống mockup */}
             <Box
-                onClick={() => navigate(`/listings/${id}`)}
+                onClick={goDetail}
                 sx={{
-                    width: 112,
-                    height: 112,
-                    borderRadius: '10px',
-                    overflow: 'hidden',
-                    flexShrink: 0,
+                    position: 'relative',
+                    width: '100%',
+                    aspectRatio: '1 / 1',
                     cursor: 'pointer',
-                    bgcolor: 'rgba(255,255,255,0.04)',
-                    border: '2px solid rgba(157,110,237,0.22)',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.35)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
-                    '&:hover': {
-                        borderColor: '#9D6EED',
-                        boxShadow: '0 4px 18px rgba(157,110,237,0.3)',
-                    },
+                    bgcolor: 'rgba(0,0,0,0.4)',
+                    flexShrink: 0,
                 }}
             >
                 {thumb ? (
                     <Box
                         component="img"
                         src={fullImageUrl(thumb)}
-                        alt={listing?.title}
-                        sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        alt=""
+                        sx={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                        }}
                     />
                 ) : (
-                    <Box sx={{ textAlign: 'center' }}>
-                        <NoImageIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.18)' }} />
-                        <Typography fontSize={10} color="rgba(255,255,255,0.2)" sx={{ mt: 0.5 }}>
-                            Chưa có ảnh
-                        </Typography>
-                    </Box>
-                )}
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.6 }}>
-
-                <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1}>
-                    <Typography
-                        onClick={() => navigate(`/listings/${id}`)}
-                        fontSize={15}
-                        fontWeight={600}
-                        color="rgba(255,255,255,0.92)"
+                    <Box
                         sx={{
-                            cursor: 'pointer',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            lineHeight: 1.4,
-                            transition: 'color 0.15s',
-                            '&:hover': { color: '#9D6EED' },
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 0.5,
                         }}
                     >
-                        {listing?.title || 'Không có tiêu đề'}
+                        <NoImageIcon sx={{ fontSize: 44, color: 'rgba(255,255,255,0.12)' }} />
+                        <Typography fontSize={11} color="rgba(255,255,255,0.22)">Chưa có ảnh</Typography>
+                    </Box>
+                )}
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: 12,
+                        left: 12,
+                        px: 1.1,
+                        py: 0.5,
+                        borderRadius: '999px',
+                        background: 'linear-gradient(135deg, rgba(157,110,237,0.98), rgba(123,79,191,0.95))',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+                    }}
+                >
+                    <Typography
+                        fontSize={9.5}
+                        fontWeight={800}
+                        letterSpacing={0.08}
+                        color="#fff"
+                        lineHeight={1.2}
+                    >
+                        {badge}
                     </Typography>
+                </Box>
+            </Box>
 
-                    <Stack direction="row" gap={0.75} flexShrink={0} alignItems="center" sx={{ mt: '-2px' }}>
-                        {activeTab === 'ACTIVE' && (
-                            <>
-                                {isRenewable(listing?.expirationDate) && (
-                                    <Tooltip title="Gia hạn thêm 15 ngày (chỉ khả dụng trong 7 ngày cuối)" arrow>
-                                        <ActionButton
-                                            icon={<RenewIcon sx={{ fontSize: 12, color: '#2ed573' }} />}
-                                            label="Gia hạn"
-                                            onClick={() => onRenew(id)}
-                                            color="#2ed573"
-                                            borderColor="rgba(46,213,115,0.35)"
-                                            bgColor="rgba(46,213,115,0.08)"
-                                            hoverBg="rgba(46,213,115,0.16)"
-                                        />
-                                    </Tooltip>
-                                )}
-                                <Tooltip title="Ẩn tin — bài đăng sẽ không hiển thị với người khác" arrow>
-                                    <ActionButton
-                                        icon={<HideIcon sx={{ fontSize: 12, color: '#ffa500' }} />}
-                                        label="Ẩn tin"
-                                        onClick={() => onHide(id)}
-                                        color="#ffa500"
-                                        borderColor="rgba(255,165,0,0.35)"
-                                        bgColor="rgba(255,165,0,0.08)"
-                                        hoverBg="rgba(255,165,0,0.16)"
-                                    />
-                                </Tooltip>
-                                <Tooltip title="Chỉnh sửa tin đăng" arrow>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => id && navigate(`/listings/${id}/edit`)}
-                                        sx={{ color: '#fff', p: '4px' }}
-                                    >
-                                        <EditIcon sx={{ fontSize: 15, color: '#fff' }} />
-                                    </IconButton>
-                                </Tooltip>
-                            </>
+            <Stack sx={{ p: 2, pt: 1.75, flex: 1, gap: 1 }}>
+                <Typography
+                    onClick={goDetail}
+                    fontSize={15}
+                    fontWeight={700}
+                    color="rgba(255,255,255,0.96)"
+                    sx={{
+                        cursor: 'pointer',
+                        lineHeight: 1.4,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        minHeight: 42,
+                        letterSpacing: '-0.01em',
+                        '&:hover': { color: STITCH_PURPLE },
+                    }}
+                >
+                    {listing?.title || 'Không có tiêu đề'}
+                </Typography>
+
+                <Typography
+                    fontSize={18}
+                    fontWeight={800}
+                    color={listing?.isGiveaway ? '#5CE1A8' : STITCH_PRICE_CYAN}
+                    sx={{
+                        letterSpacing: '-0.02em',
+                        textShadow: listing?.isGiveaway ? 'none' : '0 0 20px rgba(92, 225, 230, 0.22)',
+                    }}
+                >
+                    {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
+                </Typography>
+
+                {(listing?.expirationDate || listing?.reportCount > 0) && (
+                    <Stack gap={0.35}>
+                        {listing?.expirationDate && (
+                            <Typography fontSize={10.5} color="rgba(255,255,255,0.32)">
+                                Hết hạn {formatDate(listing.expirationDate)}
+                            </Typography>
                         )}
-
-                        {activeTab === 'DRAFT' && (
-                            <>
-                                <Tooltip title="Tiếp tục chỉnh sửa và đăng bài" arrow>
-                                    <ActionButton
-                                        icon={<EditIcon sx={{ fontSize: 12, color: '#fff' }} />}
-                                        label="Chỉnh sửa & Đăng"
-                                        onClick={() => id && navigate(`/drafts/${id}/publish`)}
-                                        color="#9D6EED"
-                                        borderColor="rgba(157,110,237,0.35)"
-                                        bgColor="rgba(157,110,237,0.1)"
-                                        hoverBg="rgba(157,110,237,0.2)"
-                                    />
-                                </Tooltip>
-                                <Tooltip title="Xóa bản nháp này vĩnh viễn" arrow>
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => onDeleteDraft(id)}
-                                        sx={{
-                                            p: '4px',
-                                            color: '#ff4757',
-                                            border: '1px solid rgba(255,71,87,0.3)',
-                                            borderRadius: '8px',
-                                            bgcolor: 'rgba(255,71,87,0.06)',
-                                            transition: 'background 0.15s, border-color 0.15s',
-                                            '&:hover': {
-                                                bgcolor: 'rgba(255,71,87,0.16)',
-                                                borderColor: '#ff4757',
-                                            },
-                                        }}
-                                    >
-                                        <DeleteIcon sx={{ fontSize: 15 }} />
-                                    </IconButton>
-                                </Tooltip>
-                            </>
-                        )}
-
-                        {activeTab === 'EXPIRED' && (
-                            <Tooltip title="Đăng lại — tin sẽ hiển thị công khai trong 30 ngày" arrow>
-                                <ActionButton
-                                    icon={<RepostIcon sx={{ fontSize: 12, color: '#9D6EED' }} />}
-                                    label="Đăng lại"
-                                    onClick={() => onRepost(id)}
-                                    color="#9D6EED"
-                                    borderColor="rgba(157,110,237,0.35)"
-                                    bgColor="rgba(157,110,237,0.08)"
-                                    hoverBg="rgba(157,110,237,0.18)"
-                                />
-                            </Tooltip>
-                        )}
-
-                        {activeTab === 'HIDDEN' && (
-                            <Tooltip title="Hiển thị lại bài đăng cho mọi người" arrow>
-                                <ActionButton
-                                    icon={<UnhideIcon sx={{ fontSize: 12, color: '#2ed573' }} />}
-                                    label="Hiển thị lại"
-                                    onClick={() => onUnhide(id)}
-                                    color="#2ed573"
-                                    borderColor="rgba(46,213,115,0.35)"
-                                    bgColor="rgba(46,213,115,0.08)"
-                                    hoverBg="rgba(46,213,115,0.16)"
-                                />
-                            </Tooltip>
-                        )}
-
-                        {(activeTab === 'PENDING' || activeTab === 'REJECTED' || activeTab === 'REPORTED') && (
-                            <Tooltip title="Chỉnh sửa tin đăng" arrow>
-                                <IconButton
-                                    size="small"
-                                    onClick={() => id && navigate(`/listings/${id}/edit`)}
-                                    sx={{ color: '#fff', p: '4px' }}
-                                >
-                                    <EditIcon sx={{ fontSize: 15, color: '#fff' }} />
-                                </IconButton>
-                            </Tooltip>
+                        {listing?.reportCount > 0 && (
+                            <Typography fontSize={10.5} fontWeight={600} color="#ff6b7a">
+                                {listing.reportCount} báo cáo
+                            </Typography>
                         )}
                     </Stack>
+                )}
+            </Stack>
+
+            {/* Thanh hành động tối — giống Stitch */}
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 1,
+                    px: 1.5,
+                    py: 1,
+                    bgcolor: STITCH_ACTION_BAR_BG,
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                }}
+            >
+                <Stack direction="row" alignItems="center" gap={0.25}>
+                    {activeTab === 'ACTIVE' && (
+                        <>
+                            <Tooltip title="Chỉnh sửa">
+                                <IconButton
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); id && navigate(`/listings/${id}/edit`); }}
+                                    sx={iconBtnSx}
+                                >
+                                    <EditIcon sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Ẩn tin">
+                                <IconButton
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); onHide(id); }}
+                                    sx={iconBtnSx}
+                                >
+                                    <HideIcon sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Tooltip>
+                            {isRenewable(listing?.expirationDate) ? (
+                                <Tooltip title="Gia hạn 15 ngày">
+                                    <IconButton
+                                        type="button"
+                                        size="small"
+                                        onClick={(e) => { e.stopPropagation(); onRenew(id); }}
+                                        sx={iconBtnSx}
+                                    >
+                                        <RenewIcon sx={{ fontSize: 19 }} />
+                                    </IconButton>
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title="Tin đang đăng không xóa trực tiếp — dùng Ẩn tin để gỡ khỏi feed.">
+                                    <span>
+                                        <IconButton type="button" size="small" disabled sx={{ ...iconBtnSx, opacity: 0.35 }}>
+                                            <DeleteIcon sx={{ fontSize: 19 }} />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                            )}
+                        </>
+                    )}
+
+                    {activeTab === 'DRAFT' && (
+                        <>
+                            <Tooltip title="Chỉnh sửa & đăng">
+                                <IconButton
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); id && navigate(`/drafts/${id}/publish`); }}
+                                    sx={iconBtnSx}
+                                >
+                                    <EditIcon sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Xóa bản nháp">
+                                <IconButton
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); onDeleteDraft(id); }}
+                                    sx={{
+                                        ...iconBtnSx,
+                                        '&:hover': { color: '#ff6b7a', bgcolor: 'rgba(255,107,122,0.12)' },
+                                    }}
+                                >
+                                    <DeleteIcon sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Tooltip>
+                        </>
+                    )}
+
+                    {activeTab === 'EXPIRED' && (
+                        <Tooltip title="Đăng lại">
+                            <IconButton
+                                type="button"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); onRepost(id); }}
+                                sx={iconBtnSx}
+                            >
+                                <RepostIcon sx={{ fontSize: 19 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {activeTab === 'HIDDEN' && (
+                        <Tooltip title="Hiển thị lại">
+                            <IconButton
+                                type="button"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); onUnhide(id); }}
+                                sx={iconBtnSx}
+                            >
+                                <UnhideIcon sx={{ fontSize: 19 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {(activeTab === 'PENDING' || activeTab === 'REJECTED' || activeTab === 'REPORTED') && (
+                        <Tooltip title="Chỉnh sửa">
+                            <IconButton
+                                type="button"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); id && navigate(`/listings/${id}/edit`); }}
+                                sx={iconBtnSx}
+                            >
+                                <EditIcon sx={{ fontSize: 19 }} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                 </Stack>
 
                 <Typography
-                    fontSize={16}
-                    fontWeight={700}
-                    color={listing?.isGiveaway ? '#2ed573' : '#FF4757'}
-                    sx={{ lineHeight: 1 }}
+                    fontSize={9.5}
+                    fontWeight={800}
+                    letterSpacing={0.06}
+                    color="rgba(255,255,255,0.28)"
+                    sx={{ flexShrink: 0, textAlign: 'right', lineHeight: 1.3, maxWidth: '42%' }}
                 >
-                    {listing?.isGiveaway ? '🎁 Cho tặng miễn phí' : toCurrency(listing?.price)}
+                    {formatRelativeTimeVi(listing?.updatedAt || listing?.createdAt)}
                 </Typography>
-
-                <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mt: 0.25 }}>
-                    <Chip
-                        size="small"
-                        label={STATUS_LABELS[listing?.status] || listing?.status}
-                        sx={{
-                            height: 22,
-                            fontSize: 11.5,
-                            fontWeight: 600,
-                            bgcolor: statusColor.bg,
-                            color: statusColor.text,
-                            border: `1px solid ${statusColor.border}`,
-                            borderRadius: '20px',
-                            px: 0.25,
-                        }}
-                    />
-
-                    {listing?.reportCount > 0 && (
-                        <Chip
-                            size="small"
-                            icon={<ReportedIcon sx={{ fontSize: 11, color: '#ff4757 !important' }} />}
-                            label={`${listing.reportCount} báo cáo`}
-                            sx={{
-                                height: 22,
-                                fontSize: 11.5,
-                                fontWeight: 600,
-                                bgcolor: 'rgba(255,71,87,0.1)',
-                                color: '#ff4757',
-                                border: '1px solid rgba(255,71,87,0.28)',
-                                borderRadius: '20px',
-                                px: 0.25,
-                                '& .MuiChip-icon': { ml: '5px' },
-                            }}
-                        />
-                    )}
-
-                    {listing?.categoryName && (
-                        <Chip
-                            size="small"
-                            label={listing.categoryName}
-                            sx={{
-                                height: 22,
-                                fontSize: 11.5,
-                                bgcolor: 'rgba(255,255,255,0.06)',
-                                color: 'rgba(255,255,255,0.5)',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: '20px',
-                                px: 0.25,
-                            }}
-                        />
-                    )}
-
-                    {listing?.expirationDate && (
-                        <Chip
-                            size="small"
-                            icon={<ClockIcon sx={{ fontSize: 11, color: '#ffa500 !important' }} />}
-                            label={`Hết hạn ${formatDate(listing.expirationDate)}`}
-                            sx={{
-                                height: 22,
-                                fontSize: 11.5,
-                                bgcolor: 'rgba(255,165,0,0.08)',
-                                color: 'rgba(255,165,0,0.9)',
-                                border: '1px solid rgba(255,165,0,0.22)',
-                                borderRadius: '20px',
-                                px: 0.25,
-                                '& .MuiChip-icon': { ml: '5px' },
-                            }}
-                        />
-                    )}
-                </Stack>
-
-                <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mt: 'auto', pt: 0.5 }}>
-                    {listing?.location && (
-                        <Stack direction="row" alignItems="center" gap={0.4}>
-                            <LocationIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }} />
-                            <Typography fontSize={12} color="rgba(255,255,255,0.28)"
-                                        sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {listing.location}
-                            </Typography>
-                        </Stack>
-                    )}
-                    <Stack direction="row" alignItems="center" gap={0.4}>
-                        <ClockIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }} />
-                        <Typography fontSize={12} color="rgba(255,255,255,0.28)">
-                            {formatDate(listing?.createdAt)}
-                        </Typography>
-                    </Stack>
-                </Stack>
             </Box>
         </Box>
     );

@@ -1,27 +1,31 @@
 /**
- * Hằng số và helper dùng chung cho trang "Tin đăng của tôi".
+ * Hằng số và helper dùng chung cho trang "Tin đăng của tôi" (Stitch / dark UI).
  */
-import {
-    Block as RejectedIcon,
-    CheckCircleOutline as ActiveIcon,
-    EditOutlined as EditIcon,
-    ErrorOutline as ReportedIcon,
-    HourglassEmpty as ExpiredIcon,
-    Schedule as PendingIcon,
-    VisibilityOff as HideIcon,
-} from '@mui/icons-material';
-
 export const TABS = [
-    { value: 'ACTIVE',   label: 'Đang đăng',   icon: <ActiveIcon   sx={{ fontSize: 14 }} /> },
-    { value: 'HIDDEN',   label: 'Đã ẩn',        icon: <HideIcon     sx={{ fontSize: 14 }} /> },
-    { value: 'DRAFT',    label: 'Bản nháp',     icon: <EditIcon     sx={{ fontSize: 14 }} /> },
-    { value: 'EXPIRED',  label: 'Hết hạn',      icon: <ExpiredIcon  sx={{ fontSize: 14 }} /> },
-    { value: 'PENDING',  label: 'Chờ duyệt',    icon: <PendingIcon  sx={{ fontSize: 14 }} /> },
-    { value: 'REJECTED', label: 'Bị từ chối',   icon: <RejectedIcon sx={{ fontSize: 14 }} /> },
-    { value: 'REPORTED', label: 'Bị báo cáo',   icon: <ReportedIcon sx={{ fontSize: 14 }} /> },
+    { value: 'ACTIVE',   label: 'Đang đăng' },
+    { value: 'HIDDEN',   label: 'Đã ẩn' },
+    { value: 'DRAFT',    label: 'Bản nháp' },
+    { value: 'EXPIRED',  label: 'Hết hạn' },
+    { value: 'PENDING',  label: 'Chờ duyệt' },
+    { value: 'REJECTED', label: 'Bị từ chối' },
+    { value: 'REPORTED', label: 'Bị báo cáo' },
 ];
 
 export const ALL_TAB_STATUSES = TABS.map((t) => t.value);
+
+/** Nhãn badge trên ảnh (chữ hoa, ngắn). */
+export const STATUS_BADGE_LABELS = {
+    ACTIVE:     'ĐANG ĐĂNG',
+    DRAFT:      'BẢN NHÁP',
+    HIDDEN:     'ĐÃ ẨN',
+    SOLD:       'ĐÃ BÁN',
+    GIVEN_AWAY: 'CHO TẶNG',
+    BANNED:     'BỊ KHÓA',
+    EXPIRED:    'HẾT HẠN',
+    PENDING:    'CHỜ DUYỆT',
+    REJECTED:   'TỪ CHỐI',
+    REPORTED:   'BÁO CÁO',
+};
 
 /** Chuẩn hóa tab từ query `status` (back/forward, deep link). */
 export function tabFromSearchParams(searchParams) {
@@ -62,9 +66,38 @@ export const STATUS_LABELS = {
     REPORTED:   'Bị báo cáo',
 };
 
-export const PAGE_SIZE = 10;
+export const PAGE_SIZE = 12;
 
-export const toCurrency = (v) => `${Number(v || 0).toLocaleString('vi-VN')} ₫`;
+/** Tím thương hiệu — khớp theme.palette.primary / ListingCard */
+export const STITCH_PURPLE = '#9D6EED';
+export const STITCH_PURPLE_DEEP = '#7B4FBF';
+
+/** Nền trang — khớp MainLayout, Sidebar, uiTokens.surface.appHeader */
+export const STITCH_BG = '#141225';
+export const STITCH_PAGE_GRADIENT = 'linear-gradient(180deg, #171522 0%, #141225 45%, #141225 100%)';
+
+/** Thẻ — khớp CARD_BG toàn dự án (#201D26) */
+export const STITCH_CARD = '#201D26';
+export const STITCH_CARD_BORDER = 'rgba(255,255,255,0.05)';
+
+/** Giá trên thẻ (accent, giữ tách biệt với brand tím) */
+export const STITCH_PRICE_CYAN = '#5CE1E6';
+
+/** Thanh hành động dưới thẻ — theme.secondary.dark */
+export const STITCH_ACTION_BAR_BG = '#1A1721';
+
+/** Tab chưa chọn — chip tối kiểu Stitch (tách khỏi nền trang) */
+export const STITCH_TAB_INACTIVE_BG = 'rgba(22, 24, 34, 0.96)';
+export const STITCH_TAB_INACTIVE_BORDER = 'rgba(255,255,255,0.07)';
+
+/** Tab đang chọn — accent tím Stitch (mockup GG Stitch), glow dưới pill */
+export const STITCH_TAB_ACTIVE_GRADIENT =
+    'linear-gradient(135deg, #9B7AFF 0%, #7C5CFC 48%, #6548E8 100%)';
+export const STITCH_TAB_ACTIVE_BORDER = 'rgba(180, 150, 255, 0.45)';
+export const STITCH_TAB_ACTIVE_SHADOW =
+    '0 10px 36px rgba(124, 92, 252, 0.48), 0 2px 14px rgba(124, 92, 252, 0.28)';
+
+export const toCurrency = (v) => `${Number(v || 0).toLocaleString('vi-VN')}đ`;
 
 /** True nếu listing còn trong vòng 7 ngày trước khi hết hạn (chưa expired). */
 export const isRenewable = (expirationDate) => {
