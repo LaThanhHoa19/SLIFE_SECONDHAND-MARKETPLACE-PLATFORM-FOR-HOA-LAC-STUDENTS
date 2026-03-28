@@ -60,32 +60,38 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     /**
      * Optimized query for Listing Cards.
      * Uses Constructor Projection to fetch only required fields.
+     * Field order MUST match ListingCardResponse @AllArgsConstructor declaration.
      */
     @Query("""
-        SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
-            l.id, l.title, l.price,
-            CASE
-                WHEN a IS NULL THEN NULL
-                WHEN a.locationName IS NOT NULL AND a.locationName <> '' AND a.addressText IS NOT NULL AND a.addressText <> ''
-                    THEN CONCAT(a.locationName, ' — ', a.addressText)
-                WHEN a.locationName IS NOT NULL AND a.locationName <> '' THEN a.locationName
-                ELSE a.addressText
-            END,
-            l.status,
-            (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
-            l.seller.id,
-            l.seller.fullName,
-            l.seller.avatarUrl,
-            false,
-            false,
-            0L,
-            false
-        )
-        FROM Listing l
-        LEFT JOIN l.pickupAddress a
-        WHERE l.status = 'ACTIVE'
-          AND (:sellerId IS NULL OR l.seller.id = :sellerId)
-    """)
+                SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
+                    l.id, l.title, l.price,
+                    CASE
+                        WHEN a IS NULL THEN NULL
+                        WHEN a.locationName IS NOT NULL AND a.locationName <> '' AND a.addressText IS NOT NULL AND a.addressText <> ''
+                            THEN CONCAT(a.locationName, ' \u2014 ', a.addressText)
+                        WHEN a.locationName IS NOT NULL AND a.locationName <> '' THEN a.locationName
+                        ELSE a.addressText
+                    END,
+                    l.status,
+                    (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
+                    l.itemCondition,
+                    l.purpose,
+                    l.isGiveaway,
+                    l.createdAt,
+                    l.seller.id,
+                    l.seller.fullName,
+                    l.seller.avatarUrl,
+                    false,
+                    false,
+                    (SELECT COUNT(ll) FROM ListingLike ll WHERE ll.listing = l),
+                    false,
+                    (SELECT COUNT(c) FROM Comment c WHERE c.listing = l AND c.deletedAt IS NULL)
+                )
+                FROM Listing l
+                LEFT JOIN l.pickupAddress a
+                WHERE l.status = 'ACTIVE'
+                  AND (:sellerId IS NULL OR l.seller.id = :sellerId)
+            """)
     Page<com.slife.marketplace.dto.response.ListingCardResponse> findAllActiveListingCards(
             @Param("sellerId") Long sellerId,
             Pageable pageable);

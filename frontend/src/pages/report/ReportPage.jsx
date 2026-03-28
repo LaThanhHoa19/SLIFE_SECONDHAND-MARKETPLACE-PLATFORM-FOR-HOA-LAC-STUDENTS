@@ -29,9 +29,13 @@ export default function ReportPage() {
         return Number.isFinite(n) ? n : null;
     }, [searchParams]);
 
+    const returnSessionId = useMemo(() => searchParams.get('sessionId') || '', [searchParams]);
+
     const title = useMemo(() => {
         if (targetType === 'LISTING') return 'Báo cáo tin đăng';
         if (targetType === 'USER') return 'Báo cáo người dùng';
+        if (targetType === 'MESSAGE') return 'Báo cáo tin nhắn';
+        if (targetType === 'COMMENT') return 'Báo cáo bình luận';
         return 'Báo cáo';
     }, [targetType]);
 
@@ -43,6 +47,9 @@ export default function ReportPage() {
     const goBackAfterSuccess = () => {
         if (targetType === 'LISTING' && targetId) return navigate(`/listings/${targetId}`);
         if (targetType === 'USER' && targetId) return navigate(`/profile/${targetId}`);
+        if (targetType === 'MESSAGE' && returnSessionId) {
+            return navigate(`/chat?sessionId=${encodeURIComponent(returnSessionId)}`);
+        }
         return navigate(-1);
     };
 

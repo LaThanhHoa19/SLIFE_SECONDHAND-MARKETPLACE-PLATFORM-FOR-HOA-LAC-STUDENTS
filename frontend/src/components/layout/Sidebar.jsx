@@ -46,7 +46,7 @@ export default function Sidebar({ open = true }) {
 
     const handleLogout = async () => {
         await logout();
-        navigate('/login');
+        navigate('/feed');
     };
 
     return (
