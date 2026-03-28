@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Trong Docker, backend là service `backend:8080`; trên máy host dùng localhost.
+const backendProxyTarget =
+    process.env.BACKEND_PROXY_TARGET || 'http://localhost:8080'
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
@@ -31,14 +35,21 @@ export default defineConfig({
         changeOrigin: true
       },
       '/api': {
-        target: 'http://localhost:8080',
+        target: backendProxyTarget,
         changeOrigin: true,
       },
       '/chat': {
-        target: 'http://localhost:8080',
+        target: backendProxyTarget,
         ws: true,
         changeOrigin: true,
-      }
+        bypass(req) {
+          const path = req.url?.split('?')[0] ?? ''
+          const accept = req.headers.accept ?? ''
+          if (path === '/chat' && accept.includes('text/html')) {
+            return '/index.html'
+          }
+        },
+      },
     }
   }
 })

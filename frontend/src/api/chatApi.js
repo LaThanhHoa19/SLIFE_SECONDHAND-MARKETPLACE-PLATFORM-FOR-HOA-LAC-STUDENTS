@@ -12,8 +12,21 @@ export const getSession = (listingId) =>
 export const getHistory = (sessionId, page = 0, size = 15) =>
   axiosClient.get(`/api/v1/chats/${sessionId}/history`, { params: { page, size } });
 
-export const sendMessage = (sessionId, content, messageType = 'TEXT', fileUrl = null) =>
-  axiosClient.post('/api/v1/chats/send', { sessionId, content, messageType, fileUrl });
+export const sendMessage = (
+  sessionId,
+  content,
+  messageType = 'TEXT',
+  fileUrl = null,
+  options = {}
+) =>
+  axiosClient.post('/api/v1/chats/send', {
+    sessionId,
+    content,
+    messageType,
+    fileUrl,
+    replyToMessageId: options?.replyToMessageId ?? null,
+    quoteMessageId: options?.quoteMessageId ?? null,
+  });
 
 export const getQuickReplies = () =>
   axiosClient.get('/api/v1/chats/quick-replies');
