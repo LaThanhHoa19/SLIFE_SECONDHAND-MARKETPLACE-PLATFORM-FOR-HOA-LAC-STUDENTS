@@ -48,7 +48,10 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
         borderRadius: '14px', p: 1, // Compact padding
         display: 'flex', flexDirection: 'column',
         position: 'relative',
-        height: 'fit-content' // Eliminate empty purple space
+        height: 'fit-content', // Eliminate empty purple space
+        maxWidth: '100%',
+        minWidth: 0,
+        overflow: 'hidden'
       }}
     >
       <Box sx={{ mb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', ml: 2 }}>
