@@ -36,8 +36,10 @@ public class AdminController {
     @GetMapping("/api/admin/users")
     public ResponseEntity<ApiResponse<Page<UserResponseDTO>>> getUsers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<UserResponseDTO> users = adminService.getUsers(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+        Page<UserResponseDTO> users = adminService.getUsers(page, size, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("OK", users));
     }
 

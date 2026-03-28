@@ -10,5 +10,6 @@ public record UserResponseDTO(
         String status,
         String role,
         BigDecimal reputationScore,
+        Integer violationCount,
         LocalDateTime createdAt) {
 }

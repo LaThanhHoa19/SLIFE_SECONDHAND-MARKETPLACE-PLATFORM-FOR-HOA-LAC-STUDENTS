@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Avatar,
   Box,
   Button,
   Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Typography,
 } from '@mui/material';
@@ -65,27 +69,51 @@ const userManagementTableSx = {
   },
 };
 
+/** Khớp GET /api/admin/users — "Không chọn" = sortBy=id&sortDir=asc (ID tăng dần) */
+const ADMIN_USER_SORT_BY = {
+  NONE: 'id',
+  CREATED_AT: 'createdAt',
+  REPUTATION: 'reputationScore',
+  VIOLATION: 'violationCount',
+};
+
+const selectFieldSx = {
+  minWidth: 200,
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: USER_TABLE_BORDER },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.35)' },
+  '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+  '& .MuiSelect-icon': { color: 'rgba(255,255,255,0.7)' },
+  '& .MuiSelect-select': { color: '#fff' },
+};
+
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [sortBy, setSortBy] = useState(ADMIN_USER_SORT_BY.NONE);
+  const [sortDir, setSortDir] = useState('desc');
+  const sortDisabled = sortBy === ADMIN_USER_SORT_BY.NONE;
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       setErrorMessage('');
-      const response = await getAdminUsers();
+      const params =
+        sortBy === ADMIN_USER_SORT_BY.NONE
+          ? { sortBy: 'id', sortDir: 'asc' }
+          : { sortBy, sortDir };
+      const response = await getAdminUsers(params);
       setUsers(extractUserList(response));
     } catch (error) {
       setErrorMessage(error?.message || 'Không tải được danh sách user.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sortBy, sortDir]);
 
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [loadUsers]);
 
   const columns = [
     { id: 'id', label: 'ID', width: 80 },
@@ -204,14 +232,43 @@ export default function UserManagementPage() {
               Theo dõi role, trạng thái và uy tín tài khoản trong hệ thống.
             </Typography>
           </Box>
-          <Button
-              variant="contained"
-              onClick={loadUsers}
-              disabled={isLoading}
-              sx={{ borderRadius: 999, textTransform: 'none', px: 3 }}
-          >
-            Tải lại dữ liệu
-          </Button>
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={selectFieldSx}>
+              <InputLabel id="admin-users-sort-by">Sắp xếp theo</InputLabel>
+              <Select
+                labelId="admin-users-sort-by"
+                label="Sắp xếp theo"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <MenuItem value={ADMIN_USER_SORT_BY.NONE}>Không chọn</MenuItem>
+                <MenuItem value={ADMIN_USER_SORT_BY.CREATED_AT}>Ngày tạo</MenuItem>
+                <MenuItem value={ADMIN_USER_SORT_BY.REPUTATION}>Uy tín</MenuItem>
+                <MenuItem value={ADMIN_USER_SORT_BY.VIOLATION}>Vi phạm</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ ...selectFieldSx, minWidth: 220 }} disabled={sortDisabled}>
+              <InputLabel id="admin-users-sort-dir">Thứ tự</InputLabel>
+              <Select
+                labelId="admin-users-sort-dir"
+                label="Thứ tự"
+                value={sortDir}
+                disabled={sortDisabled}
+                onChange={(e) => setSortDir(e.target.value)}
+              >
+                <MenuItem value="asc">Từ thấp đến cao</MenuItem>
+                <MenuItem value="desc">Từ cao đến thấp</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+                variant="contained"
+                onClick={loadUsers}
+                disabled={isLoading}
+                sx={{ borderRadius: 999, textTransform: 'none', px: 3 }}
+            >
+              Tải lại dữ liệu
+            </Button>
+          </Stack>
         </Stack>
 
         {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
