@@ -143,6 +143,8 @@ export default function AppRouter() {
                         </RouteGuard>
                     }
                 />
+                {/* Tránh /profile/listings khớp /profile/:id (id = "listings" → ProfilePage báo không tìm thấy user). */}
+                <Route path="/profile/listings" element={<Navigate to="/my-listings" replace />} />
                 {/* /profile = trang cá nhân của user đang đăng nhập (Header và nhiều Link dùng path này) */}
                 <Route
                     path="/profile"

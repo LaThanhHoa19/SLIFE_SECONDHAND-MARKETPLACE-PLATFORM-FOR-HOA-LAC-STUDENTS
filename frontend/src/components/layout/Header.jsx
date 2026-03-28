@@ -201,7 +201,8 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleManagePosts = () => {
-        navigate('/profile/listings');
+        /* Trùng với Sidebar "Tin của tôi" — không dùng /profile/listings (bị nuốt bởi /profile/:id → id=listings). */
+        navigate('/my-listings');
     };
 
     const handleUserMenuOpen = (e) => {
