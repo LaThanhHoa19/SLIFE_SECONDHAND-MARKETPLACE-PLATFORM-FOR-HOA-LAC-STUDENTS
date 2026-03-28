@@ -29,8 +29,11 @@ export default function Sidebar({ open = true }) {
     const location = useLocation();
     const { isAuthenticated, logout } = useAuth();
     
-    // Instead of completely unmounting when closed, we shrink it.
     const currentWidth = open ? SIDEBAR_WIDTH : SIDEBAR_MINI_WIDTH;
+    
+    // Config: độ rộng của thanh menu khi mở (để ngắn hơn Sidebar_width, nằm giữa)
+    const OPEN_PILL_WIDTH = '180px';
+    const CLOSED_PILL_WIDTH = '44px'; // Độ rộng của khối tròn khi đóng
 
     const handleNavClick = (path) => {
         if (AUTH_REQUIRED_PATHS.includes(path) && !isAuthenticated) {
@@ -38,7 +41,6 @@ export default function Sidebar({ open = true }) {
             return;
         }
 
-        // Nếu đang ở đúng trang đó mà bấm lại -> Tải lại trang (refresh effect)
         if (location.pathname === path) {
             navigate(0); 
             return;
@@ -68,7 +70,7 @@ export default function Sidebar({ open = true }) {
                 borderRight: '1px solid rgba(255,255,255,0.06)',
                 display: 'flex',
                 flexDirection: 'column',
-                position: 'sticky', // Removes layout breaking on shrinking screens
+                position: 'sticky',
                 top: `${SIDEBAR_TOP_OFFSET}px`,
                 zIndex: 1200,
                 pt: 1.5,
@@ -79,7 +81,7 @@ export default function Sidebar({ open = true }) {
                 '&::-webkit-scrollbar': { display: 'none' },
             }}
         >
-            <Box sx={{ px: open ? 1.25 : 0.75, transition: 'padding 0.3s ease' }}>
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {NAV_ITEMS.map(({ label, icon: Icon, path }) => {
                     const active = isActive(path);
                     return (
@@ -89,24 +91,24 @@ export default function Sidebar({ open = true }) {
                                 sx={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: open ? 'flex-start' : 'center',
-                                    gap: open ? 1.5 : 0,
-                                    py: 1.15,
-                                    px: open ? 1.5 : 0,
+                                    justifyContent: 'flex-start',
+                                    width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH,
+                                    height: '44px',
                                     cursor: 'pointer',
-                                    borderRadius: 2.25,
-                                    mb: 0.4,
+                                    borderRadius: '22px', // Tròn trịa hơn
+                                    mb: 0.6,
                                     background: active
                                         ? 'linear-gradient(90deg, rgba(167,139,250,0.34) 0%, rgba(157,110,237,0.86) 100%)'
                                         : 'transparent',
                                     border: active ? '1px solid rgba(207,190,255,0.46)' : '1px solid transparent',
                                     boxShadow: active ? '0 8px 18px rgba(122,78,211,0.28)' : 'none',
-                                    transition: 'all .18s ease',
+                                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s',
                                     '&:hover': {
                                         background: active
                                             ? 'linear-gradient(90deg, rgba(167,139,250,0.4) 0%, rgba(157,110,237,0.94) 100%)'
                                             : 'rgba(255,255,255,0.06)',
                                     },
+                                    overflow: 'hidden',
                                 }}
                             >
                                 <Icon
@@ -114,108 +116,129 @@ export default function Sidebar({ open = true }) {
                                         fontSize: 20,
                                         color: active ? '#FFFFFF' : 'rgba(226,232,240,0.78)',
                                         flexShrink: 0,
+                                        ml: open ? 2 : '12px', // Dịch icon vào giữa khi state đóng/mở
+                                        transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     }}
                                 />
-                                {open && (
-                                    <Typography
-                                        sx={{
-                                            fontSize: 13.5,
-                                            fontWeight: active ? 700 : 500,
-                                            color: active ? '#FFFFFF' : 'rgba(226,232,240,0.78)',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                        }}
-                                    >
-                                        {label}
-                                    </Typography>
-                                )}
+                                <Typography
+                                    sx={{
+                                        fontSize: 13.5,
+                                        fontWeight: active ? 700 : 500,
+                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.78)',
+                                        whiteSpace: 'nowrap',
+                                        ml: 1.5,
+                                        opacity: open ? 1 : 0,
+                                        maxWidth: open ? '120px' : 0,
+                                        transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s',
+                                    }}
+                                >
+                                    {label}
+                                </Typography>
                             </Box>
                         </Tooltip>
                     );
                 })}
             </Box>
 
-            <Divider sx={{ mx: open ? 1.75 : 1, my: 1.4, borderColor: 'rgba(255,255,255,0.08)' }} />
+            <Divider sx={{ width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH, mx: 'auto', my: 1.4, borderColor: 'rgba(255,255,255,0.08)', transition: 'width 0.3s ease' }} />
 
             {/* Cộng đồng */}
-            <Tooltip title={!open ? "Cộng đồng" : ''} placement="right" disableHoverListener={open}>
-                <Box
-                    onClick={() => navigate('/community')}
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: open ? 'flex-start' : 'center',
-                        gap: open ? 1.5 : 0,
-                        py: 1.15,
-                        px: open ? 2.75 : 0,
-                        cursor: 'pointer',
-                        borderRadius: 2.25,
-                        mx: open ? 1.25 : 0.75,
-                        mb: 0.5,
-                        transition: 'all 0.3s ease',
-                        '&:hover': { backgroundColor: 'rgba(255,255,255,0.06)' },
-                    }}
-                >
-                    <PeopleIcon sx={{ fontSize: 20, color: 'rgba(226,232,240,0.78)', flexShrink: 0 }} />
-                    {open && (
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Tooltip title={!open ? "Cộng đồng" : ''} placement="right" disableHoverListener={open}>
+                    <Box
+                        onClick={() => navigate('/community')}
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH,
+                            height: '44px',
+                            cursor: 'pointer',
+                            borderRadius: '22px',
+                            mb: 0.5,
+                            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s',
+                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.06)' },
+                            overflow: 'hidden',
+                        }}
+                    >
+                        <PeopleIcon sx={{ fontSize: 20, color: 'rgba(226,232,240,0.78)', flexShrink: 0, ml: open ? 2 : '12px', transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
                         <Typography
                             sx={{
                                 fontSize: '13.5px',
                                 fontWeight: 500,
                                 color: 'rgba(226,232,240,0.78)',
                                 whiteSpace: 'nowrap',
+                                ml: 1.5,
+                                opacity: open ? 1 : 0,
+                                maxWidth: open ? '120px' : 0,
+                                transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s',
                             }}
                         >
                             Cộng đồng
                         </Typography>
-                    )}
-                </Box>
-            </Tooltip>
-
-            {/* Nút + tạo nhóm */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.5 }}>
-                <Tooltip title="Tạo nhóm" placement="right" arrow>
-                    <IconButton
-                        size="small"
-                        sx={{
-                            bgcolor: 'rgba(255,255,255,0.08)',
-                            color: 'rgba(255,255,255,0.65)',
-                            width: 30,
-                            height: 30,
-                            transition: 'all 0.3s ease',
-                            '&:hover': { bgcolor: '#9D6EED', color: '#fff' },
-                        }}
-                    >
-                        <AddIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
+                    </Box>
                 </Tooltip>
+
+                {/* Nút + tạo nhóm */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.5 }}>
+                    <Tooltip title="Tạo nhóm" placement="right" arrow>
+                        <IconButton
+                            size="small"
+                            sx={{
+                                bgcolor: 'rgba(255,255,255,0.08)',
+                                color: 'rgba(255,255,255,0.65)',
+                                width: 34,
+                                height: 34,
+                                transition: 'all 0.3s ease',
+                                '&:hover': { bgcolor: '#9D6EED', color: '#fff' },
+                            }}
+                        >
+                            <AddIcon sx={{ fontSize: 18 }} />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
             </Box>
 
             {isAuthenticated && (
-                <Box sx={{ mt: 'auto', px: open ? 1.4 : 0.75, pt: 1.6, pb: 1.6 }}>
-                    <Divider sx={{ mb: 1.2, borderColor: 'rgba(255,255,255,0.08)' }} />
+                <Box sx={{ mt: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 1.6, pb: 1.6 }}>
+                    <Divider sx={{ width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH, mb: 1.5, borderColor: 'rgba(255,255,255,0.08)', transition: 'width 0.3s ease' }} />
                     <Tooltip title={!open ? "Đăng xuất" : ''} placement="right" disableHoverListener={open}>
                         <Button
-                            fullWidth
                             variant="text"
                             onClick={handleLogout}
                             sx={{
-                                justifyContent: open ? 'flex-start' : 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-start',
+                                width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH,
+                                height: '44px',
                                 textTransform: 'none',
                                 color: 'rgba(248,113,113,0.92)',
                                 fontWeight: 600,
                                 fontSize: 13.5,
-                                borderRadius: 2,
-                                px: open ? 1.6 : 0,
-                                py: 1,
+                                borderRadius: '22px',
+                                p: 0,
                                 minWidth: 0,
-                                transition: 'all 0.3s ease',
+                                transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s',
                                 '&:hover': { bgcolor: 'rgba(248,113,113,0.12)' },
+                                overflow: 'hidden',
                             }}
                         >
-                            <LogoutIcon sx={{ mr: open ? 1.5 : 0, fontSize: 20 }} />
-                            {open && "Đăng xuất"}
+                            <LogoutIcon sx={{ fontSize: 20, flexShrink: 0, ml: open ? 2 : '12px', transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                            <Typography
+                                sx={{
+                                    fontSize: 13.5,
+                                    fontWeight: 600,
+                                    lineHeight: 1,
+                                    whiteSpace: 'nowrap',
+                                    ml: 1.5,
+                                    opacity: open ? 1 : 0,
+                                    maxWidth: open ? '120px' : 0,
+                                    transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s',
+                                }}
+                            >
+                                Đăng xuất
+                            </Typography>
                         </Button>
                     </Tooltip>
                 </Box>
