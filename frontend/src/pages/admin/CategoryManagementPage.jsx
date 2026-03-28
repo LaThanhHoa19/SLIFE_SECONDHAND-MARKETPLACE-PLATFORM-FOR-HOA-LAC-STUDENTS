@@ -9,7 +9,6 @@ import {
     Dialog,
     DialogActions,
     DialogContent,
-    DialogTitle,
     IconButton,
     InputAdornment,
     MenuItem,
@@ -18,6 +17,9 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
+import CheckIcon from '@mui/icons-material/Check';
+import CloseIcon from '@mui/icons-material/Close';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
@@ -27,9 +29,9 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
+import WarningIcon from '@mui/icons-material/Warning';
 
 import { createAdminCategory, deleteAdminCategory, getAdminCategories, updateAdminCategory } from '../../api/categoryAdminApi';
-import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 import { ADMIN_THEME as palette } from '../../theme/adminTheme';
 
 const ROOT_PARENT_ID = null;
@@ -80,12 +82,101 @@ const fieldDarkSx = {
     },
 };
 
-function validateCategoryFields(nameRaw, descriptionRaw) {
+/** Modal tạo/sửa danh mục — khớp mock Stitch (bo góc lớn, subtitle EN, info box, CTA pill). */
+const categoryModalPaperSx = {
+    width: '100%',
+    maxWidth: { xs: 'min(100%, calc(100vw - 24px))', sm: 640, md: 720 },
+    bgcolor: '#1a1822',
+    borderRadius: '28px',
+    border: '1px solid rgba(255,255,255,0.07)',
+    boxShadow: '0 24px 56px rgba(0,0,0,0.5), 0 0 100px rgba(139, 92, 246, 0.07)',
+    overflow: 'hidden',
+};
+
+/** Modal xác nhận xóa danh mục — khớp mock Stitch (icon cảnh báo, căn giữa, CTA đỏ gradient). */
+const deleteCategoryModalPaperSx = {
+    width: '100%',
+    maxWidth: { xs: 'min(100%, calc(100vw - 24px))', sm: 440 },
+    bgcolor: '#1a1d26',
+    borderRadius: '22px',
+    border: '1px solid rgba(99, 102, 241, 0.14)',
+    boxShadow: '0 24px 48px rgba(0,0,0,0.55), 0 0 60px rgba(239, 68, 68, 0.06)',
+    overflow: 'visible',
+};
+
+const categoryModalLabelSx = {
+    display: 'block',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    letterSpacing: '0.04em',
+    color: 'rgba(148, 163, 184, 0.95)',
+    mb: 0.875,
+};
+
+const categoryModalFieldSx = [
+    fieldDarkSx,
+    {
+        '& .MuiOutlinedInput-root': {
+            bgcolor: 'rgba(0,0,0,0.4)',
+            borderRadius: 2,
+            '& fieldset': { borderColor: 'rgba(255,255,255,0.06)' },
+            '&:hover fieldset': { borderColor: 'rgba(167,139,250,0.35)' },
+            '&.Mui-focused fieldset': { borderColor: palette.purpleStrong, borderWidth: 1 },
+        },
+    },
+];
+
+const categoryModalCounterSx = {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.32)',
+    fontVariantNumeric: 'tabular-nums',
+    whiteSpace: 'nowrap',
+};
+
+function getCategoryDialogCopy(mode) {
+    if (mode === 'edit') {
+        return {
+            title: 'Sửa danh mục',
+            subtitleEn: 'Update the name, description, or parent for this category.',
+            infoVi:
+                'Thay đổi danh mục cha sẽ di chuyển cả nhánh con (nếu có). Hãy kiểm tra kỹ trước khi lưu.',
+        };
+    }
+    if (mode === 'createChild') {
+        return {
+            title: 'Thêm danh mục con',
+            subtitleEn: 'Add a new subcategory under the parent you selected in the tree.',
+            infoVi:
+                'Danh mục mới sẽ nằm dưới danh mục cha bạn đã chọn. Sau này có thể chỉnh lại vị trí bằng mục Sửa.',
+        };
+    }
+    return {
+        title: 'Thêm danh mục gốc',
+        subtitleEn: 'Create a new top-level classification for your digital assets.',
+        infoVi:
+            'Danh mục gốc sẽ xuất hiện tại bảng điều khiển chính và có thể chứa nhiều danh mục con khác nhau. Hãy đảm bảo tên gọi ngắn gọn và súc tích.',
+    };
+}
+
+function validateCategoryFields(nameRaw, descriptionRaw, opts = {}) {
+    const { flatCategories = [], excludeCategoryId = null } = opts;
     const name = (nameRaw || '').trim();
     const desc = (descriptionRaw || '').trim();
     const errors = { name: '', description: '' };
+    const excludeN = normalizeId(excludeCategoryId);
+
     if (!name) errors.name = 'Tên danh mục bắt buộc.';
     else if (name.length > CATEGORY_NAME_MAX) errors.name = `Tên tối đa ${CATEGORY_NAME_MAX} ký tự.`;
+    else {
+        const key = name.toLowerCase();
+        const dup = flatCategories.some((c) => {
+            const id = normalizeId(c.id ?? c.categoryId);
+            if (id == null) return false;
+            if (excludeN != null && id === excludeN) return false;
+            return (c.name || '').trim().toLowerCase() === key;
+        });
+        if (dup) errors.name = 'Tên danh mục đã tồn tại.';
+    }
     if (!desc) errors.description = 'Mô tả bắt buộc.';
     else if (desc.length > CATEGORY_DESC_MAX) errors.description = `Mô tả tối đa ${CATEGORY_DESC_MAX} ký tự.`;
     const valid = !errors.name && !errors.description;
@@ -97,6 +188,18 @@ function normalizeId(v) {
     if (v === null) return null;
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
+}
+
+/** Đọc parent từ dòng phẳng API (camel hoặc snake). */
+function getFlatCategoryParentId(c) {
+    if (!c || typeof c !== 'object') return null;
+    if (Object.prototype.hasOwnProperty.call(c, 'parentId')) return normalizeId(c.parentId);
+    if (Object.prototype.hasOwnProperty.call(c, 'parent_id')) return normalizeId(c.parent_id);
+    return null;
+}
+
+function isRootFlatCategory(c) {
+    return getFlatCategoryParentId(c) == null;
 }
 
 function buildCategoryTree(flatList) {
@@ -434,6 +537,38 @@ function CategoryTreeNode({
     );
 }
 
+/** Scrollbar menu Select — tránh thanh trắng mặc định (Windows/Chrome). */
+const selectMenuScrollbarSx = {
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'rgba(255,255,255,0.22) rgba(0,0,0,0.2)',
+    '&::-webkit-scrollbar': {
+        width: 6,
+    },
+    '&::-webkit-scrollbar-track': {
+        background: 'rgba(0,0,0,0.35)',
+        borderRadius: 6,
+        margin: '4px 0',
+    },
+    '&::-webkit-scrollbar-thumb': {
+        background: 'rgba(255,255,255,0.18)',
+        borderRadius: 6,
+        border: '2px solid transparent',
+        backgroundClip: 'padding-box',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+        background: 'rgba(255,255,255,0.28)',
+        backgroundClip: 'padding-box',
+    },
+    '&::-webkit-scrollbar-button': {
+        display: 'none',
+        width: 0,
+        height: 0,
+    },
+    '&::-webkit-scrollbar-corner': {
+        background: 'transparent',
+    },
+};
+
 const parentSelectMenuProps = {
     PaperProps: {
         sx: {
@@ -442,6 +577,16 @@ const parentSelectMenuProps = {
             borderRadius: 2,
             mt: 0.5,
             maxHeight: 280,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            '& .MuiList-root': {
+                maxHeight: 268,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                py: 0.5,
+                ...selectMenuScrollbarSx,
+            },
             '& .MuiMenuItem-root': {
                 color: palette.text,
                 fontSize: 14,
@@ -458,6 +603,14 @@ const parentSelectMenuProps = {
             '& .MuiMenuItem-root.Mui-disabled': {
                 opacity: 0.4,
             },
+        },
+    },
+    MenuListProps: {
+        sx: {
+            maxHeight: 268,
+            overflowY: 'auto',
+            py: 0.5,
+            ...selectMenuScrollbarSx,
         },
     },
 };
@@ -615,13 +768,17 @@ export default function CategoryManagementPage() {
         setDeleteConfirmOpen(true);
     };
 
+    const closeDeleteDialog = () => {
+        setDeleteConfirmOpen(false);
+        setDeleteTargetId(null);
+        setDeleteTargetName('');
+    };
+
     const confirmDelete = async () => {
         if (deleteTargetId == null) return;
         try {
             await deleteAdminCategory(deleteTargetId);
-            setDeleteConfirmOpen(false);
-            setDeleteTargetId(null);
-            setDeleteTargetName('');
+            closeDeleteDialog();
             await reload();
         } catch (e) {
             setError(formatApiError(e, 'Xóa thất bại.'));
@@ -629,7 +786,11 @@ export default function CategoryManagementPage() {
     };
 
     const handleSubmitDialog = async () => {
-        const { valid, errors } = validateCategoryFields(formName, formDescription);
+        const excludeCategoryId = dialogMode === 'edit' ? editingId : null;
+        const { valid, errors } = validateCategoryFields(formName, formDescription, {
+            flatCategories,
+            excludeCategoryId,
+        });
         setFormErrors(errors);
         if (!valid) {
             setError('');
@@ -656,14 +817,22 @@ export default function CategoryManagementPage() {
         }
     };
 
-    const flattenedOptions = useMemo(
-        () =>
-            flatCategories
-                .filter((c) => c.id != null && Number.isFinite(Number(c.id)))
-                .map((c) => ({ id: c.id, name: c.name })),
-        [flatCategories],
-    );
+    /** Dropdown cha: chỉ danh mục gốc; nếu đang gắn cha là con (dữ liệu cũ) thì thêm 1 dòng để giá trị Select không mất. */
+    const parentSelectOptions = useMemo(() => {
+        const roots = flatCategories
+            .filter((c) => normalizeId(c.id ?? c.categoryId) != null)
+            .filter(isRootFlatCategory)
+            .map((c) => ({ id: normalizeId(c.id ?? c.categoryId), name: c.name }));
+
+        const cur = normalizeId(formParentId);
+        if (cur == null) return roots;
+        if (roots.some((o) => o.id === cur)) return roots;
+        const row = flatCategories.find((c) => normalizeId(c.id ?? c.categoryId) === cur);
+        if (!row) return roots;
+        return [...roots, { id: cur, name: row.name }];
+    }, [flatCategories, formParentId]);
     const descendantsOfEditing = useMemo(() => collectDescendants(categoryTree, editingId), [categoryTree, editingId]);
+    const categoryDialogCopy = getCategoryDialogCopy(dialogMode);
 
     const alertSx = {
         mb: 2,
@@ -891,160 +1060,405 @@ export default function CategoryManagementPage() {
             <Dialog
                 open={dialogOpen}
                 onClose={closeDialog}
-                maxWidth="sm"
-                fullWidth
+                maxWidth={false}
                 scroll="paper"
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
+                aria-labelledby="category-dialog-title"
+                PaperProps={{
+                    sx: categoryModalPaperSx,
+                }}
             >
-                <DialogTitle sx={{ fontWeight: 800 }}>
-                    {dialogMode === 'edit' ? 'Sửa danh mục' : dialogMode === 'createChild' ? 'Thêm danh mục con' : 'Thêm danh mục gốc'}
-                </DialogTitle>
-                <DialogContent>
-                    <Stack spacing={2} sx={{ mt: 1 }}>
-                        {dialogMode === 'createChild' ? (
-                            <Alert severity="info" sx={alertSx}>
-                                Danh mục mới sẽ là cấp con của danh mục bạn vừa chọn trên cây.
-                            </Alert>
-                        ) : null}
-
-                        <TextField
-                            label="Tên danh mục"
-                            value={formName}
-                            required
-                            error={!!formErrors.name}
-                            helperText={formErrors.name || `${formName.length}/${CATEGORY_NAME_MAX}`}
-                            onChange={(e) => {
-                                const v = e.target.value.slice(0, CATEGORY_NAME_MAX);
-                                setFormName(v);
-                                setFormErrors((prev) => ({ ...prev, name: '' }));
-                                setError('');
-                            }}
-                            fullWidth
-                            inputProps={{ maxLength: CATEGORY_NAME_MAX }}
-                            sx={fieldDarkSx}
-                        />
-                        <TextField
-                            label="Mô tả"
-                            value={formDescription}
-                            required
-                            error={!!formErrors.description}
-                            helperText={formErrors.description || `${formDescription.length}/${CATEGORY_DESC_MAX}`}
-                            onChange={(e) => {
-                                const v = e.target.value.slice(0, CATEGORY_DESC_MAX);
-                                setFormDescription(v);
-                                setFormErrors((prev) => ({ ...prev, description: '' }));
-                                setError('');
-                            }}
-                            fullWidth
-                            multiline
-                            minRows={3}
-                            sx={[fieldDarkSx, { '& textarea': { outline: 'none !important', boxShadow: 'none !important' } }]}
-                            inputProps={{
-                                maxLength: CATEGORY_DESC_MAX,
-                                style: { outline: 'none', boxShadow: 'none' },
-                            }}
-                        />
-
-                        {dialogMode === 'edit' ? (
-                            <>
-                                <Typography variant="body2" sx={{ fontWeight: 700, color: palette.textMuted }}>
-                                    Danh mục cha
-                                </Typography>
-                                <Select
-                                    value={formParentId ?? ''}
-                                    onChange={(e) => setFormParentId(e.target.value === '' ? null : Number(e.target.value))}
-                                    fullWidth
-                                    displayEmpty
-                                    MenuProps={parentSelectMenuProps}
+                <DialogContent sx={{ p: 0, overflow: 'visible' }}>
+                    <Box sx={{ px: { xs: 3, sm: 5 }, pt: 4, pb: 1 }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                            <Box sx={{ pr: 1, minWidth: 0 }}>
+                                <Typography
+                                    component="h2"
+                                    id="category-dialog-title"
+                                    variant="h5"
                                     sx={{
-                                        color: '#fff',
-                                        bgcolor: 'rgba(0,0,0,0.25)',
-                                        outline: 'none',
-                                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.12)' },
-                                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(167,139,250,0.4)' },
-                                        '&.Mui-focused': { outline: 'none', boxShadow: 'none' },
-                                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                            borderColor: 'rgba(167,139,250,0.55)',
-                                            borderWidth: 1,
-                                        },
-                                        '& .MuiSvgIcon-root': { color: palette.textMuted },
+                                        fontWeight: 800,
+                                        fontSize: { xs: '1.2rem', sm: '1.35rem' },
+                                        letterSpacing: '-0.02em',
+                                        color: palette.text,
+                                        lineHeight: 1.25,
                                     }}
                                 >
-                                    <MenuItem value="">(Danh mục gốc)</MenuItem>
-                                    {flattenedOptions.map((opt, optIdx) => {
-                                        const disabled = opt.id === editingId || descendantsOfEditing.has(opt.id);
-                                        return (
-                                            <MenuItem key={opt.id != null ? `p-${opt.id}` : `p-i-${optIdx}`} value={opt.id} disabled={disabled}>
-                                                {opt.name}
-                                            </MenuItem>
-                                        );
-                                    })}
-                                </Select>
-                            </>
-                        ) : null}
-                    </Stack>
+                                    {categoryDialogCopy.title}
+                                </Typography>
+                                <Typography sx={{ mt: 1.25, color: palette.textDim, fontSize: 14, lineHeight: 1.55, maxWidth: 'min(100%, 560px)' }}>
+                                    {categoryDialogCopy.subtitleEn}
+                                </Typography>
+                            </Box>
+                            <IconButton
+                                aria-label="Đóng"
+                                onClick={closeDialog}
+                                disabled={loading}
+                                size="small"
+                                sx={{
+                                    color: palette.textMuted,
+                                    flexShrink: 0,
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', color: palette.text },
+                                }}
+                            >
+                                <CloseIcon fontSize="small" />
+                            </IconButton>
+                        </Stack>
+
+                        <Stack spacing={2.75} sx={{ mt: 3.5 }}>
+                            <Box>
+                                <Typography component="label" htmlFor="admin-cat-name" sx={categoryModalLabelSx}>
+                                    Tên danh mục
+                                </Typography>
+                                <TextField
+                                    id="admin-cat-name"
+                                    name="categoryName"
+                                    hiddenLabel
+                                    required
+                                    placeholder="Nhập tên danh mục"
+                                    value={formName}
+                                    error={!!formErrors.name}
+                                    helperText={formErrors.name || undefined}
+                                    onChange={(e) => {
+                                        const v = e.target.value.slice(0, CATEGORY_NAME_MAX);
+                                        setFormName(v);
+                                        setFormErrors((prev) => ({ ...prev, name: '' }));
+                                        setError('');
+                                    }}
+                                    fullWidth
+                                    inputProps={{ maxLength: CATEGORY_NAME_MAX }}
+                                    InputProps={{
+                                        endAdornment: !formErrors.name ? (
+                                            <InputAdornment position="end" sx={{ ml: 0.5, alignSelf: 'center' }}>
+                                                <Typography component="span" sx={categoryModalCounterSx}>
+                                                    {formName.length} / {CATEGORY_NAME_MAX}
+                                                </Typography>
+                                            </InputAdornment>
+                                        ) : undefined,
+                                    }}
+                                    sx={categoryModalFieldSx}
+                                />
+                            </Box>
+
+                            <Box>
+                                <Typography component="label" htmlFor="admin-cat-desc" sx={categoryModalLabelSx}>
+                                    Mô tả
+                                </Typography>
+                                <Box sx={{ position: 'relative' }}>
+                                    <TextField
+                                        id="admin-cat-desc"
+                                        name="categoryDescription"
+                                        hiddenLabel
+                                        required
+                                        placeholder="Mô tả ngắn gọn cho danh mục"
+                                        value={formDescription}
+                                        error={!!formErrors.description}
+                                        helperText={formErrors.description || undefined}
+                                        onChange={(e) => {
+                                            const v = e.target.value.slice(0, CATEGORY_DESC_MAX);
+                                            setFormDescription(v);
+                                            setFormErrors((prev) => ({ ...prev, description: '' }));
+                                            setError('');
+                                        }}
+                                        fullWidth
+                                        multiline
+                                        minRows={4}
+                                        inputProps={{
+                                            maxLength: CATEGORY_DESC_MAX,
+                                            style: { outline: 'none', boxShadow: 'none' },
+                                        }}
+                                        sx={[
+                                            ...categoryModalFieldSx,
+                                            {
+                                                '& .MuiInputBase-root': { alignItems: 'flex-start', pb: 2.5 },
+                                                '& textarea': { outline: 'none !important', boxShadow: 'none !important' },
+                                            },
+                                        ]}
+                                    />
+                                    {!formErrors.description ? (
+                                        <Typography
+                                            component="span"
+                                            sx={{
+                                                ...categoryModalCounterSx,
+                                                position: 'absolute',
+                                                right: 14,
+                                                bottom: 12,
+                                                pointerEvents: 'none',
+                                            }}
+                                        >
+                                            {formDescription.length} / {CATEGORY_DESC_MAX}
+                                        </Typography>
+                                    ) : null}
+                                </Box>
+                            </Box>
+
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    gap: 1.5,
+                                    p: 2,
+                                    borderRadius: 2.5,
+                                    bgcolor: 'rgba(30, 58, 95, 0.32)',
+                                    border: '1px solid rgba(99, 102, 241, 0.22)',
+                                }}
+                            >
+                                <InfoOutlinedIcon
+                                    sx={{ color: 'rgba(129, 140, 248, 0.95)', fontSize: 22, flexShrink: 0, mt: 0.15 }}
+                                />
+                                <Typography variant="body2" sx={{ color: palette.textMuted, fontSize: 13.5, lineHeight: 1.65 }}>
+                                    {categoryDialogCopy.infoVi}
+                                </Typography>
+                            </Box>
+
+                            {dialogMode === 'edit' ? (
+                                <Box>
+                                    <Typography component="label" htmlFor="admin-cat-parent" sx={categoryModalLabelSx}>
+                                        Danh mục cha
+                                    </Typography>
+                                    <Select
+                                        id="admin-cat-parent"
+                                        value={formParentId ?? ''}
+                                        onChange={(e) => setFormParentId(e.target.value === '' ? null : Number(e.target.value))}
+                                        fullWidth
+                                        displayEmpty
+                                        MenuProps={parentSelectMenuProps}
+                                        sx={{
+                                            color: '#fff',
+                                            bgcolor: 'rgba(0,0,0,0.4)',
+                                            borderRadius: 2,
+                                            outline: 'none',
+                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.06)' },
+                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(167,139,250,0.35)' },
+                                            '&.Mui-focused': { outline: 'none', boxShadow: 'none' },
+                                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                                                borderColor: palette.purpleStrong,
+                                                borderWidth: 1,
+                                            },
+                                            '& .MuiSvgIcon-root': { color: palette.textMuted },
+                                        }}
+                                    >
+                                        <MenuItem value="">(Danh mục gốc)</MenuItem>
+                                        {parentSelectOptions.map((opt, optIdx) => {
+                                            const disabled = opt.id === editingId || descendantsOfEditing.has(opt.id);
+                                            return (
+                                                <MenuItem key={opt.id != null ? `p-${opt.id}` : `p-i-${optIdx}`} value={opt.id} disabled={disabled}>
+                                                    {opt.name}
+                                                </MenuItem>
+                                            );
+                                        })}
+                                    </Select>
+                                </Box>
+                            ) : null}
+                        </Stack>
+                    </Box>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={closeDialog} disabled={loading} sx={{ color: palette.textMuted }}>
+                <DialogActions
+                    sx={{
+                        px: { xs: 3, sm: 5 },
+                        pb: { xs: 3, sm: 4 },
+                        pt: 2,
+                        gap: 1.5,
+                        justifyContent: 'flex-end',
+                        flexWrap: 'wrap',
+                    }}
+                >
+                    <Button
+                        onClick={closeDialog}
+                        disabled={loading}
+                        variant="text"
+                        sx={{
+                            color: 'rgba(255,255,255,0.88)',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: 15,
+                            px: 1.5,
+                            minWidth: 0,
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+                        }}
+                    >
                         Hủy
                     </Button>
                     <Button
                         variant="contained"
+                        disableElevation
                         onClick={handleSubmitDialog}
                         disabled={loading}
+                        startIcon={
+                            loading ? (
+                                <CircularProgress size={18} sx={{ color: 'rgba(15,14,19,0.6)' }} />
+                            ) : (
+                                <Box
+                                    sx={{
+                                        width: 22,
+                                        height: 22,
+                                        borderRadius: '50%',
+                                        bgcolor: 'rgba(15,14,19,0.12)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <CheckIcon sx={{ fontSize: 15, color: '#0F0E13' }} />
+                                </Box>
+                            )
+                        }
                         sx={{
-                            bgcolor: palette.purpleStrong,
-                            fontWeight: 700,
                             textTransform: 'none',
-                            boxShadow: palette.purpleGlow,
-                            '&:hover': { bgcolor: '#7c3aed' },
+                            fontWeight: 700,
+                            fontSize: 15,
+                            borderRadius: 999,
+                            px: 2.75,
+                            py: 1.25,
+                            color: '#0F0E13',
+                            background: 'linear-gradient(180deg, #ddd6fe 0%, #a78bfa 55%, #9f7aea 100%)',
+                            boxShadow: '0 4px 20px rgba(139, 92, 246, 0.35)',
+                            '&:hover': {
+                                background: 'linear-gradient(180deg, #e9e4ff 0%, #b59ffb 55%, #a78bfa 100%)',
+                                boxShadow: '0 6px 24px rgba(139, 92, 246, 0.42)',
+                            },
+                            '&.Mui-disabled': {
+                                color: 'rgba(15,14,19,0.35)',
+                                background: 'rgba(167,139,250,0.35)',
+                            },
                         }}
                     >
-                        Lưu
+                        {dialogMode === 'edit' ? 'Cập nhật danh mục' : 'Lưu danh mục'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
             <Dialog
                 open={deleteConfirmOpen}
-                onClose={() => {
-                    setDeleteConfirmOpen(false);
-                    setDeleteTargetId(null);
-                    setDeleteTargetName('');
-                }}
-                maxWidth="xs"
-                fullWidth
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
+                onClose={closeDeleteDialog}
+                maxWidth={false}
+                aria-labelledby="delete-category-dialog-title"
+                PaperProps={{ sx: deleteCategoryModalPaperSx }}
             >
-                <DialogTitle sx={{ fontWeight: 800 }}>Xác nhận xóa</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" sx={{ color: palette.textMuted }}>
-                        {deleteTargetName ? (
-                            <>
-                                Xóa danh mục{' '}
-                                <Typography component="span" sx={{ color: palette.text, fontWeight: 700 }}>
-                                    “{deleteTargetName}”
-                                </Typography>
-                                ? Danh mục con (nếu có) sẽ thành mục gốc (không còn cha).
-                            </>
-                        ) : (
-                            'Xóa danh mục này? Danh mục con (nếu có) sẽ thành mục gốc (không còn cha).'
-                        )}
-                    </Typography>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button
-                        onClick={() => {
-                            setDeleteConfirmOpen(false);
-                            setDeleteTargetId(null);
-                            setDeleteTargetName('');
-                        }}
+                <DialogContent sx={{ p: 0, overflow: 'visible', position: 'relative' }}>
+                    <IconButton
+                        aria-label="Đóng"
+                        onClick={closeDeleteDialog}
                         disabled={loading}
-                        sx={{ color: palette.textMuted }}
+                        size="small"
+                        sx={{
+                            position: 'absolute',
+                            top: 14,
+                            right: 14,
+                            zIndex: 1,
+                            color: palette.textMuted,
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', color: palette.text },
+                        }}
+                    >
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+
+                    <Box sx={{ px: { xs: 3, sm: 5 }, pt: { xs: 4, sm: 5 }, pb: 2, textAlign: 'center' }}>
+                        <Box
+                            sx={{
+                                width: 76,
+                                height: 76,
+                                mx: 'auto',
+                                mb: 2.5,
+                                borderRadius: '50%',
+                                bgcolor: 'rgba(0,0,0,0.45)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: 'inset 0 0 0 1px rgba(248,113,113,0.2), 0 0 36px rgba(239,68,68,0.18)',
+                            }}
+                        >
+                            <WarningIcon sx={{ fontSize: 44, color: '#f87171', filter: 'drop-shadow(0 0 10px rgba(248,113,113,0.45))' }} />
+                        </Box>
+
+                        <Typography
+                            id="delete-category-dialog-title"
+                            component="h2"
+                            variant="h6"
+                            sx={{ fontWeight: 800, color: palette.text, fontSize: { xs: '1.1rem', sm: '1.2rem' }, letterSpacing: '-0.02em', mb: 2 }}
+                        >
+                            Xác nhận xóa
+                        </Typography>
+
+                        <Typography
+                            variant="body2"
+                            sx={{
+                                color: palette.textMuted,
+                                lineHeight: 1.75,
+                                maxWidth: 360,
+                                mx: 'auto',
+                                fontSize: 14,
+                            }}
+                        >
+                            {deleteTargetName ? (
+                                <>
+                                    Xóa danh mục{' '}
+                                    <Typography component="span" sx={{ color: palette.text, fontWeight: 700 }}>
+                                        “{deleteTargetName}”
+                                    </Typography>
+                                    ? Danh mục con (nếu có) sẽ thành mục gốc (không còn cha).
+                                </>
+                            ) : (
+                                'Xóa danh mục này? Danh mục con (nếu có) sẽ thành mục gốc (không còn cha).'
+                            )}
+                        </Typography>
+                    </Box>
+                </DialogContent>
+                <DialogActions
+                    sx={{
+                        px: { xs: 3, sm: 4 },
+                        pb: { xs: 3, sm: 3.5 },
+                        pt: 1,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%',
+                        flexWrap: 'wrap',
+                        gap: 1.5,
+                    }}
+                >
+                    <Button
+                        variant="text"
+                        onClick={closeDeleteDialog}
+                        disabled={loading}
+                        sx={{
+                            color: 'rgba(255,255,255,0.9)',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            fontSize: 15,
+                            px: 1.5,
+                            minWidth: 0,
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+                        }}
                     >
                         Hủy
                     </Button>
-                    <Button variant="contained" color="error" onClick={confirmDelete} disabled={loading} sx={{ textTransform: 'none', fontWeight: 700 }}>
+                    <Button
+                        variant="contained"
+                        disableElevation
+                        onClick={confirmDelete}
+                        disabled={loading}
+                        startIcon={
+                            loading ? <CircularProgress size={18} sx={{ color: 'rgba(255,255,255,0.85)' }} /> : null
+                        }
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontSize: 15,
+                            borderRadius: 999,
+                            px: 3,
+                            py: 1.2,
+                            color: '#fff',
+                            background: 'linear-gradient(90deg, #fca5a5 0%, #ef4444 42%, #dc2626 100%)',
+                            boxShadow: '0 4px 22px rgba(239, 68, 68, 0.45)',
+                            '&:hover': {
+                                background: 'linear-gradient(90deg, #fecaca 0%, #f87171 40%, #ef4444 100%)',
+                                boxShadow: '0 6px 28px rgba(239, 68, 68, 0.5)',
+                            },
+                            '&.Mui-disabled': {
+                                color: 'rgba(255,255,255,0.5)',
+                                background: 'rgba(239,68,68,0.35)',
+                            },
+                        }}
+                    >
                         Xóa
                     </Button>
                 </DialogActions>
