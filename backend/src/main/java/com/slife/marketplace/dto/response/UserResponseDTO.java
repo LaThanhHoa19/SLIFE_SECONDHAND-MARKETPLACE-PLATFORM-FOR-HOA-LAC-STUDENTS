@@ -1,6 +1,7 @@
 package com.slife.marketplace.dto.response;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public record UserResponseDTO(
         Long id,
@@ -8,5 +9,6 @@ public record UserResponseDTO(
         String email,
         String status,
         String role,
-        BigDecimal reputationScore) {
+        BigDecimal reputationScore,
+        LocalDateTime createdAt) {
 }

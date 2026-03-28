@@ -189,7 +189,7 @@ export default function UserManagementPage() {
       id: 'createdAt',
       label: 'Ngày tạo',
       width: 180,
-      render: (row) => formatDate(row.createdAt),
+      render: (row) => formatDate(row.createdAt ?? row.created_at),
     },
   ];
 

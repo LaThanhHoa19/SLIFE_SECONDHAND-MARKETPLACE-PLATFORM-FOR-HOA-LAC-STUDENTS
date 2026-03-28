@@ -71,6 +71,7 @@ public class AdminService {
                 user.getEmail(),
                 user.getStatus(),
                 user.getRole(),
-                user.getReputationScore());
+                user.getReputationScore(),
+                user.getCreatedAt());
     }
 }
