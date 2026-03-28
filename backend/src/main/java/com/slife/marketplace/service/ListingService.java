@@ -425,6 +425,7 @@ public class ListingService {
             Map<String, Object> cat = new HashMap<>();
             cat.put("id", listing.getCategory().getId());
             cat.put("name", listing.getCategory().getName());
+            cat.put("parentId", listing.getCategory().getParent() != null ? listing.getCategory().getParent().getId() : null);
             response.setCategory(cat);
         }
 

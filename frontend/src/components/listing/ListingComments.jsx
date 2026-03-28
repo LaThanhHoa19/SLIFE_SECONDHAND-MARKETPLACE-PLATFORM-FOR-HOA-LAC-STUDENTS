@@ -134,7 +134,7 @@ export default function ListingComments({ listingId, onNotify }) {
               bgcolor: PURPLE, border: isMyComment ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`
             }}
           >
-            {author.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
+            {author?.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {isEditing ? (
@@ -200,7 +200,7 @@ export default function ListingComments({ listingId, onNotify }) {
                     color={PURPLE} 
                     sx={{ mb: 0.1, textDecoration: 'none', cursor: 'pointer', '&:hover': { color: '#fff' } }}
                   >
-                    {author.fullName || 'Người dùng'}
+                    {author?.fullName || 'Người dùng'}
                   </Typography>
                   <Typography fontSize={14} color={TEXT_PRI} sx={{ lineHeight: 1.5, wordBreak: 'break-word', fontWeight: 400 }}>
                     {comment.content}
@@ -236,7 +236,7 @@ export default function ListingComments({ listingId, onNotify }) {
               <Typography 
                 sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}
                 onClick={() => {
-                  setReplyingTo({ id: comment.id, name: author.fullName || 'Người dùng' });
+                  setReplyingTo({ id: comment.id, name: author?.fullName || 'Người dùng' });
                   document.getElementById('comment-input')?.focus();
                 }}
               >

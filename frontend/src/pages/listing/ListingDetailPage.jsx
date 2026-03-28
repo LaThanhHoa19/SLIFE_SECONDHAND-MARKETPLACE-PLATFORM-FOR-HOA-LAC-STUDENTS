@@ -563,7 +563,7 @@ export default function ListingDetailPage() {
                 </Box>
 
                 {/* Cot phai (Sidebar): Map -> Other Listings -> Ad Banner */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                     {/* Map Preview */}
                     {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null ? (() => {
                         const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${pickupAddress.lat},${pickupAddress.lng}`)}`;

@@ -30,13 +30,31 @@ export default function MiniListingCard({ listing, compact = false }) {
     null;
 
   let thumbSrc = null;
+  const processUrl = (u) => {
+    if (!u || typeof u !== 'string') return null;
+    if (u.startsWith('http')) return u;
+    return fullImageUrl(u);
+  };
+
   if (Array.isArray(rawImages) && rawImages.length > 0) {
     const first = rawImages[0];
-    const urlStr = typeof first === 'string' ? first : (first?.url ?? first?.imageUrl ?? first?.path);
-    thumbSrc = urlStr ? fullImageUrl(urlStr) : null;
+    const urlStr = typeof first === 'string' ? first : (first?.url ?? first?.imageUrl ?? first?.path ?? first?.image_url);
+    thumbSrc = processUrl(urlStr);
   } else if (typeof rawImages === 'string' && rawImages.trim().length > 0) {
-    const firstImg = rawImages.split(',')[0];
-    thumbSrc = firstImg ? fullImageUrl(firstImg) : null;
+    try {
+      // Check if it's a JSON stringified array
+      if (rawImages.startsWith('[') && rawImages.endsWith(']')) {
+        const parsed = JSON.parse(rawImages);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          thumbSrc = processUrl(parsed[0]);
+        }
+      } else {
+        const firstImg = rawImages.split(',')[0].trim();
+        thumbSrc = processUrl(firstImg);
+      }
+    } catch {
+      thumbSrc = processUrl(rawImages.trim());
+    }
   }
 
   return (
@@ -91,18 +109,34 @@ export default function MiniListingCard({ listing, compact = false }) {
       </Box>
 
       <Box sx={{ p: 1.2 }}>
-        <Typography
-          fontSize={13}
-          fontWeight={500}
-          color={TEXT_PRI}
-          sx={{
-            display: '-webkit-box', WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical', overflow: 'hidden',
-            lineHeight: 1.35, mb: 0.5,
-          }}
-        >
-          {listing?.title || 'Không có tiêu đề'}
-        </Typography>
+        <Box sx={{ overflow: 'hidden', position: 'relative', mb: 0.5, height: '22px' }}>
+          <Typography
+            fontSize={13}
+            fontWeight={700}
+            color={TEXT_PRI}
+            sx={{
+              display: '-webkit-box',
+              WebkitLineClamp: 1,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              lineHeight: 1.6,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                display: 'block',
+                whiteSpace: 'nowrap',
+                width: 'fit-content',
+                animation: 'marquee 5s linear infinite',
+                paddingRight: '50px'
+              },
+              '@keyframes marquee': {
+                '0%': { transform: 'translateX(0)' },
+                '100%': { transform: 'translateX(-50%)' }
+              }
+            }}
+          >
+            {listing?.title || listing?.name || 'Không có tiêu đề'}
+          </Typography>
+        </Box>
         <Typography fontSize={13} fontWeight={700} color={RED}>
           {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
         </Typography>
