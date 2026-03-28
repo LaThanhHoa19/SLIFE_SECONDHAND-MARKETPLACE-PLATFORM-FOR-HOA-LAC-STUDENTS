@@ -13,7 +13,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,10 +46,5 @@ public class AdminController {
             @Valid @RequestBody AdminUpdateUserStatusRequest request) {
         String message = adminService.updateUserStatus(id, request.status());
         return ResponseEntity.ok(BaseResponse.success(message, message));
-    }
-
-    @PutMapping("/api/admin/configurations/{id}")
-    public ResponseEntity<?> m2(@PathVariable Long id, @RequestBody Object r) {
-        return ResponseEntity.ok().build();
     }
 }

@@ -11,6 +11,8 @@ public final class Constants {
     public static final String MSG18 = "Maximum number of images per post has been exceeded";
     /** System configuration update success */
     public static final String MSG19 = "System configuration updated successfully";
+    /** System configuration soft-deleted (deleted_at set) */
+    public static final String MSG_CONFIG_DELETED = "Configuration deleted successfully";
     /** Unauthorized access */
     public static final String MSG23 = "You do not have permission";
 
