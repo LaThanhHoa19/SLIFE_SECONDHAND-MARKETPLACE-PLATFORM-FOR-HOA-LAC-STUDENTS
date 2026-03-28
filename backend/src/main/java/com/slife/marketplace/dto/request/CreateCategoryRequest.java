@@ -18,7 +18,7 @@ public class CreateCategoryRequest {
     @Size(max = 200, message = "name must not exceed 200 characters")
     private String name;
 
-    // Nullable in DB, but keep some basic bounds for API sanity
+    @NotBlank(message = "description is required")
     @Size(max = 2000, message = "description must not exceed 2000 characters")
     private String description;
 
