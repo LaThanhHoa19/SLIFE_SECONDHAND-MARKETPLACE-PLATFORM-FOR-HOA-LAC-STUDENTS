@@ -1,8 +1,9 @@
-import { Box, Typography, Paper } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import { CONTENT_MAX_WIDTH } from '../../utils/layoutConstants';
+import { ADMIN_THEME as t } from '../../theme/adminTheme';
 
 export default function AdminLayout({ title, subtitle, rightSlot }) {
     return (
@@ -10,7 +11,7 @@ export default function AdminLayout({ title, subtitle, rightSlot }) {
             sx={{
                 display: 'flex',
                 minHeight: '100vh',
-                bgcolor: '#1C1B23',
+                bgcolor: t.bgApp,
                 overflow: 'hidden',
             }}
         >
@@ -19,68 +20,71 @@ export default function AdminLayout({ title, subtitle, rightSlot }) {
             <Box
                 sx={{
                     flex: 1,
-                    bgcolor: '#1C1B23',
-                    p: { xs: 0, md: 0 },
-                    overflow: 'auto',
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    bgcolor: t.bgApp,
+                    overflow: 'hidden',
                 }}
             >
                 <AdminHeader />
+
                 <Box
+                    component="main"
                     sx={{
-                        maxWidth: CONTENT_MAX_WIDTH,
-                        mx: 'auto',
-                        px: 3,
-                        py: 3,
+                        flex: 1,
+                        overflow: 'auto',
+                        px: { xs: 2, sm: 3 },
+                        py: { xs: 2, md: 3 },
                     }}
                 >
                     <Box
                         sx={{
-                            display: 'flex',
-                            flexDirection: { xs: 'column', md: 'row' },
-                            alignItems: { xs: 'flex-start', md: 'center' },
-                            justifyContent: 'space-between',
-                            gap: 2,
-                            mb: 3,
+                            maxWidth: CONTENT_MAX_WIDTH,
+                            mx: 'auto',
+                            width: '100%',
                         }}
                     >
-                        <Box>
-                            {title && (
-                                <Typography
-                                    variant="h4"
-                                    fontWeight={800}
-                                    sx={{
-                                        color: '#111827',
-                                        mb: 0.5,
-                                        letterSpacing: -0.3,
-                                        fontSize: { xs: 22, md: 26 },
-                                    }}
-                                >
-                                    {title}
-                                </Typography>
-                            )}
-                            {subtitle && (
-                                <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                                    {subtitle}
-                                </Typography>
-                            )}
-                        </Box>
-                        {rightSlot && <Box>{rightSlot}</Box>}
-                    </Box>
+                        {(title || subtitle || rightSlot) && (
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    flexDirection: { xs: 'column', md: 'row' },
+                                    alignItems: { xs: 'flex-start', md: 'center' },
+                                    justifyContent: 'space-between',
+                                    gap: 2,
+                                    mb: 3,
+                                }}
+                            >
+                                <Box>
+                                    {title && (
+                                        <Typography
+                                            variant="h4"
+                                            fontWeight={800}
+                                            sx={{
+                                                color: t.text,
+                                                mb: 0.5,
+                                                letterSpacing: -0.3,
+                                                fontSize: { xs: 22, md: 26 },
+                                            }}
+                                        >
+                                            {title}
+                                        </Typography>
+                                    )}
+                                    {subtitle && (
+                                        <Typography variant="body2" sx={{ color: t.textMuted }}>
+                                            {subtitle}
+                                        </Typography>
+                                    )}
+                                </Box>
+                                {rightSlot && <Box>{rightSlot}</Box>}
+                            </Box>
+                        )}
 
-                    <Paper
-                        sx={{
-                            background: '#1E1B24',
-                            borderRadius: 2,
-                            border: '1px solid rgba(255,255,255,0.08)',
-                            boxShadow: 'none',
-                            p: { xs: 2, md: 2.5 },
-                        }}
-                    >
                         <Outlet />
-                    </Paper>
+                    </Box>
                 </Box>
             </Box>
         </Box>
     );
 }
-

@@ -74,18 +74,15 @@ export default function AppRouter() {
             {/* Đăng nhập admin: full page, không AuthLayout / không MainLayout */}
             <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
 
-            {/* Chat toàn màn hình (Messenger-style), không Header/Sidebar/Footer */}
+            {/* ===== ADMIN ROUTES - khớp backend: /api/admin/** yêu cầu ROLE_ADMIN ===== */}
             <Route
-                path="/chat"
+                path="/admin"
                 element={
-                    <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                        <SuspenseChatPage />
+                    <RouteGuard guards={GUARD_PRESETS.ADMIN_ONLY}>
+                        <AdminLayout />
                     </RouteGuard>
                 }
-            />
-
-            {/* ===== ADMIN ROUTES - Dùng AdminLayout (header + sidebar) ===== */}
-            <Route path="/admin" element={<AdminLayout />}>
+            >
                 <Route index element={<SuspenseDashboardPage />} />
                 <Route path="reports/:reportId" element={<SuspenseReportDetailPage />} />
                 <Route path="reports" element={<SuspenseReportManagementPage />} />
@@ -180,6 +177,15 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseReportPage />
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/chat"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseChatPage />
                         </RouteGuard>
                     }
                 />
