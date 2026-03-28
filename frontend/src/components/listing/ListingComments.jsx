@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Avatar, Box, IconButton, InputAdornment, TextField, Typography, 
   CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText,
-  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button
+  Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button,
+  Tooltip
 } from '@mui/material';
 import {
   Send as SendIcon,
