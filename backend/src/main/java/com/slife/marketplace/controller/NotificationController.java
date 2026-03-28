@@ -24,8 +24,8 @@ public class NotificationController {
     @GetMapping("/api/notifications")
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications() {
         User user = userService.getCurrentUser();
-        List<NotificationResponse> list = notificationService.getNotifications(user.getId())
-                .stream().map(NotificationResponse::from).toList();
+        // Use service mapping to include deep-link fields (e.g., sessionId for chat notifications)
+        List<NotificationResponse> list = notificationService.getNotificationResponses(user.getId());
         return ResponseEntity.ok(ApiResponse.success("OK", list));
     }
 
