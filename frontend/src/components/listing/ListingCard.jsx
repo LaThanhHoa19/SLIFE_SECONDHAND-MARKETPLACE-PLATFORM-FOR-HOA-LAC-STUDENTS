@@ -693,7 +693,7 @@ export default function ListingCard({
                 open={commentOpen}
                 onClose={() => setCommentOpen(false)}
                 listingId={id}
-                listingTitle={listing?.title}
+                listing={listing}
             />
 
             <Menu
