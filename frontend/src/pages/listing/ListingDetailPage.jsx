@@ -37,6 +37,8 @@ import StarIcon from '@mui/icons-material/Star';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 
 import { getListing, getListingShareInfo, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
 import * as chatApi from '../../api/chatApi';
@@ -499,11 +501,11 @@ export default function ListingDetailPage() {
                     gridTemplateColumns: { xs: '1fr', md: '5.5fr 4.5fr' },
                     gap: { xs: 3, md: 4 },
                     mb: 4,
-                    alignItems: 'stretch' // Dam bao cac cell trong cung row co chieu cao bang nhau
+                    alignItems: 'stretch'
                 }}
             >
-                {/* Row 1: Gallery (Split Large Image & Thumbs) | Info Block */}
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Row 1: Gallery (Left) | Info Block (Right) */}
+                <Box>
                     <ListingImageGallery
                         images={images}
                         title={listing.title}
@@ -521,7 +523,7 @@ export default function ListingDetailPage() {
                     />
                 </Box>
 
-                <Box sx={{ height: '100%' }}>
+                <Box>
                     <ListingRightInfoBlock
                         listing={listing}
                         locationText={locationText}
@@ -540,69 +542,138 @@ export default function ListingDetailPage() {
                     />
                 </Box>
 
-                {/* Row 2: Description | Other Listings (Song song nhau) */}
-                <ListingDescription description={listing.description} />
-                <ListingSellerOtherListings
-                    sellerListings={sellerListings}
-                    loadingRelated={loadingRelated}
-                    seller={seller}
-                    listing={listing}
-                />
+                {/* Row 2: Description & Comments (Left) | Sidebar Stack (Right: Map -> Other Listings -> Ad) */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <ListingDescription description={listing.description} />
+                    
+                    <Card
+                        sx={{
+                            bgcolor: CARD_BG, border: `1px solid ${BORDER}`,
+                            borderRadius: '14px', p: 2.5,
+                            height: 'fit-content'
+                        }}
+                    >
+                        <ListingComments
+                            listingId={listing.id}
+                            currentUser={currentUser}
+                            isListingOwner={!!isOwnListing}
+                            onNotify={showSnack}
+                        />
+                    </Card>
+                </Box>
 
-                {/* Row 3: Comments | Trong (Binh luan rong bang Gallery) */}
-                <Card
-                    sx={{
-                        bgcolor: CARD_BG, border: `1px solid ${BORDER}`,
-                        borderRadius: '14px', p: 2.5,
-                    }}
-                >
-                    <ListingComments
-                        listingId={listing.id}
-                        currentUser={currentUser}
-                        isListingOwner={!!isOwnListing}
-                        onNotify={showSnack}
+                {/* Cot phai (Sidebar): Map -> Other Listings -> Ad Banner */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {/* Map Preview */}
+                    {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null ? (() => {
+                        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${pickupAddress.lat},${pickupAddress.lng}`)}`;
+                        return (
+                            <Card
+                                sx={{
+                                    bgcolor: CARD_BG,
+                                    border: `1px solid ${BORDER}`,
+                                    borderRadius: '16px',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
+                                    height: 'fit-content'
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        px: 2.5,
+                                        py: 2,
+                                        borderBottom: `1px solid ${BORDER}`,
+                                        background: `linear-gradient(135deg, rgba(157,110,237,0.08) 0%, rgba(32,29,38,0) 100%)`,
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                        <Box
+                                            sx={{
+                                                width: 36, height: 36, borderRadius: '10px',
+                                                background: 'linear-gradient(135deg, #9D6EED 0%, #6B3FBF 100%)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: '0 4px 12px rgba(157,110,237,0.35)',
+                                            }}
+                                        >
+                                            <MyLocationIcon sx={{ fontSize: 18, color: '#fff' }} />
+                                        </Box>
+                                        <Box>
+                                            <Typography sx={{ color: TEXT_PRI, fontSize: 15, fontWeight: 700, lineHeight: 1.2 }}>
+                                                Vị trí điểm hẹn
+                                            </Typography>
+                                            {locationText && (
+                                                <Typography sx={{ color: TEXT_SEC, fontSize: 12, mt: 0.3 }}>
+                                                    📍 {locationText}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                    <Tooltip title="Mở chỉ đường">
+                                        <IconButton
+                                            component="a"
+                                            href={gmapsUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            size="small"
+                                            sx={{
+                                                color: PURPLE,
+                                                border: `1px solid rgba(157,110,237,0.4)`,
+                                                bgcolor: 'rgba(157,110,237,0.08)',
+                                                '&:hover': { bgcolor: 'rgba(157,110,237,0.18)' },
+                                            }}
+                                        >
+                                            <OpenInNewIcon sx={{ fontSize: 18 }} />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+
+                                <Box sx={{ position: 'relative' }}>
+                                    <ListingPickupMapPreview
+                                        lat={pickupAddress.lat}
+                                        lng={pickupAddress.lng}
+                                        address={locationText}
+                                    />
+                                </Box>
+                            </Card>
+                        );
+                    })() : null}
+
+                    {/* Other Listings */}
+                    <ListingSellerOtherListings
+                        sellerListings={sellerListings}
+                        loadingRelated={loadingRelated}
+                        seller={seller}
+                        listing={listing}
                     />
-                </Card>
-                <Box
-                    sx={{
-                        borderRadius: '16px',
-                        overflow: 'hidden',
-                        width: '100%',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                        cursor: 'pointer',
-                        transition: 'transform 0.3s',
-                        '&:hover': { transform: 'scale(1.01)' },
-                        maxHeight: 400
-                    }}
-                >
+
+                    {/* Ad Banner */}
                     <Box
-                        component="img"
-                        src="/brand_advertisement_banner_v2.png"
-                        alt="Brand Advertisement"
-                        sx={{ width: '100%', height: 'auto', display: 'block' }}
-                    />
+                        sx={{
+                            borderRadius: '16px',
+                            overflow: 'hidden',
+                            width: '100%',
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.3s',
+                            '&:hover': { transform: 'scale(1.01)' },
+                        }}
+                    >
+                        <Box
+                            component="img"
+                            src="/brand_advertisement_banner_v2.png"
+                            alt="Brand Advertisement"
+                            sx={{ width: '100%', height: 'auto', display: 'block' }}
+                        />
+                    </Box>
                 </Box>
             </Box>
 
-            {/* Xem truoc vi tri hen (map Vietmap + nut mo Google Maps) */}
-            {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null && (
-                <Box sx={{ maxWidth: 1200, mx: 'auto', mb: 4 }}>
-                    <Typography
-                        variant="h6"
-                        sx={{ mb: 1.5, color: TEXT_PRI, fontSize: 18, fontWeight: 600 }}
-                    >
-                        Vị trí điểm hẹn (xem trước)
-                    </Typography>
-                    <ListingPickupMapPreview
-                        lat={pickupAddress.lat}
-                        lng={pickupAddress.lng}
-                        address={locationText}
-                    />
-                </Box>
-            )}
-
             {/* Tin đăng tương tự - luôn hiện, grid 4 cột */}
             <ListingSimilar
+
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
             />
