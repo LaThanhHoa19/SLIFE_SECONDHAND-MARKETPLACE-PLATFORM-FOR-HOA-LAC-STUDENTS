@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -83,13 +82,13 @@ public class ConfigService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "configuration list must not be empty");
         }
 
-        Map<String, String> normalizedInput = new HashMap<>();
+        Map<String, ConfigUpdateRequest> byNormalizedKey = new java.util.LinkedHashMap<>();
         Set<String> duplicateKeys = new HashSet<>();
         for (ConfigUpdateRequest request : requests) {
             String key = normalizeKey(request.key());
             String value = normalizeValue(request.value());
             validateValueFormat(key, value);
-            if (normalizedInput.putIfAbsent(key, value) != null) {
+            if (byNormalizedKey.putIfAbsent(key, request) != null) {
                 duplicateKeys.add(key);
             }
         }
@@ -97,21 +96,27 @@ public class ConfigService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "configKey must be unique");
         }
 
-        List<String> keys = normalizedInput.keySet().stream().toList();
+        List<String> keys = byNormalizedKey.keySet().stream().toList();
         Map<String, Configuration> existing = configRepository.findByConfigNameIn(keys)
                 .stream()
                 .collect(java.util.stream.Collectors.toMap(Configuration::getConfigName, c -> c));
 
         Instant now = Instant.now();
-        for (Map.Entry<String, String> entry : normalizedInput.entrySet()) {
-            Configuration configuration = existing.get(entry.getKey());
+        for (Map.Entry<String, ConfigUpdateRequest> entry : byNormalizedKey.entrySet()) {
+            String configKey = entry.getKey();
+            ConfigUpdateRequest req = entry.getValue();
+            Configuration configuration = existing.get(configKey);
             if (configuration == null) {
                 configuration = new Configuration();
-                configuration.setConfigName(entry.getKey());
-                configuration.setDescription(null);
+                configuration.setConfigName(configKey);
+                configuration.setDescription(trimDescriptionToNull(req.description()));
+            } else {
+                if (req.description() != null) {
+                    configuration.setDescription(trimDescriptionToNull(req.description()));
+                }
             }
 
-            configuration.setConfigValue(entry.getValue());
+            configuration.setConfigValue(normalizeValue(req.value()));
             configuration.setUpdatedBy(admin);
             configuration.setUpdatedAt(now);
             configRepository.save(configuration);
@@ -151,5 +156,14 @@ public class ConfigService {
         } catch (NumberFormatException ex) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, key + " must be a valid number");
         }
+    }
+
+    /** Chuỗi rỗng → null; giữ nguyên nội dung có ý nghĩa (LOB trên entity). */
+    private static String trimDescriptionToNull(String description) {
+        if (description == null) {
+            return null;
+        }
+        String t = description.trim();
+        return t.isEmpty() ? null : t;
     }
 }
