@@ -9,6 +9,7 @@ import {
     MenuItem,
     Paper,
     TextField,
+    Tooltip,
     Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
@@ -19,6 +20,8 @@ import StarIcon from '@mui/icons-material/Star';
 import ChatIcon from '@mui/icons-material/Chat';
 import ReportIcon from '@mui/icons-material/Report';
 import ShareIcon from '@mui/icons-material/Share';
+import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -29,7 +32,7 @@ import ForumIcon from '@mui/icons-material/Forum';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import { useNavigate } from 'react-router-dom';
 
-const PURPLE = '#6366f1';
+const PURPLE = '#9D6EED';
 const GRADIENT = 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)';
 
 export default function ProfileHeader({
@@ -112,43 +115,47 @@ export default function ProfileHeader({
                             style={{ display: 'none' }}
                             onChange={handleCoverChange}
                         />
-                        <Button
-                            startIcon={uploadingCover ? <CircularProgress size={18} color="inherit" /> : <PhotoCameraIcon />}
-                            onClick={() => coverInputRef.current?.click()}
-                            disabled={uploadingCover}
-                            variant="contained"
-                            size="small"
-                            sx={{
-                                position: 'absolute',
-                                top: 16,
-                                right: 16,
-                                textTransform: 'none',
-                                borderRadius: 2,
-                                fontWeight: 700,
-                                bgcolor: 'rgba(255,255,255,0.7)',
-                                backdropFilter: 'blur(10px)',
-                                color: 'grey.900',
-                                border: '1px solid rgba(255,255,255,0.4)',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                '&:hover': { bgcolor: '#fff' },
-                            }}
-                        >
-                            {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
-                        </Button>
+                        <Tooltip title="Thay đổi ảnh bìa">
+                            <Button
+                                startIcon={uploadingCover ? <CircularProgress size={18} color="inherit" /> : <PhotoCameraIcon />}
+                                onClick={() => coverInputRef.current?.click()}
+                                disabled={uploadingCover}
+                                variant="contained"
+                                size="small"
+                                sx={{
+                                    position: 'absolute',
+                                    top: 16,
+                                    right: 16,
+                                    textTransform: 'none',
+                                    borderRadius: 2,
+                                    fontWeight: 700,
+                                    bgcolor: 'rgba(255,255,255,0.7)',
+                                    backdropFilter: 'blur(10px)',
+                                    color: 'grey.900',
+                                    border: '1px solid rgba(255,255,255,0.4)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                    '&:hover': { bgcolor: '#fff' },
+                                }}
+                            >
+                                {uploadingCover ? 'Đang tải...' : 'Đổi ảnh bìa'}
+                            </Button>
+                        </Tooltip>
                     </>
                 ) : (
                     <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
-                        <IconButton
-                            onClick={handleMenuClick}
-                            sx={{
-                                bgcolor: 'rgba(0,0,0,0.3)',
-                                color: 'white',
-                                backdropFilter: 'blur(10px)',
-                                '&:hover': { bgcolor: 'rgba(0,0,0,0.5)' }
-                            }}
-                        >
-                            <MoreVertIcon />
-                        </IconButton>
+                        <Tooltip title="Tùy chọn">
+                            <IconButton
+                                onClick={handleMenuClick}
+                                sx={{
+                                    bgcolor: 'rgba(0,0,0,0.3)',
+                                    color: 'white',
+                                    backdropFilter: 'blur(10px)',
+                                    '&:hover': { bgcolor: 'rgba(0,0,0,0.5)' }
+                                }}
+                            >
+                                <MoreVertIcon />
+                            </IconButton>
+                        </Tooltip>
                         <Menu
                             anchorEl={anchorEl}
                             open={open}
@@ -215,8 +222,8 @@ export default function ProfileHeader({
                                 {user.isOnline && (
                                     <Box sx={{
                                         position: 'absolute',
-                                        bottom: 5,
-                                        right: 15,
+                                        top: 10,
+                                        right: 10,
                                         width: 18,
                                         height: 18,
                                         bgcolor: '#4caf50',
@@ -224,6 +231,43 @@ export default function ProfileHeader({
                                         border: '3px solid white',
                                         zIndex: 2
                                     }} />
+                                )}
+                                {!isMe && (
+                                    <Tooltip title={isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}>
+                                        <Box
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!followLoading) onToggleFollow?.();
+                                            }}
+                                            sx={{
+                                                position: 'absolute',
+                                                bottom: 2,
+                                                right: 8,
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: '50%',
+                                                bgcolor: isFollowing ? PURPLE : '#FFF',
+                                                border: '3px solid #FFF',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                color: isFollowing ? '#FFF' : '#201D26',
+                                                boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
+                                                transition: 'all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                                '&:hover': { transform: 'scale(1.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' },
+                                                zIndex: 4,
+                                            }}
+                                        >
+                                            {followLoading ? (
+                                                <CircularProgress size={18} color="inherit" />
+                                            ) : isFollowing ? (
+                                                <CheckIcon sx={{ fontSize: 22, fontWeight: 900 }} />
+                                            ) : (
+                                                <AddIcon sx={{ fontSize: 24, fontWeight: 900 }} />
+                                            )}
+                                        </Box>
+                                    </Tooltip>
                                 )}
                                 {isMe && (
                                     <>
@@ -234,30 +278,31 @@ export default function ProfileHeader({
                                             style={{ display: 'none' }}
                                             onChange={handleAvatarChange}
                                         />
-                                        <Button
-                                            size="small"
-                                            onClick={() => avatarInputRef.current?.click()}
-                                            disabled={uploadingAvatar}
-                                            sx={{
-                                                position: 'absolute',
-                                                bottom: 0,
-                                                right: 0,
-                                                minWidth: 36,
-                                                height: 36,
-                                                borderRadius: '50%',
-                                                bgcolor: PURPLE,
-                                                color: 'white',
-                                                '&:hover': { bgcolor: '#4f46e5' },
-                                                boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
-                                            }}
-                                            title="Đổi avatar"
-                                        >
-                                            {uploadingAvatar ? (
-                                                <CircularProgress size={20} color="inherit" />
-                                            ) : (
-                                                <PhotoCameraIcon sx={{ fontSize: 18 }} />
-                                            )}
-                                        </Button>
+                                        <Tooltip title="Đổi ảnh đại diện">
+                                            <Button
+                                                size="small"
+                                                onClick={() => avatarInputRef.current?.click()}
+                                                disabled={uploadingAvatar}
+                                                sx={{
+                                                    position: 'absolute',
+                                                    bottom: 0,
+                                                    right: 0,
+                                                    minWidth: 36,
+                                                    height: 36,
+                                                    borderRadius: '50%',
+                                                    bgcolor: PURPLE,
+                                                    color: 'white',
+                                                    '&:hover': { bgcolor: '#4f46e5' },
+                                                    boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+                                                }}
+                                            >
+                                                {uploadingAvatar ? (
+                                                    <CircularProgress size={20} color="inherit" />
+                                                ) : (
+                                                    <PhotoCameraIcon sx={{ fontSize: 18 }} />
+                                                )}
+                                            </Button>
+                                        </Tooltip>
                                     </>
                                 )}
                             </Box>
@@ -299,34 +344,7 @@ export default function ProfileHeader({
                                                 >
                                                     <ShareIcon fontSize="small" />
                                                 </IconButton>
-                                                <IconButton
-                                                    onClick={() => {
-                                                        if (!loggedIn) {
-                                                            onRequireLogin?.();
-                                                            return;
-                                                        }
-                                                        onToggleFollow?.();
-                                                    }}
-                                                    disabled={followLoading}
-                                                    sx={{
-                                                        bgcolor: isFollowing ? PURPLE : 'rgba(157, 110, 237, 0.1)',
-                                                        color: isFollowing ? 'white' : PURPLE,
-                                                        width: 40,
-                                                        height: 40,
-                                                        borderRadius: 2,
-                                                        '&:hover': { bgcolor: PURPLE, color: 'white' },
-                                                        transition: 'all 0.2s ease'
-                                                    }}
-                                                    title={isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}
-                                                >
-                                                    {followLoading ? (
-                                                        <CircularProgress size={18} color="inherit" />
-                                                    ) : isFollowing ? (
-                                                        <PersonRemoveIcon fontSize="small" />
-                                                    ) : (
-                                                        <PersonAddIcon fontSize="small" />
-                                                    )}
-                                                </IconButton>
+
                                                 <IconButton
                                                     onClick={handleChat}
                                                     disabled={chatLoading}
