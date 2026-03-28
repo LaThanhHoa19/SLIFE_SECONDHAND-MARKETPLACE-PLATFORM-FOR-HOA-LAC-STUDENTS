@@ -36,6 +36,13 @@ export default function Sidebar({ open = true }) {
             navigate('/login', { state: { from: path, message: 'Bạn cần đăng nhập để truy cập' } });
             return;
         }
+
+        // Nếu đang ở đúng trang đó mà bấm lại -> Tải lại trang (refresh effect)
+        if (location.pathname === path) {
+            navigate(0); 
+            return;
+        }
+
         navigate(path);
     };
 
@@ -175,28 +182,30 @@ export default function Sidebar({ open = true }) {
                 </Tooltip>
             </Box>
 
-            <Box sx={{ mt: 'auto', px: 1.4, pt: 1.6 }}>
-                <Divider sx={{ mb: 1.2, borderColor: 'rgba(255,255,255,0.08)' }} />
-                <Button
-                    fullWidth
-                    variant="text"
-                    onClick={handleLogout}
-                    startIcon={<LogoutIcon />}
-                    sx={{
-                        justifyContent: 'flex-start',
-                        textTransform: 'none',
-                        color: 'rgba(248,113,113,0.92)',
-                        fontWeight: 600,
-                        fontSize: 13.5,
-                        borderRadius: 2,
-                        px: 1.6,
-                        py: 1,
-                        '&:hover': { bgcolor: 'rgba(248,113,113,0.12)' },
-                    }}
-                >
-                    Đăng xuất
-                </Button>
-            </Box>
+            {isAuthenticated && (
+                <Box sx={{ mt: 'auto', px: 1.4, pt: 1.6 }}>
+                    <Divider sx={{ mb: 1.2, borderColor: 'rgba(255,255,255,0.08)' }} />
+                    <Button
+                        fullWidth
+                        variant="text"
+                        onClick={handleLogout}
+                        startIcon={<LogoutIcon />}
+                        sx={{
+                            justifyContent: 'flex-start',
+                            textTransform: 'none',
+                            color: 'rgba(248,113,113,0.92)',
+                            fontWeight: 600,
+                            fontSize: 13.5,
+                            borderRadius: 2,
+                            px: 1.6,
+                            py: 1,
+                            '&:hover': { bgcolor: 'rgba(248,113,113,0.12)' },
+                        }}
+                    >
+                        Đăng xuất
+                    </Button>
+                </Box>
+            )}
         </Box>
     );
 }
