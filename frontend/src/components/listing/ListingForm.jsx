@@ -41,6 +41,15 @@ function buildFullAddressLine(nameRaw, addressRaw) {
     return `${name}, ${addr}`;
 }
 
+/** Chuỗi lưu `location_name` / pickupLocationName: 3 cấp user chọn (không dùng reverse từ ghim). */
+function buildPickupLocationNameFromAdmin(admin) {
+    if (!admin) return '';
+    const w = admin.ward?.name?.trim();
+    const d = admin.district?.name?.trim();
+    const p = admin.province?.name?.trim();
+    return [w, d, p].filter(Boolean).join(', ');
+}
+
 function parseCoord(v) {
     if (v == null || v === '') return NaN;
     const n = typeof v === 'number' ? v : Number(v);
@@ -347,18 +356,9 @@ export default function ListingForm({
     const descriptionValue = watch('description') || '';
     const titleValue = watch('title') || '';
     const pickupAddressText = watch('pickupAddressText');
+    const pickupLocationNameW = watch('pickupLocationName');
     const pickupLat = watch('pickupLat');
     const pickupLng = watch('pickupLng');
-
-    const applyReverseToForm = useCallback((data) => {
-        if (!data) return;
-        const name = (data.locationName || '').trim();
-        const addr = (data.addressText || '').trim();
-        const line = buildFullAddressLine(name, addr);
-        if (!line) return;
-        setValue('pickupLocationName', truncateUtf(line, 200));
-        setValue('pickupAddressText', line);
-    }, [setValue]);
 
     /** Tile key */
     const [vietmapTileKey, setVietmapTileKey] = useState(
@@ -750,9 +750,14 @@ export default function ListingForm({
         const { lat, lng, addressText } = pendingPin;
         setValue('pickupLat', lat.toFixed(6));
         setValue('pickupLng', lng.toFixed(6));
-        setValue('pickupLocationName', truncateUtf(addressText, 200));
-        setValue('pickupAddressText', addressText);
         const admin = adminLocationRef.current;
+        const fromAdmin = buildPickupLocationNameFromAdmin(admin);
+        // DB: location_name = 3 cấp đã chọn; ghim chỉ cần lat/lng (không đổ reverse vào location_name)
+        const locationName = fromAdmin
+            ? truncateUtf(fromAdmin, 200)
+            : truncateUtf(addressText, 200);
+        setValue('pickupLocationName', locationName);
+        setValue('pickupAddressText', '');
         if (admin) {
             setValue('pickupProvince', admin.province?.name || '');
             setValue('pickupDistrict', admin.district?.name || '');
@@ -1183,8 +1188,8 @@ export default function ListingForm({
                     } : undefined}
                 />
 
-                {/* ── Địa chỉ đã xác nhận ── */}
-                {pickupAddressText?.trim() && (
+                {/* ── Địa chỉ đã xác nhận (khu vực 3 cấp; tọa độ lưu riêng) ── */}
+                {pickupLat && pickupLng && (pickupLocationNameW?.trim() || pickupAddressText?.trim()) && (
                     <Box
                         sx={{
                             mt: 2,
@@ -1201,7 +1206,10 @@ export default function ListingForm({
                                 Vị trí đã xác nhận
                             </Typography>
                             <Typography fontSize={13} color="#e5e7eb" sx={{ lineHeight: 1.4 }}>
-                                {pickupAddressText}
+                                {pickupLocationNameW?.trim() || pickupAddressText}
+                            </Typography>
+                            <Typography fontSize={11} color="rgba(255,255,255,0.45)" sx={{ mt: 0.5 }}>
+                                Tọa độ ghim: {pickupLat}, {pickupLng}
                             </Typography>
                         </Box>
                     </Box>
