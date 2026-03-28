@@ -185,6 +185,29 @@ public class ListingService {
 
         enrichListingCardsWithLikes(content, currentUser);
 
+        // Batch-load all images in one query and attach to each card
+        if (!content.isEmpty()) {
+            Set<Long> listingIds = content.stream()
+                    .map(com.slife.marketplace.dto.response.ListingCardResponse::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, List<String>> imagesByListing = listingImageRepository
+                    .findByListingIdIn(listingIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(
+                            img -> img.getListing().getId(),
+                            Collectors.mapping(
+                                    com.slife.marketplace.entity.ListingImage::getImageUrl,
+                                    Collectors.toList()
+                            )
+                    ));
+            for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
+                if (card.getId() != null) {
+                    card.setImageUrls(imagesByListing.getOrDefault(card.getId(), java.util.Collections.emptyList()));
+                }
+            }
+        }
+
         return new PagedResponse<>(
                 content,
                 pageResult.getNumber(),
