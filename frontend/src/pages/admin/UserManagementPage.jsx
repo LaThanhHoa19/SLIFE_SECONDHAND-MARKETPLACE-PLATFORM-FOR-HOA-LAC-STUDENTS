@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Avatar,
@@ -8,6 +8,7 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
+  Pagination,
   Select,
   Stack,
   Typography,
@@ -22,11 +23,44 @@ function formatDate(dateValue) {
   return date.toLocaleString('vi-VN');
 }
 
-function extractUserList(response) {
-  const payload = response?.data?.data ?? response?.data;
-  if (Array.isArray(payload)) return payload;
-  if (payload?.content && Array.isArray(payload.content)) return payload.content;
-  return [];
+/** Backend giới hạn size tối đa 100 / request — dùng khi gom toàn bộ danh sách. */
+const API_PAGE_SIZE = 100;
+/** Số user hiển thị mỗi trang (chỉ trên frontend). */
+const PAGE_SIZE = 10;
+
+function extractPagePayload(response) {
+  const root = response?.data?.data ?? response?.data;
+  if (root == null) return { content: [], totalElements: 0 };
+  if (Array.isArray(root)) {
+    return { content: root.filter(Boolean), totalElements: root.length };
+  }
+  const content = Array.isArray(root.content) ? root.content.filter((r) => r != null) : [];
+  let total = root.totalElements;
+  if (typeof total !== 'number' || Number.isNaN(total)) {
+    const n = Number(total);
+    total = Number.isFinite(n) ? n : content.length;
+  }
+  return { content, totalElements: Math.max(0, total) };
+}
+
+/** Gom nhiều trang từ API (sort/filter do backend), sau đó phân trang bằng JS. */
+async function fetchAllUsersForAdmin(getAdminUsers, baseParams) {
+  const aggregated = [];
+  let pageIdx = 0;
+  let reportedTotal = null;
+
+  for (let guard = 0; guard < 500; guard += 1) {
+    const res = await getAdminUsers({ ...baseParams, page: pageIdx, size: API_PAGE_SIZE });
+    const { content, totalElements } = extractPagePayload(res);
+    if (reportedTotal == null) reportedTotal = totalElements;
+    aggregated.push(...content);
+
+    if (content.length < API_PAGE_SIZE) break;
+    if (reportedTotal > 0 && aggregated.length >= reportedTotal) break;
+    pageIdx += 1;
+  }
+
+  return aggregated;
 }
 
 const USER_TABLE_SURFACE = '#19191B';
@@ -95,7 +129,8 @@ const selectFieldSx = {
 };
 
 export default function UserManagementPage() {
-  const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [sortBy, setSortBy] = useState(ADMIN_USER_SORT_BY.NONE);
@@ -107,22 +142,37 @@ export default function UserManagementPage() {
     try {
       setIsLoading(true);
       setErrorMessage('');
+      setPage(0);
       const sortParams =
         sortBy === ADMIN_USER_SORT_BY.NONE
           ? { sortBy: 'id', sortDir: 'asc' }
           : { sortBy, sortDir };
-      const params =
+      const base =
         statusFilter === ADMIN_USER_STATUS_FILTER.ALL
           ? sortParams
           : { ...sortParams, status: statusFilter };
-      const response = await getAdminUsers(params);
-      setUsers(extractUserList(response));
+      const list = await fetchAllUsersForAdmin(getAdminUsers, base);
+      setAllUsers(list);
     } catch (error) {
       setErrorMessage(error?.message || 'Không tải được danh sách user.');
+      setAllUsers([]);
     } finally {
       setIsLoading(false);
     }
   }, [sortBy, sortDir, statusFilter]);
+
+  const totalCount = allUsers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE) || 1);
+
+  const displayedUsers = useMemo(
+    () => allUsers.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [allUsers, page],
+  );
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(totalCount / PAGE_SIZE) - 1);
+    if (page > maxPage) setPage(maxPage);
+  }, [totalCount, page]);
 
   useEffect(() => {
     loadUsers();
@@ -270,7 +320,10 @@ export default function UserManagementPage() {
                 labelId="admin-users-sort-by"
                 label="Sắp xếp theo"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setPage(0);
+                  setSortBy(e.target.value);
+                }}
               >
                 <MenuItem value={ADMIN_USER_SORT_BY.NONE}>Không chọn</MenuItem>
                 <MenuItem value={ADMIN_USER_SORT_BY.CREATED_AT}>Ngày tạo</MenuItem>
@@ -285,7 +338,10 @@ export default function UserManagementPage() {
                 label="Thứ tự"
                 value={sortDir}
                 disabled={sortDisabled}
-                onChange={(e) => setSortDir(e.target.value)}
+                onChange={(e) => {
+                  setPage(0);
+                  setSortDir(e.target.value);
+                }}
               >
                 <MenuItem value="asc">Từ thấp đến cao</MenuItem>
                 <MenuItem value="desc">Từ cao đến thấp</MenuItem>
@@ -306,13 +362,42 @@ export default function UserManagementPage() {
 
         <ReusableTable
             columns={columns}
-            rows={users}
-            getRowId={(row) => String(row.id ?? '')}
+            rows={displayedUsers}
+            getRowId={(row) => String(row?.id ?? '')}
             isLoading={isLoading}
             emptyMessage="Không có dữ liệu user."
             paperSx={userManagementPaperSx}
             tableSx={userManagementTableSx}
         />
+
+        <Box
+          sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 2,
+            mt: 2,
+            py: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+            {totalCount === 0
+              ? '0 kết quả'
+              : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} / ${totalCount}`}
+          </Typography>
+          <Pagination
+            count={totalPages}
+            page={page + 1}
+            onChange={(_, value) => setPage(value - 1)}
+            disabled={isLoading || totalCount === 0}
+            color="primary"
+            size="small"
+            sx={{
+              '& .MuiPaginationItem-root': { color: 'rgba(255,255,255,0.88)' },
+            }}
+          />
+        </Box>
       </Box>
   );
 }
