@@ -10,6 +10,10 @@ import {
     Stack,
     Tooltip,
     Typography,
+    Menu,
+    MenuItem,
+    ListItemIcon,
+    ListItemText,
 } from '@mui/material';
 import {
     ChatBubbleOutline as CommentIcon,
@@ -22,6 +26,7 @@ import {
     Share as ShareIcon,
     PersonAdd as PersonAddIcon,
     PersonRemove as PersonRemoveIcon,
+    Flag as ReportIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
@@ -33,6 +38,7 @@ import { useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
 import { getListingShareInfo, saveListing, toggleListingLike, unsaveListing } from '../../api/listingApi';
 import CommentModal from './CommentModal';
+import ReportDialog from '../report/ReportDialog';
 
 const LIKE_RED = '#FF4757';
 const PURPLE = '#9D6EED';
@@ -101,13 +107,13 @@ const getConditionText = (listing) =>
 
 
 export default function ListingCard({
-                                        listing,
-                                        onClick,
-                                        cardVariant = 'default',
-                                        layout = 'list',
-                                        imageAspect,
-                                        onPatchListing,
-                                    }) {
+    listing,
+    onClick,
+    cardVariant = 'default',
+    layout = 'list',
+    imageAspect,
+    onPatchListing,
+}) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -125,6 +131,10 @@ export default function ListingCard({
     const [isSaved, setIsSaved] = useState(() => !!(listing?.isSaved ?? listing?.is_saved));
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
+
+    const [moreAnchorEl, setMoreAnchorEl] = useState(null);
+    const [reportOpen, setReportOpen] = useState(false);
+
     const { showToast } = useToast();
 
     useEffect(() => {
@@ -267,6 +277,32 @@ export default function ListingCard({
         }
     };
 
+    const handleMoreOpen = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setMoreAnchorEl(e.currentTarget);
+    };
+
+    const handleMoreClose = (e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        setMoreAnchorEl(null);
+    };
+
+    const handleReportClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleMoreClose();
+        if (!isAuthenticated) {
+            showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        setReportOpen(true);
+    };
+
     const conditionText = getConditionText(listing);
     const locationText = getLocationText(listing);
     const showFollowBtn = sellerId && !isMe;
@@ -340,7 +376,11 @@ export default function ListingCard({
                             </span>
                         </Tooltip>
                     )}
-                    <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                    <IconButton 
+                        size="small" 
+                        sx={{ color: 'rgba(255,255,255,0.5)' }}
+                        onClick={handleMoreOpen}
+                    >
                         <MoreIcon />
                     </IconButton>
                 </Box>
@@ -495,6 +535,37 @@ export default function ListingCard({
                 onClose={() => setCommentOpen(false)}
                 listingId={id}
                 listingTitle={listing?.title}
+            />
+
+            <Menu
+                anchorEl={moreAnchorEl}
+                open={Boolean(moreAnchorEl)}
+                onClose={handleMoreClose}
+                onClick={(e) => e.stopPropagation()}
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#25232C',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        color: '#fff',
+                        minWidth: 160,
+                        boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                    }
+                }}
+            >
+                <MenuItem onClick={handleReportClick}>
+                    <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
+                        <ReportIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
+                </MenuItem>
+            </Menu>
+
+            <ReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                targetType="LISTING"
+                targetId={id}
+                targetTitle={listing?.title}
             />
         </Card>
     );

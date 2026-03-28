@@ -55,6 +55,7 @@ import ListingRightInfoBlock from '../../components/listing/ListingRightInfoBloc
 import ListingSellerOtherListings from '../../components/listing/ListingSellerOtherListings';
 import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
+import ReportDialog from '../../components/report/ReportDialog';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#1C1B23';
@@ -138,6 +139,7 @@ export default function ListingDetailPage() {
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
     const [sellerFollowed, setSellerFollowed] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
 
     // Load listing
     useEffect(() => {
@@ -281,7 +283,7 @@ export default function ListingDetailPage() {
             navigate('/login', { state: { from: location.pathname } });
             return;
         }
-        navigate(`/report?targetType=LISTING&targetId=${id}`);
+        setReportOpen(true);
     };
 
     const handleChat = async () => {
@@ -391,7 +393,7 @@ export default function ListingDetailPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {[1, 2, 3, 4].map((n) => (
                             <Skeleton key={n} variant="rectangular" height={n === 1 ? 32 : n === 2 ? 44 : 24}
-                                      sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
+                                sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
                         ))}
                     </Box>
                 </Box>
@@ -561,7 +563,25 @@ export default function ListingDetailPage() {
                         onNotify={showSnack}
                     />
                 </Card>
-                <Box /> {/* O trong de giu grid 2 cot */}
+                <Box
+                    sx={{
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        width: '100%',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.3s',
+                        '&:hover': { transform: 'scale(1.01)' },
+                        maxHeight: 400
+                    }}
+                >
+                    <Box
+                        component="img"
+                        src="/brand_advertisement_banner_v2.png"
+                        alt="Brand Advertisement"
+                        sx={{ width: '100%', height: 'auto', display: 'block' }}
+                    />
+                </Box>
             </Box>
 
             {/* Xem truoc vi tri hen (map Vietmap + nut mo Google Maps) */}
@@ -587,27 +607,13 @@ export default function ListingDetailPage() {
                 loadingRelated={loadingRelated}
             />
 
-            {/* Banner Quảng Cáo */}
-            <Box
-                sx={{
-                    mt: 6, mb: 2,
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    width: '100%',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                    cursor: 'pointer',
-                    transition: 'transform 0.3s',
-                    '&:hover': { transform: 'scale(1.01)' }
-                }}
-            >
-                <Box
-                    component="img"
-                    src="/brand_advertisement_banner_1773584721978.png" // Since I cannot move it easily, I'll refer to it (Agent should assume it's moved or accessible)
-                    alt="Brand Advertisement"
-                    sx={{ width: '100%', display: 'block' }}
-                />
-            </Box>
-
+            <ReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                targetType="LISTING"
+                targetId={id}
+                targetTitle={listing?.title}
+            />
         </Box>
     );
 }
