@@ -15,6 +15,10 @@ public class NotificationResponse {
     private String content;
     private Boolean isRead;
     private Instant createdAt;
+    /** Deep-link to chat session (UUID string). */
+    private String sessionId;
+    /** Optional: deep-link to a specific message id in the session. */
+    private Long messageId;
 
     public static NotificationResponse from(Notification n) {
         NotificationResponse dto = new NotificationResponse();
