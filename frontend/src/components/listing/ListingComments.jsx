@@ -207,18 +207,20 @@ export default function ListingComments({ listingId, onNotify }) {
                 </Box>
                 
                 {isMyComment && (
+                <Tooltip title="Tùy chọn bình luận">
                   <IconButton 
                     size="small" 
                     className="more-btn"
                     onClick={(e) => setMenuAnchor(e.currentTarget)}
                     sx={{ 
-                      ml: 0.5, color: TEXT_SEC, opacity: 0, 
-                      transition: 'opacity 0.2s',
-                      '&:hover': { color: PURPLE } 
+                      ml: 0.5, color: TEXT_SEC, opacity: 0.6, 
+                      transition: 'all 0.2s',
+                      '&:hover': { color: PURPLE, opacity: 1, bgcolor: 'rgba(255,255,255,0.05)' } 
                     }}
                   >
-                    <MoreIcon sx={{ fontSize: 16 }} />
+                    <MoreIcon sx={{ fontSize: 18 }} />
                   </IconButton>
+                </Tooltip>
                 )}
               </Box>
             )}
