@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class AdminService {
@@ -27,14 +28,33 @@ public class AdminService {
         this.userRepository = userRepository;
     }
 
-    public Page<UserResponseDTO> getUsers(int page, int size, String sortBy, String sortDir) {
+    public Page<UserResponseDTO> getUsers(int page, int size, String sortBy, String sortDir, String statusFilter) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = size <= 0 ? 20 : Math.min(size, 100);
         Sort sort = buildUserListSort(sortBy, sortDir);
         Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, sort);
 
-        return userRepository.findByRole("USER", pageable)
-                .map(this::toUserResponseDTO);
+        Optional<String> status = resolveAdminUserStatusFilter(statusFilter);
+        Page<User> pageResult = status.isEmpty()
+                ? userRepository.findByRole("USER", pageable)
+                : userRepository.findByRoleAndStatus("USER", status.get(), pageable);
+        return pageResult.map(this::toUserResponseDTO);
+    }
+
+    /**
+     * Lọc theo trạng thái tài khoản. null / rỗng / "all" = không lọc.
+     * Chỉ cho ACTIVE, BANNED, RESTRICTED (khớp dữ liệu thực tế & ChatService).
+     */
+    private static Optional<String> resolveAdminUserStatusFilter(String raw) {
+        if (raw == null || raw.isBlank() || "all".equalsIgnoreCase(raw.trim())) {
+            return Optional.empty();
+        }
+        String s = raw.trim().toUpperCase(Locale.ROOT);
+        return switch (s) {
+            case "ACTIVE", "BANNED", "RESTRICTED" -> Optional.of(s);
+            default -> throw new SlifeException(ErrorCode.INVALID_INPUT,
+                    "status must be all, ACTIVE, BANNED, or RESTRICTED");
+        };
     }
 
     private static Sort buildUserListSort(String sortBy, String sortDir) {

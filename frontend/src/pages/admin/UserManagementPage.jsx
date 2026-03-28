@@ -77,6 +77,14 @@ const ADMIN_USER_SORT_BY = {
   VIOLATION: 'violationCount',
 };
 
+/** Khớp query ?status= — all = không gửi param */
+const ADMIN_USER_STATUS_FILTER = {
+  ALL: 'all',
+  ACTIVE: 'ACTIVE',
+  BANNED: 'BANNED',
+  RESTRICTED: 'RESTRICTED',
+};
+
 const selectFieldSx = {
   minWidth: 200,
   '& .MuiOutlinedInput-notchedOutline': { borderColor: USER_TABLE_BORDER },
@@ -92,16 +100,21 @@ export default function UserManagementPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [sortBy, setSortBy] = useState(ADMIN_USER_SORT_BY.NONE);
   const [sortDir, setSortDir] = useState('desc');
+  const [statusFilter, setStatusFilter] = useState(ADMIN_USER_STATUS_FILTER.ALL);
   const sortDisabled = sortBy === ADMIN_USER_SORT_BY.NONE;
 
   const loadUsers = useCallback(async () => {
     try {
       setIsLoading(true);
       setErrorMessage('');
-      const params =
+      const sortParams =
         sortBy === ADMIN_USER_SORT_BY.NONE
           ? { sortBy: 'id', sortDir: 'asc' }
           : { sortBy, sortDir };
+      const params =
+        statusFilter === ADMIN_USER_STATUS_FILTER.ALL
+          ? sortParams
+          : { ...sortParams, status: statusFilter };
       const response = await getAdminUsers(params);
       setUsers(extractUserList(response));
     } catch (error) {
@@ -109,7 +122,7 @@ export default function UserManagementPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [sortBy, sortDir]);
+  }, [sortBy, sortDir, statusFilter]);
 
   useEffect(() => {
     loadUsers();
@@ -186,13 +199,17 @@ export default function UserManagementPage() {
                         ? 'rgba(22,163,74,0.08)'
                         : row.status === 'BANNED'
                             ? 'rgba(220,38,38,0.08)'
-                            : 'rgba(148,163,184,0.08)',
+                            : row.status === 'RESTRICTED'
+                                ? 'rgba(234,179,8,0.1)'
+                                : 'rgba(148,163,184,0.08)',
                 color:
                     row.status === 'ACTIVE'
                         ? '#16a34a'
                         : row.status === 'BANNED'
                             ? '#b91c1c'
-                            : '#6b7280',
+                            : row.status === 'RESTRICTED'
+                                ? '#ca8a04'
+                                : '#6b7280',
               }}
           />
       ),
@@ -233,6 +250,20 @@ export default function UserManagementPage() {
             </Typography>
           </Box>
           <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={selectFieldSx}>
+              <InputLabel id="admin-users-status-filter">Trạng thái</InputLabel>
+              <Select
+                labelId="admin-users-status-filter"
+                label="Trạng thái"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.ALL}>Tất cả</MenuItem>
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.ACTIVE}>Hoạt động</MenuItem>
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.BANNED}>Bị khóa</MenuItem>
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.RESTRICTED}>Hạn chế</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={selectFieldSx}>
               <InputLabel id="admin-users-sort-by">Sắp xếp theo</InputLabel>
               <Select

@@ -38,8 +38,9 @@ public class AdminController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "id") String sortBy,
-            @RequestParam(defaultValue = "asc") String sortDir) {
-        Page<UserResponseDTO> users = adminService.getUsers(page, size, sortBy, sortDir);
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String status) {
+        Page<UserResponseDTO> users = adminService.getUsers(page, size, sortBy, sortDir, status);
         return ResponseEntity.ok(ApiResponse.success("OK", users));
     }
 

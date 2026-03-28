@@ -28,10 +28,10 @@ class AdminControllerTest {
             LocalDateTime.of(2024, 1, 1, 12, 0)));
     Page<UserResponseDTO> mockedPage = new PageImpl<>(mockedUsers);
 
-    when(adminService.getUsers(0, 20, "createdAt", "desc")).thenReturn(mockedPage);
+    when(adminService.getUsers(0, 20, "createdAt", "desc", null)).thenReturn(mockedPage);
 
     ResponseEntity<ApiResponse<Page<UserResponseDTO>>> response =
-        controller.getUsers(0, 20, "createdAt", "desc");
+        controller.getUsers(0, 20, "createdAt", "desc", null);
 
     assertEquals(200, response.getStatusCode().value());
     assertFalse(response.getBody().getData().isEmpty());
