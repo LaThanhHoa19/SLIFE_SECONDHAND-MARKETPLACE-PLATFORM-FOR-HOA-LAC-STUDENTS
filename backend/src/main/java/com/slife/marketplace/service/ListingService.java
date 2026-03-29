@@ -45,7 +45,8 @@ import java.util.stream.Collectors;
 public class ListingService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
-    private static final int DEFAULT_MAX_IMAGES_PER_POST = 8;
+    /** Đồng bộ với frontend (tối đa 10 ảnh/tin). */
+    private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;

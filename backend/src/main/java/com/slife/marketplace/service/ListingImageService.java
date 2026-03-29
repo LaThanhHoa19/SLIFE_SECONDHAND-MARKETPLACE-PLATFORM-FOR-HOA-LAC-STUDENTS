@@ -26,7 +26,8 @@ public class ListingImageService {
 
     private static final Logger log = LoggerFactory.getLogger(ListingImageService.class);
     private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
-    private static final int DEFAULT_MAX_IMAGES_PER_POST = 8;
+    /** Đồng bộ với frontend (ImageUploader / ListingForm: tối đa 10 ảnh/tin). */
+    private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final ListingRepository listingRepository;
