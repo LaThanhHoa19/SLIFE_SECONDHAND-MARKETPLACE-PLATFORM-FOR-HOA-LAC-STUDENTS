@@ -141,7 +141,7 @@ export default function ProfilePage() {
   }, [profileUser?.id, profileUser?.fullName, profileUser?.full_name]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
-  useEffect(() => { if (profileUser) loadListings(); }, [profileUser, loadListings]);
+  useEffect(() => { if (profileUser?.id) loadListings(); }, [profileUser?.id, loadListings]);
   useEffect(() => {
     if (profileUser) {
       setEditForm({

@@ -48,9 +48,9 @@ export default function ListingsPage() {
     }, []);
 
     return (
-        <Box sx={{ display: 'flex', gap: 2, p: 2, alignItems: 'flex-start' }}>
+        <Box sx={{ display: 'flex', gap: { xs: 2, lg: 3 }, p: 2, alignItems: 'flex-start', maxWidth: 1040, mx: 'auto', width: '100%', justifyContent: 'center' }}>
             {/* Feed chính */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 400 }, maxWidth: 680 }}>
                 <ListingsFeed listings={data} isLoading={isLoading} onPatchListing={patchListing} />
 
                 {/* Infinite scroll sentinel */}

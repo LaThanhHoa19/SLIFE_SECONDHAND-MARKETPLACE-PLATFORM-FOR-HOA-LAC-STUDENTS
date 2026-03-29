@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
-import { CONTENT_MAX_WIDTH } from '../../utils/layoutConstants';
+import { ADMIN_CONTENT_MAX_WIDTH } from '../../utils/layoutConstants';
 import { ADMIN_THEME as t } from '../../theme/adminTheme';
 
 export default function AdminLayout({ title, subtitle, rightSlot }) {
@@ -40,9 +40,9 @@ export default function AdminLayout({ title, subtitle, rightSlot }) {
                 >
                     <Box
                         sx={{
-                            maxWidth: CONTENT_MAX_WIDTH,
-                            mx: 'auto',
+                            maxWidth: ADMIN_CONTENT_MAX_WIDTH,
                             width: '100%',
+                            mx: 0,
                         }}
                     >
                         {(title || subtitle || rightSlot) && (

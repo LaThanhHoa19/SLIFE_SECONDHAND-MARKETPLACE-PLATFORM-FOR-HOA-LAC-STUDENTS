@@ -6,10 +6,14 @@ export const HEADER_HEIGHT = 64;
 /** Khoảng cách giữa header và sidebar / content để không bị sát */
 export const HEADER_GAP = 0;
 export const SIDEBAR_TOP_OFFSET = HEADER_HEIGHT + HEADER_GAP;
-export const SIDEBAR_WIDTH = 184;
+export const SIDEBAR_WIDTH = 220; // Tăng một chút cho thoải mái nếu cần, hoặc giữ nguyên 184
+export const SIDEBAR_MINI_WIDTH = 72;
 
 /** Max width of main content area (feed, listing grid, etc.) */
 export const CONTENT_MAX_WIDTH = 1200;
+
+/** Admin main column: full width của vùng còn lại (bảng rộng, không giới hạn 1200px). */
+export const ADMIN_CONTENT_MAX_WIDTH = '100%';
 
 /** Horizontal and vertical padding applied to page content by MainLayout */
 export const PAGE_PADDING_X = 2;

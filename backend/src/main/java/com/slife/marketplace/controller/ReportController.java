@@ -45,6 +45,13 @@ public class ReportController {
         return ResponseEntity.ok(BaseResponse.success("OK", reports));
     }
 
+    @GetMapping("/api/admin/reports/{id:\\d+}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BaseResponse<ReportResponseDTO>> getAdminReportById(@PathVariable Long id) {
+        ReportResponseDTO dto = reportService.getAdminReportById(id);
+        return ResponseEntity.ok(BaseResponse.success("OK", dto));
+    }
+
     @GetMapping("/api/admin/reports/page")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BaseResponse<Page<ReportResponseDTO>>> getReportsPage(
