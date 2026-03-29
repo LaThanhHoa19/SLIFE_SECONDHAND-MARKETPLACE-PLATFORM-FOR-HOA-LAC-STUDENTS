@@ -202,6 +202,11 @@ function isRootFlatCategory(c) {
     return getFlatCategoryParentId(c) == null;
 }
 
+/** API: systemLocked (camelCase) — hỗ trợ cả snake_case nếu có */
+function isSystemCategory(row) {
+    return Boolean(row?.systemLocked ?? row?.system_locked);
+}
+
 function buildCategoryTree(flatList) {
     if (!Array.isArray(flatList) || flatList.length === 0) return [];
 
@@ -370,6 +375,7 @@ function CategoryTreeNode({
                           }) {
     const hasChildren = Array.isArray(node.children) && node.children.length > 0;
     const isExpanded = expandedParents.has(node.id);
+    const locked = isSystemCategory(node);
     const Icon = depth === 0 ? MenuBookOutlinedIcon : FolderOutlinedIcon;
 
     const actionBtnSx = {
@@ -460,14 +466,46 @@ function CategoryTreeNode({
                 />
             ) : null}
 
+            {locked ? (
+                <Chip
+                    label="Hệ thống"
+                    size="small"
+                    title="Danh mục cố định — không sửa/xóa"
+                    sx={{
+                        height: 24,
+                        fontWeight: 800,
+                        fontSize: 10,
+                        letterSpacing: '0.06em',
+                        bgcolor: 'rgba(34,197,94,0.2)',
+                        color: '#bbf7d0',
+                        border: '1px solid rgba(74,222,128,0.45)',
+                        flexShrink: 0,
+                    }}
+                />
+            ) : null}
+
             <Stack direction="row" spacing={0.25}>
                 <IconButton size="small" onClick={() => onAddChild(node.id)} title="Thêm con" aria-label="Thêm danh mục con" sx={actionBtnSx}>
                     <AddIcon sx={{ fontSize: 18 }} />
                 </IconButton>
-                <IconButton size="small" onClick={() => onEdit(node)} title="Sửa" aria-label="Sửa danh mục" sx={actionBtnSx}>
+                <IconButton
+                    size="small"
+                    disabled={locked}
+                    onClick={() => onEdit(node)}
+                    title={locked ? 'Danh mục hệ thống — không được sửa' : 'Sửa'}
+                    aria-label="Sửa danh mục"
+                    sx={actionBtnSx}
+                >
                     <EditOutlinedIcon sx={{ fontSize: 18 }} />
                 </IconButton>
-                <IconButton size="small" onClick={() => onDelete(node.id)} title="Xóa" aria-label="Xóa danh mục" sx={actionBtnSx}>
+                <IconButton
+                    size="small"
+                    disabled={locked}
+                    onClick={() => onDelete(node.id)}
+                    title={locked ? 'Danh mục hệ thống — không được xóa' : 'Xóa'}
+                    aria-label="Xóa danh mục"
+                    sx={actionBtnSx}
+                >
                     <DeleteOutlineIcon sx={{ fontSize: 18 }} />
                 </IconButton>
             </Stack>
@@ -757,13 +795,15 @@ export default function CategoryManagementPage() {
     };
 
     const openEditWithId = (node) => {
+        if (isSystemCategory(node)) return;
         setEditingId(node.id ?? null);
         openEdit(node);
     };
 
     const openDelete = (id) => {
-        setDeleteTargetId(id);
         const row = flatCategories.find((c) => Number(c.id) === Number(id));
+        if (isSystemCategory(row)) return;
+        setDeleteTargetId(id);
         setDeleteTargetName(row?.name?.trim() || '');
         setDeleteConfirmOpen(true);
     };
