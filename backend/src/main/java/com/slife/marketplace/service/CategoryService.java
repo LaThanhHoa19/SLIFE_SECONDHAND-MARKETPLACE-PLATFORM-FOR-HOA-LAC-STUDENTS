@@ -61,6 +61,10 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Category not found"));
 
+        if (category.isSystemLocked()) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Danh mục hệ thống không được phép chỉnh sửa");
+        }
+
         String name = normalizeName(request.getName());
         Optional<Category> existing = categoryRepository.findByNameIgnoreCase(name);
         if (existing.isPresent() && !existing.get().getId().equals(id)) {
@@ -83,8 +87,10 @@ public class CategoryService {
         if (id == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Category id is required");
         }
-        if (!categoryRepository.existsById(id)) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT, "Category not found");
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Category not found"));
+        if (category.isSystemLocked()) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Danh mục hệ thống không được phép xóa");
         }
         categoryRepository.deleteById(id);
     }
@@ -95,6 +101,7 @@ public class CategoryService {
         res.setName(c.getName());
         res.setDescription(c.getDescription());
         res.setParentId(c.getParent() != null ? c.getParent().getId() : null);
+        res.setSystemLocked(c.isSystemLocked());
         return res;
     }
 

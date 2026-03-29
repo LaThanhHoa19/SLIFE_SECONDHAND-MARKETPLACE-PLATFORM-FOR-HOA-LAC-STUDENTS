@@ -162,7 +162,17 @@ export default function LoginPage() {
                     pt: { xs: 2, md: 2.5 },
                 }}
             >
-                <Typography sx={{ color: uiTokens.colors.brand.textSoft, fontWeight: 700, fontSize: '1.95rem', letterSpacing: '0.02em' }}>
+                <Typography 
+                    onClick={() => navigate('/feed')}
+                    sx={{ 
+                        color: uiTokens.colors.brand.textSoft, 
+                        fontWeight: 700, 
+                        fontSize: '1.95rem', 
+                        letterSpacing: '0.02em',
+                        cursor: 'pointer',
+                        '&:hover': { opacity: 0.8 }
+                    }}
+                >
                     Slife
                 </Typography>
             </Box>
@@ -185,11 +195,14 @@ export default function LoginPage() {
                     <Typography
                         variant="h3"
                         fontWeight={800}
+                        onClick={() => navigate('/feed')}
                         sx={{
                             color: uiTokens.colors.brand.textStrong,
                             letterSpacing: '0.06em',
                             fontSize: { xs: '3.1rem', sm: '4.2rem' },
                             lineHeight: 1,
+                            cursor: 'pointer',
+                            '&:hover': { opacity: 0.9 }
                         }}
                     >
                         SLIFE
