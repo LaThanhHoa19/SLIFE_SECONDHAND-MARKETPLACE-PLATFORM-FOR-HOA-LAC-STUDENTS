@@ -104,6 +104,8 @@ function stripVnWardDistrictPrefix(raw) {
 
 /**
  * Nhiều phường VN trong data địa giới không khớp OSM → thử variant rồi fallback quận/tỉnh.
+ * Thứ tự quan trọng: Nominatim thường trả [] với "…, Thành phố Hà Nội, Việt Nam" đủ cấp;
+ * query ngắn (xã + Hà Nội) + countrycodes=vn mới trúng ranh giới đúng.
  * @returns {{ query: string, level: 'ward'|'district'|'province' }[]}
  */
 function buildNominatimQueryCandidates(admin) {
@@ -119,9 +121,25 @@ function buildNominatimQueryCandidates(admin) {
         seen.add(query);
         raw.push({ query, level });
     };
+
+    const provinceShort = province ? (stripVnWardDistrictPrefix(province) || province) : '';
+    const districtShort = district ? (stripVnWardDistrictPrefix(district) || district) : '';
+    const w2 = ward ? stripVnWardDistrictPrefix(ward) : '';
+
+    if (ward && provinceShort) {
+        add([ward, provinceShort, tail], 'ward');
+        if (w2 && w2 !== ward) add([w2, provinceShort, tail], 'ward');
+    }
+    if (ward && district && provinceShort) {
+        add([ward, districtShort, provinceShort, tail], 'ward');
+        add([ward, district, provinceShort, tail], 'ward');
+        if (w2 && w2 !== ward) {
+            add([w2, districtShort, provinceShort, tail], 'ward');
+            add([w2, district, provinceShort, tail], 'ward');
+        }
+    }
     if (ward && district && province) {
         add([ward, district, province, tail], 'ward');
-        const w2 = stripVnWardDistrictPrefix(ward);
         if (w2 && w2 !== ward) add([w2, district, province, tail], 'ward');
     }
     if (district && province) {
@@ -137,6 +155,20 @@ function buildNominatimQueryCandidates(admin) {
     return raw;
 }
 
+/**
+ * Nominatim trả về nhiều kết quả gần nghĩa (vd. "Thạch Thất" trùng huyện + xã).
+ * Với query cấp xã, chỉ chấp nhận kết quả có display_name chứa cốt tên xã đã chọn.
+ */
+function nominatimDisplayMatchesChosenWard(displayName, wardName) {
+    const w = String(wardName || '').trim();
+    if (!w) return true;
+    let core = canonicalAdminName(normalize(w));
+    if (!core) core = normalize(w).trim();
+    if (core.length < 4) return true;
+    const d = normalize(displayName || '');
+    return d.includes(core);
+}
+
 const NOMINATIM_HEADERS = {
     Accept: 'application/json',
     'Accept-Language': 'vi,en',
@@ -144,7 +176,7 @@ const NOMINATIM_HEADERS = {
 };
 
 /** Tuần tự + delay (policy Nominatim ~1 req/giây) */
-async function fetchNominatimFirstHit(candidates, { signal } = {}) {
+async function fetchNominatimFirstHit(candidates, { signal, wardName } = {}) {
     for (let i = 0; i < candidates.length; i++) {
         if (signal?.aborted) return null;
         if (i > 0) {
@@ -152,22 +184,33 @@ async function fetchNominatimFirstHit(candidates, { signal } = {}) {
             if (signal?.aborted) return null;
         }
         const { query, level } = candidates[i];
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+        const useWardFilter = level === 'ward' && String(wardName || '').trim().length > 0;
+        const limit = useWardFilter ? 15 : 1;
+        const params = new URLSearchParams({
+            q: query,
+            format: 'json',
+            limit: String(limit),
+            countrycodes: 'vn',
+        });
+        const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
         const res = await fetch(url, { headers: NOMINATIM_HEADERS, signal });
         const data = await res.json();
-        const first = Array.isArray(data) ? data[0] : null;
+        const arr = Array.isArray(data) ? data : [];
+        const first = useWardFilter
+            ? arr.find((item) => nominatimDisplayMatchesChosenWard(item?.display_name, wardName))
+            : arr[0];
         if (first) return { first, query, level };
     }
     return null;
 }
 
 /**
- * Ghim hợp lệ nếu: nằm trong bbox khu vực đã chọn (Nominatim), HOẶC khớp tên tỉnh/quận/phường từ reverse.
- * Bbox tránh lỗi khi Vietmap/OSM chỉ trả tên phường mà không có "Quận Ba Đình" trong chuỗi.
+ * Ghim hợp lệ nếu: nằm trong bbox xã đã chọn (Nominatim), HOẶC khớp tỉnh + quận/huyện từ reverse/địa chỉ.
+ * Không bắt buộc khớp tên xã/phường: Vietmap/OSM thường đổi cột hoặc tên xã lệch với dropdown địa giới VN.
  */
 function computePinValidity({
-    lat, lng, addressText, reverseProvince, reverseDistrict, reverseWard, admin, adminBbox,
-}) {
+                                lat, lng, addressText, reverseProvince, reverseDistrict, reverseWard, admin, adminBbox,
+                            }) {
     if (!admin) {
         return {
             isValid: true,
@@ -228,7 +271,8 @@ function computePinValidity({
     );
 
     const bboxInside = !!(adminBbox && isPointInBbox(lat, lng, adminBbox));
-    const isValid = bboxInside || (provinceMatch && districtMatch && wardMatch);
+    const adminMatchProvinceDistrict = provinceMatch && districtMatch;
+    const isValid = bboxInside || adminMatchProvinceDistrict;
 
     return { isValid, provinceMatch, districtMatch, wardMatch, bboxInside };
 }
@@ -272,7 +316,7 @@ async function fetchOsmReverse(lat, lng) {
 
         const parts = [name, ward, district, province].filter(Boolean);
         const addressText = parts.join(', ');
-        
+
         return { province, district, ward, addressText };
     } catch {
         return null;
@@ -417,7 +461,10 @@ export default function ListingForm({
 
         (async () => {
             try {
-                const hit = await fetchNominatimFirstHit(candidates, { signal: ac.signal });
+                const hit = await fetchNominatimFirstHit(candidates, {
+                    signal: ac.signal,
+                    wardName: adminLocation?.ward?.name,
+                });
                 if (cancelled) return;
                 if (!hit) {
                     adminBboxRef.current = null;
