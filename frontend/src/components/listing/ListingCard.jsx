@@ -485,16 +485,17 @@ export default function ListingCard({
                             if (!scrollContainerRef.current) return;
                             isDraggingRef.current = true;
                             movedRef.current = 0;
-                            startXRef.current = e.pageX - scrollContainerRef.current.offsetLeft;
+                            startXRef.current = e.clientX - scrollContainerRef.current.offsetLeft;
                             startScrollLeftRef.current = scrollContainerRef.current.scrollLeft;
                             scrollContainerRef.current.style.scrollSnapType = 'none';
+                            scrollContainerRef.current.style.scrollBehavior = 'auto'; // Immediate scroll response
                             scrollContainerRef.current.style.cursor = 'grabbing';
                         };
 
                         const handleMouseMove = (e) => {
                             if (!isDraggingRef.current || !scrollContainerRef.current) return;
                             e.preventDefault();
-                            const x = e.pageX - scrollContainerRef.current.offsetLeft;
+                            const x = e.clientX - scrollContainerRef.current.offsetLeft;
                             const distance = (x - startXRef.current);
                             movedRef.current = Math.abs(distance);
                             scrollContainerRef.current.scrollLeft = startScrollLeftRef.current - distance;
@@ -503,12 +504,14 @@ export default function ListingCard({
                         const handleMouseUpOrLeave = () => {
                             if (!isDraggingRef.current || !scrollContainerRef.current) return;
                             isDraggingRef.current = false;
-                            scrollContainerRef.current.style.scrollSnapType = 'x mandatory';
-                            scrollContainerRef.current.style.cursor = 'grab';
+                            
+                            const el = scrollContainerRef.current;
+                            el.style.cursor = 'grab';
+                            // scrollSnapType disabled for "vuốt không giới hạn"
                         };
 
                         const handleDragItemClick = (e) => {
-                            if (movedRef.current > 10) {
+                            if (movedRef.current > 5) {
                                 e.preventDefault();
                                 e.stopPropagation();
                             } else {
@@ -536,16 +539,21 @@ export default function ListingCard({
                                     onMouseMove={handleMouseMove}
                                     onMouseUp={handleMouseUpOrLeave}
                                     onMouseLeave={handleMouseUpOrLeave}
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onTouchMove={(e) => e.stopPropagation()}
                                     sx={{
                                         display: 'flex',
                                         overflowX: 'auto',
-                                        scrollSnapType: 'x mandatory',
+                                        // scrollSnapType disabled for free-scroll experience
                                         overscrollBehaviorX: 'none',
                                         touchAction: 'pan-y',
                                         cursor: 'grab',
                                         '&::-webkit-scrollbar': { display: 'none' },
                                         scrollbarWidth: 'none',
                                         userSelect: 'none',
+                                        WebkitUserSelect: 'none',
+                                        msUserSelect: 'none',
+                                        // Removed transform on whole container
                                     }}
                                 >
                                     {images.map((img, idx) => (
@@ -555,11 +563,16 @@ export default function ListingCard({
                                             sx={{
                                                 flexShrink: 0,
                                                 width: '50%',
-                                                scrollSnapAlign: 'start',
+                                                // scrollSnapAlign removed
                                                 aspectRatio: '1/1',
                                                 overflow: 'hidden',
                                                 mr: idx < images.length - 1 ? '4px' : 0,
                                                 cursor: 'pointer',
+                                                transition: 'transform 0.4s cubic-bezier(0.2, 0, 0.4, 1), opacity 0.3s ease, filter 0.3s ease',
+                                                '&:active': { transform: 'scale(0.92)' }, // Individual active scale
+                                                transformOrigin: 'center center',
+                                                borderRadius: '12px',
+                                                border: '1px solid rgba(255,255,255,0.03)',
                                             }}
                                         >
                                             <Box
@@ -575,6 +588,9 @@ export default function ListingCard({
                                                     pointerEvents: 'none',
                                                     userSelect: 'none',
                                                     WebkitUserDrag: 'none',
+                                                    filter: 'brightness(0.92)',
+                                                    transition: 'filter 0.3s ease',
+                                                    '&:hover': { filter: 'brightness(1)' }
                                                 }}
                                             />
                                         </Box>
