@@ -21,7 +21,6 @@ const NAV_ITEMS = [
     { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
     { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
     { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
-    { label: 'Đăng tin', icon: CampaignIcon, path: '/listings/new' },
 ];
 
 export default function Sidebar({ open = true }) {
@@ -179,24 +178,6 @@ export default function Sidebar({ open = true }) {
                     </Box>
                 </Tooltip>
 
-                {/* Nút + tạo nhóm */}
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0.5 }}>
-                    <Tooltip title="Tạo nhóm" placement="right" arrow>
-                        <IconButton
-                            size="small"
-                            sx={{
-                                bgcolor: 'rgba(255,255,255,0.08)',
-                                color: 'rgba(255,255,255,0.65)',
-                                width: 34,
-                                height: 34,
-                                transition: 'all 0.3s ease',
-                                '&:hover': { bgcolor: '#9D6EED', color: '#fff' },
-                            }}
-                        >
-                            <AddIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
             </Box>
 
             {isAuthenticated && (
