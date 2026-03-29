@@ -7,8 +7,8 @@ public final class Constants {
     public static final String MSG01 = "No search results";
     /** Profile/status update success */
     public static final String MSG10 = "Cập nhật thành công";
-    /** Max images per post exceeded */
-    public static final String MSG18 = "Maximum number of images per post has been exceeded";
+    /** Max images per post exceeded (listing upload) */
+    public static final String MSG18 = "Số ảnh vượt quá giới hạn cho mỗi tin đăng. Vui lòng giảm số ảnh và thử lại.";
     /** System configuration update success */
     public static final String MSG19 = "System configuration updated successfully";
     /** System configuration soft-deleted (deleted_at set) */

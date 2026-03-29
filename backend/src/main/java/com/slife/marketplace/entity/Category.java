@@ -36,6 +36,11 @@ public class Category {
     private Category parent;
 
     @NotNull
+    @ColumnDefault("0")
+    @Column(name = "system_locked", nullable = false)
+    private boolean systemLocked = false;
+
+    @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP")
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
