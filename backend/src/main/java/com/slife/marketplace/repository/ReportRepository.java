@@ -47,5 +47,11 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
                                   @Param("status") String status,
                                   Pageable pageable);
 
+    @Query("SELECT r FROM Report r " +
+            "LEFT JOIN r.reporter reporter " +
+            "WHERE r.targetType IN ('COMMENT', 'MESSAGE') " +
+            "AND (:status IS NULL OR r.status = :status)")
+    Page<Report> findAdminReportsOther(@Param("status") String status, Pageable pageable);
+
     long countByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);
 }

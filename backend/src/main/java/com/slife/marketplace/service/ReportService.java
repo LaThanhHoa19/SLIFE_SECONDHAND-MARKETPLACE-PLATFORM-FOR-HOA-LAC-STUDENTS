@@ -135,8 +135,22 @@ public class ReportService {
                 Sort.by(dir, resolvedSortBy)
         );
 
+        if ("OTHER".equals(normalizedTargetType)) {
+            return reportRepository.findAdminReportsOther(normalizedStatus, pageable)
+                    .map(this::toReportResponseDTO);
+        }
         return reportRepository.findAdminReports(normalizedTargetType, normalizedStatus, pageable)
                 .map(this::toReportResponseDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public ReportResponseDTO getAdminReportById(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
+        if (report.getReporter() != null) {
+            report.getReporter().getFullName();
+        }
+        return toReportResponseDTO(report);
     }
 
     @Transactional
@@ -345,6 +359,8 @@ public class ReportService {
                 ctx.listingId(),
                 ctx.conversationId(),
                 report.getReason(),
+                report.getStatus(),
+                report.getAdminNote(),
                 report.getCreatedAt());
     }
 
