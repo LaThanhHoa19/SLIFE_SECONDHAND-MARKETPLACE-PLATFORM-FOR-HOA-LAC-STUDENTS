@@ -9,7 +9,6 @@ import {
     DialogContent,
     DialogTitle,
     IconButton,
-    InputAdornment,
     Stack,
     Table,
     TableBody,
@@ -21,14 +20,18 @@ import {
     Tooltip,
     Typography,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import { useToast } from '../../context/ToastContext';
-import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
+import { DARK_DIALOG_PAPER_PROPS, DARK_DIALOG_TEXTFIELD_SX } from '../../components/common/dialogStyles';
 import { getAdminConfigurations, updateAdminConfigurations } from '../../api/configApi';
 
 const TABLE_SURFACE = '#19191B';
 const TABLE_BORDER = '#3E3E42';
+
+/** Khớp backend `ConfigUpdateRequest` / `ConfigSingleUpdateRequest` (@Size max 4000). */
+const DESCRIPTION_MAX_LENGTH = 4000;
 
 const tableContainerSx = {
     bgcolor: TABLE_SURFACE,
@@ -96,24 +99,19 @@ function validateConfigInt(raw, min, max, rangeHint) {
 
 const VALIDATORS = {
     LISTING_EXPIRATION: {
-        unit: 'ngày',
         validate: (raw) =>
             validateConfigInt(raw, 1, 365, 'Giá trị hợp lệ: 1–365 ngày.'),
     },
     MAX_IMAGES: {
-        unit: 'ảnh',
         validate: (raw) => validateConfigInt(raw, 1, 30, 'Giá trị hợp lệ: 1–30 ảnh.'),
     },
     MAX_IMAGES_PER_POST: {
-        unit: 'ảnh',
         validate: (raw) => validateConfigInt(raw, 1, 30, 'Giá trị hợp lệ: 1–30 ảnh.'),
     },
     REPORT_THRESHOLD: {
-        unit: 'lần',
         validate: (raw) => validateConfigInt(raw, 1, 100, 'Giá trị hợp lệ: 1–100.'),
     },
     DEAL_TIMEOUT_DAYS: {
-        unit: 'ngày',
         validate: (raw) =>
             validateConfigInt(raw, 1, 365, 'Giá trị hợp lệ: 1–365 ngày (theo DEAL_TIMEOUT_DAYS).'),
     },
@@ -165,9 +163,20 @@ export default function ConfigurationManagementPage() {
     const [editOpen, setEditOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [draftValue, setDraftValue] = useState('');
+    const [draftDescription, setDraftDescription] = useState('');
     const [fieldError, setFieldError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [addOpen, setAddOpen] = useState(false);
+    const [addKey, setAddKey] = useState('');
+    const [addValue, setAddValue] = useState('');
+    const [addDescription, setAddDescription] = useState('');
+    const [addKeyError, setAddKeyError] = useState('');
+    const [addValueError, setAddValueError] = useState('');
+    const [isSavingAdd, setIsSavingAdd] = useState(false);
     const { showToast } = useToast();
+
+    const addKeyNormalized = useMemo(() => addKey.trim().toUpperCase(), [addKey]);
+    const addValueMeta = useMemo(() => VALIDATORS[addKeyNormalized] ?? null, [addKeyNormalized]);
 
     const loadConfigs = useCallback(async () => {
         try {
@@ -191,6 +200,7 @@ export default function ConfigurationManagementPage() {
     const openEdit = useCallback((row) => {
         setEditing(row);
         setDraftValue(row.config_value ?? '');
+        setDraftDescription(row.description ?? '');
         setFieldError('');
         setEditOpen(true);
     }, []);
@@ -199,8 +209,60 @@ export default function ConfigurationManagementPage() {
         setEditOpen(false);
         setEditing(null);
         setDraftValue('');
+        setDraftDescription('');
         setFieldError('');
     }, []);
+
+    const openAdd = useCallback(() => {
+        setAddKey('');
+        setAddValue('');
+        setAddDescription('');
+        setAddKeyError('');
+        setAddValueError('');
+        setAddOpen(true);
+    }, []);
+
+    const closeAdd = useCallback(() => {
+        setAddOpen(false);
+        setAddKey('');
+        setAddValue('');
+        setAddDescription('');
+        setAddKeyError('');
+        setAddValueError('');
+    }, []);
+
+    const handleAddSave = useCallback(async () => {
+        setAddKeyError('');
+        setAddValueError('');
+        const keyNorm = addKey.trim().toUpperCase();
+        if (!keyNorm) {
+            setAddKeyError('Vui lòng nhập khóa cấu hình (ví dụ UPPER_SNAKE).');
+            return;
+        }
+        if (rows.some((r) => r.config_name === keyNorm)) {
+            setAddKeyError('Khóa này đã tồn tại. Dùng sửa giá trị trên bảng.');
+            return;
+        }
+        const result = validateConfigValue(keyNorm, addValue);
+        if (!result.ok) {
+            setAddValueError(result.message);
+            return;
+        }
+        const descTrim = addDescription.trim();
+        /** Luôn gửi `description` (chuỗi rỗng → backend lưu null) để khớp ConfigUpdateRequest. */
+        const payload = [{ key: keyNorm, value: result.value, description: descTrim }];
+        try {
+            setIsSavingAdd(true);
+            await updateAdminConfigurations(payload);
+            showToast('Đã thêm cấu hình.', 'success');
+            closeAdd();
+            await loadConfigs();
+        } catch (error) {
+            showToast(error?.message || 'Không thêm được cấu hình.', 'error');
+        } finally {
+            setIsSavingAdd(false);
+        }
+    }, [addKey, addValue, addDescription, rows, closeAdd, loadConfigs, showToast]);
 
     const handleSave = useCallback(async () => {
         if (!editing) return;
@@ -212,7 +274,9 @@ export default function ConfigurationManagementPage() {
         }
         try {
             setIsSaving(true);
-            await updateAdminConfigurations([{ key, value: result.value }]);
+            await updateAdminConfigurations([
+                { key, value: result.value, description: draftDescription.trim() },
+            ]);
             showToast('Đã cập nhật cấu hình.', 'success');
             closeEdit();
             await loadConfigs();
@@ -221,7 +285,7 @@ export default function ConfigurationManagementPage() {
         } finally {
             setIsSaving(false);
         }
-    }, [editing, draftValue, closeEdit, loadConfigs, showToast]);
+    }, [editing, draftValue, draftDescription, closeEdit, loadConfigs, showToast]);
 
     const editingMeta = useMemo(() => {
         if (!editing) return null;
@@ -240,6 +304,24 @@ export default function ConfigurationManagementPage() {
                     </Typography>
                 </Box>
                 <Stack direction="row" alignItems="center" spacing={1}>
+                    <Tooltip title="Thêm cấu hình">
+                        <span>
+                            <IconButton
+                                onClick={openAdd}
+                                disabled={isLoading}
+                                size="small"
+                                sx={{
+                                    color: '#a78bfa',
+                                    border: '1px solid rgba(167,139,250,0.45)',
+                                    borderRadius: 1,
+                                    '&:hover': { bgcolor: 'rgba(167,139,250,0.12)' },
+                                }}
+                                aria-label="Thêm cấu hình"
+                            >
+                                <AddIcon />
+                            </IconButton>
+                        </span>
+                    </Tooltip>
                     <Button
                         variant="outlined"
                         onClick={loadConfigs}
@@ -280,8 +362,8 @@ export default function ConfigurationManagementPage() {
                             {rows.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
-                                        Chưa có bản ghi cấu hình trên server. Có thể thêm bản ghi qua cơ sở dữ liệu hoặc lần
-                                        cập nhật PUT sẽ tạo mới theo khóa (theo backend).
+                                        Chưa có bản ghi cấu hình trên server. Dùng nút + để thêm hoặc tạo qua API PUT theo
+                                        khóa (backend).
                                     </TableCell>
                                 </TableRow>
                             ) : null}
@@ -292,11 +374,6 @@ export default function ConfigurationManagementPage() {
                                     </TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700 }}>
                                         {row.config_value}
-                                        {VALIDATORS[row.config_name]?.unit ? (
-                                            <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.65 }}>
-                                                {VALIDATORS[row.config_name].unit}
-                                            </Typography>
-                                        ) : null}
                                     </TableCell>
                                     <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
                                         {row.description || '—'}
@@ -352,7 +429,7 @@ export default function ConfigurationManagementPage() {
                                     if (fieldError) setFieldError('');
                                 }}
                                 error={Boolean(fieldError)}
-                                helperText={fieldError || `Nhập số (${editingMeta?.unit || 'đơn vị'}), không dùng số âm.`}
+                                helperText={fieldError || (!editingMeta ? 'Nhập giá trị.' : undefined)}
                                 fullWidth
                                 autoFocus
                                 disabled={isSaving}
@@ -364,19 +441,32 @@ export default function ConfigurationManagementPage() {
                                         }
                                     },
                                 }}
-                                InputProps={{
-                                    endAdornment: editingMeta?.unit ? (
-                                        <InputAdornment position="end">
-                                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                                                {editingMeta.unit}
-                                            </Typography>
-                                        </InputAdornment>
-                                    ) : null,
-                                }}
+                                sx={{ ...DARK_DIALOG_TEXTFIELD_SX }}
+                            />
+                            <TextField
+                                label="Mô tả"
+                                value={draftDescription}
+                                onChange={(e) => setDraftDescription(e.target.value)}
+                                fullWidth
+                                multiline
+                                minRows={2}
+                                disabled={isSaving}
+                                inputProps={{ maxLength: DESCRIPTION_MAX_LENGTH }}
+                                helperText={
+                                    <Box
+                                        component="span"
+                                        sx={{
+                                            display: 'block',
+                                            color: 'rgba(255,255,255,0.55)',
+                                            fontSize: 12,
+                                        }}
+                                    >
+                                        {draftDescription.length}/{DESCRIPTION_MAX_LENGTH} ký tự
+                                    </Box>
+                                }
                                 sx={{
-                                    '& .MuiOutlinedInput-root': { color: '#fff' },
-                                    '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.2)' },
+                                    ...DARK_DIALOG_TEXTFIELD_SX,
+                                    '& .MuiFormHelperText-root': { color: 'rgba(255,255,255,0.45)' },
                                 }}
                             />
                         </Stack>
@@ -393,6 +483,95 @@ export default function ConfigurationManagementPage() {
                         sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
                     >
                         {isSaving ? 'Đang lưu…' : 'Lưu'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={addOpen}
+                onClose={isSavingAdd ? undefined : closeAdd}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={DARK_DIALOG_PAPER_PROPS}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>Thêm cấu hình hệ thống</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField
+                            label="Khóa (UPPER_SNAKE)"
+                            value={addKey}
+                            onChange={(e) => {
+                                setAddKey(e.target.value);
+                                if (addKeyError) setAddKeyError('');
+                            }}
+                            error={Boolean(addKeyError)}
+                            helperText={addKeyError || 'Ví dụ: MY_FEATURE_FLAG.'}
+                            fullWidth
+                            autoFocus
+                            disabled={isSavingAdd}
+                            sx={{ ...DARK_DIALOG_TEXTFIELD_SX }}
+                        />
+                        <TextField
+                            label="Giá trị"
+                            value={addValue}
+                            onChange={(e) => {
+                                setAddValue(e.target.value);
+                                if (addValueError) setAddValueError('');
+                            }}
+                            error={Boolean(addValueError)}
+                            helperText={
+                                addValueError ||
+                                (!addValueMeta ? 'Chuỗi hoặc số tùy khóa.' : undefined)
+                            }
+                            fullWidth
+                            disabled={isSavingAdd}
+                            inputProps={{
+                                inputMode: addValueMeta ? 'numeric' : 'text',
+                                onKeyDown: addValueMeta
+                                    ? (e) => {
+                                          if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                                              e.preventDefault();
+                                          }
+                                      }
+                                    : undefined,
+                            }}
+                            sx={{ ...DARK_DIALOG_TEXTFIELD_SX }}
+                        />
+                        <TextField
+                            label="Mô tả (tùy chọn)"
+                            value={addDescription}
+                            onChange={(e) => setAddDescription(e.target.value)}
+                            fullWidth
+                            multiline
+                            minRows={2}
+                            disabled={isSavingAdd}
+                            inputProps={{ maxLength: DESCRIPTION_MAX_LENGTH }}
+                            helperText={
+                                <Box
+                                    component="span"
+                                    sx={{ display: 'block', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}
+                                >
+                                    {addDescription.length}/{DESCRIPTION_MAX_LENGTH} ký tự
+                                </Box>
+                            }
+                            sx={{
+                                ...DARK_DIALOG_TEXTFIELD_SX,
+                                '& .MuiFormHelperText-root': { color: 'rgba(255,255,255,0.45)' },
+                            }}
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={closeAdd} disabled={isSavingAdd} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleAddSave}
+                        disabled={isSavingAdd}
+                        sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
+                    >
+                        {isSavingAdd ? 'Đang lưu…' : 'Thêm'}
                     </Button>
                 </DialogActions>
             </Dialog>
