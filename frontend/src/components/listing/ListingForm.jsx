@@ -657,11 +657,6 @@ export default function ListingForm({
                 });
             }
 
-            console.log('MATCH RESULT:', { provinceMatch, districtMatch });
-
-            // Tạm ẩn validate theo yêu cầu
-            const isValid = true; // provinceMatch && districtMatch;
-
             setPendingPin({
                 lat, lng, addressText,
                 districtHint: isValid ? null : currentAdmin.district?.name,
@@ -893,9 +888,6 @@ export default function ListingForm({
                         isValid,
                     });
                 }
-
-                // Tạm ẩn validate theo yêu cầu
-                const isValid = true; // provinceMatch && districtMatch;
 
                 setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
                 setPinStatus(isValid ? 'valid' : 'invalid');
