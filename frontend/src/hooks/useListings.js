@@ -1,7 +1,7 @@
 /**
- * Mục đích: fetch listings + debounce keyword.
+ * Mục đích: fetch listings + debounce keyword + infinite scroll.
  * API dùng: GET /api/listings?q=&category=&sort=&page=&size=.
- * Expose: data, meta, isLoading, error, refetch, params, setParams.
+ * Expose: data, meta, isLoading, isLoadingMore, hasMore, error, refetch, loadMore, params, setParams.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getListings, searchListings } from '../api/listingApi';
@@ -95,16 +95,19 @@ export default function useListings(initialParams = {}) {
     const [data, setData] = useState([]);
     const [meta, setMeta] = useState({ totalPages: 0, totalElements: 0 });
     const [isLoading, setLoading] = useState(false);
+    const [isLoadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
     const debouncedQuery = useDebounce(params.q);
     const abortRef = useRef(null);
+    // Track which page last fetched to avoid duplicate appends
+    const lastFetchedPageRef = useRef(-1);
 
-    // Đồng bộ params từ URL khi user đổi category/location/search
+    // Đồng bộ params từ URL khi user đổi category/location/search — reset về page 0
     useEffect(() => {
         setParams((prev) => {
             const next = {
                 ...prev,
-                page: Number.isFinite(Number(initialParams?.page)) ? Number(initialParams.page) : prev.page,
+                page: 0,
                 size: Number.isFinite(Number(initialParams?.size)) ? Number(initialParams.size) : prev.size,
                 category: initialParams?.category ?? prev.category,
                 location: initialParams?.location ?? prev.location,
@@ -115,7 +118,7 @@ export default function useListings(initialParams = {}) {
                 maxPrice: initialParams?.maxPrice ?? prev.maxPrice,
             };
             const same =
-                next.page === prev.page && next.size === prev.size && next.category === prev.category &&
+                next.size === prev.size && next.category === prev.category &&
                 next.location === prev.location && next.sort === prev.sort && next.q === prev.q &&
                 next.condition === prev.condition && next.minPrice === prev.minPrice && next.maxPrice === prev.maxPrice;
             return same ? prev : next;
@@ -124,7 +127,6 @@ export default function useListings(initialParams = {}) {
         initialParams?.category,
         initialParams?.location,
         initialParams?.sort,
-        initialParams?.page,
         initialParams?.size,
         initialParams?.q,
         initialParams?.condition,
@@ -132,13 +134,17 @@ export default function useListings(initialParams = {}) {
         initialParams?.maxPrice,
     ]);
 
-    const fetchData = useCallback(async (currentParams, query) => {
+    const fetchData = useCallback(async (currentParams, query, append = false) => {
         if (abortRef.current) abortRef.current.abort();
         const controller = new AbortController();
         abortRef.current = controller;
 
         const loadingStarted = Date.now();
-        setLoading(true);
+        if (append) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+        }
         setError(null);
 
         try {
@@ -177,7 +183,13 @@ export default function useListings(initialParams = {}) {
                     ? payload
                     : [];
 
-            setData(list.map(normalizeListing));
+            const normalized = list.map(normalizeListing);
+            if (append) {
+                setData((prev) => [...prev, ...normalized]);
+            } else {
+                setData(normalized);
+            }
+            lastFetchedPageRef.current = p.page;
             setMeta({
                 totalPages: payload?.totalPages ?? 1,
                 totalElements: payload?.totalElements ?? list.length,
@@ -197,13 +209,15 @@ export default function useListings(initialParams = {}) {
                 await new Promise((r) => setTimeout(r, delay));
             }
             setLoading(false);
+            setLoadingMore(false);
         }
     }, []);
 
+    // Fetch khi filter thay đổi — replace data, reset page
     useEffect(() => {
-        fetchData(params, debouncedQuery);
+        lastFetchedPageRef.current = -1;
+        fetchData({ ...params, page: 0 }, debouncedQuery, false);
     }, [
-        params.page,
         params.size,
         params.category,
         params.location,
@@ -215,11 +229,27 @@ export default function useListings(initialParams = {}) {
         fetchData,
     ]);
 
+    // Fetch khi page tăng — append data (infinite scroll)
+    useEffect(() => {
+        if (params.page === 0) return;
+        if (params.page === lastFetchedPageRef.current) return;
+        fetchData(params, debouncedQuery, true);
+    }, [params.page, fetchData, debouncedQuery, params]);
+
     const refetch = useCallback(() => {
-        fetchData(params, debouncedQuery);
+        lastFetchedPageRef.current = -1;
+        fetchData({ ...params, page: 0 }, debouncedQuery, false);
     }, [fetchData, params, debouncedQuery]);
 
-    /** Cập nhật một tin trong feed (vd. sau like) để không bị mất state khi remount / Strict Mode. */
+    const hasMore = meta.totalPages > 0 && params.page < meta.totalPages - 1;
+
+    /** Load thêm trang tiếp theo (infinite scroll). */
+    const loadMore = useCallback(() => {
+        if (isLoadingMore || isLoading || !hasMore) return;
+        setParams((p) => ({ ...p, page: p.page + 1 }));
+    }, [isLoadingMore, isLoading, hasMore]);
+
+    /** Cập nhật một tin trong feed (vd. sau like). */
     const patchListing = useCallback((listingId, patch) => {
         if (listingId == null || !patch || typeof patch !== 'object') return;
         setData((prev) =>
@@ -231,5 +261,5 @@ export default function useListings(initialParams = {}) {
         );
     }, []);
 
-    return { data, meta, isLoading, error, refetch, params, setParams, patchListing };
+    return { data, meta, isLoading, isLoadingMore, hasMore, error, refetch, loadMore, params, setParams, patchListing };
 }

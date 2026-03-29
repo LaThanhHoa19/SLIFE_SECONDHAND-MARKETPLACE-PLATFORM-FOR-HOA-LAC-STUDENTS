@@ -1,9 +1,9 @@
-/** Mục đích: Trang cấu hình hệ thống (admin). Tạm thời dữ liệu hardcode — sau nối GET/PATCH /api/admin/configurations. */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Box,
     Button,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -21,11 +21,11 @@ import {
     Tooltip,
     Typography,
 } from '@mui/material';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
+import { getAdminConfigurations, updateAdminConfigurations } from '../../api/configApi';
 
 const TABLE_SURFACE = '#19191B';
 const TABLE_BORDER = '#3E3E42';
@@ -64,57 +64,23 @@ const tableSx = {
     },
 };
 
-/** Khóa cấu hình — khớp nghiệp vụ tài liệu (listing expiration, max images, report threshold, deal timeout). */
-export const HARDCODED_SYSTEM_CONFIGS = [
-    {
-        config_id: 1,
-        config_name: 'LISTING_EXPIRATION_DAYS',
-        config_value: '30',
-        description: 'Số ngày tin đăng được hiển thị công khai trước khi hết hạn.',
-        updated_by: 'admin@slife.local',
-        created_at: '2025-01-10T08:00:00.000Z',
-        updated_at: '2025-03-18T14:22:00.000Z',
-        deleted_at: null,
-    },
-    {
-        config_id: 2,
-        config_name: 'MAX_IMAGES_PER_LISTING',
-        config_value: '8',
-        description: 'Số lượng ảnh tối đa cho mỗi tin đăng.',
-        updated_by: 'admin@slife.local',
-        created_at: '2025-01-10T08:00:00.000Z',
-        updated_at: '2025-02-01T09:15:00.000Z',
-        deleted_at: null,
-    },
-    {
-        config_id: 3,
-        config_name: 'REPORT_THRESHOLD',
-        config_value: '5',
-        description:
-            'Tự động khóa tài khoản sau khi tích lũy đủ n lần vi phạm (n là giá trị cấu hình ở cột Giá trị).',
-        updated_by: 'moderator@slife.local',
-        created_at: '2025-01-10T08:00:00.000Z',
-        updated_at: '2025-03-20T11:00:00.000Z',
-        deleted_at: null,
-    },
-    {
-        config_id: 4,
-        config_name: 'DEAL_TIMEOUT_MINUTES',
-        config_value: '120',
-        description: 'Thời gian chờ tối đa (phút) để hoàn tất thỏa thuận giao dịch.',
-        updated_by: 'admin@slife.local',
-        created_at: '2025-01-10T08:00:00.000Z',
-        updated_at: '2025-03-12T16:45:00.000Z',
-        deleted_at: null,
-    },
-];
-
+/** Khớp khóa trong DB / ConfigService (chuẩn hóa UPPER_SNAKE). */
 const CONFIG_LABELS = {
-    LISTING_EXPIRATION_DAYS: 'Hạn hiển thị tin đăng',
-    MAX_IMAGES_PER_LISTING: 'Số ảnh tối đa / tin',
+    LISTING_EXPIRATION: 'Hạn hiển thị tin đăng',
+    MAX_IMAGES: 'Giới hạn ảnh (hệ thống)',
+    MAX_IMAGES_PER_POST: 'Số ảnh tối đa / tin',
     REPORT_THRESHOLD: 'Ngưỡng báo cáo',
-    DEAL_TIMEOUT_MINUTES: 'Thời gian chờ giao dịch',
+    DEAL_TIMEOUT_DAYS: 'Thời gian chờ giao dịch',
 };
+
+/** Khóa backend yêu cầu giá trị số nguyên (khớp ConfigService.NUMERIC_CONFIG_KEYS). */
+const BACKEND_NUMERIC_KEYS = new Set([
+    'MAX_IMAGES',
+    'LISTING_EXPIRATION',
+    'MAX_IMAGES_PER_POST',
+    'DEAL_TIMEOUT_DAYS',
+    'REPORT_THRESHOLD',
+]);
 
 /** Số nguyên ≥ 0, trong [min, max]; không cho số âm (kể cả chuỗi "-1"). */
 function validateConfigInt(raw, min, max, rangeHint) {
@@ -129,12 +95,16 @@ function validateConfigInt(raw, min, max, rangeHint) {
 }
 
 const VALIDATORS = {
-    LISTING_EXPIRATION_DAYS: {
+    LISTING_EXPIRATION: {
         unit: 'ngày',
         validate: (raw) =>
             validateConfigInt(raw, 1, 365, 'Giá trị hợp lệ: 1–365 ngày.'),
     },
-    MAX_IMAGES_PER_LISTING: {
+    MAX_IMAGES: {
+        unit: 'ảnh',
+        validate: (raw) => validateConfigInt(raw, 1, 30, 'Giá trị hợp lệ: 1–30 ảnh.'),
+    },
+    MAX_IMAGES_PER_POST: {
         unit: 'ảnh',
         validate: (raw) => validateConfigInt(raw, 1, 30, 'Giá trị hợp lệ: 1–30 ảnh.'),
     },
@@ -142,12 +112,27 @@ const VALIDATORS = {
         unit: 'lần',
         validate: (raw) => validateConfigInt(raw, 1, 100, 'Giá trị hợp lệ: 1–100.'),
     },
-    DEAL_TIMEOUT_MINUTES: {
-        unit: 'phút',
+    DEAL_TIMEOUT_DAYS: {
+        unit: 'ngày',
         validate: (raw) =>
-            validateConfigInt(raw, 5, 10080, 'Giá trị hợp lệ: 5–10080 phút (tối đa 7 ngày).'),
+            validateConfigInt(raw, 1, 365, 'Giá trị hợp lệ: 1–365 ngày (theo DEAL_TIMEOUT_DAYS).'),
     },
 };
+
+function validateConfigValue(key, raw) {
+    const specific = VALIDATORS[key];
+    if (specific) return specific.validate(raw);
+    if (BACKEND_NUMERIC_KEYS.has(key)) {
+        const s = String(raw ?? '').trim();
+        if (s === '') return { ok: false, message: 'Vui lòng nhập giá trị.' };
+        const n = Number.parseInt(s, 10);
+        if (Number.isNaN(n)) return { ok: false, message: 'Chỉ nhập số nguyên.' };
+        return { ok: true, value: String(n) };
+    }
+    const s = String(raw ?? '').trim();
+    if (!s) return { ok: false, message: 'Không được để trống.' };
+    return { ok: true, value: s };
+}
 
 function formatDateTime(iso) {
     if (!iso) return '—';
@@ -156,18 +141,52 @@ function formatDateTime(iso) {
     return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function cloneConfigs(list) {
-    return list.map((row) => ({ ...row }));
+function extractConfigurationList(response) {
+    const payload = response?.data?.data;
+    return Array.isArray(payload) ? payload : [];
+}
+
+function mapDtoToRow(dto, index) {
+    const key = dto.configKey ?? dto.config_key ?? `row-${index}`;
+    return {
+        config_id: key,
+        config_name: key,
+        config_value: dto.configValue ?? dto.config_value ?? '',
+        description: dto.description ?? '',
+        updated_at: dto.lastUpdated ?? dto.last_updated ?? null,
+        updated_by: null,
+    };
 }
 
 export default function ConfigurationManagementPage() {
-    const [rows, setRows] = useState(() => cloneConfigs(HARDCODED_SYSTEM_CONFIGS));
+    const [rows, setRows] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [editOpen, setEditOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [draftValue, setDraftValue] = useState('');
     const [fieldError, setFieldError] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
     const { showToast } = useToast();
-    const [deleteTarget, setDeleteTarget] = useState(null);
+
+    const loadConfigs = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            setLoadError('');
+            const response = await getAdminConfigurations();
+            const list = extractConfigurationList(response).map(mapDtoToRow);
+            setRows(list);
+        } catch (error) {
+            setLoadError(error?.message || 'Không tải được cấu hình.');
+            setRows([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadConfigs();
+    }, [loadConfigs]);
 
     const openEdit = useCallback((row) => {
         setEditing(row);
@@ -183,127 +202,109 @@ export default function ConfigurationManagementPage() {
         setFieldError('');
     }, []);
 
-    const handleSave = useCallback(() => {
+    const handleSave = useCallback(async () => {
         if (!editing) return;
         const key = editing.config_name;
-        const validator = VALIDATORS[key];
-        if (!validator) {
-            setFieldError('Không có quy tắc kiểm tra cho khóa này.');
-            return;
-        }
-        const result = validator.validate(draftValue);
+        const result = validateConfigValue(key, draftValue);
         if (!result.ok) {
             setFieldError(result.message);
             return;
         }
-        const now = new Date().toISOString();
-        setRows((prev) =>
-            prev.map((r) =>
-                r.config_id === editing.config_id
-                    ? {
-                        ...r,
-                        config_value: result.value,
-                        updated_at: now,
-                        updated_by: 'admin@slife.local',
-                    }
-                    : r,
-            ),
-        );
-        showToast('Đã cập nhật (mock — chưa gửi API).', 'success');
-        closeEdit();
-    }, [editing, draftValue, closeEdit]);
+        try {
+            setIsSaving(true);
+            await updateAdminConfigurations([{ key, value: result.value }]);
+            showToast('Đã cập nhật cấu hình.', 'success');
+            closeEdit();
+            await loadConfigs();
+        } catch (error) {
+            showToast(error?.message || 'Không lưu được cấu hình.', 'error');
+        } finally {
+            setIsSaving(false);
+        }
+    }, [editing, draftValue, closeEdit, loadConfigs, showToast]);
 
     const editingMeta = useMemo(() => {
         if (!editing) return null;
         return VALIDATORS[editing.config_name];
     }, [editing]);
 
-    const openDeleteConfirm = useCallback((row) => {
-        setDeleteTarget(row);
-    }, []);
-
-    const closeDeleteConfirm = useCallback(() => {
-        setDeleteTarget(null);
-    }, []);
-
-    const confirmDeleteRow = useCallback(() => {
-        if (!deleteTarget) return;
-        const id = deleteTarget.config_id;
-        setRows((prev) => prev.filter((r) => r.config_id !== id));
-        if (editing?.config_id === id) closeEdit();
-        showToast('Đã xóa dòng (mock — chưa gọi API).', 'success');
-        setDeleteTarget(null);
-    }, [deleteTarget, editing, closeEdit, showToast]);
-
     return (
         <Box>
-            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2, gap: 2 }}>
+            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2, gap: 2, flexWrap: 'wrap' }}>
                 <Box>
                     <Typography variant="h5" fontWeight={800} sx={{ color: '#fff', mb: 0.5 }}>
                         Cấu hình hệ thống
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', maxWidth: 640 }}>
-                        Quản lý tham số áp dụng toàn hệ thống (hạn tin, ảnh, báo cáo, giao dịch). Hiện chỉ hiển thị
-                        dữ liệu tĩnh trên trình duyệt.
+                        Tham số toàn hệ thống (đồng bộ với server qua API admin).
                     </Typography>
                 </Box>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                    <SettingsSuggestIcon fontSize="small" />
-                    <Typography variant="caption" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                        Mock data
-                    </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                    <Button
+                        variant="outlined"
+                        onClick={loadConfigs}
+                        disabled={isLoading}
+                        sx={{ borderRadius: 999, textTransform: 'none', color: '#e9d5ff', borderColor: 'rgba(233,213,255,0.35)' }}
+                    >
+                        Tải lại
+                    </Button>
+                    <SettingsSuggestIcon sx={{ color: 'rgba(255,255,255,0.45)' }} fontSize="small" />
                 </Stack>
             </Stack>
 
-            <Alert severity="info" sx={{ mb: 2, bgcolor: 'rgba(59,130,246,0.12)', color: 'rgba(255,255,255,0.9)' }}>
-                Đang dùng dữ liệu hardcode — thay đổi chỉ có hiệu lực trong phiên làm việc. Khi backend sẵn sàng, sẽ đồng
-                bộ qua API admin.
-            </Alert>
+            {loadError ? (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {loadError}
+                </Alert>
+            ) : null}
 
-            <TableContainer sx={tableContainerSx}>
-                <Table size="medium" sx={tableSx}>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Tên hiển thị</TableCell>
-                            <TableCell align="right">Giá trị</TableCell>
-                            <TableCell>Mô tả</TableCell>
-                            <TableCell>Cập nhật bởi</TableCell>
-                            <TableCell>Cập nhật lúc</TableCell>
-                            <TableCell align="center" width={120}>
-                                Thao tác
-                            </TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {rows.length === 0 ? (
+            {isLoading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" py={8}>
+                    <CircularProgress sx={{ color: '#a78bfa' }} />
+                </Box>
+            ) : (
+                <TableContainer sx={tableContainerSx}>
+                    <Table size="medium" sx={tableSx}>
+                        <TableHead>
                             <TableRow>
-                                <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
-                                    Chưa có dòng cấu hình. Tải lại trang để khôi phục dữ liệu mock.
+                                <TableCell>Tên hiển thị</TableCell>
+                                <TableCell align="right">Giá trị</TableCell>
+                                <TableCell>Mô tả</TableCell>
+                                <TableCell>Cập nhật lúc</TableCell>
+                                <TableCell align="center" width={100}>
+                                    Thao tác
                                 </TableCell>
                             </TableRow>
-                        ) : null}
-                        {rows.map((row) => (
-                            <TableRow key={row.config_id}>
-                                <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
-                                    {CONFIG_LABELS[row.config_name] ?? row.config_name}
-                                </TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                                    {row.config_value}
-                                    {VALIDATORS[row.config_name]?.unit ? (
-                                        <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.65 }}>
-                                            {VALIDATORS[row.config_name].unit}
-                                        </Typography>
-                                    ) : null}
-                                </TableCell>
-                                <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 280 }}>
-                                    {row.description}
-                                </TableCell>
-                                <TableCell sx={{ color: 'rgba(255,255,255,0.8)' }}>{row.updated_by ?? '—'}</TableCell>
-                                <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
-                                    {formatDateTime(row.updated_at)}
-                                </TableCell>
-                                <TableCell align="center">
-                                    <Stack direction="row" spacing={0} justifyContent="center" alignItems="center">
+                        </TableHead>
+                        <TableBody>
+                            {rows.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
+                                        Chưa có bản ghi cấu hình trên server. Có thể thêm bản ghi qua cơ sở dữ liệu hoặc lần
+                                        cập nhật PUT sẽ tạo mới theo khóa (theo backend).
+                                    </TableCell>
+                                </TableRow>
+                            ) : null}
+                            {rows.map((row) => (
+                                <TableRow key={row.config_id}>
+                                    <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
+                                        {CONFIG_LABELS[row.config_name] ?? row.config_name}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                                        {row.config_value}
+                                        {VALIDATORS[row.config_name]?.unit ? (
+                                            <Typography component="span" variant="caption" sx={{ ml: 0.5, opacity: 0.65 }}>
+                                                {VALIDATORS[row.config_name].unit}
+                                            </Typography>
+                                        ) : null}
+                                    </TableCell>
+                                    <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
+                                        {row.description || '—'}
+                                    </TableCell>
+                                    <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
+                                        {formatDateTime(row.updated_at)}
+                                    </TableCell>
+                                    <TableCell align="center">
                                         <Tooltip title="Chỉnh sửa giá trị">
                                             <IconButton
                                                 size="small"
@@ -314,32 +315,22 @@ export default function ConfigurationManagementPage() {
                                                 <EditIcon fontSize="small" />
                                             </IconButton>
                                         </Tooltip>
-                                        <Tooltip title="Xóa dòng (mock)">
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => openDeleteConfirm(row)}
-                                                sx={{ color: 'rgba(248,113,113,0.95)' }}
-                                                aria-label="Xóa cấu hình"
-                                            >
-                                                <DeleteOutlineIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </Stack>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
             <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'rgba(255,255,255,0.45)' }}>
-                Cột ẩn trong DB (soft delete): <code style={{ color: 'rgba(167,139,250,0.9)' }}>deleted_at</code> — bản
-                ghi mock đều đang hoạt động (null).
+                API: <code style={{ color: 'rgba(167,139,250,0.9)' }}>GET/PUT /api/admin/configurations</code>
+                {' '}(yêu cầu quyền ADMIN).
             </Typography>
 
             <Dialog
                 open={editOpen}
-                onClose={closeEdit}
+                onClose={isSaving ? undefined : closeEdit}
                 fullWidth
                 maxWidth="sm"
                 PaperProps={DARK_DIALOG_PAPER_PROPS}
@@ -364,6 +355,7 @@ export default function ConfigurationManagementPage() {
                                 helperText={fieldError || `Nhập số (${editingMeta?.unit || 'đơn vị'}), không dùng số âm.`}
                                 fullWidth
                                 autoFocus
+                                disabled={isSaving}
                                 inputProps={{
                                     inputMode: 'numeric',
                                     onKeyDown: (e) => {
@@ -391,45 +383,19 @@ export default function ConfigurationManagementPage() {
                     )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={closeEdit} sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                        Hủy
-                    </Button>
-                    <Button variant="contained" onClick={handleSave} sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}>
-                        Lưu
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            <Dialog
-                open={Boolean(deleteTarget)}
-                onClose={closeDeleteConfirm}
-                PaperProps={DARK_DIALOG_PAPER_PROPS}
-            >
-                <DialogTitle sx={{ fontWeight: 800 }}>Xóa cấu hình?</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)' }}>
-                        Xóa «
-                        {deleteTarget
-                            ? CONFIG_LABELS[deleteTarget.config_name] || deleteTarget.config_name
-                            : ''}
-                        » khỏi bảng? Chỉ áp dụng trong phiên (mock).
-                    </Typography>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={closeDeleteConfirm} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                    <Button onClick={closeEdit} disabled={isSaving} sx={{ color: 'rgba(255,255,255,0.7)' }}>
                         Hủy
                     </Button>
                     <Button
                         variant="contained"
-                        color="error"
-                        onClick={confirmDeleteRow}
-                        sx={{ bgcolor: '#b91c1c', '&:hover': { bgcolor: '#991b1b' } }}
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
                     >
-                        Xóa
+                        {isSaving ? 'Đang lưu…' : 'Lưu'}
                     </Button>
                 </DialogActions>
             </Dialog>
-
         </Box>
     );
 }

@@ -159,60 +159,77 @@ export default function ListingPickupMapPreview({
   }, [lat, lng, vietmapTileKey]);
 
   return (
-    <div
-      style={{
-        borderRadius: 12,
-        border: '1px solid rgba(148,163,184,0.35)',
-        padding: 12,
-        background: '#020617',
-        color: '#e5e7eb',
-      }}
-    >
-      {address && (
-        <div style={{ marginBottom: 8, fontSize: 14, fontWeight: 500 }}>
-          {address}
+    <div style={{ background: '#0a0a12', color: '#e5e7eb', position: 'relative' }}>
+      {/* Map canvas - no tile key fallback */}
+      {vietmapTileKey ? (
+        <>
+          {!mapReady && (
+            <div
+              style={{
+                position: 'absolute', inset: 0, zIndex: 1,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                background: 'rgba(10,10,18,0.8)',
+                gap: 12,
+              }}
+            >
+              <div style={{
+                width: 40, height: 40,
+                border: '3px solid rgba(157,110,237,0.2)',
+                borderTopColor: '#9D6EED',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }} />
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+                Đang tải bản đồ...
+              </span>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          )}
+          <div
+            ref={containerRef}
+            style={{
+              width: '100%',
+              height: 320,
+              display: 'block',
+            }}
+          />
+          {/* Status bar */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            px: 12, padding: '8px 16px',
+            background: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <span style={{
+              display: 'inline-flex', width: 7, height: 7,
+              borderRadius: '50%',
+              background: mapReady ? '#2ED573' : '#FFA502',
+              boxShadow: mapReady ? '0 0 6px #2ED573' : '0 0 6px #FFA502',
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.2 }}>
+              {mapReady ? 'Vietmap · bản đồ số Việt Nam' : 'Đang kết nối bản đồ Vietmap...'}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div style={{
+          height: 200,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10,
+          padding: 24,
+          background: 'rgba(157,110,237,0.04)',
+          border: '1px dashed rgba(157,110,237,0.2)',
+          borderRadius: 8, margin: 16,
+        }}>
+          <span style={{ fontSize: 32 }}>🗺️</span>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', textAlign: 'center' }}>
+            Bản đồ không khả dụng.<br />Vui lòng kiểm tra cấu hình Vietmap API key.
+          </span>
         </div>
       )}
-
-      {vietmapTileKey && gmapsUrl && (
-        <div
-          ref={containerRef}
-          style={{
-            width: '100%',
-            height: 260,
-            borderRadius: 8,
-            overflow: 'hidden',
-            marginBottom: 8,
-          }}
-        />
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 12, opacity: 0.7 }}>
-          {mapReady
-            ? 'Bản đồ Vietmap (xem trước vị trí hẹn)'
-            : 'Nếu bản đồ không hiển thị hãy kiểm tra key Vietmap.'}
-        </span>
-
-        {gmapsUrl && (
-          <a
-            href={gmapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: '6px 10px',
-              fontSize: 12,
-              borderRadius: 999,
-              border: '1px solid rgba(96,165,250,0.8)',
-              color: '#bfdbfe',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Mở Google Maps
-          </a>
-        )}
-      </div>
     </div>
   );
 }

@@ -185,6 +185,29 @@ public class ListingService {
 
         enrichListingCardsWithLikes(content, currentUser);
 
+        // Batch-load all images in one query and attach to each card
+        if (!content.isEmpty()) {
+            Set<Long> listingIds = content.stream()
+                    .map(com.slife.marketplace.dto.response.ListingCardResponse::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, List<String>> imagesByListing = listingImageRepository
+                    .findByListingIdIn(listingIds)
+                    .stream()
+                    .collect(Collectors.groupingBy(
+                            img -> img.getListing().getId(),
+                            Collectors.mapping(
+                                    com.slife.marketplace.entity.ListingImage::getImageUrl,
+                                    Collectors.toList()
+                            )
+                    ));
+            for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
+                if (card.getId() != null) {
+                    card.setImageUrls(imagesByListing.getOrDefault(card.getId(), java.util.Collections.emptyList()));
+                }
+            }
+        }
+
         return new PagedResponse<>(
                 content,
                 pageResult.getNumber(),
@@ -378,10 +401,42 @@ public class ListingService {
         response.setDescription(listing.getDescription());
         response.setPrice(listing.getPrice());
         response.setCondition(listing.getItemCondition());
+        response.setItemCondition(listing.getItemCondition());
+        response.setPurpose(listing.getPurpose());
         response.setLocation(resolveLocation(listing));
         response.setCreatedAt(listing.getCreatedAt());
         response.setImages(findImageUrls(listing.getId()));
         response.setSellerSummary(buildSellerSummary(listing));
+        response.setIsGiveaway(listing.getIsGiveaway());
+
+        // pickupAddress object with lat/lng for map display
+        Address addr = listing.getPickupAddress();
+        if (addr != null) {
+            Map<String, Object> paMap = new HashMap<>();
+            paMap.put("locationName", addr.getLocationName());
+            paMap.put("addressText", addr.getAddressText());
+            paMap.put("lat", addr.getLat());
+            paMap.put("lng", addr.getLng());
+            response.setPickupAddress(paMap);
+        }
+
+        // category info
+        if (listing.getCategory() != null) {
+            Map<String, Object> cat = new HashMap<>();
+            cat.put("id", listing.getCategory().getId());
+            cat.put("name", listing.getCategory().getName());
+            cat.put("parentId", listing.getCategory().getParent() != null ? listing.getCategory().getParent().getId() : null);
+            response.setCategory(cat);
+        }
+
+        // seller info (redundant path – FE reads both sellerSummary and seller)
+        if (listing.getSeller() != null) {
+            Map<String, Object> sel = new HashMap<>();
+            sel.put("id", listing.getSeller().getId());
+            sel.put("fullName", listing.getSeller().getFullName());
+            sel.put("avatarUrl", listing.getSeller().getAvatarUrl());
+            response.setSeller(sel);
+        }
 
         response.setIsSaved(isSaved);
         response.setIsFollowed(isFollowed);
@@ -390,6 +445,7 @@ public class ListingService {
 
         return response;
     }
+
 
 
     private Map<Long, Long> likeCountsForListingIds(Collection<Long> listingIds) {

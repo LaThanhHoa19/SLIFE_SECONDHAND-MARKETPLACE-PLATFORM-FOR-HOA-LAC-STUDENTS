@@ -60,6 +60,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     /**
      * Optimized query for Listing Cards.
      * Uses Constructor Projection to fetch only required fields.
+     * Field order MUST match ListingCardResponse @AllArgsConstructor declaration.
      */
     @Query("""
                 SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
@@ -67,19 +68,24 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                     CASE
                         WHEN a IS NULL THEN NULL
                         WHEN a.locationName IS NOT NULL AND a.locationName <> '' AND a.addressText IS NOT NULL AND a.addressText <> ''
-                            THEN CONCAT(a.locationName, ' — ', a.addressText)
+                            THEN CONCAT(a.locationName, ' \u2014 ', a.addressText)
                         WHEN a.locationName IS NOT NULL AND a.locationName <> '' THEN a.locationName
                         ELSE a.addressText
                     END,
                     l.status,
                     (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
+                    l.itemCondition,
+                    l.purpose,
+                    l.isGiveaway,
+                    l.createdAt,
                     l.seller.id,
                     l.seller.fullName,
                     l.seller.avatarUrl,
                     false,
                     false,
-                    0L,
-                    false
+                    (SELECT COUNT(ll) FROM ListingLike ll WHERE ll.listing = l),
+                    false,
+                    (SELECT COUNT(c) FROM Comment c WHERE c.listing = l AND c.deletedAt IS NULL)
                 )
                 FROM Listing l
                 LEFT JOIN l.pickupAddress a

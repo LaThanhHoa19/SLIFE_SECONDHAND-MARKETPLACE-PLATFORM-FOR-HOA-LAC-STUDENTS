@@ -1,14 +1,21 @@
 /** Mục đích: Layout tổng gồm Header (fixed), Sidebar (fixed), content, Footer. SCRUM-93: layout constants. */
-import { useState } from 'react';
-import { Box } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, useMediaQuery, useTheme } from '@mui/material';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { HEADER_HEIGHT, HEADER_GAP, SIDEBAR_WIDTH, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
+import { HEADER_HEIGHT, HEADER_GAP, CONTENT_MAX_WIDTH, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
 
 export default function MainLayout() {
+    const theme = useTheme();
+    const isLgUp = useMediaQuery(theme.breakpoints.up('lg')); // >= 1200px
     const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    // Auto close sidebar when screen shrinks, auto open when large
+    useEffect(() => {
+        setSidebarOpen(isLgUp);
+    }, [isLgUp]);
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith('/admin');
 
@@ -45,7 +52,16 @@ export default function MainLayout() {
                         flexDirection: 'column',
                     }}
                 >
-                    <Box sx={{ flex: 1, px: isAdminRoute ? 0 : PAGE_PADDING_X, py: isAdminRoute ? 0 : PAGE_PADDING_Y }}>
+                    <Box
+                        sx={{
+                            flex: 1,
+                            width: '100%',
+                            maxWidth: isAdminRoute ? '100%' : CONTENT_MAX_WIDTH,
+                            mx: isAdminRoute ? 0 : 'auto',
+                            px: isAdminRoute ? 0 : PAGE_PADDING_X,
+                            py: isAdminRoute ? 0 : PAGE_PADDING_Y,
+                        }}
+                    >
                         <Outlet />
                     </Box>
                     {!isAdminRoute && <Footer />}
