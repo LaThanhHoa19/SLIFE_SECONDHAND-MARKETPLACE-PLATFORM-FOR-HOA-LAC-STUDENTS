@@ -1,4 +1,4 @@
--- Cây danh mục cha–con (bổ sung sau V1/V10).
+-- Cây danh mục cha–con (bổ sung sau V1).
 -- Cha trước: INSERT cha → gán parent_id cho 3 dòng mẫu V1 theo name → thêm các danh mục con mới.
 
 -- 1) Danh mục gốc (cấp 1)
@@ -30,5 +30,3 @@ INSERT INTO categories (name, description, parent_id, system_locked) VALUES
                                                                          ('Thiết bị gia dụng nhỏ', 'Ấm siêu tốc, máy sấy tóc, ổ cắm', @cat_ktx, 0),
                                                                          ('Đèn & quạt', 'Đèn bàn, đèn ngủ, quạt mini', @cat_ktx, 0),
                                                                          ('Nội thất & sắp xếp', 'Kệ, móc treo, hộp đựng, gối', @cat_ktx, 0);
-
--- "Trao tặng" (V10) giữ làm danh mục gốc; system_locked đã được V11 xử lý.
