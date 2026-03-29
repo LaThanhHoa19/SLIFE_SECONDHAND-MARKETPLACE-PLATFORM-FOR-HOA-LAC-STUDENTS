@@ -4,8 +4,8 @@ import { getLanding } from '../api/landingApi';
 import { unwrapApiData } from '../utils/apiPayload';
 import { fullImageUrl } from '../utils/constants';
 
-const DEFAULT_HERO_IMG =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuDye8aE83yOsZyyyA94rSwLlkDj6YXwOcSSj3NySZh5JnWYPdJA3F3beWwSwpHWE4OHWUGJ82aw8Zvih-QQ1iSW977QsvzrBhdjOAi0wiu8U8jh6pdVYLQKnbNSnjXzEvBM0SZzAoBFxbTWdVruSs-58OIpOGA1eIPvdVgHX5r-vl_mKXN4MUz91fnnxGpltzL0CFiwxz2zlaUbTcuY-muhlu5MnDpIj_lv6gsZH3_kOJoBfW3ksj-1Yfydsxms2aHKjoUrtpCPqCg';
+/** Ảnh hero cố định — khuôn viên FPT Hòa Lạc (public/hero-campus-fpt.png). */
+const HERO_SECTION_IMAGE = '/hero-campus-fpt.png';
 
 const CAROUSEL_PLACEHOLDER_IMG =
   'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&q=80';
@@ -49,7 +49,7 @@ export default function StitchLandingPage() {
   const loadingLanding = landing === null && !landingError;
 
   const hero = landing?.heroListing;
-  const heroImg = fullImageUrl(hero?.thumbnailUrl) || DEFAULT_HERO_IMG;
+  const heroImg = HERO_SECTION_IMAGE;
   const heroLine = loadingLanding
     ? 'Đang tải tin mới...'
     : hero
@@ -160,7 +160,11 @@ export default function StitchLandingPage() {
                   </div>
                 </div>
                 <div className="flex-1 relative w-full aspect-square md:aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border-8 border-white dark:border-slate-800">
-                  <img className="w-full h-full object-cover" data-alt="Tin mới nhất trên SLIFE" src={heroImg} />
+                  <img
+                    className="w-full h-full object-cover object-center"
+                    alt="Khuôn viên Đại học FPT Hòa Lạc"
+                    src={heroImg}
+                  />
                   <div className="absolute bottom-6 left-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4 max-w-[min(100%,22rem)]">
                     <div className="size-12 bg-primary/20 rounded-full flex items-center justify-center text-primary shrink-0">
                       <span className="material-symbols-outlined">local_fire_department</span>
