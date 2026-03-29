@@ -1,178 +1,127 @@
-/** Chi tiết báo cáo (admin). Route: /admin/reports/:reportId */
-import { useCallback, useEffect, useState } from 'react';
+/** Chi tiết báo cáo (admin) — UI Stitch / dark curator. Route: /admin/reports/:reportId */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
   CircularProgress,
+  Grid,
   IconButton,
+  Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { getReports, processReport } from '../../api/reportApi';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getAdminReportById, processReport } from '../../api/reportApi';
 import { useToast } from '../../context/ToastContext';
+import { ADMIN_THEME as t } from '../../theme/adminTheme';
+import {
+  findReportAdminMockById,
+  isMockReportRow,
+  isPendingRow,
+  isReportAdminMockEnabled,
+  reportedDisplay,
+  reportRowId,
+  statusLabel,
+  targetSubjectLabel,
+  writeReportMockPatch,
+} from './reportAdminUtils';
 
-// —— Dữ liệu demo + helpers (cùng file; ReportManagementPage import các export cần thiết) ——
+const STITCH_PAGE_GRADIENT = `linear-gradient(165deg, #0b0e1e 0%, #0f0e18 40%, ${t.bgApp} 100%)`;
+const CARD_BG = 'rgba(22, 27, 34, 0.92)';
+const CARD_BORDER = 'rgba(99, 102, 241, 0.14)';
+const STITCH_INDIGO = '#6366f1';
+const MUTED_LABEL = 'rgba(148, 163, 184, 0.9)';
 
-export const REPORT_DEMO_ROWS = [
-  {
-    reportId: 99001,
-    targetType: 'USER',
-    reporterName: 'Nguyễn Văn An',
-    reportedDisplayName: 'Trần Thị Bình',
-    reason: 'Gửi link lừa đảo trong chat.',
-    status: 'PENDING',
-    createdAt: '2026-03-10T09:15:00.000Z',
-    _demo: true,
-  },
-  {
-    reportId: 99002,
-    targetType: 'LISTING',
-    reporterName: 'Lê Minh Tuấn',
-    reportedDisplayName: 'MacBook Air M1 cũ — còn bảo hành',
-    reason: 'Hình ảnh không khớp mô tả, nghi ngờ hàng nhái.',
-    status: 'PENDING',
-    createdAt: '2026-03-11T14:22:00.000Z',
-    _demo: true,
-  },
-  {
-    reportId: 99003,
-    targetType: 'USER',
-    reporterName: 'Phạm Thu Hà',
-    reportedDisplayName: 'Đỗ Quốc Huy',
-    reason: 'Spam tin nhắn quảng cáo ngoài phạm vi SLIFE.',
-    status: 'RESOLVED',
-    createdAt: '2026-03-12T08:40:00.000Z',
-    _demo: true,
-  },
-  {
-    reportId: 99004,
-    targetType: 'LISTING',
-    reporterName: 'Hoàng Nam',
-    reportedDisplayName: 'iPhone 13 — pin chai',
-    reason: 'Giá niêm yết thấp hơn nhiều so với thị trường, nghi ngờ scam.',
-    status: 'PENDING',
-    createdAt: '2026-03-13T16:05:00.000Z',
-    _demo: true,
-  },
-  {
-    reportId: 99005,
-    targetType: 'USER',
-    reporterName: 'Vũ Khánh Linh',
-    reportedDisplayName: 'Bùi Gia Bảo',
-    reason: 'Lời lẽ xúc phạm trong phần bình luận tin đăng.',
-    status: 'REJECTED',
-    createdAt: '2026-03-14T11:30:00.000Z',
-    _demo: true,
-  },
-];
+function reporterInitials(name) {
+  if (!name || typeof name !== 'string') return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
-const DEMO_OVERRIDE_KEY = 'slife_admin_report_demo_v1';
-
-export function readDemoOverrides() {
-  try {
-    const raw = sessionStorage.getItem(DEMO_OVERRIDE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed !== null ? parsed : {};
-  } catch {
-    return {};
+function targetTypeBadgeSx(type) {
+  const u = String(type || '').toUpperCase();
+  if (u === 'LISTING' || u === 'POST') {
+    return {
+      bgcolor: 'rgba(99, 102, 241, 0.18)',
+      color: '#a5b4fc',
+      border: '1px solid rgba(99, 102, 241, 0.35)',
+    };
   }
+  if (u === 'USER') {
+    return {
+      bgcolor: 'rgba(34, 211, 238, 0.1)',
+      color: '#67e8f9',
+      border: '1px solid rgba(34, 211, 238, 0.28)',
+    };
+  }
+  return {
+    bgcolor: 'rgba(251, 191, 36, 0.1)',
+    color: '#fcd34d',
+    border: '1px solid rgba(251, 191, 36, 0.28)',
+  };
 }
 
-export function writeDemoOverride(reportId, patch) {
-  const o = readDemoOverrides();
-  o[String(reportId)] = { ...(o[String(reportId)] || {}), ...patch };
-  sessionStorage.setItem(DEMO_OVERRIDE_KEY, JSON.stringify(o));
+function relatedCategoryLine(targetType) {
+  const u = String(targetType || '').toUpperCase();
+  if (u === 'LISTING' || u === 'POST') return 'Tin đăng / marketplace';
+  if (u === 'USER') return 'Hồ sơ người dùng';
+  if (u === 'COMMENT') return 'Bình luận trên bài';
+  if (u === 'MESSAGE') return 'Tin nhắn / hội thoại';
+  return 'Liên quan nền tảng';
 }
 
-function applyDemoOverridesToRows(rows) {
-  const o = readDemoOverrides();
-  return rows.map((r) => {
-    const id = r.reportId ?? r.id;
-    const extra = id != null ? o[String(id)] : null;
-    return extra ? { ...r, ...extra } : r;
-  });
-}
-
-export function buildMergedReportList(fromApi) {
-  const api = Array.isArray(fromApi) ? fromApi : [];
-  return [...applyDemoOverridesToRows(REPORT_DEMO_ROWS), ...api];
-}
-
-export function formatReportDate(dateValue) {
-  if (!dateValue) return '-';
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('vi-VN');
-}
-
-export function reportedDisplay(row) {
-  return row?.reportedDisplayName ?? row?.reported_display_name ?? '-';
-}
-
-export function statusLabel(status) {
-  const s = (status || '').toUpperCase();
-  if (s === 'PENDING') return 'Chờ xử lý';
-  if (s === 'RESOLVED') return 'Đã xử lý';
-  if (s === 'REJECTED') return 'Từ chối';
-  if (s === 'DISMISSED') return 'Đã bỏ qua';
-  return status || '-';
-}
-
-export function statusChipSx(status) {
-  const s = (status || '').toUpperCase();
+function statusBannerSx(status) {
+  const s = String(status || '').toUpperCase();
   if (s === 'PENDING') {
-    return { bgcolor: 'rgba(234,179,8,0.12)', color: '#facc15' };
+    return {
+      border: '1px solid rgba(234, 179, 8, 0.45)',
+      bgcolor: 'rgba(234, 179, 8, 0.08)',
+      iconColor: '#facc15',
+    };
   }
   if (s === 'RESOLVED') {
-    return { bgcolor: 'rgba(34,197,94,0.12)', color: '#4ade80' };
+    return {
+      border: '1px solid rgba(74, 222, 128, 0.4)',
+      bgcolor: 'rgba(34, 197, 94, 0.08)',
+      iconColor: '#4ade80',
+    };
   }
   if (s === 'REJECTED') {
-    return { bgcolor: 'rgba(248,113,113,0.12)', color: '#f87171' };
+    return {
+      border: '1px solid rgba(248, 113, 113, 0.4)',
+      bgcolor: 'rgba(248, 113, 113, 0.08)',
+      iconColor: '#f87171',
+    };
   }
-  if (s === 'DISMISSED') {
-    return { bgcolor: 'rgba(148,163,184,0.12)', color: '#94a3b8' };
-  }
-  return { bgcolor: 'rgba(148,163,184,0.12)', color: '#cbd5e1' };
+  return {
+    border: `1px solid ${CARD_BORDER}`,
+    bgcolor: 'rgba(255,255,255,0.04)',
+    iconColor: '#94a3b8',
+  };
 }
 
-export function isPendingRow(row) {
-  const s = (row?.status || 'PENDING').toUpperCase();
-  return s === 'PENDING';
-}
-
-export function reportRowId(row) {
-  return row?.reportId ?? row?.id;
-}
-
-/** Loại đích báo cáo: LISTING (tin đăng) hoặc USER — khớp backend `targetType`. */
-export function reportTargetType(row) {
-  const t = String(row?.targetType ?? row?.target_type ?? '').toUpperCase();
-  if (t === 'LISTING' || t === 'USER') return t;
-  return '';
-}
-
-export function findReportInList(list, idStr) {
-  const n = Number(idStr);
-  if (!Number.isFinite(n)) return null;
-  return list.find((r) => reportRowId(r) === n) ?? null;
-}
-
-function extractReportList(response) {
-  const payload = response?.data?.data ?? response?.data;
-  if (Array.isArray(payload)) return payload;
-  return [];
-}
+const cardSx = {
+  bgcolor: CARD_BG,
+  border: `1px solid ${CARD_BORDER}`,
+  borderRadius: 2,
+  boxShadow: '0 18px 40px rgba(0, 0, 0, 0.35)',
+  backdropFilter: 'blur(8px)',
+};
 
 export default function ReportDetailPage() {
   const { reportId: reportIdParam } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [report, setReport] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -182,12 +131,10 @@ export default function ReportDetailPage() {
 
   const loadReport = useCallback(async () => {
     const idStr = reportIdParam;
-    const fromNav = location.state?.report;
-    if (fromNav && String(reportRowId(fromNav)) === String(idStr)) {
-      const rid = reportRowId(fromNav);
-      const extra = rid != null ? readDemoOverrides()[String(rid)] : null;
-      setReport(extra ? { ...fromNav, ...extra } : fromNav);
-      setLoadError('');
+    const n = Number(idStr);
+    if (!Number.isFinite(n)) {
+      setLoadError('ID báo cáo không hợp lệ.');
+      setReport(null);
       setIsLoading(false);
       return;
     }
@@ -195,30 +142,52 @@ export default function ReportDetailPage() {
     try {
       setIsLoading(true);
       setLoadError('');
-      const response = await getReports();
-      const merged = buildMergedReportList(extractReportList(response));
-      const found = findReportInList(merged, idStr);
-      setReport(found);
-      if (!found) {
-        setLoadError('Không tìm thấy báo cáo.');
+      if (isReportAdminMockEnabled()) {
+        const mockRow = findReportAdminMockById(n);
+        if (mockRow) {
+          setReport(mockRow);
+          return;
+        }
       }
+      const response = await getAdminReportById(n);
+      const payload = response?.data?.data ?? response?.data;
+      if (!payload || payload.reportId == null) {
+        const fallback = findReportAdminMockById(n);
+        if (fallback) {
+          setReport(fallback);
+          setLoadError('');
+          return;
+        }
+        setReport(null);
+        setLoadError('Không tìm thấy báo cáo.');
+        return;
+      }
+      setReport(payload);
     } catch (e) {
-      const merged = buildMergedReportList([]);
-      const found = findReportInList(merged, idStr);
-      setReport(found);
-      if (found) {
+      const fallback = findReportAdminMockById(n);
+      if (fallback) {
+        setReport(fallback);
         setLoadError('');
       } else {
+        setReport(null);
         setLoadError(e?.message || 'Không tải được báo cáo.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, [reportIdParam, location.state]);
+  }, [reportIdParam]);
 
   useEffect(() => {
     loadReport();
   }, [loadReport]);
+
+  useEffect(() => {
+    if (report?.adminNote != null) {
+      setAdminNote(String(report.adminNote));
+    } else {
+      setAdminNote('');
+    }
+  }, [report]);
 
   const handleBack = () => {
     navigate('/admin/reports');
@@ -228,13 +197,24 @@ export default function ReportDetailPage() {
     const id = reportRowId(report);
     if (id == null) return;
 
-    if (report?._demo) {
+    if (isMockReportRow(report)) {
       setSubmitting(true);
       try {
         const nextStatus = action === 'APPROVE' ? 'RESOLVED' : 'REJECTED';
-        writeDemoOverride(id, { status: nextStatus });
-        setReport((r) => (r ? { ...r, status: nextStatus } : r));
-        showToast(action === 'APPROVE' ? 'Đã duyệt (dữ liệu demo).' : 'Đã từ chối (dữ liệu demo).', 'success');
+        const note = adminNote.trim();
+        writeReportMockPatch(id, {
+          status: nextStatus,
+          ...(note ? { adminNote: note } : {}),
+        });
+        setReport((r) =>
+            r ? { ...r, status: nextStatus, adminNote: note || r.adminNote } : r,
+        );
+        showToast(
+            action === 'APPROVE'
+                ? 'Đã duyệt (mock, chỉ lưu trên trình duyệt).'
+                : 'Đã từ chối (mock, chỉ lưu trên trình duyệt).',
+            'success',
+        );
       } finally {
         setSubmitting(false);
       }
@@ -256,152 +236,524 @@ export default function ReportDetailPage() {
     }
   };
 
+  const timestampParts = useMemo(() => {
+    const raw = report?.createdAt;
+    if (!raw) return { time: '—', date: '—' };
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return { time: '—', date: '—' };
+    return {
+      time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      date: d.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' }),
+    };
+  }, [report?.createdAt]);
+
   if (isLoading) {
     return (
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight={320}>
-          <CircularProgress sx={{ color: '#8B5CF6' }} />
+        <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight={360}
+            sx={(theme) => ({
+              background: STITCH_PAGE_GRADIENT,
+              mx: { xs: theme.spacing(-2), sm: theme.spacing(-3) },
+              px: { xs: theme.spacing(2), sm: theme.spacing(3) },
+              width: { xs: `calc(100% + ${theme.spacing(4)})`, sm: `calc(100% + ${theme.spacing(6)})` },
+              boxSizing: 'border-box',
+            })}
+        >
+          <CircularProgress sx={{ color: STITCH_INDIGO }} />
         </Box>
     );
   }
 
   if (!report || loadError) {
     return (
-        <Box>
+        <Box
+            sx={(theme) => ({
+              background: STITCH_PAGE_GRADIENT,
+              mx: { xs: theme.spacing(-2), sm: theme.spacing(-3) },
+              px: { xs: theme.spacing(2), sm: theme.spacing(3) },
+              width: { xs: `calc(100% + ${theme.spacing(4)})`, sm: `calc(100% + ${theme.spacing(6)})` },
+              boxSizing: 'border-box',
+              py: 2,
+            })}
+        >
           <Button
-              startIcon={<ArrowBackIcon />}
+              startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
               onClick={handleBack}
-              sx={{ color: 'rgba(255,255,255,0.85)', textTransform: 'none', mb: 2 }}
+              sx={{
+                color: 'rgba(226, 232, 240, 0.9)',
+                textTransform: 'none',
+                fontWeight: 600,
+                mb: 2,
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+              }}
           >
-            Quay lại danh sách
+            Quay lại danh sách báo cáo
           </Button>
-          <Alert severity="error">{loadError || 'Không tìm thấy báo cáo.'}</Alert>
+          <Alert
+              severity="error"
+              sx={{
+                bgcolor: 'rgba(239, 68, 68, 0.12)',
+                color: '#fecaca',
+                border: '1px solid rgba(248,113,113,0.25)',
+              }}
+          >
+            {loadError || 'Không tìm thấy báo cáo.'}
+          </Alert>
         </Box>
     );
   }
 
   const rid = reportRowId(report);
   const canAct = isPendingRow(report);
+  const subjectLabel = targetSubjectLabel(report.targetType);
+  const displayTitle = reportedDisplay(report);
+  const statusSx = statusBannerSx(report.status);
+  const tt = String(report.targetType || '').toUpperCase();
+  const listingId =
+      report.listingId ?? (tt === 'LISTING' || tt === 'POST' ? report.targetId : null);
 
   return (
-      <Box>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-          <IconButton
-              aria-label="Quay lại"
-              onClick={handleBack}
-              sx={{ color: 'rgba(255,255,255,0.85)', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' } }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
-            Xem xét báo cáo
-            {rid != null ? ` #${rid}` : ''}
-          </Typography>
-        </Stack>
-
-        <Box
+      <Box
+          sx={(theme) => ({
+            background: STITCH_PAGE_GRADIENT,
+            borderRadius: 0,
+            border: 'none',
+            py: { xs: 0, sm: 2 },
+            mb: 2,
+            mx: { xs: theme.spacing(-2), sm: theme.spacing(-3) },
+            px: { xs: theme.spacing(2), sm: theme.spacing(3) },
+            width: {
+              xs: `calc(100% + ${theme.spacing(4)})`,
+              sm: `calc(100% + ${theme.spacing(6)})`,
+            },
+            maxWidth: 'none',
+            boxSizing: 'border-box',
+            alignSelf: 'stretch',
+          })}
+      >
+        <Button
+            startIcon={<ArrowBackIosNewIcon sx={{ fontSize: 14 }} />}
+            onClick={handleBack}
             sx={{
-              bgcolor: '#19191B',
-              border: '1px solid #3E3E42',
-              borderRadius: 1,
-              p: 2.5,
-              maxWidth: 640,
+              color: 'rgba(148, 163, 184, 0.95)',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: 13,
+              mb: 2.5,
+              pl: 0.5,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', color: '#e2e8f0' },
             }}
         >
-          <Stack spacing={1.5} sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-              <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Người báo cáo: </Box>
-              {report.reporterName || '-'}
+          Quay lại danh sách báo cáo
+        </Button>
+
+        {isMockReportRow(report) && (
+            <Alert
+                severity="info"
+                sx={{
+                  mb: 2.5,
+                  borderRadius: 2,
+                  bgcolor: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid rgba(59, 130, 246, 0.28)',
+                  color: 'rgba(191, 219, 254, 0.98)',
+                  '& .MuiAlert-icon': { color: '#60a5fa' },
+                }}
+            >
+              Đang xem báo cáo mock — Duyệt/Từ chối chỉ cập nhật trong session (không gọi API).
+            </Alert>
+        )}
+
+        <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            alignItems={{ xs: 'stretch', md: 'flex-start' }}
+            justifyContent="space-between"
+            gap={2.5}
+            sx={{ mb: 3 }}
+        >
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography
+                variant="overline"
+                sx={{
+                  color: MUTED_LABEL,
+                  letterSpacing: '0.2em',
+                  fontWeight: 700,
+                  fontSize: 10,
+                  display: 'block',
+                  mb: 0.75,
+                }}
+            >
+              CHI TIẾT BÁO CÁO
+              {rid != null ? ` • ID #${rid}` : ''}
             </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-              <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>
-                {reportTargetType(report) === 'LISTING' ? 'Bài đăng bị báo cáo' : 'Người bị báo cáo'}:{' '}
-              </Box>
-              {reportedDisplay(report)}
+            <Typography
+                variant="h4"
+                sx={{
+                  color: '#fff',
+                  fontWeight: 800,
+                  letterSpacing: '-0.03em',
+                  fontSize: { xs: 24, sm: 30 },
+                  lineHeight: 1.2,
+                }}
+            >
+              Xem xét báo cáo
+              {rid != null ? ` #${rid}` : ''}
             </Typography>
-            <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
-              <Typography variant="body2" component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>
-                Trạng thái:
-              </Typography>
-              <Chip
-                  label={statusLabel(report.status)}
-                  size="small"
-                  sx={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    borderRadius: 999,
-                    ...statusChipSx(report.status),
-                  }}
-              />
-            </Stack>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-              <Box component="span" sx={{ color: 'rgba(255,255,255,0.55)' }}>Thời gian: </Box>
-              {formatReportDate(report.createdAt)}
-            </Typography>
+          </Box>
+
+          <Paper
+              elevation={0}
+              sx={{
+                ...cardSx,
+                px: 2,
+                py: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                flexShrink: 0,
+                border: statusSx.border,
+                bgcolor: statusSx.bgcolor,
+              }}
+          >
+            <Box
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: statusSx.iconColor,
+                  boxShadow: `0 0 12px ${statusSx.iconColor}`,
+                }}
+            />
             <Box>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 0.5 }}>
-                Lý do
+              <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
+                TRẠNG THÁI
               </Typography>
+              <Typography variant="body2" sx={{ color: '#f8fafc', fontWeight: 700 }}>
+                {statusLabel(report.status)}
+              </Typography>
+            </Box>
+          </Paper>
+        </Stack>
+
+        <Grid container spacing={2.5}>
+          <Grid item xs={12} lg={8}>
+            <Paper elevation={0} sx={{ ...cardSx, p: { xs: 2.5, sm: 3 } }}>
+              <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 2.5 }}>
+                <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: 'rgba(99, 102, 241, 0.15)',
+                      border: `1px solid ${CARD_BORDER}`,
+                    }}
+                >
+                  <DescriptionOutlinedIcon sx={{ color: STITCH_INDIGO, fontSize: 22 }} />
+                </Box>
+                <Typography variant="h6" sx={{ color: '#f1f5f9', fontWeight: 800, fontSize: 17 }}>
+                  Thông tin báo cáo
+                </Typography>
+              </Stack>
+
               <Typography
-                  variant="body2"
+                  variant="h5"
                   sx={{
-                    color: 'rgba(255,255,255,0.92)',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    p: 1.5,
-                    borderRadius: 1,
-                    bgcolor: 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: { xs: 20, sm: 22 },
+                    mb: 2.5,
+                    lineHeight: 1.35,
                   }}
               >
-                {(report.reason && String(report.reason).trim()) || '—'}
+                {displayTitle}
+              </Typography>
+
+              <Grid container spacing={2} sx={{ mb: 2.5 }}>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.06em' }}>
+                    NGƯỜI BÁO CÁO
+                  </Typography>
+                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: 1.25 }}>
+                    <Avatar
+                        sx={{
+                          width: 48,
+                          height: 48,
+                          fontWeight: 800,
+                          bgcolor: 'rgba(99, 102, 241, 0.35)',
+                          color: '#e0e7ff',
+                          border: `1px solid ${CARD_BORDER}`,
+                        }}
+                    >
+                      {reporterInitials(report.reporterName)}
+                    </Avatar>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle1" sx={{ color: '#f8fafc', fontWeight: 700 }} noWrap>
+                        {report.reporterName || '—'}
+                      </Typography>
+                      <Chip
+                          label="Thành viên"
+                          size="small"
+                          sx={{
+                            mt: 0.5,
+                            height: 22,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            bgcolor: 'rgba(34, 197, 94, 0.12)',
+                            color: '#86efac',
+                            border: '1px solid rgba(34, 197, 94, 0.25)',
+                          }}
+                      />
+                    </Box>
+                  </Stack>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.06em' }}>
+                    ĐỐI TƯỢNG
+                  </Typography>
+                  <Stack spacing={1} sx={{ mt: 1.25 }}>
+                    <Chip
+                        label={String(report.targetType || '—').toUpperCase()}
+                        size="small"
+                        sx={{
+                          alignSelf: 'flex-start',
+                          fontWeight: 800,
+                          fontSize: 10,
+                          letterSpacing: '0.06em',
+                          ...targetTypeBadgeSx(report.targetType),
+                        }}
+                    />
+                    <Typography variant="body2" sx={{ color: 'rgba(226, 232, 240, 0.95)' }}>
+                      {subjectLabel}
+                      {report.targetId != null ? (
+                          <>
+                            {' '}
+                            · ID:{' '}
+                            <Box component="span" sx={{ color: STITCH_INDIGO, fontWeight: 700 }}>
+                              {report.targetId}
+                            </Box>
+                          </>
+                      ) : null}
+                    </Typography>
+                  </Stack>
+                </Grid>
+              </Grid>
+
+              <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.06em' }}>
+                LÝ DO BÁO CÁO
+              </Typography>
+              <Box
+                  sx={{
+                    mt: 1,
+                    pl: 2,
+                    py: 1.5,
+                    borderLeft: '4px solid rgba(248, 113, 113, 0.75)',
+                    bgcolor: 'rgba(248, 113, 113, 0.06)',
+                    borderRadius: '0 12px 12px 0',
+                  }}
+              >
+                <Typography
+                    variant="body1"
+                    sx={{
+                      color: 'rgba(254, 226, 226, 0.95)',
+                      fontStyle: 'italic',
+                      lineHeight: 1.6,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                >
+                  {(report.reason && String(report.reason).trim()) || '—'}
+                </Typography>
+              </Box>
+
+              {(report.listingId != null || report.conversationId != null) && (
+                  <Typography variant="caption" sx={{ color: 'rgba(148, 163, 184, 0.75)', display: 'block', mt: 2 }}>
+                    {report.listingId != null && `Tin liên quan: #${report.listingId}`}
+                    {report.listingId != null && report.conversationId != null && ' · '}
+                    {report.conversationId != null && `Hội thoại: #${report.conversationId}`}
+                  </Typography>
+              )}
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} lg={4}>
+            <Stack spacing={2.5}>
+              <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
+                  THỜI ĐIỂM
+                </Typography>
+                <Typography variant="h5" sx={{ color: '#fff', fontWeight: 800, mt: 1, fontVariantNumeric: 'tabular-nums' }}>
+                  {timestampParts.time}
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'rgba(203, 213, 225, 0.9)', mt: 0.5 }}>
+                  {timestampParts.date}
+                </Typography>
+              </Paper>
+
+              <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
+                    LIÊN QUAN
+                  </Typography>
+                  {listingId != null && (
+                      <Tooltip title="Mở tin đăng">
+                        <IconButton
+                            size="small"
+                            onClick={() => navigate(`/listings/${listingId}`)}
+                            sx={{
+                              color: STITCH_INDIGO,
+                              bgcolor: 'rgba(99, 102, 241, 0.12)',
+                              '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.22)' },
+                            }}
+                        >
+                          <OpenInNewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                  )}
+                </Stack>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Box
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        flexShrink: 0,
+                        borderRadius: 2,
+                        bgcolor: 'rgba(99, 102, 241, 0.12)',
+                        border: `1px solid ${CARD_BORDER}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}
+                  >
+                    <Typography variant="h6" sx={{ color: STITCH_INDIGO, fontWeight: 900 }}>
+                      {(displayTitle || '?').slice(0, 1).toUpperCase()}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="subtitle2" sx={{ color: '#f1f5f9', fontWeight: 700 }} noWrap>
+                      {listingId != null ? `Tin #${listingId}` : `Đối tượng #${report.targetId ?? '—'}`}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: MUTED_LABEL, display: 'block', mt: 0.25 }} noWrap>
+                      {relatedCategoryLine(report.targetType)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(226, 232, 240, 0.88)', mt: 0.75, lineHeight: 1.4 }} noWrap>
+                      {displayTitle}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+
+              <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em', mb: 1, display: 'block' }}>
+                  GHI CHÚ NỘI BỘ
+                </Typography>
+                <TextField
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    placeholder="Ghi chú cho hồ sơ xử lý (chỉ admin)…"
+                    disabled={submitting || !canAct}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        color: '#f1f5f9',
+                        bgcolor: 'rgba(15, 23, 42, 0.45)',
+                        borderRadius: 2,
+                        '& fieldset': { borderColor: 'rgba(99, 102, 241, 0.2)' },
+                        '&:hover fieldset': { borderColor: 'rgba(99, 102, 241, 0.35)' },
+                        '&.Mui-focused fieldset': { borderColor: STITCH_INDIGO },
+                      },
+                    }}
+                />
+                {!canAct && (
+                    <Typography variant="caption" sx={{ color: 'rgba(148, 163, 184, 0.8)', mt: 1, display: 'block' }}>
+                      Báo cáo đã đóng — chỉ xem ghi chú đã lưu.
+                    </Typography>
+                )}
+              </Paper>
+            </Stack>
+          </Grid>
+        </Grid>
+
+        <Paper
+            elevation={0}
+            sx={{
+              ...cardSx,
+              mt: 3,
+              p: { xs: 2, sm: 2.5 },
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              alignItems: { xs: 'stretch', sm: 'center' },
+              justifyContent: 'space-between',
+              gap: 2,
+              border: `1px solid rgba(99, 102, 241, 0.2)`,
+              boxShadow: `0 0 40px rgba(99, 102, 241, 0.08), 0 20px 48px rgba(0,0,0,0.4)`,
+            }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ minWidth: 0, flex: 1 }}>
+            <ShieldOutlinedIcon sx={{ color: STITCH_INDIGO, fontSize: 28, mt: 0.25, flexShrink: 0 }} />
+            <Box>
+              <Typography variant="subtitle1" sx={{ color: '#f8fafc', fontWeight: 800 }}>
+                Cần quyết định xem xét
+              </Typography>
+              <Typography variant="body2" sx={{ color: MUTED_LABEL, mt: 0.5, lineHeight: 1.5 }}>
+                {canAct
+                    ? `Hoàn tất điều tra cho báo cáo${rid != null ? ` #${rid}` : ''}. Duyệt: ghi nhận vi phạm. Từ chối: báo cáo không được chấp nhận.`
+                    : 'Báo cáo này đã được xử lý. Bạn có thể xem lại thông tin phía trên.'}
               </Typography>
             </Box>
           </Stack>
-
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)', display: 'block', mb: 1 }}>
-            Duyệt: ghi nhận vi phạm và áp dụng xử lý theo quy định. Từ chối: báo cáo không được chấp nhận.
-          </Typography>
-          <TextField
-              label="Ghi chú nội bộ (tùy chọn)"
-              value={adminNote}
-              onChange={(e) => setAdminNote(e.target.value)}
-              fullWidth
-              multiline
-              minRows={2}
-              placeholder="Ghi chú cho hồ sơ xử lý..."
-              disabled={submitting || !canAct}
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': { color: '#fff' },
-                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-              }}
-          />
-
-          <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1.25} justifyContent="flex-end" flexWrap="wrap" useFlexGap sx={{ flexShrink: 0 }}>
             <Button
                 variant="outlined"
-                color="error"
                 onClick={() => submitProcess('REJECT')}
                 disabled={submitting || !canAct}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  borderRadius: 999,
+                  px: 2.5,
+                  borderColor: 'rgba(248, 113, 113, 0.45)',
+                  color: 'rgba(252, 165, 165, 0.95)',
+                  '&:hover': {
+                    borderColor: 'rgba(248, 113, 113, 0.65)',
+                    bgcolor: 'rgba(248, 113, 113, 0.08)',
+                  },
+                }}
             >
-              {submitting ? 'Đang xử lý...' : 'Từ chối'}
+              {submitting ? 'Đang xử lý…' : 'Từ chối'}
             </Button>
             <Button
                 variant="contained"
                 onClick={() => submitProcess('APPROVE')}
                 disabled={submitting || !canAct}
                 sx={{
-                  bgcolor: '#8B5CF6',
-                  color: '#fff',
-                  '&:hover': { bgcolor: '#7c3aed' },
-                  '&.Mui-disabled': { bgcolor: 'rgba(139,92,246,0.35)', color: 'rgba(255,255,255,0.5)' },
+                  textTransform: 'none',
+                  fontWeight: 800,
+                  borderRadius: 999,
+                  px: 2.75,
+                  background: `linear-gradient(135deg, ${STITCH_INDIGO} 0%, #4f46e5 100%)`,
+                  boxShadow: '0 8px 28px rgba(99, 102, 241, 0.45)',
+                  '&:hover': {
+                    boxShadow: '0 10px 32px rgba(99, 102, 241, 0.55)',
+                    background: `linear-gradient(135deg, #4f46e5 0%, ${STITCH_INDIGO} 100%)`,
+                  },
+                  '&.Mui-disabled': {
+                    bgcolor: 'rgba(99, 102, 241, 0.25)',
+                    color: 'rgba(255,255,255,0.45)',
+                  },
                 }}
             >
               Duyệt
             </Button>
           </Stack>
-        </Box>
-
+        </Paper>
       </Box>
   );
 }

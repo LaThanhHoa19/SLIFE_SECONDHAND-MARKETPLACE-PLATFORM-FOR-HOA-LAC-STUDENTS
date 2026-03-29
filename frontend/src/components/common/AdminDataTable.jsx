@@ -62,6 +62,8 @@ export default function AdminDataTable({
                                            emptyMessage = 'Không có dữ liệu.',
                                            paperSx,
                                            tableSx,
+                                           /** 'auto' = cuộn ngang khi bảng rộng; 'hidden' khi bảng đã co theo % (vd. báo cáo). */
+                                           tableOverflowX = 'auto',
                                        }) {
     const safeRows = rows || [];
     const resolveRowId = getRowId || ((row, index) => row?.id ?? index);
@@ -80,7 +82,7 @@ export default function AdminDataTable({
                     <CircularProgress />
                 </Box>
             ) : (
-                <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                <Box sx={{ width: '100%', overflowX: tableOverflowX }}>
                     <Table
                         size="small"
                         sx={[defaultTableSx, ...(tableSx ? [tableSx] : [])]}
@@ -149,5 +151,6 @@ AdminDataTable.propTypes = {
     emptyMessage: PropTypes.string,
     paperSx: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
     tableSx: PropTypes.oneOfType([PropTypes.object, PropTypes.array]),
+    tableOverflowX: PropTypes.oneOf(['auto', 'hidden', 'visible']),
 };
 

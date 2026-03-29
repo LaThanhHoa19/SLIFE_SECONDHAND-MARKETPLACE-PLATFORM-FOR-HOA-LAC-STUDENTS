@@ -11,6 +11,9 @@ export const SIDEBAR_WIDTH = 184;
 /** Max width of main content area (feed, listing grid, etc.) */
 export const CONTENT_MAX_WIDTH = 1200;
 
+/** Admin main column: full width của vùng còn lại (bảng rộng, không giới hạn 1200px). */
+export const ADMIN_CONTENT_MAX_WIDTH = '100%';
+
 /** Horizontal and vertical padding applied to page content by MainLayout */
 export const PAGE_PADDING_X = 2;
 export const PAGE_PADDING_Y = 2.5;
