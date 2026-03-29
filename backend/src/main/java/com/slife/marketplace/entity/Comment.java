@@ -35,6 +35,10 @@ public class Comment {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /** Auto-hide / moderation: content masked in API when set. */
+    @Column(name = "hidden_at")
+    private Instant hiddenAt;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)

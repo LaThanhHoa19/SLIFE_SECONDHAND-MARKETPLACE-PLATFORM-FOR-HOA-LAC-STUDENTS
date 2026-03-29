@@ -25,11 +25,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CommentService {
 
+    private static final String HIDDEN_PLACEHOLDER = "[N\u1ed9i dung \u0111\u00e3 b\u1ecb \u1ea9n do vi ph\u1ea1m.]";
+
     private final CommentRepository commentRepository;
     private final CommentImageRepository commentImageRepository;
     private final ListingRepository listingRepository;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public CommentResponse createComment(CreateCommentRequest request) {
@@ -109,6 +112,11 @@ public class CommentService {
 
         if (!isOwner && !isAdmin && !isListingOwner) {
             throw new SlifeException(ErrorCode.COMMENT_DELETE_FORBIDDEN);
+        }
+
+        if (isAdmin) {
+            Long listingId = comment.getListing() != null ? comment.getListing().getId() : null;
+            auditLogService.logAdminCommentDelete(currentUser, commentId, listingId);
         }
 
         // Xoa anh truoc de tranh FK constraint violation tren comment_images
@@ -201,8 +209,10 @@ public class CommentService {
     private CommentResponse toResponse(Comment c, List<String> imageUrls, List<CommentResponse> replies) {
         CommentResponse res = new CommentResponse();
         res.setId(c.getId());
-        res.setContent(c.getContent());
+        boolean hidden = c.getHiddenAt() != null;
+        res.setContent(hidden ? HIDDEN_PLACEHOLDER : c.getContent());
         res.setCreatedAt(c.getCreatedAt());
+        res.setContentHidden(hidden);
 
         User u = c.getUser();
         Map<String, Object> author = new HashMap<>();
@@ -212,7 +222,9 @@ public class CommentService {
             author.put("avatarUrl", u.getAvatarUrl());
         }
         res.setAuthor(author);
-        res.setImages(imageUrls);
+        if (!hidden) {
+            res.setImages(imageUrls);
+        }
         res.setReplies(replies);
         return res;
     }

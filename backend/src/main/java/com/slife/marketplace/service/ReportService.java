@@ -46,6 +46,7 @@ public class ReportService {
     private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "POST", "USER", "COMMENT", "MESSAGE");
     private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "DISMISSED");
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
+    private static final int DEFAULT_AUTO_HIDE_THRESHOLD = 3;
 
     private final ReportRepository reportRepository;
     private final ReportImageRepository reportImageRepository;
@@ -55,6 +56,7 @@ public class ReportService {
     private final MessageRepository messageRepository;
     private final NotificationService notificationService;
     private final ConfigService configService;
+    private final AuditLogService auditLogService;
 
     public ReportService(ReportRepository reportRepository,
                          ReportImageRepository reportImageRepository,
@@ -63,7 +65,8 @@ public class ReportService {
                          CommentRepository commentRepository,
                          MessageRepository messageRepository,
                          NotificationService notificationService,
-                         ConfigService configService) {
+                         ConfigService configService,
+                         AuditLogService auditLogService) {
         this.reportRepository = reportRepository;
         this.reportImageRepository = reportImageRepository;
         this.listingRepository = listingRepository;
@@ -72,6 +75,7 @@ public class ReportService {
         this.messageRepository = messageRepository;
         this.notificationService = notificationService;
         this.configService = configService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -170,6 +174,8 @@ public class ReportService {
 
         Report saved = reportRepository.save(report);
         log.info("Report id={} resolved as {} by admin={}", reportId, resolveStatus, admin.getId());
+        boolean approved = "RESOLVED".equals(resolveStatus);
+        auditLogService.logReportProcessed(admin, saved, approved);
         return ReportResponse.from(saved);
     }
 
@@ -193,6 +199,7 @@ public class ReportService {
         if ("APPROVE".equals(normalizedAction)) {
             applyApproveSideEffects(savedReport);
         }
+        auditLogService.logReportProcessed(admin, savedReport, "APPROVE".equals(normalizedAction));
         return "Report processed successfully";
     }
 
@@ -210,6 +217,7 @@ public class ReportService {
         notificationService.notifyListingReported(listing.getSeller(), reporter, listing.getId(), listing.getTitle());
         log.info("Listing report created: reportId={} listingId={} by userId={}", saved.getId(), listing.getId(), reporter.getId());
 
+        maybeAutoHideAfterReport("LISTING", listing.getId());
         return ReportResponse.from(saved);
     }
 
@@ -332,6 +340,17 @@ public class ReportService {
             return;
         }
 
+        if ("COMMENT".equals(report.getTargetType())) {
+            Comment comment = commentRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.COMMENT_NOT_FOUND));
+            if (comment.getHiddenAt() == null) {
+                comment.setHiddenAt(Instant.now());
+                comment.setUpdatedAt(Instant.now());
+                commentRepository.save(comment);
+            }
+            return;
+        }
+
         if ("USER".equals(report.getTargetType())) {
             User user = userRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
@@ -433,6 +452,44 @@ public class ReportService {
     }
 
     private record TargetContext(String preview, Long listingId, Long conversationId) {}
+
+    /**
+     * When PENDING reports for the same target reach the configured threshold, hide listing or comment.
+     */
+    private void maybeAutoHideAfterReport(String targetType, Long targetId) {
+        int threshold = Math.max(1, configService.getIntConfigValue("AUTO_HIDE_REPORT_THRESHOLD", DEFAULT_AUTO_HIDE_THRESHOLD));
+        long pending = reportRepository.countByTargetTypeAndTargetIdAndStatus(targetType, targetId, "PENDING");
+        if (pending < threshold) {
+            return;
+        }
+        if ("LISTING".equals(targetType)) {
+            listingRepository.findById(targetId).ifPresent(listing -> {
+                if (listing.getStatus() != null && "HIDDEN".equalsIgnoreCase(listing.getStatus().trim())) {
+                    return;
+                }
+                listing.setStatus("HIDDEN");
+                listing.setUpdatedAt(Instant.now());
+                listingRepository.save(listing);
+                auditLogService.logAutoHideListing(targetId, (int) pending, threshold);
+                log.warn("Listing auto-hidden by report count. listingId={}, pendingReports={}, threshold={}",
+                        targetId, pending, threshold);
+            });
+            return;
+        }
+        if ("COMMENT".equals(targetType)) {
+            commentRepository.findById(targetId).ifPresent(comment -> {
+                if (comment.getHiddenAt() != null) {
+                    return;
+                }
+                comment.setHiddenAt(Instant.now());
+                comment.setUpdatedAt(Instant.now());
+                commentRepository.save(comment);
+                auditLogService.logAutoHideComment(targetId, (int) pending, threshold);
+                log.warn("Comment auto-hidden by report count. commentId={}, pendingReports={}, threshold={}",
+                        targetId, pending, threshold);
+            });
+        }
+    }
 
     /** Vô hiệu hóa mọi JWT đã cấp trước đó (claim tv). */
     private static void bumpTokenRevision(User user) {

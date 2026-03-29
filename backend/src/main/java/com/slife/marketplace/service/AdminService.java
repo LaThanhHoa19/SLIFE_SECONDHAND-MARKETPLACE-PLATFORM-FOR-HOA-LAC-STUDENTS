@@ -23,9 +23,11 @@ public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
     private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
 
-    public AdminService(UserRepository userRepository) {
+    public AdminService(UserRepository userRepository, AuditLogService auditLogService) {
         this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
     }
 
     public Page<UserResponseDTO> getUsers(int page, int size, String sortBy, String sortDir, String statusFilter) {
@@ -91,7 +93,7 @@ public class AdminService {
     }
 
     @Transactional
-    public String updateUserStatus(Long id, String status) {
+    public String updateUserStatus(Long id, String status, User admin) {
         String normalizedStatus = normalizeStatus(status);
         User user = userRepository.findByIdAndRole(id, "USER")
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
@@ -106,6 +108,12 @@ public class AdminService {
         }
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
+
+        if ("BANNED".equals(normalizedStatus)) {
+            auditLogService.logUserBan(admin, id, previousStatus);
+        } else if ("ACTIVE".equals(normalizedStatus)) {
+            auditLogService.logUserUnban(admin, id, previousStatus);
+        }
 
         return "User status updated successfully";
     }
