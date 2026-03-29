@@ -22,8 +22,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.validation.Valid;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -70,6 +74,19 @@ public class ListingController {
             @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * POST /api/listings — multipart: payload (JSON) + images[] trong một request.
+     * Ảnh và listing cùng transaction — tránh tạo tin khi upload ảnh thất bại.
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ListingResponse>> createListingMultipart(
+            @RequestPart("payload") @Valid CreateListingRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        User seller = userService.getCurrentUser();
+        ListingResponse response = listingService.createListingWithImages(seller, request, images);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
     }
 

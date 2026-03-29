@@ -86,16 +86,16 @@ async function fetchOsmReverse(lat, lng) {
         const res = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
         const data = await res.json();
         if (!data || !data.address) return null;
-        
+
         const ad = data.address;
         const province = ad.city || ad.province || ad.state || '';
         const district = ad.county || ad.district || ad.city_district || ad.town || '';
         const ward = ad.suburb || ad.village || ad.quarter || '';
         const name = data.name || ad.road || '';
-        
+
         const parts = [name, ward, district, province].filter(Boolean);
         const addressText = parts.join(', ');
-        
+
         return { province, district, addressText };
     } catch {
         return null;
@@ -116,20 +116,26 @@ function createPinElement() {
 }
 
 export default function ListingForm({
-    defaultValues = {},
-    onSubmit,
-    onSaveDraft,
-    submitting = false,
-    savingDraft = false,
-    mode = 'create',
-    /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
-    submitLabel,
-    /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
-    existingImageUrls = [],
-}) {
+                                        defaultValues = {},
+                                        onSubmit,
+                                        onSaveDraft,
+                                        submitting = false,
+                                        savingDraft = false,
+                                        mode = 'create',
+                                        /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
+                                        submitLabel,
+                                        /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
+                                        existingImageUrls = [],
+                                        /** Lỗi từ API sau submit (hiển thị trong form, có thể cuộn tới ảnh). */
+                                        serverSubmitError = '',
+                                        /** 'images' = báo ngay tại khối ảnh + cuộn tới; 'top' = phía trên form. */
+                                        serverSubmitErrorPlacement = 'top',
+                                        onDismissServerSubmitError,
+                                    }) {
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
+    const formTopRef = useRef(null);
     const [categories, setCategories] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
     const [expandedCatId, setExpandedCatId] = useState(null);
@@ -320,7 +326,18 @@ export default function ListingForm({
     const handleFilesChange = useCallback((files) => {
         setImageFiles(files);
         if (files.length > 0) setImageError('');
-    }, []);
+        onDismissServerSubmitError?.();
+    }, [onDismissServerSubmitError]);
+
+    useEffect(() => {
+        if (!serverSubmitError) return;
+        const t = window.setTimeout(() => {
+            const el =
+                serverSubmitErrorPlacement === 'images' ? imageSectionRef.current : formTopRef.current;
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+        return () => window.clearTimeout(t);
+    }, [serverSubmitError, serverSubmitErrorPlacement]);
 
     const onFormSubmit = (e) => {
         e.preventDefault();
@@ -441,7 +458,7 @@ export default function ListingForm({
 
             // Tạm ẩn validate theo yêu cầu
             const isValid = true; // provinceMatch && districtMatch;
-            
+
             setPendingPin({
                 lat, lng, addressText,
                 districtHint: isValid ? null : currentAdmin.district?.name,
@@ -514,7 +531,7 @@ export default function ListingForm({
             markerRef.current = null;
             pendingMarkerRef.current = null;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [vietmapTileKey]); // Chỉ khởi tạo lại khi key thay đổi; adminLocation đọc qua ref
 
     // Đồng bộ marker xác nhận + camera
@@ -575,12 +592,6 @@ export default function ListingForm({
             pendingMarkerRef.current.remove();
             pendingMarkerRef.current = null;
         }
-    }, []);
-
-    // Khi LocationPicker chọn gợi ý Vietmap → flyTo (không gim)
-    const handleSuggestionSelect = useCallback(({ lat, lng }) => {
-        if (!mapRef.current) return;
-        mapRef.current.flyTo({ center: [lng, lat], zoom: 16, essential: true });
     }, []);
 
     // GPS: lấy vị trí thiết bị → chạy qua validation giống map click
@@ -651,7 +662,7 @@ export default function ListingForm({
 
                 // Tạm ẩn validate theo yêu cầu
                 const isValid = true; // provinceMatch && districtMatch;
-                
+
                 setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
                 setPinStatus(isValid ? 'valid' : 'invalid');
             },
@@ -687,24 +698,60 @@ export default function ListingForm({
                 }
             }}
         >
+            <Box
+                ref={formTopRef}
+                sx={{ mb: serverSubmitError && serverSubmitErrorPlacement === 'top' ? 2 : 0 }}
+            >
+                {serverSubmitError && serverSubmitErrorPlacement === 'top' ? (
+                    <Alert
+                        severity="error"
+                        onClose={() => onDismissServerSubmitError?.()}
+                        sx={{
+                            mb: 0,
+                            bgcolor: 'rgba(211,47,47,0.12)',
+                            color: '#ffcdd2',
+                            border: '1px solid rgba(244,67,54,0.35)',
+                            '& .MuiAlert-icon': { color: '#ef5350' },
+                        }}
+                    >
+                        {serverSubmitError}
+                    </Alert>
+                ) : null}
+            </Box>
+
             {/* 1. HÌNH ẢNH */}
             <Box ref={imageSectionRef}>
-            <Typography fontWeight={600} fontSize={16} mb={2}>
-                Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
-            </Typography>
-            <Box mb={4}>
-                <ImageUploader
-                    onFilesChange={handleFilesChange}
-                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
-                    existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
-                />
+                <Typography fontWeight={600} fontSize={16} mb={2}>
+                    Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                </Typography>
+                {serverSubmitError && serverSubmitErrorPlacement === 'images' ? (
+                    <Alert
+                        severity="error"
+                        onClose={() => onDismissServerSubmitError?.()}
+                        sx={{
+                            mb: 2,
+                            bgcolor: 'rgba(211,47,47,0.12)',
+                            color: '#ffcdd2',
+                            border: '1px solid rgba(244,67,54,0.35)',
+                            '& .MuiAlert-icon': { color: '#ef5350' },
+                        }}
+                    >
+                        {serverSubmitError}
+                    </Alert>
+                ) : null}
+                <Box mb={4}>
+                    <ImageUploader
+                        onFilesChange={handleFilesChange}
+                        maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
+                        existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
+                    />
 
-                {imageError && (
-                    <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
-                        {imageError}
-                    </Typography>
-                )}
-            </Box>
+                    {imageError && (
+                        <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
+                            {imageError}
+                        </Typography>
+                    )}
+                </Box>
             </Box>
 
             {/* 2. MÔ TẢ */}
@@ -943,8 +990,8 @@ export default function ListingForm({
                     Địa điểm giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                 </Typography>
 
-                    {/* hidden fields */}
-                    <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
+                {/* hidden fields */}
+                <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
                 <input type="hidden" {...register('pickupLng')} />
                 <input type="hidden" {...register('pickupAddressText')} />
                 <input type="hidden" {...register('pickupProvince')} />
@@ -954,7 +1001,6 @@ export default function ListingForm({
                 {/* ── Sequential location picker (Tỉnh → Huyện → Xã) ── */}
                 <LocationPicker
                     onConfirm={(loc) => setAdminLocation(loc)}
-                    onSuggestionSelect={handleSuggestionSelect}
                     value={adminLocation ? {
                         province: adminLocation.province,
                         district: adminLocation.district,
@@ -1054,7 +1100,7 @@ export default function ListingForm({
                         }}
                         action={
                             <Button size="small" onClick={handleRetryPin}
-                                sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
+                                    sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
                         }
                     >
                         Vị trí không thuộc khu vực đã chọn

@@ -18,6 +18,7 @@ import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
 import com.slife.marketplace.util.AddressFormat;
+import com.slife.marketplace.util.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
@@ -26,6 +27,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -43,6 +45,7 @@ import java.util.stream.Collectors;
 public class ListingService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
+    private static final int DEFAULT_MAX_IMAGES_PER_POST = 8;
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
@@ -52,6 +55,8 @@ public class ListingService {
     private final FollowService followService;
     private final BlockService blockService;
     private final ListingLikeRepository listingLikeRepository;
+    private final ListingImageService listingImageService;
+    private final ConfigService configService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -60,7 +65,9 @@ public class ListingService {
                           AddressRepository addressRepository,
                           FollowService followService,
                           BlockService blockService,
-                          ListingLikeRepository listingLikeRepository) {
+                          ListingLikeRepository listingLikeRepository,
+                          ListingImageService listingImageService,
+                          ConfigService configService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -69,6 +76,8 @@ public class ListingService {
         this.followService = followService;
         this.blockService = blockService;
         this.listingLikeRepository = listingLikeRepository;
+        this.listingImageService = listingImageService;
+        this.configService = configService;
     }
 
     // ----------------------------------------------------------------
@@ -256,6 +265,55 @@ public class ListingService {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
         }
 
+        Listing saved = persistNewListing(seller, request);
+        log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
+
+        ListingResponse created = toListingResponse(saved, seller, false, false);
+        enrichSingleListingResponseWithLikes(created, seller);
+        return created;
+    }
+
+    /**
+     * Tạo tin + upload ảnh trong một transaction — tránh lỗi upload sau khi đã commit listing (tin “mồ côi” trong DB).
+     */
+    @Transactional
+    public ListingResponse createListingWithImages(User seller, CreateListingRequest request, List<MultipartFile> images) {
+        if (seller == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+
+        boolean isDraft = request.isDraftMode();
+        List<MultipartFile> imageParts = nonEmptyImageParts(images);
+        int maxPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+
+        if (!isDraft) {
+            if (imageParts.isEmpty()) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Vui lòng đính kèm ít nhất một ảnh");
+            }
+        }
+        if (!imageParts.isEmpty() && imageParts.size() > maxPerPost) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
+        }
+
+        Listing saved = persistNewListing(seller, request);
+        if (!imageParts.isEmpty()) {
+            listingImageService.uploadListingImages(saved.getId(), imageParts);
+        }
+        log.info("createListingWithImages: id={}, status={}, seller={}, images={}", saved.getId(), saved.getStatus(), seller.getId(), imageParts.size());
+
+        ListingResponse created = toListingResponse(saved, seller, false, false);
+        enrichSingleListingResponseWithLikes(created, seller);
+        return created;
+    }
+
+    private static List<MultipartFile> nonEmptyImageParts(List<MultipartFile> images) {
+        if (images == null) {
+            return List.of();
+        }
+        return images.stream().filter(f -> f != null && !f.isEmpty()).toList();
+    }
+
+    private Listing persistNewListing(User seller, CreateListingRequest request) {
         boolean isDraft = request.isDraftMode();
 
         if (request.getTitle() == null || request.getTitle().isBlank()) {
@@ -292,12 +350,7 @@ public class ListingService {
         listing.setCreatedAt(Instant.now());
         listing.setUpdatedAt(Instant.now());
 
-        Listing saved = listingRepository.save(listing);
-        log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
-
-        ListingResponse created = toListingResponse(saved, seller, false, false);
-        enrichSingleListingResponseWithLikes(created, seller);
-        return created;
+        return listingRepository.save(listing);
     }
 
     /**
