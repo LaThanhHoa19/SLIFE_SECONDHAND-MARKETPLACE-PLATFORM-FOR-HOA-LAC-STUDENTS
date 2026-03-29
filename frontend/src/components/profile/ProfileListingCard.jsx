@@ -1,9 +1,7 @@
-/**
- * Card tin đăng trên trang profile: ảnh, tên, giá (theo wireframe).
- */
+import { useState, useEffect } from 'react';
 import { Card, CardActionArea, CardMedia, Typography, Box } from '@mui/material';
 import ImageIcon from '@mui/icons-material/Image';
-import CollectionsIcon from '@mui/icons-material/Collections';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { fullImageUrl } from '../../utils/constants';
 
 function formatPrice(value) {
@@ -17,19 +15,43 @@ const PURPLE = '#9D6EED';
 
 export default function ProfileListingCard({ listing, onClick, viewMode = 'grid' }) {
   const isGrid = viewMode === 'grid';
+  const [isHovered, setIsHovered] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  
   const title = listing?.title || 'Không có tên';
   const price = listing?.price ?? listing?.priceDisplay;
-  const imgList = listing?.images;
-  const thumbPath = Array.isArray(imgList) && imgList.length > 0 ? imgList[0] : (listing?.thumbnailUrl || listing?.imageUrl || null);
-  const thumb = thumbPath ? (thumbPath.startsWith('http') ? thumbPath : fullImageUrl(thumbPath)) : null;
+  
+  // Robust image list derivation
+  const rawImages = Array.isArray(listing?.images) ? listing.images : (Array.isArray(listing?.imageUrls) ? listing.imageUrls : []);
+  const firstThumb = listing?.thumbnailUrl || listing?.imageUrl;
+  const imgList = Array.from(new Set([...(firstThumb ? [firstThumb] : []), ...rawImages])).filter(Boolean);
+  const hasMultipleImages = imgList.length > 1;
+
+  // Cycle images every 1s on hover
+  useEffect(() => {
+    let timer;
+    if (isHovered && imgList.length > 1) {
+      timer = setInterval(() => {
+        setImageIndex((prev) => (prev + 1) % imgList.length);
+      }, 1000);
+    } else {
+      setImageIndex(0);
+    }
+    return () => clearInterval(timer);
+  }, [isHovered, imgList.length]);
+
+  const currentImgPath = imgList[imageIndex] || null;
+  const currentImg = currentImgPath ? (currentImgPath.startsWith('http') ? currentImgPath : fullImageUrl(currentImgPath)) : null;
 
   if (isGrid) {
     return (
       <Card
         elevation={0}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         sx={{
           borderRadius: 0,
-          aspectRatio: '1',
+          aspectRatio: '3/4', // Vertical rectangle
           overflow: 'hidden',
           position: 'relative',
           cursor: 'pointer',
@@ -38,28 +60,40 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
         }}
         onClick={() => onClick?.(listing)}
       >
-        {thumb ? (
+        {currentImg ? (
           <>
-            {(imgList?.length > 1 || (listing?.imageCount && listing.imageCount > 1)) && (
+            {hasMultipleImages && (
               <Box sx={{ 
                 position: 'absolute', 
                 top: 10, 
                 right: 10, 
                 color: 'white', 
-                zIndex: 2,
-                filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.4))',
+                zIndex: 4, 
+                filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.6))',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                pointerEvents: 'none'
               }}>
-                <CollectionsIcon sx={{ fontSize: 22 }} />
+                <ContentCopyIcon sx={{ fontSize: 18, transform: 'rotate(-5deg)' }} />
               </Box>
             )}
             <CardMedia
+              key={imageIndex} // Key forces re-mount or helps with transition triggers
               component="img"
-              image={thumb}
+              image={currentImg}
               alt={title}
-              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              sx={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover',
+                transition: 'opacity 0.5s ease', // Removed transform scale
+                animation: isHovered && imgList.length > 1 ? 'fadeIn 0.5s ease' : 'none',
+                '@keyframes fadeIn': {
+                  '0%': { opacity: 0.8 },
+                  '100%': { opacity: 1 }
+                }
+              }}
             />
           </>
         ) : (
@@ -74,19 +108,36 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
           sx={{
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
-            bgcolor: 'rgba(0,0,0,0.3)',
+            bgcolor: 'rgba(0,0,0,0.35)', // Slightly darker to maintain readability with less blur
+            backdropFilter: 'blur(1px)', 
+            WebkitBackdropFilter: 'blur(1px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             opacity: 0,
-            transition: 'opacity 0.2s ease',
+            transition: 'opacity 0.3s ease',
             zIndex: 2,
-            gap: 2,
-            color: 'white'
+            px: 2,
+            color: 'white',
+            textAlign: 'center'
           }}
         >
-          <Typography variant="body1" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            {listing.status === 'SOLD' ? 'ĐÃ BÁN' : formatPrice(price)}
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontWeight: 700, 
+              fontSize: '0.9rem',
+              lineHeight: 1.3,
+              textShadow: '0 2px 4px rgba(0,0,0,0.6)',
+              fontFamily: "'Outfit', sans-serif", // Ensure san-serif
+              // Truncate title
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}
+          >
+            {listing.status === 'SOLD' ? 'ĐÃ BÁN' : title}
           </Typography>
         </Box>
       </Card>

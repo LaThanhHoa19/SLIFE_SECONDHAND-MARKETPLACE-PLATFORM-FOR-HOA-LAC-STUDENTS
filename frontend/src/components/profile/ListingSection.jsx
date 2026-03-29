@@ -19,24 +19,6 @@ export default function ListingSection({
 
   return (
     <Box>
-      {isMe && !isSold && (
-        <Button
-          startIcon={<AddIcon />}
-          variant="contained"
-          sx={{
-            mb: 3,
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 700,
-            bgcolor: PURPLE,
-            boxShadow: '0 4px 12px rgba(157, 110, 237, 0.3)',
-            '&:hover': { bgcolor: '#835cd4' },
-          }}
-          onClick={onNavigateNew}
-        >
-          Đăng tin mới
-        </Button>
-      )}
 
       {listings.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -48,9 +30,9 @@ export default function ListingSection({
             sx={{
               display: 'grid',
               gridTemplateColumns: isGrid 
-                ? { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)' } 
+                ? { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)' } 
                 : '1fr',
-              gap: isGrid ? '1px' : 2,
+              gap: 0,
             }}
           >
             {listings.map((item) => (

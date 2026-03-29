@@ -26,6 +26,7 @@ import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { DialogTitle, DialogActions } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import FollowListDialog from './FollowListDialog';
 
@@ -66,9 +67,24 @@ export default function ProfileHeader({
 
     const canOpenFollowList = followListUserId != null && typeof onOpenFollowList === 'function';
 
+    const textFieldStyle = {
+        mb: 2.5,
+        '& .MuiOutlinedInput-root': {
+            color: 'white',
+            borderRadius: 2,
+            transition: 'all 0.2s ease',
+            '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+            '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+            '&.Mui-focused fieldset': { borderColor: PURPLE, borderWidth: '1px' },
+            '& input': { outline: 'none' },
+        },
+        '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' },
+        '& .MuiInputLabel-root.Mui-focused': { color: PURPLE, outline: 'none' }
+    };
+
     return (
-        <Box sx={{ maxWidth: 935, mx: 'auto', px: { xs: 2, sm: 4 }, pt: { xs: 2, sm: 4 }, pb: 2, position: 'relative' }}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 3, sm: 10 }, alignItems: { xs: 'center', sm: 'flex-start' } }}>
+        <Box sx={{ maxWidth: 880, width: { xs: '100%', sm: '76%' }, mx: 'auto', px: { xs: 2, sm: 4 }, pt: { xs: 2, sm: 4 }, pb: 2, position: 'relative' }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 3, sm: 4 }, alignItems: { xs: 'center', sm: 'flex-start' } }}>
 
                 {/* ─── Avatar Section ─────────────────────────────── */}
                 <Box sx={{ flexShrink: 0, position: 'relative' }}>
@@ -154,41 +170,41 @@ export default function ProfileHeader({
                 </Box>
 
                 {/* ─── Info Section ──────────────────────────────── */}
-                <Box sx={{ flex: 1, pt: 0.5, minWidth: 0, textAlign: { xs: 'center', sm: 'left' } }}>
-                    {/* Name + More Options */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 3, gap: 2.5 }}>
-                        <Typography variant="h5" sx={{ color: 'white', fontWeight: 500, letterSpacing: '0.5px' }}>
-                            {fullName}
-                        </Typography>
+                    <Box 
+                        sx={{ 
+                            flex: 1, pt: 0.5, minWidth: 0, textAlign: { xs: 'center', sm: 'left' },
+                            '&:hover .settings-btn': { opacity: 1 } 
+                        }}
+                    >
+                        {/* Name + More Options */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2.5, gap: 1.5 }}>
+                            <Typography variant="h5" sx={{ color: 'white', fontWeight: 700, letterSpacing: '0.2px', fontSize: '1.65rem' }}>
+                                {fullName}
+                            </Typography>
 
-                        {isMe ? (
-                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Button
-                                    variant="contained" size="small"
-                                    onClick={() => setEditing(!editing)}
-                                    sx={{
-                                        bgcolor: 'rgba(255,255,255,0.1)', color: 'white',
-                                        textTransform: 'none', fontWeight: 600,
-                                        borderRadius: 2, px: 2.5, py: 0.8,
-                                        border: '1px solid rgba(255,255,255,0.1)',
-                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }
+                            {isMe ? (
+                                <IconButton 
+                                    className="settings-btn"
+                                    onClick={() => setEditing(true)}
+                                    sx={{ 
+                                        color: 'white', 
+                                        opacity: 0.1, 
+                                        transition: 'opacity 0.3s ease',
+                                        p: 0.5
                                     }}
                                 >
-                                    Chỉnh sửa trang cá nhân
-                                </Button>
-                                <IconButton sx={{ color: 'white' }}>
-                                    <SettingsIcon />
+                                    <SettingsIcon sx={{ fontSize: '1.2rem' }} />
                                 </IconButton>
-                            </Box>
-                        ) : (
-                            <IconButton 
-                                onClick={(e) => setAnchorEl(e.currentTarget)}
-                                sx={{ color: 'white' }}
-                            >
-                                <MoreHorizIcon />
-                            </IconButton>
-                        )}
-                    </Box>
+                            ) : (
+                                <IconButton 
+                                    className="settings-btn"
+                                    onClick={(e) => setAnchorEl(e.currentTarget)}
+                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 0.5, opacity: 0.1, transition: 'opacity 0.3s ease' }}
+                                >
+                                    <MoreHorizIcon />
+                                </IconButton>
+                            )}
+                        </Box>
 
                     {/* Report Menu */}
                     <Menu
@@ -214,29 +230,45 @@ export default function ProfileHeader({
                     </Menu>
 
                     {/* Stats + Rating Row */}
-                    <Box sx={{ display: 'flex', gap: { xs: 2.5, sm: 4 }, mb: 3, justifyContent: { xs: 'center', sm: 'flex-start' }, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Typography variant="body2" sx={{ color: 'white', fontSize: '1rem' }}>
-                            <strong>{listingCount ?? 0}</strong> bài viết
+                    <Box sx={{ display: 'flex', gap: { xs: 2.5, sm: 3.5 }, mb: 3, justifyContent: { xs: 'center', sm: 'flex-start' }, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Typography variant="body2" sx={{ color: 'white', fontSize: '1rem', fontWeight: 300 }}>
+                            <span style={{ fontWeight: 600 }}>{listingCount ?? 0}</span> bài viết
                         </Typography>
                         <Typography
                             onClick={() => canOpenFollowList && onOpenFollowList('followers')}
                             variant="body2"
-                            sx={{ color: 'white', fontSize: '1rem', cursor: canOpenFollowList ? 'pointer' : 'default', '&:hover': canOpenFollowList ? { textDecoration: 'underline' } : {} }}
+                            sx={{ 
+                                color: 'white', fontSize: '1rem', fontWeight: 300,
+                                cursor: canOpenFollowList ? 'pointer' : 'default', 
+                                transition: 'all 0.15s ease',
+                                '&:hover': canOpenFollowList ? { 
+                                    textShadow: '0.5px 0 currentColor',
+                                    textDecoration: 'none' 
+                                } : {} 
+                            }}
                         >
-                            <strong>{user.followerCount ?? user.followers ?? 0}</strong> người theo dõi
+                            <span style={{ fontWeight: 600 }}>{user.followerCount ?? user.followers ?? 0}</span> người theo dõi
                         </Typography>
                         <Typography
                             onClick={() => canOpenFollowList && onOpenFollowList('following')}
                             variant="body2"
-                            sx={{ color: 'white', fontSize: '1rem', cursor: canOpenFollowList ? 'pointer' : 'default', '&:hover': canOpenFollowList ? { textDecoration: 'underline' } : {} }}
+                            sx={{ 
+                                color: 'white', fontSize: '1rem', fontWeight: 300,
+                                cursor: canOpenFollowList ? 'pointer' : 'default', 
+                                transition: 'all 0.15s ease',
+                                '&:hover': canOpenFollowList ? { 
+                                    textShadow: '0.5px 0 currentColor',
+                                    textDecoration: 'none' 
+                                } : {} 
+                            }}
                         >
-                            Đang theo dõi <strong>{user.followingCount ?? 0}</strong> người dùng
+                            Đang theo dõi <span style={{ fontWeight: 600 }}>{user.followingCount ?? 0}</span> người dùng
                         </Typography>
                         
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <StarIcon sx={{ fontSize: 19, color: '#FFC107' }} />
-                            <Typography variant="body2" fontWeight={700} sx={{ color: 'white', fontSize: '1rem' }}>
-                                {reputationScore > 0 ? Number(reputationScore).toFixed(1) : '5.0'}
+                            <Typography variant="body2" fontWeight={300} sx={{ color: 'white', fontSize: '1rem' }}>
+                                <span style={{ fontWeight: 600 }}>{reputationScore > 0 ? Number(reputationScore).toFixed(1) : '5.0'}</span>
                             </Typography>
                         </Box>
                     </Box>
@@ -244,7 +276,7 @@ export default function ProfileHeader({
                     {/* Bio / Verification / Join Date */}
                     <Box sx={{ color: 'white', display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', sm: 'flex-start' } }}>
                         {!editing && (
-                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.95)', lineHeight: 1.6, fontSize: '0.98rem', fontWeight: 500, mb: 1.5 }}>
+                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, fontSize: '0.95rem', fontWeight: 300, mb: 1.5 }}>
                                 {user.bio || (isMe ? 'Thêm giới thiệu về bản thân bạn…' : '')}
                             </Typography>
                         )}
@@ -288,71 +320,127 @@ export default function ProfileHeader({
                 </Box>
             </Box>
 
-            {/* ─── Edit Profile form ──────────────────────────── */}
-            {editing && (
-                <Box
-                    component="form"
-                    sx={{ mt: 4, p: 3, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}
-                    onSubmit={(e) => { e.preventDefault(); handleSave(); }}
-                >
-                    <TextField fullWidth label="Họ tên" variant="outlined" value={editForm.fullName}
-                        onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
-                        sx={{ mb: 2, '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)' } }}
-                        size="small"
-                    />
-                    <TextField fullWidth label="Số điện thoại" value={editForm.phoneNumber}
-                        onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
-                        sx={{ mb: 2, '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)' } }}
-                        size="small"
-                    />
-                    <TextField fullWidth multiline rows={3} label="Giới thiệu" value={editForm.bio}
-                        onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
-                        sx={{ mb: 2, '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' } }, '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.5)' } }}
-                        size="small"
-                    />
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button type="submit" variant="contained" disabled={saving}
-                            sx={{ bgcolor: '#0095f6', color: 'white', borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
-                        >
-                            {saving ? <CircularProgress size={18} color="inherit" /> : 'Lưu thay đổi'}
-                        </Button>
-                        <Button variant="outlined" onClick={() => setEditing(false)}
-                            sx={{ color: 'white', borderColor: 'rgba(255,255,255,0.2)', borderRadius: 2, textTransform: 'none' }}
-                        >
-                            Hủy
-                        </Button>
+            {/* ─── Edit Profile Popup Dialog ────────────────── */}
+            <Dialog 
+                open={editing} 
+                onClose={() => !saving && setEditing(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#121212',
+                        backgroundImage: 'none',
+                        borderRadius: 4,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        boxShadow: '0 24px 48px rgba(0,0,0,0.8)',
+                    }
+                }}
+                BackdropProps={{
+                    sx: {
+                        backdropFilter: 'blur(8px)',
+                        bgcolor: 'rgba(0,0,0,0.7)',
+                    }
+                }}
+            >
+                <DialogTitle sx={{ color: 'white', textAlign: 'center', fontWeight: 700, pt: 5, pb: 1 }}>
+                    Chỉnh sửa trang cá nhân
+                </DialogTitle>
+                <DialogContent sx={{ mt: 2, pb: 3, px: 4 }}>
+                    <Box component="form" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+                        <TextField 
+                            fullWidth label="Họ tên" variant="outlined" value={editForm.fullName}
+                            onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                            sx={textFieldStyle}
+                            size="small"
+                        />
+                        <TextField 
+                            fullWidth label="Số điện thoại" value={editForm.phoneNumber}
+                            onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                            sx={textFieldStyle}
+                            size="small"
+                        />
+                        <TextField 
+                            fullWidth multiline rows={3} label="Giới thiệu" value={editForm.bio}
+                            onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                            sx={{ ...textFieldStyle, mb: 1 }}
+                            size="small"
+                        />
+                        
+                        {error && (
+                            <Typography color="error" variant="caption" sx={{ display: 'block', mb: 2, textAlign: 'center' }}>
+                                {error}
+                            </Typography>
+                        )}
+                        
+                        <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                            <Button 
+                                fullWidth
+                                onClick={handleSave}
+                                variant="contained" 
+                                disabled={saving}
+                                sx={{ 
+                                    bgcolor: PURPLE, 
+                                    color: 'white', 
+                                    borderRadius: 3, 
+                                    height: 44,
+                                    textTransform: 'none', 
+                                    fontWeight: 700,
+                                    fontSize: '0.95rem',
+                                    '&:hover': { bgcolor: '#835cd4' },
+                                    boxShadow: '0 8px 16px rgba(157, 110, 237, 0.2)'
+                                }}
+                            >
+                                {saving ? <CircularProgress size={20} color="inherit" /> : 'Lưu thay đổi'}
+                            </Button>
+                            <Button 
+                                fullWidth
+                                variant="text" 
+                                onClick={() => setEditing(false)}
+                                sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', fontSize: '0.9rem' }}
+                            >
+                                Hủy
+                            </Button>
+                        </Box>
                     </Box>
-                </Box>
-            )}
-
-            {error && (
-                <Typography color="error" variant="body2" sx={{ textAlign: 'center', mt: 2 }}>{error}</Typography>
-            )}
+                </DialogContent>
+            </Dialog>
 
             {/* ─── Floating Chat button – bottom-right of page ── */}
             {!isMe && (
-                <Tooltip title="Nhắn tin" placement="left">
-                    <IconButton
-                        onClick={handleChat}
-                        disabled={chatLoading}
-                        sx={{
-                            position: 'fixed',
-                            bottom: 28,
-                            right: 28,
-                            zIndex: 1300,
-                            bgcolor: 'rgba(255,255,255,0.1)',
-                            color: 'white',
-                            width: 52,
-                            height: 52,
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                            '&:hover': { bgcolor: '#fff', color: '#000', transform: 'scale(1.08)' },
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&.Mui-disabled': { bgcolor: '#333', color: '#666' },
-                        }}
-                    >
-                        {chatLoading ? <CircularProgress size={22} color="inherit" /> : <ForwardToInboxIcon />}
-                    </IconButton>
-                </Tooltip>
+                <Button
+                    onClick={handleChat}
+                    disabled={chatLoading}
+                    startIcon={chatLoading ? <CircularProgress size={18} color="inherit" /> : <ForwardToInboxIcon />}
+                    variant="contained"
+                    sx={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 24,
+                        zIndex: 1300,
+                        bgcolor: 'rgba(255,255,255,0.1)',
+                        color: 'white',
+                        borderRadius: 10, // Pill shape
+                        px: 3,
+                        py: 1.2,
+                        textTransform: 'none',
+                        fontWeight: 800, // Bold font
+                        fontSize: '0.95rem',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        '&:hover': { 
+                            bgcolor: '#fff', 
+                            color: '#000', 
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 12px 40px rgba(255,255,255,0.2)'
+                        },
+                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                        '&.Mui-disabled': { bgcolor: '#333', color: '#666' },
+                    }}
+                >
+                    Tin nhắn
+                </Button>
             )}
 
             {/* ─── Avatar full-screen dialog ────────────────── */}

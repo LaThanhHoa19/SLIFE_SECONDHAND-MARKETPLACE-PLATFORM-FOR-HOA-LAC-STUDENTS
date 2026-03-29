@@ -306,7 +306,7 @@ export default function ProfilePage() {
             userId={followListUserId}
         />
 
-        <Box sx={{ maxWidth: 935, mx: 'auto', px: { xs: 0, sm: 2 } }}>
+        <Box sx={{ maxWidth: 1000, width: { xs: '100%', sm: '86%' }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
           {/* Main Content: Tabs + Content */}
           <Box sx={{
             display: 'flex',
