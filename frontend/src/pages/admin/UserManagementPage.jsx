@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import SearchIcon from '@mui/icons-material/Search';
 import {
   Alert,
   Avatar,
@@ -6,11 +7,13 @@ import {
   Button,
   Chip,
   FormControl,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Pagination,
   Select,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { getAdminUsers } from '../../api/userApi';
@@ -128,6 +131,48 @@ const selectFieldSx = {
   '& .MuiSelect-select': { color: '#fff' },
 };
 
+/** Viền thanh search — #9D6EED; khi focus thêm halo cùng tông */
+const SEARCH_BORDER = '#9D6EED';
+const SEARCH_FOCUS_GLOW = '0 0 0 3px rgba(157, 110, 237, 0.22)';
+
+const searchFieldSx = {
+  flex: { xs: 'none', sm: '1 1 260px' },
+  minWidth: { xs: '100%', sm: 260 },
+  maxWidth: { md: 440 },
+  '& .MuiOutlinedInput-root': {
+    color: '#fff',
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    '& fieldset': { borderColor: SEARCH_BORDER, borderWidth: 1 },
+    '&:hover fieldset': { borderColor: SEARCH_BORDER },
+    '&.Mui-focused': {
+      boxShadow: SEARCH_FOCUS_GLOW,
+    },
+    '&.Mui-focused fieldset, &.Mui-focused .MuiOutlinedInput-notchedOutline': {
+      borderColor: SEARCH_BORDER,
+      borderWidth: 1,
+    },
+  },
+  '& .MuiOutlinedInput-input::placeholder': {
+    color: 'rgba(255,255,255,0.42)',
+    opacity: 1,
+  },
+  '& .MuiOutlinedInput-input': {
+    outline: 'none',
+    '&:focus': { outline: 'none', boxShadow: 'none' },
+    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+  },
+  '& .MuiInputAdornment-root': { color: 'rgba(255,255,255,0.4)' },
+};
+
+function userMatchesSearch(row, rawQuery) {
+  const q = rawQuery.trim().toLowerCase();
+  if (!q) return true;
+  const email = String(row?.email ?? '').toLowerCase();
+  const name = String(row?.fullName ?? row?.full_name ?? '').toLowerCase();
+  return email.includes(q) || name.includes(q);
+}
+
 export default function UserManagementPage() {
   const [allUsers, setAllUsers] = useState([]);
   const [page, setPage] = useState(0);
@@ -136,6 +181,7 @@ export default function UserManagementPage() {
   const [sortBy, setSortBy] = useState(ADMIN_USER_SORT_BY.NONE);
   const [sortDir, setSortDir] = useState('desc');
   const [statusFilter, setStatusFilter] = useState(ADMIN_USER_STATUS_FILTER.ALL);
+  const [searchQuery, setSearchQuery] = useState('');
   const sortDisabled = sortBy === ADMIN_USER_SORT_BY.NONE;
 
   const loadUsers = useCallback(async () => {
@@ -161,18 +207,27 @@ export default function UserManagementPage() {
     }
   }, [sortBy, sortDir, statusFilter]);
 
-  const totalCount = allUsers.length;
+  const filteredUsers = useMemo(
+    () => allUsers.filter((row) => userMatchesSearch(row, searchQuery)),
+    [allUsers, searchQuery],
+  );
+
+  const totalCount = filteredUsers.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE) || 1);
 
   const displayedUsers = useMemo(
-    () => allUsers.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
-    [allUsers, page],
+    () => filteredUsers.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+    [filteredUsers, page],
   );
 
   useEffect(() => {
     const maxPage = Math.max(0, Math.ceil(totalCount / PAGE_SIZE) - 1);
     if (page > maxPage) setPage(maxPage);
   }, [totalCount, page]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchQuery]);
 
   useEffect(() => {
     loadUsers();
@@ -290,7 +345,7 @@ export default function UserManagementPage() {
 
   return (
       <Box>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2.5 }}>
+        <Stack spacing={2} sx={{ mb: 2.5 }}>
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
               Quản lý người dùng
@@ -299,7 +354,27 @@ export default function UserManagementPage() {
               Theo dõi role, trạng thái và uy tín tài khoản trong hệ thống.
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1.5}
+            alignItems={{ xs: 'stretch', md: 'center' }}
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <TextField
+              size="small"
+              placeholder="Tìm theo email hoặc họ tên"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={searchFieldSx}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
             <FormControl size="small" sx={selectFieldSx}>
               <InputLabel id="admin-users-status-filter">Trạng thái</InputLabel>
               <Select
@@ -351,7 +426,7 @@ export default function UserManagementPage() {
                 variant="contained"
                 onClick={loadUsers}
                 disabled={isLoading}
-                sx={{ borderRadius: 999, textTransform: 'none', px: 3 }}
+                sx={{ borderRadius: 999, textTransform: 'none', px: 3, alignSelf: { xs: 'stretch', md: 'center' } }}
             >
               Tải lại dữ liệu
             </Button>

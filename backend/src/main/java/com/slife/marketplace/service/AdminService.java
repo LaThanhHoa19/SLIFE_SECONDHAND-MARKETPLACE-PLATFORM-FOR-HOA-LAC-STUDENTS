@@ -1,9 +1,13 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.CategoryRepository;
+import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.ReportRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,9 +27,28 @@ public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
     private final UserRepository userRepository;
+    private final ListingRepository listingRepository;
+    private final CategoryRepository categoryRepository;
+    private final ReportRepository reportRepository;
 
-    public AdminService(UserRepository userRepository) {
+    public AdminService(
+            UserRepository userRepository,
+            ListingRepository listingRepository,
+            CategoryRepository categoryRepository,
+            ReportRepository reportRepository) {
         this.userRepository = userRepository;
+        this.listingRepository = listingRepository;
+        this.categoryRepository = categoryRepository;
+        this.reportRepository = reportRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public AdminDashboardStatsResponse getDashboardStats() {
+        return new AdminDashboardStatsResponse(
+                listingRepository.count(),
+                categoryRepository.count(),
+                userRepository.countByRole("USER"),
+                reportRepository.count());
     }
 
     public Page<UserResponseDTO> getUsers(int page, int size, String sortBy, String sortDir, String statusFilter) {

@@ -8,7 +8,7 @@ import axiosClient from './axiosClient';
 export const getAdminConfigurations = () => axiosClient.get('/api/admin/configurations');
 
 /**
- * @param {{ key: string, value: string }[]} items
+ * @param {{ key: string, value: string, description?: string | null }[]} items
  */
 export const updateAdminConfigurations = (items) =>
   axiosClient.put('/api/admin/configurations', items);
