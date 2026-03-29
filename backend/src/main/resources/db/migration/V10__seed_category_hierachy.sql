@@ -1,6 +1,6 @@
 -- Cây danh mục cha–con (bổ sung sau V1).
 -- Cha trước: INSERT cha → gán parent_id cho 3 dòng mẫu V1 theo name → thêm các danh mục con mới.
-ALTER TABLE categories ADD COLUMN system_locked TINYINT(1) DEFAULT 0;
+
 -- 1) Danh mục gốc (cấp 1)
 INSERT INTO categories (name, description, parent_id, system_locked) VALUES
     ('Sách & tài liệu', 'Sách, giáo trình, tạp chí và tài liệu học tập', NULL, 0);
