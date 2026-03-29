@@ -168,6 +168,10 @@ export default function ListingCard({
     const startScrollLeftRef = useRef(0);
     const scrollContainerRef = useRef(null);
     const movedRef = useRef(0);
+    const velocityRef = useRef(0);
+    const lastXRef = useRef(0);
+    const lastTimeRef = useRef(0);
+    const animeFrameRef = useRef(null);
 
     const { showToast } = useToast();
 
@@ -483,22 +487,34 @@ export default function ListingCard({
                     {!!images.length && (() => {
                         const handleMouseDown = (e) => {
                             if (!scrollContainerRef.current) return;
+                            cancelAnimationFrame(animeFrameRef.current);
                             isDraggingRef.current = true;
                             movedRef.current = 0;
                             startXRef.current = e.clientX - scrollContainerRef.current.offsetLeft;
+                            lastXRef.current = e.clientX;
+                            lastTimeRef.current = Date.now();
+                            velocityRef.current = 0;
                             startScrollLeftRef.current = scrollContainerRef.current.scrollLeft;
                             scrollContainerRef.current.style.scrollSnapType = 'none';
-                            scrollContainerRef.current.style.scrollBehavior = 'auto'; // Immediate scroll response
+                            scrollContainerRef.current.style.scrollBehavior = 'auto';
                             scrollContainerRef.current.style.cursor = 'grabbing';
                         };
 
                         const handleMouseMove = (e) => {
                             if (!isDraggingRef.current || !scrollContainerRef.current) return;
                             e.preventDefault();
-                            const x = e.clientX - scrollContainerRef.current.offsetLeft;
-                            const distance = (x - startXRef.current);
-                            movedRef.current = Math.abs(distance);
-                            scrollContainerRef.current.scrollLeft = startScrollLeftRef.current - distance;
+                            const now = Date.now();
+                            const dt = now - lastTimeRef.current;
+                            const x = e.clientX;
+                            if (dt > 0) {
+                                velocityRef.current = (lastXRef.current - x) / dt;
+                            }
+                            lastXRef.current = x;
+                            lastTimeRef.current = now;
+
+                            const dist = (x - startXRef.current);
+                            movedRef.current = Math.abs(dist);
+                            scrollContainerRef.current.scrollLeft = startScrollLeftRef.current - dist;
                         };
 
                         const handleMouseUpOrLeave = () => {
@@ -507,7 +523,17 @@ export default function ListingCard({
                             
                             const el = scrollContainerRef.current;
                             el.style.cursor = 'grab';
-                            // scrollSnapType disabled for "vuốt không giới hạn"
+
+                            // Momentum/Inertia
+                            const momentumScroll = () => {
+                                if (Math.abs(velocityRef.current) < 0.1) return;
+                                el.scrollLeft += velocityRef.current * 16;
+                                velocityRef.current *= 0.95; // Decay
+                                animeFrameRef.current = requestAnimationFrame(momentumScroll);
+                            };
+                            if (Math.abs(velocityRef.current) > 0.1) {
+                                animeFrameRef.current = requestAnimationFrame(momentumScroll);
+                            }
                         };
 
                         const handleDragItemClick = (e) => {
