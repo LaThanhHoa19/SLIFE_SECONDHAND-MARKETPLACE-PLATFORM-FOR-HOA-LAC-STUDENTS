@@ -11,6 +11,8 @@ public final class Constants {
     public static final String MSG18 = "Số ảnh vượt quá giới hạn cho mỗi tin đăng. Vui lòng giảm số ảnh và thử lại.";
     /** System configuration update success */
     public static final String MSG19 = "System configuration updated successfully";
+    /** System configuration soft-deleted (deleted_at set) */
+    public static final String MSG_CONFIG_DELETED = "Configuration deleted successfully";
     /** Unauthorized access */
     public static final String MSG23 = "You do not have permission";
 

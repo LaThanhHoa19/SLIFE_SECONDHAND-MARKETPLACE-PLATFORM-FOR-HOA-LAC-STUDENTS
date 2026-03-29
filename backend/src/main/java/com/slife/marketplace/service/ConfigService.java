@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.config.CacheConfig;
+import com.slife.marketplace.dto.request.ConfigSingleUpdateRequest;
 import com.slife.marketplace.dto.request.ConfigUpdateRequest;
 import com.slife.marketplace.dto.response.ConfigResponseDTO;
 import com.slife.marketplace.entity.Configuration;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -39,17 +39,24 @@ public class ConfigService {
 
     @Transactional(readOnly = true)
     public List<ConfigResponseDTO> getAllConfigurations() {
-        return configRepository.findAllByOrderByUpdatedAtDesc()
+        return configRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
                 .stream()
                 .map(this::toConfigResponseDTO)
                 .toList();
     }
 
     @Transactional(readOnly = true)
+    public ConfigResponseDTO getConfigurationById(Long id) {
+        return configRepository.findByIdAndDeletedAtIsNull(id)
+                .map(this::toConfigResponseDTO)
+                .orElseThrow(() -> new SlifeException(ErrorCode.CONFIGURATION_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, key = "#key.trim().toUpperCase()")
     public String getConfigValue(String key) {
         String normalizedKey = normalizeKey(key);
-        return configRepository.findByConfigName(normalizedKey)
+        return configRepository.findByConfigNameAndDeletedAtIsNull(normalizedKey)
                 .map(Configuration::getConfigValue)
                 .orElse(null);
     }
@@ -58,7 +65,7 @@ public class ConfigService {
     @Cacheable(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, key = "#key.trim().toUpperCase()")
     public String getConfigValueByKey(String key) {
         String normalizedKey = normalizeKey(key);
-        return configRepository.findByConfigName(normalizedKey)
+        return configRepository.findByConfigNameAndDeletedAtIsNull(normalizedKey)
                 .map(Configuration::getConfigValue)
                 .orElse(null);
     }
@@ -83,13 +90,13 @@ public class ConfigService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "configuration list must not be empty");
         }
 
-        Map<String, String> normalizedInput = new HashMap<>();
+        Map<String, ConfigUpdateRequest> byNormalizedKey = new java.util.LinkedHashMap<>();
         Set<String> duplicateKeys = new HashSet<>();
         for (ConfigUpdateRequest request : requests) {
             String key = normalizeKey(request.key());
             String value = normalizeValue(request.value());
             validateValueFormat(key, value);
-            if (normalizedInput.putIfAbsent(key, value) != null) {
+            if (byNormalizedKey.putIfAbsent(key, request) != null) {
                 duplicateKeys.add(key);
             }
         }
@@ -97,21 +104,35 @@ public class ConfigService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "configKey must be unique");
         }
 
-        List<String> keys = normalizedInput.keySet().stream().toList();
-        Map<String, Configuration> existing = configRepository.findByConfigNameIn(keys)
+        List<String> keys = byNormalizedKey.keySet().stream().toList();
+        Map<String, Configuration> existingActive = configRepository.findByConfigNameInAndDeletedAtIsNull(keys)
                 .stream()
                 .collect(java.util.stream.Collectors.toMap(Configuration::getConfigName, c -> c));
 
         Instant now = Instant.now();
-        for (Map.Entry<String, String> entry : normalizedInput.entrySet()) {
-            Configuration configuration = existing.get(entry.getKey());
+        for (Map.Entry<String, ConfigUpdateRequest> entry : byNormalizedKey.entrySet()) {
+            String configKey = entry.getKey();
+            ConfigUpdateRequest req = entry.getValue();
+            Configuration configuration = existingActive.get(configKey);
             if (configuration == null) {
-                configuration = new Configuration();
-                configuration.setConfigName(entry.getKey());
-                configuration.setDescription(null);
+                configuration = configRepository.findByConfigName(configKey).orElse(null);
+                if (configuration != null) {
+                    configuration.setDeletedAt(null);
+                    if (req.description() != null) {
+                        configuration.setDescription(trimDescriptionToNull(req.description()));
+                    }
+                } else {
+                    configuration = new Configuration();
+                    configuration.setConfigName(configKey);
+                    configuration.setDescription(trimDescriptionToNull(req.description()));
+                }
+            } else {
+                if (req.description() != null) {
+                    configuration.setDescription(trimDescriptionToNull(req.description()));
+                }
             }
 
-            configuration.setConfigValue(entry.getValue());
+            configuration.setConfigValue(normalizeValue(req.value()));
             configuration.setUpdatedBy(admin);
             configuration.setUpdatedAt(now);
             configRepository.save(configuration);
@@ -120,8 +141,40 @@ public class ConfigService {
         return Constants.MSG19;
     }
 
+    @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, allEntries = true)
+    public ConfigResponseDTO updateConfigurationById(Long id, ConfigSingleUpdateRequest request, User admin) {
+        Configuration configuration = configRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.CONFIGURATION_NOT_FOUND));
+        String key = configuration.getConfigName();
+        String value = normalizeValue(request.value());
+        validateValueFormat(key, value);
+        configuration.setConfigValue(value);
+        if (request.description() != null) {
+            configuration.setDescription(trimDescriptionToNull(request.description()));
+        }
+        configuration.setUpdatedBy(admin);
+        configuration.setUpdatedAt(Instant.now());
+        return toConfigResponseDTO(configRepository.save(configuration));
+    }
+
+    @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CONFIG_VALUE_CACHE, allEntries = true)
+    public void deleteConfigurationById(Long id, User admin) {
+        Configuration configuration = configRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.CONFIGURATION_NOT_FOUND));
+        if (configuration.getDeletedAt() != null) {
+            throw new SlifeException(ErrorCode.CONFIGURATION_NOT_FOUND);
+        }
+        configuration.setDeletedAt(Instant.now());
+        configuration.setUpdatedAt(Instant.now());
+        configuration.setUpdatedBy(admin);
+        configRepository.save(configuration);
+    }
+
     private ConfigResponseDTO toConfigResponseDTO(Configuration configuration) {
         return new ConfigResponseDTO(
+                configuration.getId(),
                 configuration.getConfigName(),
                 configuration.getConfigValue(),
                 configuration.getDescription(),
@@ -151,5 +204,14 @@ public class ConfigService {
         } catch (NumberFormatException ex) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, key + " must be a valid number");
         }
+    }
+
+    /** Chuỗi rỗng → null; giữ nguyên nội dung có ý nghĩa (LOB trên entity). */
+    private static String trimDescriptionToNull(String description) {
+        if (description == null) {
+            return null;
+        }
+        String t = description.trim();
+        return t.isEmpty() ? null : t;
     }
 }
