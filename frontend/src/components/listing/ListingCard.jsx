@@ -28,7 +28,7 @@ import {
     ChevronLeft as ChevronLeftIcon,
     ChevronRight as ChevronRightIcon,
     ChatOutlined as MessageIcon,
-    NearMeOutlined as SendOutlinedIcon,
+    ShareOutlined as ShareIconOutlined,
     ModeCommentOutlined as CommentIconOutlined,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
@@ -162,6 +162,12 @@ export default function ListingCard({
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+
+    const isDraggingRef = useRef(false);
+    const startXRef = useRef(0);
+    const startScrollLeftRef = useRef(0);
+    const scrollContainerRef = useRef(null);
+    const movedRef = useRef(0);
 
     const { showToast } = useToast();
 
@@ -418,7 +424,7 @@ export default function ListingCard({
                                 fontSize={14.5}
                                 fontWeight={600}
                                 color="#FFF"
-                                sx={{ textDecoration: 'none', display: 'block', '&:hover': { textDecoration: 'underline' } }}
+                                sx={{ textDecoration: 'none', display: 'block', '&:hover': { opacity: 0.8 } }}
                                 onClick={(e) => { e.stopPropagation(); }}
                             >
                                 {seller?.fullName || 'Người bán'}
@@ -475,51 +481,85 @@ export default function ListingCard({
 
                     {/* Media Gallery */}
                     {!!images.length && (() => {
-                        const scrollRef = { current: null };
-                        const scrollBy = (dir) => {
-                            if (!scrollRef.current) return;
-                            const w = scrollRef.current.clientWidth;
-                            scrollRef.current.scrollBy({ left: dir * w * 0.85, behavior: 'smooth' });
+                        const handleMouseDown = (e) => {
+                            if (!scrollContainerRef.current) return;
+                            isDraggingRef.current = true;
+                            movedRef.current = 0;
+                            startXRef.current = e.pageX - scrollContainerRef.current.offsetLeft;
+                            startScrollLeftRef.current = scrollContainerRef.current.scrollLeft;
+                            scrollContainerRef.current.style.scrollSnapType = 'none';
+                            scrollContainerRef.current.style.cursor = 'grabbing';
                         };
+
+                        const handleMouseMove = (e) => {
+                            if (!isDraggingRef.current || !scrollContainerRef.current) return;
+                            e.preventDefault();
+                            const x = e.pageX - scrollContainerRef.current.offsetLeft;
+                            const distance = (x - startXRef.current);
+                            movedRef.current = Math.abs(distance);
+                            scrollContainerRef.current.scrollLeft = startScrollLeftRef.current - distance;
+                        };
+
+                        const handleMouseUpOrLeave = () => {
+                            if (!isDraggingRef.current || !scrollContainerRef.current) return;
+                            isDraggingRef.current = false;
+                            scrollContainerRef.current.style.scrollSnapType = 'x mandatory';
+                            scrollContainerRef.current.style.cursor = 'grab';
+                        };
+
+                        const handleDragItemClick = (e) => {
+                            if (movedRef.current > 10) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            } else {
+                                handleClick();
+                            }
+                        };
+
                         return (
                             <Box
-                                onClick={handleClick}
                                 sx={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', mb: 0.5, border: '1px solid rgba(255,255,255,0.05)' }}
                             >
                                 <Box
                                     ref={(el) => {
-                                        scrollRef.current = el;
+                                        scrollContainerRef.current = el;
                                         if (!el) return;
                                         const onScroll = () => {
-                                            const w = el.clientWidth * 0.85;
+                                            const w = el.clientWidth * 0.5;
                                             const idx = w > 0 ? Math.round(el.scrollLeft / w) : 0;
                                             const badge = el.parentElement?.querySelector('[data-img-badge]');
                                             if (badge) badge.textContent = `${idx + 1}/${images.length}`;
                                         };
                                         el.addEventListener('scroll', onScroll, { passive: true });
                                     }}
-                                    onTouchStart={(e) => e.stopPropagation()}
-                                    onTouchMove={(e) => e.stopPropagation()}
+                                    onMouseDown={handleMouseDown}
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUpOrLeave}
+                                    onMouseLeave={handleMouseUpOrLeave}
                                     sx={{
                                         display: 'flex',
                                         overflowX: 'auto',
                                         scrollSnapType: 'x mandatory',
                                         overscrollBehaviorX: 'none',
                                         touchAction: 'pan-y',
+                                        cursor: 'grab',
                                         '&::-webkit-scrollbar': { display: 'none' },
                                         scrollbarWidth: 'none',
+                                        userSelect: 'none',
                                     }}
                                 >
                                     {images.map((img, idx) => (
                                         <Box
                                             key={idx}
+                                            onClick={handleDragItemClick}
                                             sx={{
                                                 flexShrink: 0,
-                                                width: images.length === 1 ? '100%' : '85%',
+                                                width: '50%',
                                                 scrollSnapAlign: 'start',
-                                                aspectRatio: '16/9',
+                                                aspectRatio: '1/1',
                                                 overflow: 'hidden',
                                                 mr: idx < images.length - 1 ? '4px' : 0,
+                                                cursor: 'pointer',
                                             }}
                                         >
                                             <Box
@@ -540,50 +580,6 @@ export default function ListingCard({
                                         </Box>
                                     ))}
                                 </Box>
-
-                                {/* Arrow navigation (mouse only) */}
-                                {images.length > 1 && (
-                                    <>
-                                        <Box
-                                            onClick={(e) => { e.stopPropagation(); scrollBy(-1); }}
-                                            sx={{
-                                                position: 'absolute', left: 8, top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 32, height: 32, borderRadius: '50%',
-                                                bgcolor: 'rgba(32, 29, 38, 0.6)',
-                                                backdropFilter: 'blur(8px)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                cursor: 'pointer', color: '#fff',
-                                                userSelect: 'none', zIndex: 2,
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                                transition: 'all 0.2s ease',
-                                                '&:hover': { bgcolor: 'rgba(157, 110, 237, 0.8)', transform: 'translateY(-50%) scale(1.1)' },
-                                            }}
-                                        >
-                                            <ChevronLeftIcon sx={{ fontSize: 20 }} />
-                                        </Box>
-                                        <Box
-                                            onClick={(e) => { e.stopPropagation(); scrollBy(1); }}
-                                            sx={{
-                                                position: 'absolute', right: 8, top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                width: 32, height: 32, borderRadius: '50%',
-                                                bgcolor: 'rgba(32, 29, 38, 0.6)',
-                                                backdropFilter: 'blur(8px)',
-                                                border: '1px solid rgba(255,255,255,0.1)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                cursor: 'pointer', color: '#fff',
-                                                userSelect: 'none', zIndex: 2,
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                                transition: 'all 0.2s ease',
-                                                '&:hover': { bgcolor: 'rgba(157, 110, 237, 0.8)', transform: 'translateY(-50%) scale(1.1)' },
-                                            }}
-                                        >
-                                            <ChevronRightIcon sx={{ fontSize: 20 }} />
-                                        </Box>
-                                    </>
-                                )}
 
                                 {/* 1/N badge */}
                                 {images.length > 1 && (
@@ -672,7 +668,7 @@ export default function ListingCard({
                                     disabled={shareSubmitting}
                                     sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#1D9BF0', bgcolor: 'rgba(29,155,240,0.1)' } }}
                                 >
-                                    <SendOutlinedIcon sx={{ fontSize: 18, transform: 'rotate(-25deg)', mt: '-2px', ml: '2px' }} />
+                                    <ShareIconOutlined sx={{ fontSize: 19 }} />
                                 </IconButton>
                             </Box>
                         </Tooltip>

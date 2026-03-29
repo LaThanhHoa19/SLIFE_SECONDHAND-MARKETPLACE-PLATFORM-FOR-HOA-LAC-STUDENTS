@@ -27,7 +27,8 @@ import {
     Search as SearchIcon,
     AccountCircle as AccountCircleIcon,
     Person as PersonIcon,
-    Logout as LogoutIcon
+    Logout as LogoutIcon,
+    PostAdd as PostAddIcon
 } from '@mui/icons-material';
 import { useContext, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -331,7 +332,7 @@ export default function Header({ onToggleSidebar }) {
                     {user ? (
                         <>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1.5 }}>
-                                <ActionButton onClick={handleManagePosts}>Quản lý tin</ActionButton>
+                                <ActionButton sx={{ gap: 0.5 }} startIcon={<PostAddIcon sx={{ fontSize: '18px !important' }} />} onClick={handleCreatePost}>Đăng tin</ActionButton>
                             </Box>
                             <IconButton
                                 onClick={handleUserMenuOpen}
