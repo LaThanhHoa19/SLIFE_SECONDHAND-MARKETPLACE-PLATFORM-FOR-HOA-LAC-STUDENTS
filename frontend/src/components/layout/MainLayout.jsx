@@ -35,8 +35,6 @@ export default function MainLayout() {
                     flex: 1,
                     mt: isAdminRoute ? 0 : `${HEADER_HEIGHT + HEADER_GAP}px`,
                     width: '100%',
-                    maxWidth: '100%',
-                    mx: 0,
                 }}
             >
                 {!isAdminRoute && <Sidebar open={sidebarOpen} />}
@@ -44,12 +42,10 @@ export default function MainLayout() {
                     component="main"
                     sx={{
                         flex: 1,
-                        minWidth: 0,
-                        marginLeft: !isAdminRoute && sidebarOpen ? `${SIDEBAR_WIDTH}px` : 0,
-                        transition: 'margin-left 0.3s ease',
                         minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
                         display: 'flex',
                         flexDirection: 'column',
+                        minWidth: 0,
                     }}
                 >
                     <Box
