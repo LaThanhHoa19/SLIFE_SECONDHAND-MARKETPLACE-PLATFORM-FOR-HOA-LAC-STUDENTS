@@ -8,7 +8,12 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
+    FormControl,
     IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Select,
     Stack,
     Table,
     TableBody,
@@ -16,10 +21,12 @@ import {
     TableContainer,
     TableHead,
     TableRow,
+    Pagination,
     TextField,
     Tooltip,
     Typography,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
@@ -32,6 +39,8 @@ const TABLE_BORDER = '#3E3E42';
 
 /** Khớp backend `ConfigUpdateRequest` / `ConfigSingleUpdateRequest` (@Size max 4000). */
 const DESCRIPTION_MAX_LENGTH = 4000;
+/** Số dòng mỗi trang — cùng cách làm Quản lý người dùng. */
+const PAGE_SIZE = 10;
 
 const tableContainerSx = {
     bgcolor: TABLE_SURFACE,
@@ -65,6 +74,49 @@ const tableSx = {
     '& tbody .MuiTableRow-root:last-of-type .MuiTableCell-root': {
         borderBottom: 'none',
     },
+};
+
+/** Cùng tông thanh search Quản lý người dùng */
+const SEARCH_BORDER = '#9D6EED';
+const SEARCH_FOCUS_GLOW = '0 0 0 3px rgba(157, 110, 237, 0.22)';
+
+const searchFieldSx = {
+    flex: { xs: 'none', sm: '1 1 260px' },
+    minWidth: { xs: '100%', sm: 260 },
+    maxWidth: { md: 440 },
+    '& .MuiOutlinedInput-root': {
+        color: '#fff',
+        borderRadius: 999,
+        backgroundColor: 'rgba(0,0,0,0.25)',
+        '& fieldset': { borderColor: SEARCH_BORDER, borderWidth: 1 },
+        '&:hover fieldset': { borderColor: SEARCH_BORDER },
+        '&.Mui-focused': {
+            boxShadow: SEARCH_FOCUS_GLOW,
+        },
+        '&.Mui-focused fieldset, &.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: SEARCH_BORDER,
+            borderWidth: 1,
+        },
+    },
+    '& .MuiOutlinedInput-input::placeholder': {
+        color: 'rgba(255,255,255,0.42)',
+        opacity: 1,
+    },
+    '& .MuiOutlinedInput-input': {
+        outline: 'none',
+        '&:focus': { outline: 'none', boxShadow: 'none' },
+        '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+    },
+    '& .MuiInputAdornment-root': { color: 'rgba(255,255,255,0.4)' },
+};
+
+const selectFieldSx = {
+    minWidth: 220,
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: TABLE_BORDER },
+    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.35)' },
+    '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+    '& .MuiSelect-icon': { color: 'rgba(255,255,255,0.7)' },
+    '& .MuiSelect-select': { color: '#fff' },
 };
 
 /** Khớp khóa trong DB / ConfigService (chuẩn hóa UPPER_SNAKE). */
@@ -146,7 +198,10 @@ function extractConfigurationList(response) {
 
 function mapDtoToRow(dto, index) {
     const key = dto.configKey ?? dto.config_key ?? `row-${index}`;
+    const rawId = dto.id;
+    const id = rawId != null && rawId !== '' ? Number(rawId) : null;
     return {
+        id: Number.isFinite(id) ? id : null,
         config_id: key,
         config_name: key,
         config_value: dto.configValue ?? dto.config_value ?? '',
@@ -154,6 +209,39 @@ function mapDtoToRow(dto, index) {
         updated_at: dto.lastUpdated ?? dto.last_updated ?? null,
         updated_by: null,
     };
+}
+
+function getDisplayLabel(row) {
+    return CONFIG_LABELS[row.config_name] ?? row.config_name ?? '';
+}
+
+function configMatchesSearch(row, rawQuery) {
+    const q = rawQuery.trim().toLowerCase();
+    if (!q) return true;
+    const label = String(getDisplayLabel(row)).toLowerCase();
+    const desc = String(row.description ?? '').toLowerCase();
+    const key = String(row.config_name ?? '').toLowerCase();
+    const idStr = row.id != null ? String(row.id) : '';
+    return label.includes(q) || desc.includes(q) || key.includes(q) || idStr.includes(q);
+}
+
+function parseUpdatedAtMs(row) {
+    const raw = row.updated_at;
+    if (!raw) return null;
+    const t = new Date(raw).getTime();
+    return Number.isNaN(t) ? null : t;
+}
+
+/** Thứ tự như DB: `config_id` tăng dần — bản ghi mới (ID lớn hơn) nằm cuối. */
+function compareByConfigIdAsc(a, b) {
+    const idA = a.id;
+    const idB = b.id;
+    if (idA == null && idB == null) {
+        return String(a.config_name ?? '').localeCompare(String(b.config_name ?? ''));
+    }
+    if (idA == null) return 1;
+    if (idB == null) return -1;
+    return idA - idB;
 }
 
 export default function ConfigurationManagementPage() {
@@ -173,6 +261,10 @@ export default function ConfigurationManagementPage() {
     const [addKeyError, setAddKeyError] = useState('');
     const [addValueError, setAddValueError] = useState('');
     const [isSavingAdd, setIsSavingAdd] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    /** `default` = theo ID tăng dần (như DB); `desc` / `asc` = theo cập nhật lúc */
+    const [sortUpdatedDir, setSortUpdatedDir] = useState('default');
+    const [page, setPage] = useState(0);
     const { showToast } = useToast();
 
     const addKeyNormalized = useMemo(() => addKey.trim().toUpperCase(), [addKey]);
@@ -182,6 +274,7 @@ export default function ConfigurationManagementPage() {
         try {
             setIsLoading(true);
             setLoadError('');
+            setPage(0);
             const response = await getAdminConfigurations();
             const list = extractConfigurationList(response).map(mapDtoToRow);
             setRows(list);
@@ -292,9 +385,44 @@ export default function ConfigurationManagementPage() {
         return VALIDATORS[editing.config_name];
     }, [editing]);
 
+    const sortedFilteredRows = useMemo(() => {
+        const filtered = rows.filter((r) => configMatchesSearch(r, searchQuery));
+        if (sortUpdatedDir === 'default') {
+            return [...filtered].sort(compareByConfigIdAsc);
+        }
+        return [...filtered].sort((a, b) => {
+            const ta = parseUpdatedAtMs(a);
+            const tb = parseUpdatedAtMs(b);
+            if (ta == null && tb == null) {
+                return String(a.config_name ?? '').localeCompare(String(b.config_name ?? ''));
+            }
+            if (ta == null) return 1;
+            if (tb == null) return -1;
+            const delta = ta - tb;
+            return sortUpdatedDir === 'desc' ? -delta : delta;
+        });
+    }, [rows, searchQuery, sortUpdatedDir]);
+
+    const totalCount = sortedFilteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE) || 1);
+
+    const pagedRows = useMemo(
+        () => sortedFilteredRows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
+        [sortedFilteredRows, page],
+    );
+
+    useEffect(() => {
+        const maxPage = Math.max(0, Math.ceil(totalCount / PAGE_SIZE) - 1);
+        if (page > maxPage) setPage(maxPage);
+    }, [totalCount, page]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [searchQuery]);
+
     return (
         <Box>
-            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" sx={{ mb: 2, gap: 2, flexWrap: 'wrap' }}>
+            <Stack spacing={2} sx={{ mb: 2.5 }}>
                 <Box>
                     <Typography variant="h5" fontWeight={800} sx={{ color: '#fff', mb: 0.5 }}>
                         Cấu hình hệ thống
@@ -303,35 +431,90 @@ export default function ConfigurationManagementPage() {
                         Tham số toàn hệ thống (đồng bộ với server qua API admin).
                     </Typography>
                 </Box>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                    <Tooltip title="Thêm cấu hình">
-                        <span>
-                            <IconButton
-                                onClick={openAdd}
-                                disabled={isLoading}
-                                size="small"
-                                sx={{
-                                    color: '#a78bfa',
-                                    border: '1px solid rgba(167,139,250,0.45)',
-                                    borderRadius: 1,
-                                    '&:hover': { bgcolor: 'rgba(167,139,250,0.12)' },
-                                }}
-                                aria-label="Thêm cấu hình"
-                            >
-                                <AddIcon />
-                            </IconButton>
-                        </span>
-                    </Tooltip>
-                    <Button
-                        variant="outlined"
-                        onClick={loadConfigs}
-                        disabled={isLoading}
-                        sx={{ borderRadius: 999, textTransform: 'none', color: '#e9d5ff', borderColor: 'rgba(233,213,255,0.35)' }}
+
+                {!loadError ? (
+                    <Stack
+                        direction={{ xs: 'column', lg: 'row' }}
+                        spacing={1.5}
+                        alignItems={{ xs: 'stretch', lg: 'center' }}
+                        flexWrap="wrap"
+                        useFlexGap
                     >
-                        Tải lại
-                    </Button>
-                    <SettingsSuggestIcon sx={{ color: 'rgba(255,255,255,0.45)' }} fontSize="small" />
-                </Stack>
+                        <TextField
+                            size="small"
+                            placeholder="Tìm theo tên hiển thị hoặc mô tả"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            disabled={isLoading}
+                            sx={searchFieldSx}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ fontSize: 20 }} />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                        <FormControl size="small" sx={selectFieldSx}>
+                            <InputLabel id="admin-config-sort-updated">Sắp xếp</InputLabel>
+                            <Select
+                                labelId="admin-config-sort-updated"
+                                label="Sắp xếp"
+                                value={sortUpdatedDir}
+                                disabled={isLoading}
+                                onChange={(e) => setSortUpdatedDir(e.target.value)}
+                            >
+                                <MenuItem value="default">Tất cả</MenuItem>
+                                <MenuItem value="desc">Cập nhật: mới nhất trước</MenuItem>
+                                <MenuItem value="asc">Cập nhật: cũ nhất trước</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1}
+                            flexWrap="wrap"
+                            useFlexGap
+                            sx={{
+                                ml: { lg: 'auto' },
+                                justifyContent: { xs: 'flex-start', lg: 'flex-end' },
+                            }}
+                        >
+                            <Tooltip title="Thêm cấu hình">
+                                <span>
+                                    <IconButton
+                                        onClick={openAdd}
+                                        disabled={isLoading}
+                                        size="small"
+                                        sx={{
+                                            color: '#a78bfa',
+                                            border: '1px solid rgba(167,139,250,0.45)',
+                                            borderRadius: 1,
+                                            '&:hover': { bgcolor: 'rgba(167,139,250,0.12)' },
+                                        }}
+                                        aria-label="Thêm cấu hình"
+                                    >
+                                        <AddIcon />
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                            <Button
+                                variant="outlined"
+                                onClick={loadConfigs}
+                                disabled={isLoading}
+                                sx={{
+                                    borderRadius: 999,
+                                    textTransform: 'none',
+                                    color: '#e9d5ff',
+                                    borderColor: 'rgba(233,213,255,0.35)',
+                                }}
+                            >
+                                Tải lại
+                            </Button>
+                            <SettingsSuggestIcon sx={{ color: 'rgba(255,255,255,0.45)' }} fontSize="small" />
+                        </Stack>
+                    </Stack>
+                ) : null}
             </Stack>
 
             {loadError ? (
@@ -345,10 +528,12 @@ export default function ConfigurationManagementPage() {
                     <CircularProgress sx={{ color: '#a78bfa' }} />
                 </Box>
             ) : (
+                <>
                 <TableContainer sx={tableContainerSx}>
                     <Table size="medium" sx={tableSx}>
                         <TableHead>
                             <TableRow>
+                                <TableCell width={72}>ID</TableCell>
                                 <TableCell>Tên hiển thị</TableCell>
                                 <TableCell align="right">Giá trị</TableCell>
                                 <TableCell>Mô tả</TableCell>
@@ -361,14 +546,29 @@ export default function ConfigurationManagementPage() {
                         <TableBody>
                             {rows.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
                                         Chưa có bản ghi cấu hình trên server. Dùng nút + để thêm hoặc tạo qua API PUT theo
                                         khóa (backend).
                                     </TableCell>
                                 </TableRow>
+                            ) : sortedFilteredRows.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
+                                        Không có dòng nào khớp tìm kiếm.
+                                    </TableCell>
+                                </TableRow>
                             ) : null}
-                            {rows.map((row) => (
-                                <TableRow key={row.config_id}>
+                            {pagedRows.map((row) => (
+                                <TableRow key={row.id != null ? `cfg-${row.id}` : row.config_id}>
+                                    <TableCell
+                                        sx={{
+                                            color: 'rgba(255,255,255,0.55)',
+                                            fontVariantNumeric: 'tabular-nums',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {row.id != null ? row.id : '—'}
+                                    </TableCell>
                                     <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
                                         {CONFIG_LABELS[row.config_name] ?? row.config_name}
                                     </TableCell>
@@ -398,6 +598,35 @@ export default function ConfigurationManagementPage() {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <Box
+                    sx={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 2,
+                        mt: 2,
+                        py: 1,
+                    }}
+                >
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+                        {totalCount === 0
+                            ? '0 kết quả'
+                            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} / ${totalCount}`}
+                    </Typography>
+                    <Pagination
+                        count={totalPages}
+                        page={page + 1}
+                        onChange={(_, value) => setPage(value - 1)}
+                        disabled={isLoading || totalCount === 0}
+                        color="primary"
+                        size="small"
+                        sx={{
+                            '& .MuiPaginationItem-root': { color: 'rgba(255,255,255,0.88)' },
+                        }}
+                    />
+                </Box>
+                </>
             )}
 
             <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'rgba(255,255,255,0.45)' }}>
