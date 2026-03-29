@@ -12,8 +12,11 @@ export default function ListingSection({
   onNavigateNew,
   onNavigateDetail,
   emptyMessage,
-  isSold = false
+  isSold = false,
+  viewMode = 'grid'
 }) {
+  const isGrid = viewMode === 'grid';
+
   return (
     <Box>
       {isMe && !isSold && (
@@ -44,8 +47,10 @@ export default function ListingSection({
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(auto-fill, minmax(180px, 1fr))' },
-              gap: 2,
+              gridTemplateColumns: isGrid 
+                ? { xs: 'repeat(3, 1fr)', sm: 'repeat(3, 1fr)' } 
+                : '1fr',
+              gap: isGrid ? '1px' : 2,
             }}
           >
             {listings.map((item) => (
@@ -53,10 +58,11 @@ export default function ListingSection({
                 key={item.id}
                 listing={isSold ? { ...item, status: 'SOLD' } : item}
                 onClick={onNavigateDetail}
+                viewMode={viewMode}
               />
             ))}
           </Box>
-          {listings.length >= 5 && (
+          {listings.length >= 12 && (
             <Box sx={{ mt: 4, textAlign: 'center' }}>
               <Button
                 variant="outlined"
