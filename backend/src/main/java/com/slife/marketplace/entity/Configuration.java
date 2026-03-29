@@ -45,5 +45,7 @@ public class Configuration {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-
+    /** Soft delete — null = đang hiệu lực */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 }

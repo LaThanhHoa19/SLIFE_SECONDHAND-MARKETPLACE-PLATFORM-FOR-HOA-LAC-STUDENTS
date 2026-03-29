@@ -11,5 +11,7 @@ public record ReportResponseDTO(
         Long listingId,
         Long conversationId,
         String reason,
+        String status,
+        String adminNote,
         Instant createdAt) {
 }
