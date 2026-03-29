@@ -72,6 +72,15 @@ public class User {
     @Column(name = "violation_count", nullable = false)
     private Integer violationCount;
 
+    /**
+     * Tăng khi ban/revoke session — phải khớp claim {@code tv} trong JWT.
+     */
+    @JsonIgnore
+    @NotNull
+    @ColumnDefault("0")
+    @Column(name = "token_revision", nullable = false)
+    private Long tokenRevision = 0L;
+
     @NotNull
     @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime createdAt;

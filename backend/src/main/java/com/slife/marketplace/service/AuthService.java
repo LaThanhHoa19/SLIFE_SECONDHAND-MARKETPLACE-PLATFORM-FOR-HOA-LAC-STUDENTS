@@ -80,6 +80,8 @@ public class AuthService {
             throw new SlifeException(ErrorCode.INVALID_STUDENT_EMAIL);
         }
 
+        assertUserMayReceiveToken(user);
+
         String token = jwtTokenProvider.generateToken(email, buildClaims(user));
         return buildAuthResponse(token, user);
     }
@@ -95,6 +97,8 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
+
+        assertUserMayReceiveToken(user);
 
         String token = jwtTokenProvider.generateToken(email, buildClaims(user));
         return buildAuthResponse(token, user);
@@ -155,6 +159,7 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .map(existingUser -> syncGoogleProfile(existingUser, fullName, avatarUrl))
                 .orElseGet(() -> createGoogleUser(email, fullName, avatarUrl));
+        assertUserMayReceiveToken(user);
         String token = jwtTokenProvider.generateToken(email, buildClaims(user));
         return buildAuthResponse(token, user);
     }
@@ -168,7 +173,15 @@ public class AuthService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("role", user.getRole());
+        long tv = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
+        claims.put("tv", tv);
         return claims;
+    }
+
+    private static void assertUserMayReceiveToken(User user) {
+        if (user.getStatus() != null && "BANNED".equalsIgnoreCase(user.getStatus().trim())) {
+            throw new SlifeException(ErrorCode.USER_BANNED);
+        }
     }
 
     private AuthResponse buildAuthResponse(String token, User user) {
@@ -190,6 +203,7 @@ public class AuthService {
         user.setStatus("ACTIVE");
         user.setReputationScore(BigDecimal.valueOf(5.00));
         user.setViolationCount(0);
+        user.setTokenRevision(0L);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);

@@ -339,6 +339,7 @@ public class ReportService {
             int reportThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
             if (approvedCount >= reportThreshold) {
                 user.setStatus("BANNED");
+                bumpTokenRevision(user);
                 user.setUpdatedAt(java.time.LocalDateTime.now());
                 userRepository.save(user);
                 log.warn("User auto-banned due to approved reports. userId={}, approvedReports={}, threshold={}",
@@ -432,4 +433,10 @@ public class ReportService {
     }
 
     private record TargetContext(String preview, Long listingId, Long conversationId) {}
+
+    /** Vô hiệu hóa mọi JWT đã cấp trước đó (claim tv). */
+    private static void bumpTokenRevision(User user) {
+        long v = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
+        user.setTokenRevision(v + 1);
+    }
 }

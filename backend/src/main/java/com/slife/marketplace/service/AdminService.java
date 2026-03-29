@@ -96,13 +96,16 @@ public class AdminService {
         User user = userRepository.findByIdAndRole(id, "USER")
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
 
+        String previousStatus = user.getStatus();
         user.setStatus(normalizedStatus);
+        if ("BANNED".equals(normalizedStatus)
+                && (previousStatus == null || !"BANNED".equalsIgnoreCase(previousStatus.trim()))) {
+            long v = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
+            user.setTokenRevision(v + 1);
+            log.warn("Admin banned user — sessions revoked. userId={}, email={}", user.getId(), user.getEmail());
+        }
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
-
-        if ("BANNED".equals(normalizedStatus)) {
-            log.warn("Admin locked user account. userId={}, email={}", user.getId(), user.getEmail());
-        }
 
         return "User status updated successfully";
     }
