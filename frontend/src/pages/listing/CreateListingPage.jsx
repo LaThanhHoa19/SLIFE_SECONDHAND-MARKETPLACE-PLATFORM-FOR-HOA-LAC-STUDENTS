@@ -4,11 +4,15 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Alert } from '@mui/material';
+import { Box } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
-import { createListing, uploadImages } from '../../api/listingApi';
+import { createListingWithImages } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
+import {
+  getListingSubmitErrorMessage,
+  isListingImageRelatedApiError,
+} from '../../utils/listingSubmitErrors';
 
 const getPayload = unwrapApiData;
 
@@ -31,59 +35,57 @@ function buildPayload(values, isDraft = false) {
   };
 }
 
-async function uploadListingImages(id, imageFiles) {
-  if (!id || !imageFiles?.length) return;
-  const formData = new FormData();
-  imageFiles.forEach((f) => formData.append('images', f));
-  await uploadImages(id, formData);
-}
-
 export default function CreateListingPage() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
-  const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
   const { showToast } = useToast();
 
   const handleSubmit = async (values, imageFiles) => {
-    setError('');
+    setSubmitError('');
     setSubmitting(true);
     try {
       const payload = buildPayload(values, false);
-      const res = await createListing(payload);
+      const res = await createListingWithImages(payload, imageFiles);
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
-      await uploadListingImages(id, imageFiles);
       if (id) {
         navigate(`/listings/${id}`, { replace: true });
       } else {
         navigate('/profile/me', { replace: true });
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Tạo tin thất bại.';
-      setError(msg);
+      const msg = getListingSubmitErrorMessage(err, 'Tạo tin thất bại.');
+      const nearImages = isListingImageRelatedApiError(err);
+      setSubmitErrorPlacement(nearImages ? 'images' : 'top');
+      setSubmitError(msg);
+      if (nearImages) showToast(msg, 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSaveDraft = async (values, imageFiles) => {
-    setError('');
+    setSubmitError('');
     setSavingDraft(true);
     try {
       const payload = buildPayload(values, true);
-      const res = await createListing(payload);
+      const res = await createListingWithImages(payload, imageFiles);
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
-      await uploadListingImages(id, imageFiles);
       showToast('Đã lưu nháp thành công!', 'success');
       // Sau 1.5s navigate về profile/drafts nếu có, hoặc ở lại trang
       setTimeout(() => {
         if (id) navigate(`/listings/${id}`, { replace: true });
       }, 1500);
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Lưu nháp thất bại.';
-      setError(msg);
+      const msg = getListingSubmitErrorMessage(err, 'Lưu nháp thất bại.');
+      const nearImages = isListingImageRelatedApiError(err);
+      setSubmitErrorPlacement(nearImages ? 'images' : 'top');
+      setSubmitError(msg);
+      if (nearImages) showToast(msg, 'error');
     } finally {
       setSavingDraft(false);
     }
@@ -91,19 +93,15 @@ export default function CreateListingPage() {
 
   return (
       <Box>
-        {error && (
-            <Box sx={{ maxWidth: "680px", width: "100%", mx: "auto", mt: 2 }}>
-              <Alert severity="error" onClose={() => setError('')}>
-                {error}
-              </Alert>
-            </Box>
-        )}
         <ListingForm
             onSubmit={handleSubmit}
             onSaveDraft={handleSaveDraft}
             submitting={submitting}
             savingDraft={savingDraft}
             mode="create"
+            serverSubmitError={submitError}
+            serverSubmitErrorPlacement={submitErrorPlacement}
+            onDismissServerSubmitError={() => setSubmitError('')}
         />
       </Box>
   );

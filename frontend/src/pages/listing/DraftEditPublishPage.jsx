@@ -11,6 +11,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { useToast } from '../../context/ToastContext';
+import {
+    getListingSubmitErrorMessage,
+    isListingImageRelatedApiError,
+} from '../../utils/listingSubmitErrors';
 
 const getPayload = unwrapApiData;
 
@@ -90,6 +95,8 @@ export default function DraftEditPublishPage() {
     const [formDefaults, setFormDefaults] = useState(null);
     const [existingImageUrls, setExistingImageUrls] = useState([]);
     const [submitting, setSubmitting] = useState(false);
+    const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
+    const { showToast } = useToast();
 
     const listingIdNum = useMemo(() => {
         const n = Number(id);
@@ -106,6 +113,7 @@ export default function DraftEditPublishPage() {
         let cancelled = false;
         setLoading(true);
         setError('');
+        setSubmitErrorPlacement('top');
         setForbidden(false);
         setFormDefaults(null);
         setExistingImageUrls([]);
@@ -121,7 +129,7 @@ export default function DraftEditPublishPage() {
             })
             .catch((err) => {
                 if (!cancelled) {
-                    const msg = err?.response?.data?.message || err?.message || 'Không tải được bản nháp.';
+                    const msg = getListingSubmitErrorMessage(err, 'Không tải được bản nháp.');
                     setError(msg);
                 }
             })
@@ -146,6 +154,7 @@ export default function DraftEditPublishPage() {
 
     const handlePublish = async (values, imageFiles) => {
         setError('');
+        setSubmitErrorPlacement('top');
         setSubmitting(true);
         try {
             const payload = buildPublishPayload(values);
@@ -153,8 +162,11 @@ export default function DraftEditPublishPage() {
             await uploadListingImages(listingIdNum, imageFiles);
             navigate(`/listings/${listingIdNum}`, { replace: true });
         } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || 'Đăng tin thất bại.';
+            const msg = getListingSubmitErrorMessage(err, 'Đăng tin thất bại.');
+            const nearImages = isListingImageRelatedApiError(err);
+            setSubmitErrorPlacement(nearImages ? 'images' : 'top');
             setError(msg);
+            if (nearImages) showToast(msg, 'error');
         } finally {
             setSubmitting(false);
         }
@@ -193,13 +205,6 @@ export default function DraftEditPublishPage() {
 
     return (
         <Box>
-            {error && (
-                <Box sx={{ maxWidth: '680px', width: '100%', mx: 'auto', mt: 2 }}>
-                    <Alert severity="error" onClose={() => setError('')}>
-                        {error}
-                    </Alert>
-                </Box>
-            )}
             {formDefaults && (
                 <ListingForm
                     key={`draft-${String(listingIdNum)}`}
@@ -209,6 +214,9 @@ export default function DraftEditPublishPage() {
                     existingImageUrls={existingImageUrls}
                     onSubmit={handlePublish}
                     submitting={submitting}
+                    serverSubmitError={error}
+                    serverSubmitErrorPlacement={submitErrorPlacement}
+                    onDismissServerSubmitError={() => setError('')}
                 />
             )}
         </Box>

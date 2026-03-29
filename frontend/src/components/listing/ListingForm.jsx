@@ -104,6 +104,8 @@ function stripVnWardDistrictPrefix(raw) {
 
 /**
  * Nhiều phường VN trong data địa giới không khớp OSM → thử variant rồi fallback quận/tỉnh.
+ * Thứ tự quan trọng: Nominatim thường trả [] với "…, Thành phố Hà Nội, Việt Nam" đủ cấp;
+ * query ngắn (xã + Hà Nội) + countrycodes=vn mới trúng ranh giới đúng.
  * @returns {{ query: string, level: 'ward'|'district'|'province' }[]}
  */
 function buildNominatimQueryCandidates(admin) {
@@ -119,9 +121,25 @@ function buildNominatimQueryCandidates(admin) {
         seen.add(query);
         raw.push({ query, level });
     };
+
+    const provinceShort = province ? (stripVnWardDistrictPrefix(province) || province) : '';
+    const districtShort = district ? (stripVnWardDistrictPrefix(district) || district) : '';
+    const w2 = ward ? stripVnWardDistrictPrefix(ward) : '';
+
+    if (ward && provinceShort) {
+        add([ward, provinceShort, tail], 'ward');
+        if (w2 && w2 !== ward) add([w2, provinceShort, tail], 'ward');
+    }
+    if (ward && district && provinceShort) {
+        add([ward, districtShort, provinceShort, tail], 'ward');
+        add([ward, district, provinceShort, tail], 'ward');
+        if (w2 && w2 !== ward) {
+            add([w2, districtShort, provinceShort, tail], 'ward');
+            add([w2, district, provinceShort, tail], 'ward');
+        }
+    }
     if (ward && district && province) {
         add([ward, district, province, tail], 'ward');
-        const w2 = stripVnWardDistrictPrefix(ward);
         if (w2 && w2 !== ward) add([w2, district, province, tail], 'ward');
     }
     if (district && province) {
@@ -137,6 +155,20 @@ function buildNominatimQueryCandidates(admin) {
     return raw;
 }
 
+/**
+ * Nominatim trả về nhiều kết quả gần nghĩa (vd. "Thạch Thất" trùng huyện + xã).
+ * Với query cấp xã, chỉ chấp nhận kết quả có display_name chứa cốt tên xã đã chọn.
+ */
+function nominatimDisplayMatchesChosenWard(displayName, wardName) {
+    const w = String(wardName || '').trim();
+    if (!w) return true;
+    let core = canonicalAdminName(normalize(w));
+    if (!core) core = normalize(w).trim();
+    if (core.length < 4) return true;
+    const d = normalize(displayName || '');
+    return d.includes(core);
+}
+
 const NOMINATIM_HEADERS = {
     Accept: 'application/json',
     'Accept-Language': 'vi,en',
@@ -144,7 +176,7 @@ const NOMINATIM_HEADERS = {
 };
 
 /** Tuần tự + delay (policy Nominatim ~1 req/giây) */
-async function fetchNominatimFirstHit(candidates, { signal } = {}) {
+async function fetchNominatimFirstHit(candidates, { signal, wardName } = {}) {
     for (let i = 0; i < candidates.length; i++) {
         if (signal?.aborted) return null;
         if (i > 0) {
@@ -152,22 +184,33 @@ async function fetchNominatimFirstHit(candidates, { signal } = {}) {
             if (signal?.aborted) return null;
         }
         const { query, level } = candidates[i];
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+        const useWardFilter = level === 'ward' && String(wardName || '').trim().length > 0;
+        const limit = useWardFilter ? 15 : 1;
+        const params = new URLSearchParams({
+            q: query,
+            format: 'json',
+            limit: String(limit),
+            countrycodes: 'vn',
+        });
+        const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
         const res = await fetch(url, { headers: NOMINATIM_HEADERS, signal });
         const data = await res.json();
-        const first = Array.isArray(data) ? data[0] : null;
+        const arr = Array.isArray(data) ? data : [];
+        const first = useWardFilter
+            ? arr.find((item) => nominatimDisplayMatchesChosenWard(item?.display_name, wardName))
+            : arr[0];
         if (first) return { first, query, level };
     }
     return null;
 }
 
 /**
- * Ghim hợp lệ nếu: nằm trong bbox khu vực đã chọn (Nominatim), HOẶC khớp tên tỉnh/quận/phường từ reverse.
- * Bbox tránh lỗi khi Vietmap/OSM chỉ trả tên phường mà không có "Quận Ba Đình" trong chuỗi.
+ * Ghim hợp lệ nếu: nằm trong bbox xã đã chọn (Nominatim), HOẶC khớp tỉnh + quận/huyện từ reverse/địa chỉ.
+ * Không bắt buộc khớp tên xã/phường: Vietmap/OSM thường đổi cột hoặc tên xã lệch với dropdown địa giới VN.
  */
 function computePinValidity({
-    lat, lng, addressText, reverseProvince, reverseDistrict, reverseWard, admin, adminBbox,
-}) {
+                                lat, lng, addressText, reverseProvince, reverseDistrict, reverseWard, admin, adminBbox,
+                            }) {
     if (!admin) {
         return {
             isValid: true,
@@ -228,7 +271,8 @@ function computePinValidity({
     );
 
     const bboxInside = !!(adminBbox && isPointInBbox(lat, lng, adminBbox));
-    const isValid = bboxInside || (provinceMatch && districtMatch && wardMatch);
+    const adminMatchProvinceDistrict = provinceMatch && districtMatch;
+    const isValid = bboxInside || adminMatchProvinceDistrict;
 
     return { isValid, provinceMatch, districtMatch, wardMatch, bboxInside };
 }
@@ -263,16 +307,16 @@ async function fetchOsmReverse(lat, lng) {
         const res = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
         const data = await res.json();
         if (!data || !data.address) return null;
-        
+
         const ad = data.address;
         const province = ad.city || ad.province || ad.state || '';
         const district = ad.county || ad.district || ad.city_district || ad.town || '';
         const ward = ad.suburb || ad.village || ad.quarter || '';
         const name = data.name || ad.road || '';
-        
+
         const parts = [name, ward, district, province].filter(Boolean);
         const addressText = parts.join(', ');
-        
+
         return { province, district, ward, addressText };
     } catch {
         return null;
@@ -293,20 +337,26 @@ function createPinElement() {
 }
 
 export default function ListingForm({
-    defaultValues = {},
-    onSubmit,
-    onSaveDraft,
-    submitting = false,
-    savingDraft = false,
-    mode = 'create',
-    /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
-    submitLabel,
-    /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
-    existingImageUrls = [],
-}) {
+                                        defaultValues = {},
+                                        onSubmit,
+                                        onSaveDraft,
+                                        submitting = false,
+                                        savingDraft = false,
+                                        mode = 'create',
+                                        /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
+                                        submitLabel,
+                                        /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
+                                        existingImageUrls = [],
+                                        /** Lỗi từ API sau submit (hiển thị trong form, có thể cuộn tới ảnh). */
+                                        serverSubmitError = '',
+                                        /** 'images' = báo ngay tại khối ảnh + cuộn tới; 'top' = phía trên form. */
+                                        serverSubmitErrorPlacement = 'top',
+                                        onDismissServerSubmitError,
+                                    }) {
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
+    const formTopRef = useRef(null);
     const [categories, setCategories] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
     const [expandedCatId, setExpandedCatId] = useState(null);
@@ -411,7 +461,10 @@ export default function ListingForm({
 
         (async () => {
             try {
-                const hit = await fetchNominatimFirstHit(candidates, { signal: ac.signal });
+                const hit = await fetchNominatimFirstHit(candidates, {
+                    signal: ac.signal,
+                    wardName: adminLocation?.ward?.name,
+                });
                 if (cancelled) return;
                 if (!hit) {
                     adminBboxRef.current = null;
@@ -513,7 +566,18 @@ export default function ListingForm({
     const handleFilesChange = useCallback((files) => {
         setImageFiles(files);
         if (files.length > 0) setImageError('');
-    }, []);
+        onDismissServerSubmitError?.();
+    }, [onDismissServerSubmitError]);
+
+    useEffect(() => {
+        if (!serverSubmitError) return;
+        const t = window.setTimeout(() => {
+            const el =
+                serverSubmitErrorPlacement === 'images' ? imageSectionRef.current : formTopRef.current;
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+        return () => window.clearTimeout(t);
+    }, [serverSubmitError, serverSubmitErrorPlacement]);
 
     const onFormSubmit = (e) => {
         e.preventDefault();
@@ -718,7 +782,7 @@ export default function ListingForm({
             markerRef.current = null;
             pendingMarkerRef.current = null;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [vietmapTileKey]); // Chỉ khởi tạo lại khi key thay đổi; adminLocation đọc qua ref
 
     // Đồng bộ marker xác nhận + camera
@@ -784,12 +848,6 @@ export default function ListingForm({
             pendingMarkerRef.current.remove();
             pendingMarkerRef.current = null;
         }
-    }, []);
-
-    // Khi LocationPicker chọn gợi ý Vietmap → flyTo (không gim)
-    const handleSuggestionSelect = useCallback(({ lat, lng }) => {
-        if (!mapRef.current) return;
-        mapRef.current.flyTo({ center: [lng, lat], zoom: 16, essential: true });
     }, []);
 
     // GPS: lấy vị trí thiết bị → chạy qua validation giống map click
@@ -913,24 +971,60 @@ export default function ListingForm({
                 }
             }}
         >
+            <Box
+                ref={formTopRef}
+                sx={{ mb: serverSubmitError && serverSubmitErrorPlacement === 'top' ? 2 : 0 }}
+            >
+                {serverSubmitError && serverSubmitErrorPlacement === 'top' ? (
+                    <Alert
+                        severity="error"
+                        onClose={() => onDismissServerSubmitError?.()}
+                        sx={{
+                            mb: 0,
+                            bgcolor: 'rgba(211,47,47,0.12)',
+                            color: '#ffcdd2',
+                            border: '1px solid rgba(244,67,54,0.35)',
+                            '& .MuiAlert-icon': { color: '#ef5350' },
+                        }}
+                    >
+                        {serverSubmitError}
+                    </Alert>
+                ) : null}
+            </Box>
+
             {/* 1. HÌNH ẢNH */}
             <Box ref={imageSectionRef}>
-            <Typography fontWeight={600} fontSize={16} mb={2}>
-                Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
-            </Typography>
-            <Box mb={4}>
-                <ImageUploader
-                    onFilesChange={handleFilesChange}
-                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
-                    existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
-                />
+                <Typography fontWeight={600} fontSize={16} mb={2}>
+                    Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                </Typography>
+                {serverSubmitError && serverSubmitErrorPlacement === 'images' ? (
+                    <Alert
+                        severity="error"
+                        onClose={() => onDismissServerSubmitError?.()}
+                        sx={{
+                            mb: 2,
+                            bgcolor: 'rgba(211,47,47,0.12)',
+                            color: '#ffcdd2',
+                            border: '1px solid rgba(244,67,54,0.35)',
+                            '& .MuiAlert-icon': { color: '#ef5350' },
+                        }}
+                    >
+                        {serverSubmitError}
+                    </Alert>
+                ) : null}
+                <Box mb={4}>
+                    <ImageUploader
+                        onFilesChange={handleFilesChange}
+                        maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
+                        existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
+                    />
 
-                {imageError && (
-                    <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
-                        {imageError}
-                    </Typography>
-                )}
-            </Box>
+                    {imageError && (
+                        <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
+                            {imageError}
+                        </Typography>
+                    )}
+                </Box>
             </Box>
 
             {/* 2. MÔ TẢ */}
@@ -1169,8 +1263,8 @@ export default function ListingForm({
                     Địa điểm giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                 </Typography>
 
-                    {/* hidden fields */}
-                    <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
+                {/* hidden fields */}
+                <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
                 <input type="hidden" {...register('pickupLng')} />
                 <input type="hidden" {...register('pickupAddressText')} />
                 <input type="hidden" {...register('pickupProvince')} />
@@ -1180,7 +1274,6 @@ export default function ListingForm({
                 {/* ── Sequential location picker (Tỉnh → Huyện → Xã) ── */}
                 <LocationPicker
                     onConfirm={(loc) => setAdminLocation(loc)}
-                    onSuggestionSelect={handleSuggestionSelect}
                     value={adminLocation ? {
                         province: adminLocation.province,
                         district: adminLocation.district,
@@ -1283,7 +1376,7 @@ export default function ListingForm({
                         }}
                         action={
                             <Button size="small" onClick={handleRetryPin}
-                                sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
+                                    sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
                         }
                     >
                         Vị trí không thuộc khu vực đã chọn
