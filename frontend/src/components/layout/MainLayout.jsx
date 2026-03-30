@@ -5,7 +5,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import { HEADER_HEIGHT, HEADER_GAP, CONTENT_MAX_WIDTH, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
+import { APP_SHELL_BG, HEADER_HEIGHT, HEADER_GAP, CONTENT_MAX_WIDTH, isFullWidthMainRoute, PAGE_PADDING_X, PAGE_PADDING_Y } from '../../utils/layoutConstants';
 
 export default function MainLayout() {
     const theme = useTheme();
@@ -18,9 +18,10 @@ export default function MainLayout() {
     }, [isLgUp]);
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith('/admin');
+    const isFullWidthMain = isFullWidthMainRoute(location.pathname);
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#141225' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: APP_SHELL_BG }}>
             {/* Header fixed — ẩn trên admin routes, chỉ dùng header riêng trong AdminLayout */}
             {!isAdminRoute && (
                 <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1300 }}>
@@ -52,8 +53,8 @@ export default function MainLayout() {
                         sx={{
                             flex: 1,
                             width: '100%',
-                            maxWidth: isAdminRoute ? '100%' : CONTENT_MAX_WIDTH,
-                            mx: isAdminRoute ? 0 : 'auto',
+                            maxWidth: isAdminRoute || isFullWidthMain ? '100%' : CONTENT_MAX_WIDTH,
+                            mx: isAdminRoute || isFullWidthMain ? 0 : 'auto',
                             px: isAdminRoute ? 0 : PAGE_PADDING_X,
                             py: isAdminRoute ? 0 : PAGE_PADDING_Y,
                         }}
