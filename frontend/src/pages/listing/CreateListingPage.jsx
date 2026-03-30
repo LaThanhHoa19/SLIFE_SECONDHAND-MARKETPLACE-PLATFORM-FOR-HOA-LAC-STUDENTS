@@ -2,10 +2,12 @@
  * Trang tạo tin đăng mới. Chỉ user đã đăng nhập mới vào được (AUTH_REQUIRED).
  * Nút "Đăng tin" trên profile dẫn đến /listings/new.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import { APP_SHELL_BG } from '../../utils/layoutConstants';
+import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { createListingWithImages } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
@@ -37,11 +39,21 @@ function buildPayload(values, isDraft = false) {
 
 export default function CreateListingPage() {
   const navigate = useNavigate();
+  const maxImagesPerPost = useMaxImagesPerPost();
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
   const { showToast } = useToast();
+  const draftRedirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (draftRedirectTimerRef.current) {
+        window.clearTimeout(draftRedirectTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = async (values, imageFiles) => {
     setSubmitError('');
@@ -77,7 +89,10 @@ export default function CreateListingPage() {
       const id = created?.id ?? created?.listingId;
       showToast('Đã lưu nháp thành công!', 'success');
       // Sau 1.5s navigate về profile/drafts nếu có, hoặc ở lại trang
-      setTimeout(() => {
+      if (draftRedirectTimerRef.current) {
+        window.clearTimeout(draftRedirectTimerRef.current);
+      }
+      draftRedirectTimerRef.current = window.setTimeout(() => {
         if (id) navigate(`/listings/${id}`, { replace: true });
       }, 1500);
     } catch (err) {
@@ -92,13 +107,23 @@ export default function CreateListingPage() {
   };
 
   return (
-      <Box>
+      <Box
+          sx={{
+            minHeight: '100%',
+            width: '100%',
+            bgcolor: APP_SHELL_BG,
+            py: { xs: 1, md: 2 },
+            px: 0,
+          }}
+      >
         <ListingForm
             onSubmit={handleSubmit}
             onSaveDraft={handleSaveDraft}
             submitting={submitting}
             savingDraft={savingDraft}
             mode="create"
+            layoutVariant="createStudio"
+            maxImagesPerPost={maxImagesPerPost}
             serverSubmitError={submitError}
             serverSubmitErrorPlacement={submitErrorPlacement}
             onDismissServerSubmitError={() => setSubmitError('')}

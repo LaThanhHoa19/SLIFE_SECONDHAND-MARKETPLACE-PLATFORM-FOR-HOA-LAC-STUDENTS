@@ -1,9 +1,13 @@
-package com.slife.marketplace.service;
+﻿package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.CategoryRepository;
+import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.ReportRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,11 +27,31 @@ public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
     private final UserRepository userRepository;
+    private final ListingRepository listingRepository;
+    private final CategoryRepository categoryRepository;
+    private final ReportRepository reportRepository;
     private final AuditLogService auditLogService;
 
-    public AdminService(UserRepository userRepository, AuditLogService auditLogService) {
+    public AdminService(
+            UserRepository userRepository,
+            ListingRepository listingRepository,
+            CategoryRepository categoryRepository,
+            ReportRepository reportRepository,
+            AuditLogService auditLogService) {
         this.userRepository = userRepository;
+        this.listingRepository = listingRepository;
+        this.categoryRepository = categoryRepository;
+        this.reportRepository = reportRepository;
         this.auditLogService = auditLogService;
+    }
+
+    @Transactional(readOnly = true)
+    public AdminDashboardStatsResponse getDashboardStats() {
+        return new AdminDashboardStatsResponse(
+                listingRepository.count(),
+                categoryRepository.count(),
+                userRepository.countByRole("USER"),
+                reportRepository.count());
     }
 
     public Page<UserResponseDTO> getUsers(int page, int size, String sortBy, String sortDir, String statusFilter) {
@@ -43,10 +67,6 @@ public class AdminService {
         return pageResult.map(this::toUserResponseDTO);
     }
 
-    /**
-     * Lọc theo trạng thái tài khoản. null / rỗng / "all" = không lọc.
-     * Chỉ cho ACTIVE, BANNED, RESTRICTED (khớp dữ liệu thực tế & ChatService).
-     */
     private static Optional<String> resolveAdminUserStatusFilter(String raw) {
         if (raw == null || raw.isBlank() || "all".equalsIgnoreCase(raw.trim())) {
             return Optional.empty();
@@ -77,7 +97,6 @@ public class AdminService {
         return Sort.by(direction, property);
     }
 
-    /** Chỉ cho phép sort theo field entity User — tránh sort property lạ từ client. */
     private static String resolveAdminUserSortProperty(String sortBy) {
         if (sortBy == null || sortBy.isBlank()) {
             return "createdAt";

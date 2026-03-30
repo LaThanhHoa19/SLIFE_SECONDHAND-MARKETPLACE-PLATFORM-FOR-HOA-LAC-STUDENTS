@@ -1,4 +1,4 @@
-package com.slife.marketplace.repository;
+﻿package com.slife.marketplace.repository;
 
 import com.slife.marketplace.entity.User;
 import org.springframework.data.domain.Page;
@@ -18,6 +18,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findByRoleAndStatus(String role, String status, Pageable pageable);
 
     Optional<User> findByIdAndRole(Long id, String role);
+
+    long countByRole(String role);
 
     long countByStatus(String status);
 

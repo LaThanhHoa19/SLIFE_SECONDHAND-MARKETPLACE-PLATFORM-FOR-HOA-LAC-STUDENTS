@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.AdminUpdateUserStatusRequest;
+import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
@@ -32,8 +33,9 @@ public class AdminController {
     }
 
     @GetMapping("/api/admin/dashboard")
-    public ResponseEntity<?> m1() {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<AdminDashboardStatsResponse>> getDashboard() {
+        AdminDashboardStatsResponse stats = adminService.getDashboardStats();
+        return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
     @GetMapping("/api/admin/users")

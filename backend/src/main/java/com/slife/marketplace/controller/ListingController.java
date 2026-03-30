@@ -71,7 +71,7 @@ public class ListingController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<com.slife.marketplace.dto.response.ListingResponse>> createListingJson(
-            @RequestBody CreateListingRequest request) {
+            @Valid @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
@@ -112,7 +112,8 @@ public class ListingController {
     public ResponseEntity<ApiResponse<Void>> uploadListingImages(
             @PathVariable("id") Long id,
             @RequestPart("images") java.util.List<org.springframework.web.multipart.MultipartFile> images) {
-        listingImageService.uploadListingImages(id, images);
+        User currentUser = userService.getCurrentUser();
+        listingImageService.uploadListingImages(id, images, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
@@ -143,6 +144,16 @@ public class ListingController {
         User currentUser = userService.getCurrentUser();
         PagedResponse<MyListingResponse> listings = listingService.getMyListings(status, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
+    }
+
+    /**
+     * GET /api/listings/form-config — public: giới hạn ảnh/tin (đồng bộ FE khi chọn file).
+     */
+    @GetMapping("/form-config")
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> listingFormConfig() {
+        int max = listingService.getMaxImagesPerPost();
+        Map<String, Integer> body = Map.of("maxImagesPerPost", max);
+        return ResponseEntity.ok(ApiResponse.success("OK", body));
     }
 
     /**
