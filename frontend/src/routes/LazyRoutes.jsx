@@ -47,6 +47,7 @@ export const LazyStitchLandingPage = lazy(() => import('../landing_page/StitchLa
 export const LazyAdminLoginPage = lazy(() => import('../pages/admin/AdminLoginPage'));
 export const LazyReportPage = lazy(() => import('../pages/report/ReportPage'));
 export const LazyChatPage = lazy(() => import('../pages/chat/ChatPage'));
+export const LazyTermsPage = lazy(() => import('../pages/legal/TermsPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -82,3 +83,4 @@ export const SuspenseStitchLandingPage = withSuspense(LazyStitchLandingPage, "Đ
 export const SuspenseAdminLoginPage = withSuspense(LazyAdminLoginPage, "Đang tải trang đăng nhập admin...");
 export const SuspenseReportPage = withSuspense(LazyReportPage, "Đang tải trang báo cáo...");
 export const SuspenseChatPage = withSuspense(LazyChatPage, "Đang tải tin nhắn...");
+export const SuspenseTermsPage = withSuspense(LazyTermsPage, "Đang tải quy chế hoạt động...");
