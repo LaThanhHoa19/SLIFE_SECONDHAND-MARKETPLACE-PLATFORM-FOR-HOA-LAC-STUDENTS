@@ -2,6 +2,9 @@
  * SCRUM-93: Layout constants for consistent spacing and max-width across pages.
  * Use these in MainLayout, PageContainer, and page components.
  */
+/** Nền vỏ app: MainLayout, Sidebar — dùng chung cho trang full-bleed (vd. đăng tin studio) */
+export const APP_SHELL_BG = '#141225';
+
 export const HEADER_HEIGHT = 64;
 /** Khoảng cách giữa header và sidebar / content để không bị sát */
 export const HEADER_GAP = 0;
@@ -11,6 +14,18 @@ export const SIDEBAR_MINI_WIDTH = 72;
 
 /** Max width of main content area (feed, listing grid, etc.) */
 export const CONTENT_MAX_WIDTH = 1200;
+
+/**
+ * MainLayout: không áp dụng CONTENT_MAX_WIDTH — nội dung trải full chiều ngang còn lại (sát sidebar).
+ * Form studio: đăng tin mới, sửa tin, xuất bản từ nháp.
+ */
+export function isFullWidthMainRoute(pathname) {
+    if (!pathname) return false;
+    if (pathname === '/listings/new') return true;
+    if (/^\/listings\/[^/]+\/edit$/.test(pathname)) return true;
+    if (/^\/drafts\/[^/]+\/publish$/.test(pathname)) return true;
+    return false;
+}
 
 /** Admin main column: full width của vùng còn lại (bảng rộng, không giới hạn 1200px). */
 export const ADMIN_CONTENT_MAX_WIDTH = '100%';

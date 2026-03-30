@@ -12,6 +12,8 @@ const sanitizeQueryParams = (params = {}) => Object.fromEntries(
 
 export const getListings = (params, config = {}) =>
     axiosClient.get('/api/listings', { params: sanitizeQueryParams(params), ...config });
+/** Public: { maxImagesPerPost } — đồng bộ giới hạn ảnh với BE (MAX_IMAGES_PER_POST). */
+export const getListingFormConfig = () => axiosClient.get('/api/listings/form-config');
 export const searchListings = (params = {}) =>
     axiosClient.get('/api/search', { params: sanitizeQueryParams(params) });
 export const getListing = (id) => axiosClient.get(`/api/listings/${id}`);
