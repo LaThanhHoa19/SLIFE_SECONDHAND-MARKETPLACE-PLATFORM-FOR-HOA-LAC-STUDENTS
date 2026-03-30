@@ -46,7 +46,7 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import { chatDarkTheme } from '../../theme/chatDarkTheme';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
 import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
@@ -61,6 +61,7 @@ import SendIcon from '@mui/icons-material/Send';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
+import { useToast } from '../../context/ToastContext';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -430,6 +431,9 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
   }
 
   const refAccent = quoteRefId ? theme.palette.info.main : theme.palette.warning.main;
+  // Yêu cầu UI: tin bên trái (đối phương) để nút … ở bên phải bubble,
+  // tin bên phải (mình) để nút … ở bên trái bubble.
+  const menuOnLeft = isMe;
 
   const bubbleMenu = showBubbleMenu ? (
       <>
@@ -441,17 +445,17 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
             sx={{
               mt: 0.25,
               flexShrink: 0,
-              color: isMe ? alpha(theme.palette.primary.contrastText, 0.88) : 'text.secondary',
+              color: alpha(theme.palette.common.white, 0.92),
             }}
         >
-          <MoreHorizIcon fontSize="small" />
+          <MoreVertIcon fontSize="small" />
         </IconButton>
         <Menu
             anchorEl={menuAnchor}
             open={Boolean(menuAnchor)}
             onClose={() => setMenuAnchor(null)}
-            anchorOrigin={{ vertical: 'bottom', horizontal: isMe ? 'right' : 'left' }}
-            transformOrigin={{ vertical: 'top', horizontal: isMe ? 'right' : 'left' }}
+            anchorOrigin={{ vertical: 'bottom', horizontal: menuOnLeft ? 'left' : 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: menuOnLeft ? 'left' : 'right' }}
         >
           {onReply ? (
               <MenuItem
@@ -506,7 +510,7 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
             },
           }}
       >
-        {!isMe && bubbleMenu}
+        {isMe && bubbleMenu}
         <Paper
             elevation={0}
             sx={{
@@ -620,7 +624,7 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
             })()}
           </Box>
         </Paper>
-        {isMe && bubbleMenu}
+        {!isMe && bubbleMenu}
       </Box>
   );
 }
@@ -632,6 +636,7 @@ function ChatPageInner() {
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const navigate = useNavigate();
   const { user: currentUser, token: authToken } = useAuth();
+  const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionIdFromUrl = searchParams.get('sessionId');
   const messageIdFromUrl = searchParams.get('messageId');
@@ -1144,7 +1149,7 @@ function ChatPageInner() {
           e?.response?.data?.error ||
           e?.message ||
           'Gửi tin nhắn thất bại';
-      alert(detail);
+      showToast(detail, 'error');
     } finally {
       setSending(false);
     }
@@ -1280,7 +1285,7 @@ function ChatPageInner() {
       setMessages((prev) => prev.filter((m) => !m._pending));
       const detail =
           err?.response?.data?.message || err?.message || 'Lỗi không xác định';
-      alert(`Gửi ảnh thất bại: ${detail}`);
+      showToast(`Gửi ảnh thất bại: ${detail}`, 'error');
       console.error('[Chat] image send failed', err);
     } finally {
       setImageUploading(false);
@@ -1306,7 +1311,7 @@ function ChatPageInner() {
       setNewOpponentMsgCount(0);
     } catch (err) {
       const detail = err?.response?.data?.message || 'Lỗi không xác định';
-      alert(`Đề xuất thất bại: ${detail}`);
+      showToast(`Đề xuất thất bại: ${detail}`, 'error');
     }
   };
 
@@ -1325,7 +1330,7 @@ function ChatPageInner() {
       await fetchHistory();
       fetchSessions();
     } catch (err) {
-      alert(err?.response?.data?.message || 'Lỗi');
+      showToast(err?.response?.data?.message || 'Lỗi', 'error');
     }
   };
 
@@ -1344,7 +1349,7 @@ function ChatPageInner() {
       await fetchHistory();
       fetchSessions();
     } catch (err) {
-      alert(err?.response?.data?.message || 'Lỗi');
+      showToast(err?.response?.data?.message || 'Lỗi', 'error');
     }
   };
 
