@@ -11,8 +11,30 @@ import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternate
 import CloseIcon from '@mui/icons-material/Close';
 import PropTypes from 'prop-types';
 
-const MAX_FILES = 10;
+const MAX_FILES_DEFAULT = 10;
+/** Trần an toàn phía client (BE vẫn là nguồn sự thật). */
+const MAX_FILES_CEILING = 50;
 const MAX_SIZE_MB = 5;
+
+/** Đồng bộ định dạng với backend (ListingImageService ALLOWED_EXT). */
+const LISTING_IMAGE_MIME = new Set([
+    'image/jpeg',
+    'image/jpg',
+    'image/pjpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+]);
+/** Gợi ý OS chỉ hiện ảnh; vẫn có thể “Tất cả file” — lọc lại trong code. */
+const LISTING_IMAGE_ACCEPT =
+    'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp';
+
+function isAllowedListingImage(file, maxBytes) {
+    if (!file || file.size <= 0 || file.size > maxBytes) return false;
+    const t = (file.type || '').toLowerCase().trim();
+    if (t && LISTING_IMAGE_MIME.has(t)) return true;
+    return /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
+}
 
 const TILE = {
     size: 110,
@@ -32,7 +54,7 @@ function normalizeExisting(existingImages, existingImageUrls) {
 
 export default function ImageUploader({
                                           onFilesChange,
-                                          maxFiles = MAX_FILES,
+                                          maxFiles = MAX_FILES_DEFAULT,
                                           maxSizeMB = MAX_SIZE_MB,
                                           existingImages,
                                           existingImageUrls = [],
@@ -43,7 +65,13 @@ export default function ImageUploader({
     const [previews, setPreviews] = useState([]);
     const [removingId, setRemovingId] = useState(null);
     const [capNotice, setCapNotice] = useState('');
-    const cap = Math.max(0, Math.min(maxFiles, MAX_FILES));
+    const cap = Math.max(
+        0,
+        Math.min(
+            Number.isFinite(Number(maxFiles)) && Number(maxFiles) >= 0 ? Number(maxFiles) : MAX_FILES_DEFAULT,
+            MAX_FILES_CEILING,
+        ),
+    );
 
     const resolvedExisting = useMemo(
         () => normalizeExisting(existingImages, existingImageUrls),
@@ -79,9 +107,8 @@ export default function ImageUploader({
         const selected = Array.from(e.target.files || []);
         e.target.value = '';
 
-        const validFiles = selected.filter(
-            (file) => file.type.startsWith('image/') && file.size <= maxSizeMB * 1024 * 1024,
-        );
+        const maxBytes = maxSizeMB * 1024 * 1024;
+        const validFiles = selected.filter((file) => isAllowedListingImage(file, maxBytes));
 
         setFiles((prev) => {
             const room = Math.max(0, cap - prev.length);
@@ -89,19 +116,22 @@ export default function ImageUploader({
                 setCapNotice(`Đã đủ ${cap} ảnh (tối đa cho mỗi tin). Xóa bớt ảnh nếu muốn thêm ảnh khác.`);
                 return prev;
             }
-            const take = validFiles.slice(0, room);
             const invalidCount = selected.length - validFiles.length;
+            // Không thể giới hạn hộp thoại OS — nếu chọn quá số slot còn lại thì bỏ cả lô, bắt chọn lại.
             if (validFiles.length > room) {
-                const skipped = validFiles.length - take.length;
                 setCapNotice(
-                    `Mỗi tin tối đa ${cap} ảnh. Bạn chọn ${validFiles.length} ảnh hợp lệ; đã thêm ${take.length} ảnh, ${skipped} ảnh không được thêm.`,
+                    `Mỗi lần chỉ được chọn tối đa ${room} ảnh (còn ${room} slot; tối đa ${cap} ảnh/tin). Bạn đã chọn ${validFiles.length} ảnh hợp lệ — không thêm ảnh nào. Vui lòng chọn lại.`,
                 );
-            } else if (invalidCount > 0) {
-                setCapNotice('Một số file không phải ảnh hợp lệ hoặc vượt quá dung lượng cho phép.');
+                return prev;
+            }
+            if (invalidCount > 0) {
+                setCapNotice(
+                    `Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP (tối đa ${maxSizeMB}MB/file). Có ${invalidCount} file không hợp lệ đã bỏ qua.`,
+                );
             } else {
                 setCapNotice('');
             }
-            return [...prev, ...take];
+            return [...prev, ...validFiles];
         });
     };
 
@@ -138,7 +168,7 @@ export default function ImageUploader({
     return (
         <Box>
             <Typography variant="subtitle2" color="text.secondary" sx={{ mb: capNotice ? 0.5 : 1.5 }}>
-                Ảnh sản phẩm (Tối đa {cap} ảnh, mỗi ảnh ≤ {maxSizeMB}MB)
+                Ảnh sản phẩm — JPG, PNG, GIF, WebP (tối đa {cap} ảnh, mỗi file ≤ {maxSizeMB}MB)
             </Typography>
             {capNotice ? (
                 <Typography variant="body2" color="error" sx={{ mb: 1.5, fontWeight: 600 }}>
@@ -146,7 +176,14 @@ export default function ImageUploader({
                 </Typography>
             ) : null}
 
-            <input type="file" accept="image/*" multiple id={inputId} hidden onChange={handleAddImages} />
+            <input
+                type="file"
+                accept={LISTING_IMAGE_ACCEPT}
+                multiple
+                id={inputId}
+                hidden
+                onChange={handleAddImages}
+            />
 
             {showBigDropzone && (
                 <label htmlFor={inputId} style={{ display: 'block' }}>

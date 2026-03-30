@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { createListingWithImages } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
@@ -37,6 +38,7 @@ function buildPayload(values, isDraft = false) {
 
 export default function CreateListingPage() {
   const navigate = useNavigate();
+  const maxImagesPerPost = useMaxImagesPerPost();
   const [submitting, setSubmitting] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -99,6 +101,7 @@ export default function CreateListingPage() {
             submitting={submitting}
             savingDraft={savingDraft}
             mode="create"
+            maxImagesPerPost={maxImagesPerPost}
             serverSubmitError={submitError}
             serverSubmitErrorPlacement={submitErrorPlacement}
             onDismissServerSubmitError={() => setSubmitError('')}
