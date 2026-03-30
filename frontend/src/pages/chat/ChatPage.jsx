@@ -670,7 +670,6 @@ function ChatPageInner() {
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
   const suggestBtnRef = useRef(null);
-  const lastAutoSuggestSessionRef = useRef(null);
   const bottomRef = useRef(null);
   const messagesScrollRef = useRef(null);
   const messagesRef = useRef(messages);
@@ -804,6 +803,10 @@ function ChatPageInner() {
     if (sessionIdFromUrl) setActiveSessionId(sessionIdFromUrl);
   }, [sessionIdFromUrl]);
 
+  useEffect(() => {
+    setSuggestAnchorEl(null);
+  }, [activeSessionId]);
+
   // Auto-open test session stored in localStorage
   useEffect(() => {
     const id = localStorage.getItem('slife_test_session_id');
@@ -849,46 +852,6 @@ function ChatPageInner() {
     }
     return out;
   }, [quickRepliesFromApi, isSellerInActiveChat]);
-
-  // Tự mở tiện ích gợi ý khi vào cuộc chat (mỗi session một lần, sau khi tải xong lịch sử).
-  // QUAN TRỌNG: không gắn lastAutoSuggestSessionRef trước khi mở — lần render đầu historyLoading
-  // còn false, effect này chạy và bị cleanup khi fetch history set loading=true → nếu đã set cờ
-  // thì lần sau historyLoading=false sẽ bỏ qua và popover không bao giờ mở.
-  useEffect(() => {
-    if (!activeSessionId) {
-      lastAutoSuggestSessionRef.current = null;
-      setSuggestAnchorEl(null);
-      return;
-    }
-    if (historyLoading) return;
-    if (lastAutoSuggestSessionRef.current === activeSessionId) return;
-
-    let cancelled = false;
-    const openWhenReady = () => {
-      if (cancelled) return;
-      const el = suggestBtnRef.current;
-      if (el) {
-        setSuggestAnchorEl(el);
-        lastAutoSuggestSessionRef.current = activeSessionId;
-        return;
-      }
-      // Sau khi load xong, thanh nhập có thể paint chậm hơn một frame
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        const el2 = suggestBtnRef.current;
-        if (el2) {
-          setSuggestAnchorEl(el2);
-          lastAutoSuggestSessionRef.current = activeSessionId;
-        }
-      });
-    };
-
-    const t = window.setTimeout(openWhenReady, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [activeSessionId, historyLoading]);
 
   // ── Fetch session list ────────────────────────────────────────────────────
   const fetchSessions = useCallback(() => {
@@ -1689,8 +1652,8 @@ function ChatPageInner() {
                             Bắt đầu hội thoại
                           </Typography>
                           <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
-                            Bấm icon <strong>bóng đèn</strong> cạnh nút gửi ảnh và trả giá để mở <strong>gợi ý nhanh</strong> — hộp
-                            đó tự hiện khi bạn vào chat. Hoặc gõ tin ở ô bên dưới.
+                            Dòng <strong>gợi ý nhanh</strong> ngay trên ô nhập nhắc bạn có thể bấm icon <strong>bóng đèn</strong> để chọn câu gửi
+                            ngay. Hoặc gõ tin trực tiếp ở ô bên dưới.
                           </Typography>
                         </Box>
                     ) : (
@@ -1846,6 +1809,33 @@ function ChatPageInner() {
                         <Button size="small" onClick={() => setComposerRef(null)}>Bỏ</Button>
                       </Box>
                   )}
+                  <Box
+                      sx={{
+                        mx: 1.5,
+                        mt: composerRef ? 0.75 : 1,
+                        mb: 0.5,
+                        px: 1.25,
+                        py: 0.75,
+                        borderRadius: 2,
+                        border: '1px dashed',
+                        borderColor: alpha(theme.palette.primary.main, 0.4),
+                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 1,
+                      }}
+                  >
+                    <LightbulbOutlinedIcon
+                        color="primary"
+                        sx={{ fontSize: 20, mt: 0.15, flexShrink: 0, opacity: 0.95 }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+                      <Box component="span" fontWeight={700} color="primary.light" sx={{ mr: 0.5 }}>
+                        Gợi ý nhanh
+                      </Box>
+                      — câu hay dùng khi mua/bán; bấm icon <strong>bóng đèn</strong> cạnh ô nhập để mở và gửi ngay.
+                    </Typography>
+                  </Box>
                   <Popover
                       open={Boolean(suggestAnchorEl)}
                       anchorEl={suggestAnchorEl}
@@ -1946,13 +1936,7 @@ function ChatPageInner() {
                       </IconButton>
                     </span>
                       </Tooltip>
-                      <Tooltip
-                          title={
-                            suggestAnchorEl
-                                ? 'Đóng gợi ý nhanh'
-                                : 'Gợi ý nhanh — câu hay dùng khi mua/bán (tự mở khi vào chat)'
-                          }
-                      >
+                      <Tooltip title={suggestAnchorEl ? 'Đóng gợi ý nhanh' : 'Mở gợi ý nhanh — chọn câu gửi ngay'}>
                     <span>
                       <IconButton
                           ref={suggestBtnRef}
