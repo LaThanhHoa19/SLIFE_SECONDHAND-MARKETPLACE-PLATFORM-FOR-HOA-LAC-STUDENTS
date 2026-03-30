@@ -1,4 +1,5 @@
-/** Mục đích: Dashboard admin metrics + quick actions. API: GET /api/admin/metrics, /api/admin/reports. */
+/** Mục đích: Dashboard admin metrics + quick actions. API: GET /api/admin/dashboard (poll định kỳ). */
+import { useCallback, useEffect, useState } from 'react';
 import {
     Box,
     Grid,
@@ -18,11 +19,44 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CategoryIcon from '@mui/icons-material/Category';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import { getAdminDashboard } from '../../api/adminDashboardApi';
+
+const DASHBOARD_POLL_MS = 20000;
+const numberVi = new Intl.NumberFormat('vi-VN');
 
 export default function DashboardPage() {
+    const [stats, setStats] = useState(null);
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const { data } = await getAdminDashboard();
+            const payload = data?.data;
+            if (
+                !payload ||
+                typeof payload.listingCount !== 'number' ||
+                typeof payload.categoryCount !== 'number' ||
+                typeof payload.userCount !== 'number' ||
+                typeof payload.reportCount !== 'number'
+            ) {
+                return;
+            }
+            setStats(payload);
+        } catch {
+            /* Poll thầm lặng — không làm gián đoạn UI khi mạng lỗi tạm thời */
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchStats();
+        const id = window.setInterval(fetchStats, DASHBOARD_POLL_MS);
+        return () => window.clearInterval(id);
+    }, [fetchStats]);
+
+    const fmt = (n) => (stats ? numberVi.format(n) : '—');
+
     return (
         <Box>
-            {/* Statistics Cards */}
+            {/* Statistics Cards — số liệu từ server, cập nhật theo chu kỳ poll */}
             <Grid container spacing={2.5} sx={{ mb: 3 }}>
                 <Grid item xs={12} md={6} lg={3}>
                     <Paper
@@ -37,7 +71,7 @@ export default function DashboardPage() {
                             gap: 1,
                         }}
                     >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ mb: 1 }}>
                             <Box
                                 sx={{
                                     p: 1.25,
@@ -49,23 +83,12 @@ export default function DashboardPage() {
                             >
                                 <DescriptionIcon fontSize="small" />
                             </Box>
-                            <Chip
-                                label="+12%"
-                                size="small"
-                                sx={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    bgcolor: 'rgba(16,185,129,0.1)',
-                                    color: '#059669',
-                                    borderRadius: 1.5,
-                                }}
-                            />
                         </Box>
                         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
                             Bài đăng
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
-                            1,245
+                            {fmt(stats?.listingCount)}
                         </Typography>
                     </Paper>
                 </Grid>
@@ -83,7 +106,7 @@ export default function DashboardPage() {
                             gap: 1,
                         }}
                     >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ mb: 1 }}>
                             <Box
                                 sx={{
                                     p: 1.25,
@@ -95,23 +118,12 @@ export default function DashboardPage() {
                             >
                                 <CategoryIcon fontSize="small" />
                             </Box>
-                            <Chip
-                                label="+2%"
-                                size="small"
-                                sx={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    bgcolor: 'rgba(16,185,129,0.1)',
-                                    color: '#059669',
-                                    borderRadius: 1.5,
-                                }}
-                            />
                         </Box>
                         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
                             Danh mục
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
-                            32
+                            {fmt(stats?.categoryCount)}
                         </Typography>
                     </Paper>
                 </Grid>
@@ -129,7 +141,7 @@ export default function DashboardPage() {
                             gap: 1,
                         }}
                     >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ mb: 1 }}>
                             <Box
                                 sx={{
                                     p: 1.25,
@@ -141,23 +153,12 @@ export default function DashboardPage() {
                             >
                                 <ManageAccountsIcon fontSize="small" />
                             </Box>
-                            <Chip
-                                label="+5%"
-                                size="small"
-                                sx={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    bgcolor: 'rgba(16,185,129,0.1)',
-                                    color: '#059669',
-                                    borderRadius: 1.5,
-                                }}
-                            />
                         </Box>
                         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
                             Người dùng
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
-                            4,560
+                            {fmt(stats?.userCount)}
                         </Typography>
                     </Paper>
                 </Grid>
@@ -175,7 +176,7 @@ export default function DashboardPage() {
                             gap: 1,
                         }}
                     >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Box sx={{ mb: 1 }}>
                             <Box
                                 sx={{
                                     p: 1.25,
@@ -187,23 +188,12 @@ export default function DashboardPage() {
                             >
                                 <FlagIcon fontSize="small" />
                             </Box>
-                            <Chip
-                                label="-1%"
-                                size="small"
-                                sx={{
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    bgcolor: 'rgba(248,113,113,0.12)',
-                                    color: '#dc2626',
-                                    borderRadius: 1.5,
-                                }}
-                            />
                         </Box>
                         <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
                             Báo cáo
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 800, color: '#ffffff' }}>
-                            18
+                            {fmt(stats?.reportCount)}
                         </Typography>
                     </Paper>
                 </Grid>

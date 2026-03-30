@@ -8,4 +8,6 @@ public class CategoryResponse {
     private String name;
     private String description;
     private Long parentId;
+    /** true = danh mục cố định của hệ thống, không sửa/xóa qua admin */
+    private boolean systemLocked;
 }

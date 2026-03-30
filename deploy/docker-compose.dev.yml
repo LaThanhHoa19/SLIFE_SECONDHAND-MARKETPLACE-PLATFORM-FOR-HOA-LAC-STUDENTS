@@ -59,6 +59,8 @@ services:
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
     environment:
       VITE_API_BASE_URL: /api
+      # Proxy Vite → Spring trong mạng Docker (localhost:8080 trong container không có backend)
+      BACKEND_PROXY_TARGET: http://backend:8080
       # Tilemap key cho Vietmap (chỉ dùng trong dev, không commit key thật cho prod)
       VITE_VIETMAP_TILE_KEY: "b0168f754f2278ab2cdd5d100bdd678afa53b5eaae079649"
     volumes:

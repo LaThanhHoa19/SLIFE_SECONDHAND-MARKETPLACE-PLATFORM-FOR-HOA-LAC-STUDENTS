@@ -9,7 +9,16 @@ import java.util.Optional;
 
 @Repository
 public interface ConfigRepository extends JpaRepository<Configuration, Long> {
-    List<Configuration> findAllByOrderByUpdatedAtDesc();
-    List<Configuration> findByConfigNameIn(List<String> configNames);
+
+    List<Configuration> findAllByDeletedAtIsNullOrderByUpdatedAtDesc();
+
+    List<Configuration> findByConfigNameInAndDeletedAtIsNull(List<String> configNames);
+
+    /** Đọc giá trị runtime / cache — chỉ bản chưa xóa mềm */
+    Optional<Configuration> findByConfigNameAndDeletedAtIsNull(String configName);
+
+    /** Theo tên (unique DB): có thể là bản đã soft-delete — dùng khi PUT bulk để restore */
     Optional<Configuration> findByConfigName(String configName);
+
+    Optional<Configuration> findByIdAndDeletedAtIsNull(Long id);
 }

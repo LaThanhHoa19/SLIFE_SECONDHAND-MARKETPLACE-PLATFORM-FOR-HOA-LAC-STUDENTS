@@ -135,10 +135,11 @@ export default function RightPanel() {
     return (
         <Box
             sx={{
-                width: 320,
-                minWidth: 320,
-                flexShrink: 0,
-                display: 'flex',
+                width: 280, // Default width
+                minWidth: 260,
+                maxWidth: 320,
+                flexShrink: 1, // Cho phép RightPanel co lại khi hết không gian
+                display: { xs: 'none', md: 'flex' }, // Ẩn trên tablet/mobile để không đè Feed
                 flexDirection: 'column',
                 gap: 2,
                 position: 'sticky',

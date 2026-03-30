@@ -1,5 +1,5 @@
 /** Card hiển thị listing theo layout feed (header + content + media + actions). */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Avatar,
     Box,
@@ -16,22 +16,23 @@ import {
     ListItemText,
 } from '@mui/material';
 import {
-    ChatBubbleOutline as CommentIcon,
     BookmarkBorder as BookmarkBorderIcon,
     Bookmark as BookmarkIcon,
     FavoriteBorder,
     Favorite as FavoriteFilledIcon,
     MoreHoriz as MoreIcon,
-    Send as SendIcon,
     Share as ShareIcon,
-    PersonAdd as PersonAddIcon,
-    PersonRemove as PersonRemoveIcon,
     Flag as ReportIcon,
+    Add as AddIcon,
+    Check as CheckIcon,
+    ChevronLeft as ChevronLeftIcon,
+    ChevronRight as ChevronRightIcon,
+    ChatOutlined as MessageIcon,
+    ShareOutlined as ShareIconOutlined,
+    ModeCommentOutlined as CommentIconOutlined,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
-import { formatPickupDisplayLine } from '../../utils/addressDisplay';
-import { formatDate } from '../../utils/formatDate';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
@@ -102,8 +103,35 @@ const getLocationText = (listing) => {
     return '';
 };
 
-const getConditionText = (listing) =>
-    listing?.itemCondition || listing?.condition || listing?.status || '';
+const CONDITION_LABELS = {
+    NEW: 'Hàng mới',
+    USED_LIKE_NEW: 'Như mới',
+    USED_GOOD: 'Đã qua sử dụng',
+    USED_FAIR: 'Đã qua sử dụng',
+    USED: 'Đã qua sử dụng',
+    SECOND_HAND: 'Đã qua sử dụng',
+};
+
+const getConditionText = (listing) => {
+    const raw = listing?.itemCondition || listing?.condition || '';
+    return CONDITION_LABELS[raw?.toUpperCase?.()] ?? raw;
+};
+
+/** Format thời gian dạng ngắn: "1m", "5h", "3d", "12 thg 3" */
+const formatRelativeShort = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const diffMs = Date.now() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Vừa xong';
+    if (diffMins < 60) return `${diffMins}m`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d`;
+    return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
+};
 
 
 export default function ListingCard({
@@ -134,6 +162,16 @@ export default function ListingCard({
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+
+    const isDraggingRef = useRef(false);
+    const startXRef = useRef(0);
+    const startScrollLeftRef = useRef(0);
+    const scrollContainerRef = useRef(null);
+    const movedRef = useRef(0);
+    const velocityRef = useRef(0);
+    const lastXRef = useRef(0);
+    const lastTimeRef = useRef(0);
+    const animeFrameRef = useRef(null);
 
     const { showToast } = useToast();
 
@@ -322,219 +360,385 @@ export default function ListingCard({
                 height: '100%',
             }}
         >
-            {/* Header */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2, pb: 1.5 }}>
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Avatar
-                        component={RouterLink}
-                        to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
-                        src={fullImageUrl(seller?.avatarUrl)}
-                        alt={seller?.fullName || 'seller'}
-                        sx={{ width: 40, height: 40, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
-                        onClick={(e) => { e.stopPropagation(); }}
-                    >
-                        {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
-                    </Avatar>
-                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                        <Typography
-                            component={RouterLink}
-                            to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
-                            fontSize={14.5}
-                            fontWeight={600}
-                            color="#FFF"
-                            sx={{ textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                            onClick={(e) => { e.stopPropagation(); }}
-                        >
-                            {seller?.fullName || 'Người bán'}
-                        </Typography>
-                        <Typography fontSize={13} color="rgba(255,255,255,0.5)">
-                            • {formatDate(listing?.createdAt) || 'Vừa đăng'}
-                        </Typography>
-                    </Box>
-                </Stack>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {showFollowBtn && (
-                        <Tooltip title={followed ? 'Bỏ theo dõi' : 'Theo dõi người bán'}>
-                            <span>
-                                <IconButton
-                                    size="small"
-                                    disabled={followLoading}
+            {/* Main Thread Container */}
+            <Box sx={{ display: 'flex', p: 2, pb: 1.5, gap: 1.5 }}>
+                {/* Left Column: Avatar + Follow + Thread Line */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 44 }}>
+                    <Box sx={{ position: 'relative', width: 44, height: 44, mb: 1.5 }}>
+                        <Tooltip title="Xem hồ sơ">
+                            <Avatar
+                                component={RouterLink}
+                                to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
+                                src={fullImageUrl(seller?.avatarUrl)}
+                                alt={seller?.fullName || 'seller'}
+                                sx={{ width: 44, height: 44, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
+                                onClick={(e) => { e.stopPropagation(); }}
+                            >
+                                {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
+                            </Avatar>
+                        </Tooltip>
+                        {showFollowBtn && (
+                            <Tooltip title={followed ? 'Bỏ theo dõi' : 'Theo dõi'}>
+                                <Box
+                                    component="span"
                                     onClick={handleFollowClick}
                                     sx={{
-                                        color: followed ? '#9D6EED' : 'rgba(255,255,255,0.5)',
-                                        '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.12)' },
+                                        position: 'absolute',
+                                        bottom: -1,
+                                        right: -1,
+                                        width: 22,
+                                        height: 22,
+                                        borderRadius: '50%',
+                                        bgcolor: followed ? '#9D6EED' : '#FFF',
+                                        border: '1.5px solid #201D26',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        color: followed ? '#FFF' : '#201D26',
+                                        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                                        transition: 'all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                        '&:hover': { transform: 'scale(1.15)', opacity: 1 },
+                                        zIndex: 2,
                                     }}
                                 >
                                     {followLoading ? (
-                                        <CircularProgress size={18} color="inherit" />
+                                        <CircularProgress size={12} color="inherit" />
                                     ) : followed ? (
-                                        <PersonRemoveIcon fontSize="small" />
+                                        <CheckIcon sx={{ fontSize: 16, fontWeight: 900 }} />
                                     ) : (
-                                        <PersonAddIcon fontSize="small" />
+                                        <AddIcon sx={{ fontSize: 18, fontWeight: 900 }} />
                                     )}
-                                </IconButton>
-                            </span>
+                                </Box>
+                            </Tooltip>
+                        )}
+                    </Box>
+                    {/* Thread Line - only show if there's content to connect */}
+                    <Box sx={{ flexGrow: 1, width: '2px', bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
+                </Box>
+
+                {/* Right Column: Content */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0 }}>
+                    {/* Header: Name, Time, More */}
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography
+                                component={RouterLink}
+                                to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
+                                fontSize={14.5}
+                                fontWeight={600}
+                                color="#FFF"
+                                sx={{ textDecoration: 'none', display: 'block', '&:hover': { opacity: 0.8 } }}
+                                onClick={(e) => { e.stopPropagation(); }}
+                            >
+                                {seller?.fullName || 'Người bán'}
+                            </Typography>
+                            <Typography fontSize={13} color="rgba(255,255,255,0.45)">
+                                {formatRelativeShort(listing?.createdAt) || 'Vừa đăng'}
+                            </Typography>
+                        </Stack>
+                        <Tooltip title="Tùy chọn">
+                            <IconButton
+                                size="small"
+                                sx={{ color: 'rgba(255,255,255,0.5)', mt: -0.5, mr: -1 }}
+                                onClick={handleMoreOpen}
+                            >
+                                <MoreIcon />
+                            </IconButton>
                         </Tooltip>
-                    )}
-                    <IconButton 
-                        size="small" 
-                        sx={{ color: 'rgba(255,255,255,0.5)' }}
-                        onClick={handleMoreOpen}
+                    </Box>
+
+                    {/* Text Content */}
+                    <Box
+                        onClick={handleClick}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick()}
+                        role="button"
+                        tabIndex={0}
+                        sx={{ cursor: 'pointer', outline: 'none', mb: images.length ? 1.5 : 0 }}
                     >
-                        <MoreIcon />
-                    </IconButton>
+                        <Typography fontSize={15} fontWeight={400} color="rgba(255,255,255,0.95)" sx={{ lineHeight: 1.4, mb: 0.5 }}>
+                            {listing?.title || 'Không có tiêu đề'}
+                        </Typography>
+
+                        <Typography fontSize={16} fontWeight={700} color="#FF4757" sx={{ mb: 1 }}>
+                            {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
+                        </Typography>
+
+                        {/* Tags */}
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
+                            {!!conditionText && (
+                                <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
+                                    <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
+                                        🏷 {conditionText}
+                                    </Typography>
+                                </Box>
+                            )}
+                            {!!locationText && (
+                                <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
+                                    <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
+                                        📍 {locationText}
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+
+                    {/* Media Gallery */}
+                    {!!images.length && (() => {
+                        const handleMouseDown = (e) => {
+                            if (!scrollContainerRef.current) return;
+                            cancelAnimationFrame(animeFrameRef.current);
+                            isDraggingRef.current = true;
+                            movedRef.current = 0;
+                            startXRef.current = e.clientX - scrollContainerRef.current.offsetLeft;
+                            lastXRef.current = e.clientX;
+                            lastTimeRef.current = Date.now();
+                            velocityRef.current = 0;
+                            startScrollLeftRef.current = scrollContainerRef.current.scrollLeft;
+                            scrollContainerRef.current.style.scrollSnapType = 'none';
+                            scrollContainerRef.current.style.scrollBehavior = 'auto';
+                            scrollContainerRef.current.style.cursor = 'grabbing';
+                        };
+
+                        const handleMouseMove = (e) => {
+                            if (!isDraggingRef.current || !scrollContainerRef.current) return;
+                            e.preventDefault();
+                            const now = Date.now();
+                            const dt = now - lastTimeRef.current;
+                            const x = e.clientX;
+                            if (dt > 0) {
+                                velocityRef.current = (lastXRef.current - x) / dt;
+                            }
+                            lastXRef.current = x;
+                            lastTimeRef.current = now;
+
+                            const dist = (x - startXRef.current);
+                            movedRef.current = Math.abs(dist);
+                            scrollContainerRef.current.scrollLeft = startScrollLeftRef.current - dist;
+                        };
+
+                        const handleMouseUpOrLeave = () => {
+                            if (!isDraggingRef.current || !scrollContainerRef.current) return;
+                            isDraggingRef.current = false;
+                            
+                            const el = scrollContainerRef.current;
+                            el.style.cursor = 'grab';
+
+                            // Momentum/Inertia
+                            const momentumScroll = () => {
+                                if (Math.abs(velocityRef.current) < 0.1) return;
+                                el.scrollLeft += velocityRef.current * 16;
+                                velocityRef.current *= 0.95; // Decay
+                                animeFrameRef.current = requestAnimationFrame(momentumScroll);
+                            };
+                            if (Math.abs(velocityRef.current) > 0.1) {
+                                animeFrameRef.current = requestAnimationFrame(momentumScroll);
+                            }
+                        };
+
+                        const handleDragItemClick = (e) => {
+                            if (movedRef.current > 5) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            } else {
+                                handleClick();
+                            }
+                        };
+
+                        return (
+                            <Box
+                                sx={{ position: 'relative', overflow: 'hidden', borderRadius: '16px', mb: 0.5, border: '1px solid rgba(255,255,255,0.05)' }}
+                            >
+                                <Box
+                                    ref={(el) => {
+                                        scrollContainerRef.current = el;
+                                        if (!el) return;
+                                        const onScroll = () => {
+                                            const w = el.clientWidth * 0.5;
+                                            const idx = w > 0 ? Math.round(el.scrollLeft / w) : 0;
+                                            const badge = el.parentElement?.querySelector('[data-img-badge]');
+                                            if (badge) badge.textContent = `${idx + 1}/${images.length}`;
+                                        };
+                                        el.addEventListener('scroll', onScroll, { passive: true });
+                                    }}
+                                    onMouseDown={handleMouseDown}
+                                    onMouseMove={handleMouseMove}
+                                    onMouseUp={handleMouseUpOrLeave}
+                                    onMouseLeave={handleMouseUpOrLeave}
+                                    onTouchStart={(e) => e.stopPropagation()}
+                                    onTouchMove={(e) => e.stopPropagation()}
+                                    sx={{
+                                        display: 'flex',
+                                        overflowX: 'auto',
+                                        // scrollSnapType disabled for free-scroll experience
+                                        overscrollBehaviorX: 'none',
+                                        touchAction: 'pan-y',
+                                        cursor: 'grab',
+                                        '&::-webkit-scrollbar': { display: 'none' },
+                                        scrollbarWidth: 'none',
+                                        userSelect: 'none',
+                                        WebkitUserSelect: 'none',
+                                        msUserSelect: 'none',
+                                        // Removed transform on whole container
+                                    }}
+                                >
+                                    {images.map((img, idx) => (
+                                        <Box
+                                            key={idx}
+                                            onClick={handleDragItemClick}
+                                            sx={{
+                                                flexShrink: 0,
+                                                width: '50%',
+                                                // scrollSnapAlign removed
+                                                aspectRatio: '1/1',
+                                                overflow: 'hidden',
+                                                mr: idx < images.length - 1 ? '4px' : 0,
+                                                cursor: 'pointer',
+                                                transition: 'transform 0.4s cubic-bezier(0.2, 0, 0.4, 1), opacity 0.3s ease, filter 0.3s ease',
+                                                '&:active': { transform: 'scale(0.92)' }, // Individual active scale
+                                                transformOrigin: 'center center',
+                                                borderRadius: '12px',
+                                                border: '1px solid rgba(255,255,255,0.03)',
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={fullImageUrl(img)}
+                                                alt={`${listing?.title} ${idx + 1}`}
+                                                loading="lazy"
+                                                sx={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'cover',
+                                                    display: 'block',
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                    WebkitUserDrag: 'none',
+                                                    filter: 'brightness(0.92)',
+                                                    transition: 'filter 0.3s ease',
+                                                    '&:hover': { filter: 'brightness(1)' }
+                                                }}
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+
+                                {/* 1/N badge */}
+                                {images.length > 1 && (
+                                    <Box
+                                        data-img-badge
+                                        sx={{
+                                            position: 'absolute', top: 10, right: 10,
+                                            bgcolor: 'rgba(32, 29, 38, 0.7)', color: '#FFF',
+                                            fontSize: 11, fontWeight: 700,
+                                            px: 1.2, py: 0.5, borderRadius: '20px',
+                                            pointerEvents: 'none', userSelect: 'none',
+                                            backdropFilter: 'blur(10px)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                                        }}
+                                    >
+                                        {`1/${images.length}`}
+                                    </Box>
+                                )}
+                            </Box>
+                        );
+                    })()}
+
+                    {/* Actions - Modern Social Feed Style */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3.5, pt: 1 }}>
+                        {/* Like */}
+                        <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: -1 }}>
+                                <IconButton
+                                    size="small"
+                                    disabled={likeSubmitting}
+                                    onClick={handleLikeClick}
+                                    sx={{
+                                        color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
+                                        p: 1,
+                                        '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.1)' },
+                                    }}
+                                >
+                                    {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
+                                </IconButton>
+                                <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
+                                    {likeCount || 0}
+                                </Typography>
+                            </Box>
+                        </Tooltip>
+
+                        {/* Comment */}
+                        <Tooltip title="Bình luận">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <IconButton
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); setCommentOpen(true); }}
+                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
+                                >
+                                    <CommentIconOutlined sx={{ fontSize: 18 }} />
+                                </IconButton>
+                                <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
+                                    {listing?.commentCount || 0}
+                                </Typography>
+                            </Box>
+                        </Tooltip>
+
+                        {/* Message Seller */}
+                        <Tooltip title="Tin nhắn">
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        if (sellerId) navigate(`/profile/${sellerId}?chat=true`);
+                                    }}
+                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#00BA7C', bgcolor: 'rgba(0,186,124,0.1)' } }}
+                                >
+                                    <MessageIcon sx={{ fontSize: 18 }} />
+                                </IconButton>
+                            </Box>
+                        </Tooltip>
+
+                        {/* Share */}
+                        <Tooltip title="Chia sẻ">
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <IconButton
+                                    size="small"
+                                    onClick={handleShareClick}
+                                    disabled={shareSubmitting}
+                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#1D9BF0', bgcolor: 'rgba(29,155,240,0.1)' } }}
+                                >
+                                    <ShareIconOutlined sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Box>
+                        </Tooltip>
+
+                        {/* Bookmark (Moved to right) */}
+                        <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
+                            <IconButton
+                                size="small"
+                                disabled={saveSubmitting}
+                                onClick={handleSaveClick}
+                                sx={{
+                                    ml: 'auto',
+                                    color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
+                                    p: 1,
+                                    '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
+                                }}
+                            >
+                                {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
                 </Box>
             </Box>
-
-            <Box
-                onClick={handleClick}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick()}
-                role="button"
-                tabIndex={0}
-                sx={{ cursor: 'pointer', outline: 'none' }}
-            >
-                {/* Images */}
-                {!!images.length && (
-                    <Box
-                        sx={{
-                            width: '100%',
-                            position: 'relative',
-                            pt:
-                                layout === 'grid'
-                                    ? '65%'
-                                    : imageAspect === 'compactList'
-                                        ? '45%'
-                                        : '65%',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <Box
-                            component="img"
-                            src={fullImageUrl(images[0])}
-                            alt={listing?.title}
-                            sx={{
-                                position: 'absolute',
-                                inset: 0,
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                display: 'block',
-                            }}
-                        />
-                    </Box>
-                )}
-
-                {/* Content */}
-                <CardContent sx={{ pt: 2, pb: 1, px: 2, flexGrow: 1 }}>
-                    <Typography fontSize={16} fontWeight={600} color="rgba(255,255,255,0.95)" sx={{ lineHeight: 1.4, mb: 0.5 }}>
-                        {listing?.title || 'Không có tiêu đề'}
-                    </Typography>
-
-                    <Typography fontSize={18} fontWeight={700} color="#FF4757" sx={{ mb: 1 }}>
-                        {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
-                    </Typography>
-
-                    {!!listing?.description && (
-                        <Typography fontSize={14} color="rgba(255,255,255,0.7)" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', mb: 1.5 }}>
-                            {listing?.description || listing?.content || ''}
-                        </Typography>
-                    )}
-
-                    {/* Tags */}
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
-                        {!!conditionText && (
-                            <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
-                                <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
-                                    🏷 {conditionText}
-                                </Typography>
-                            </Box>
-                        )}
-                        {!!locationText && (
-                            <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
-                                <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
-                                    📍 {locationText}
-                                </Typography>
-                            </Box>
-                        )}
-                    </Box>
-                </CardContent>
-            </Box>
-
-            {/* Actions */}
-            <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 2.5, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
-                    <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                        <IconButton
-                            size="small"
-                            disabled={likeSubmitting}
-                            onClick={handleLikeClick}
-                            sx={{
-                                color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
-                                '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.12)' },
-                            }}
-                        >
-                            {likeSubmitting ? (
-                                <CircularProgress size={18} color="inherit" />
-                            ) : isLiked ? (
-                                <FavoriteFilledIcon fontSize="small" />
-                            ) : (
-                                <FavoriteBorder fontSize="small" />
-                            )}
-                        </IconButton>
-                        <Typography
-                            component="span"
-                            variant="caption"
-                            sx={{ color: 'rgba(255,255,255,0.55)', minWidth: 18, fontWeight: 600, userSelect: 'none' }}
-                        >
-                            {Number(likeCount) >= 0 ? Number(likeCount) : 0}
-                        </Typography>
-                    </Box>
-                </Tooltip>
-                <IconButton
-                    size="small"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setCommentOpen(true);
-                    }}
-                    sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
-                >
-                    <CommentIcon fontSize="small" />
-                </IconButton>
-                <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
-                    <IconButton
-                        size="small"
-                        disabled={saveSubmitting}
-                        onClick={handleSaveClick}
-                        sx={{
-                            color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
-                            '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.12)' },
-                        }}
-                    >
-                        {saveSubmitting ? (
-                            <CircularProgress size={16} color="inherit" />
-                        ) : isSaved ? (
-                            <BookmarkIcon fontSize="small" />
-                        ) : (
-                            <BookmarkBorderIcon fontSize="small" />
-                        )}
-                    </IconButton>
-                </Tooltip>
-                <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}><SendIcon fontSize="small" /></IconButton>
-                <IconButton
-                    size="small"
-                    onClick={handleShareClick}
-                    disabled={shareSubmitting}
-                    sx={{ color: 'rgba(255,255,255,0.6)', ml: 'auto', '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
-                >
-                    {shareSubmitting ? <CircularProgress size={16} color="inherit" /> : <ShareIcon fontSize="small" />}
-                </IconButton>
-            </Box>
-
             <CommentModal
                 open={commentOpen}
                 onClose={() => setCommentOpen(false)}
                 listingId={id}
-                listingTitle={listing?.title}
+                listing={listing}
             />
 
             <Menu

@@ -41,6 +41,15 @@ function buildFullAddressLine(nameRaw, addressRaw) {
     return `${name}, ${addr}`;
 }
 
+/** Chuỗi lưu `location_name` / pickupLocationName: 3 cấp user chọn (không dùng reverse từ ghim). */
+function buildPickupLocationNameFromAdmin(admin) {
+    if (!admin) return '';
+    const w = admin.ward?.name?.trim();
+    const d = admin.district?.name?.trim();
+    const p = admin.province?.name?.trim();
+    return [w, d, p].filter(Boolean).join(', ');
+}
+
 function parseCoord(v) {
     if (v == null || v === '') return NaN;
     const n = typeof v === 'number' ? v : Number(v);
@@ -54,6 +63,218 @@ function normalize(str = '') {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/đ/g, 'd');
+}
+
+/** Bỏ tiền tố hành chính để so khớp cốt tên (vd. "quan ba dinh" → "ba dinh") */
+function canonicalAdminName(s) {
+    const t = normalize(String(s || '')).trim();
+    if (!t) return '';
+    const prefixes = ['thanh pho ', 'tinh ', 'quan ', 'huyen ', 'thi xa ', 'phuong ', 'xa ', 'thi tran '];
+    for (const p of prefixes) {
+        if (t.startsWith(p)) return t.slice(p.length).trim();
+    }
+    return t;
+}
+
+function isPointInBbox(lat, lng, bbox) {
+    if (!bbox || !Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    const { south, north, west, east } = bbox;
+    if (![south, north, west, east].every(Number.isFinite)) return false;
+    return lat >= south && lat <= north && lng >= west && lng <= east;
+}
+
+/** Nominatim: boundingbox = [south, north, west, east] */
+function parseNominatimBbox(first) {
+    const bb = first?.boundingbox;
+    if (!Array.isArray(bb) || bb.length < 4) return null;
+    const south = parseFloat(bb[0]);
+    const north = parseFloat(bb[1]);
+    const west = parseFloat(bb[2]);
+    const east = parseFloat(bb[3]);
+    if (![south, north, west, east].every(Number.isFinite)) return null;
+    return { south, north, west, east };
+}
+
+/** Bỏ tiền tố Phường/Xã/Thị trấn (Unicode) — Nominatim thường index "Phúc Xá" không có "Phường" */
+function stripVnWardDistrictPrefix(raw) {
+    const t = String(raw || '').trim();
+    if (!t) return '';
+    return t.replace(/^(Phường|Xã|Thị trấn|Quận|Huyện|Thị xã|Thành phố)\s+/iu, '').trim();
+}
+
+/**
+ * Nhiều phường VN trong data địa giới không khớp OSM → thử variant rồi fallback quận/tỉnh.
+ * Thứ tự quan trọng: Nominatim thường trả [] với "…, Thành phố Hà Nội, Việt Nam" đủ cấp;
+ * query ngắn (xã + Hà Nội) + countrycodes=vn mới trúng ranh giới đúng.
+ * @returns {{ query: string, level: 'ward'|'district'|'province' }[]}
+ */
+function buildNominatimQueryCandidates(admin) {
+    const ward = admin?.ward?.name?.trim();
+    const district = admin?.district?.name?.trim();
+    const province = admin?.province?.name?.trim();
+    const tail = 'Việt Nam';
+    const raw = [];
+    const seen = new Set();
+    const add = (parts, level) => {
+        const query = parts.filter(Boolean).join(', ');
+        if (!query || seen.has(query)) return;
+        seen.add(query);
+        raw.push({ query, level });
+    };
+
+    const provinceShort = province ? (stripVnWardDistrictPrefix(province) || province) : '';
+    const districtShort = district ? (stripVnWardDistrictPrefix(district) || district) : '';
+    const w2 = ward ? stripVnWardDistrictPrefix(ward) : '';
+
+    if (ward && provinceShort) {
+        add([ward, provinceShort, tail], 'ward');
+        if (w2 && w2 !== ward) add([w2, provinceShort, tail], 'ward');
+    }
+    if (ward && district && provinceShort) {
+        add([ward, districtShort, provinceShort, tail], 'ward');
+        add([ward, district, provinceShort, tail], 'ward');
+        if (w2 && w2 !== ward) {
+            add([w2, districtShort, provinceShort, tail], 'ward');
+            add([w2, district, provinceShort, tail], 'ward');
+        }
+    }
+    if (ward && district && province) {
+        add([ward, district, province, tail], 'ward');
+        if (w2 && w2 !== ward) add([w2, district, province, tail], 'ward');
+    }
+    if (district && province) {
+        add([district, province, tail], 'district');
+        const d2 = stripVnWardDistrictPrefix(district);
+        if (d2 && d2 !== district) add([d2, province, tail], 'district');
+    }
+    if (province) {
+        add([province, tail], 'province');
+        const p2 = stripVnWardDistrictPrefix(province);
+        if (p2 && p2 !== province) add([p2, tail], 'province');
+    }
+    return raw;
+}
+
+/**
+ * Nominatim trả về nhiều kết quả gần nghĩa (vd. "Thạch Thất" trùng huyện + xã).
+ * Với query cấp xã, chỉ chấp nhận kết quả có display_name chứa cốt tên xã đã chọn.
+ */
+function nominatimDisplayMatchesChosenWard(displayName, wardName) {
+    const w = String(wardName || '').trim();
+    if (!w) return true;
+    let core = canonicalAdminName(normalize(w));
+    if (!core) core = normalize(w).trim();
+    if (core.length < 4) return true;
+    const d = normalize(displayName || '');
+    return d.includes(core);
+}
+
+const NOMINATIM_HEADERS = {
+    Accept: 'application/json',
+    'Accept-Language': 'vi,en',
+    'User-Agent': 'SLIFE-Marketplace/1.0 (listing geocode; contact: dev)',
+};
+
+/** Tuần tự + delay (policy Nominatim ~1 req/giây) */
+async function fetchNominatimFirstHit(candidates, { signal, wardName } = {}) {
+    for (let i = 0; i < candidates.length; i++) {
+        if (signal?.aborted) return null;
+        if (i > 0) {
+            await new Promise((r) => setTimeout(r, 1100));
+            if (signal?.aborted) return null;
+        }
+        const { query, level } = candidates[i];
+        const useWardFilter = level === 'ward' && String(wardName || '').trim().length > 0;
+        const limit = useWardFilter ? 15 : 1;
+        const params = new URLSearchParams({
+            q: query,
+            format: 'json',
+            limit: String(limit),
+            countrycodes: 'vn',
+        });
+        const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+        const res = await fetch(url, { headers: NOMINATIM_HEADERS, signal });
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : [];
+        const first = useWardFilter
+            ? arr.find((item) => nominatimDisplayMatchesChosenWard(item?.display_name, wardName))
+            : arr[0];
+        if (first) return { first, query, level };
+    }
+    return null;
+}
+
+/**
+ * Ghim hợp lệ nếu: nằm trong bbox xã đã chọn (Nominatim), HOẶC khớp tỉnh + quận/huyện từ reverse/địa chỉ.
+ * Không bắt buộc khớp tên xã/phường: Vietmap/OSM thường đổi cột hoặc tên xã lệch với dropdown địa giới VN.
+ */
+function computePinValidity({
+                                lat, lng, addressText, reverseProvince, reverseDistrict, reverseWard, admin, adminBbox,
+                            }) {
+    if (!admin) {
+        return {
+            isValid: true,
+            provinceMatch: true,
+            districtMatch: true,
+            wardMatch: true,
+            bboxInside: false,
+        };
+    }
+    const chosenProvince = normalize(admin.province?.name || '');
+    const chosenDistrict = normalize(admin.district?.name || '');
+    const chosenWard = normalize(admin.ward?.name || '');
+    const addrNorm = normalize(addressText || '');
+    const revPN = normalize(reverseProvince || '');
+    const revDN = normalize(reverseDistrict || '');
+    const revWN = normalize(reverseWard || '');
+
+    const provCore = canonicalAdminName(chosenProvince) || chosenProvince.replace(/^tinh\s+/, '').replace(/^thanh pho\s+/, '').trim();
+    const distCore = canonicalAdminName(chosenDistrict) || chosenDistrict;
+    const wardCore = canonicalAdminName(chosenWard) || chosenWard;
+    const revWardCore = canonicalAdminName(revWN);
+
+    /** Tránh "ba dinh".includes("ba") — chỉ cho phép hay chứa needle khi needle đủ dài */
+    const safeIncludes = (hay, needle) => needle.length >= 4 && hay.includes(needle);
+
+    const provinceMatch = !chosenProvince || (
+        (revPN.length >= 3 && (
+            revPN.includes(chosenProvince) ||
+            safeIncludes(chosenProvince, revPN) ||
+            (provCore.length >= 3 && (revPN.includes(provCore) || safeIncludes(provCore, revPN)))
+        )) ||
+        (provCore.length >= 3 && addrNorm.includes(provCore))
+    );
+
+    const revDistCore = canonicalAdminName(revDN);
+    const districtMatch = !chosenDistrict || (
+        (revDN.length >= 3 && (
+            revDN.includes(distCore) ||
+            safeIncludes(distCore, revDN) ||
+            (revDistCore.length >= 3 && (
+                revDistCore.includes(distCore) ||
+                safeIncludes(distCore, revDistCore)
+            ))
+        )) ||
+        (distCore.length >= 3 && addrNorm.includes(distCore))
+    );
+
+    const wardMatch = !chosenWard || (
+        (revWN.length >= 3 && (
+            revWN.includes(wardCore) ||
+            safeIncludes(wardCore, revWN) ||
+            (revWardCore.length >= 3 && (
+                revWardCore.includes(wardCore) ||
+                safeIncludes(wardCore, revWardCore)
+            ))
+        )) ||
+        (wardCore.length >= 3 && addrNorm.includes(wardCore))
+    );
+
+    const bboxInside = !!(adminBbox && isPointInBbox(lat, lng, adminBbox));
+    const adminMatchProvinceDistrict = provinceMatch && districtMatch;
+    const isValid = bboxInside || adminMatchProvinceDistrict;
+
+    return { isValid, provinceMatch, districtMatch, wardMatch, bboxInside };
 }
 
 function buildCategoryTree(flatList) {
@@ -86,17 +307,17 @@ async function fetchOsmReverse(lat, lng) {
         const res = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
         const data = await res.json();
         if (!data || !data.address) return null;
-        
+
         const ad = data.address;
         const province = ad.city || ad.province || ad.state || '';
         const district = ad.county || ad.district || ad.city_district || ad.town || '';
         const ward = ad.suburb || ad.village || ad.quarter || '';
         const name = data.name || ad.road || '';
-        
+
         const parts = [name, ward, district, province].filter(Boolean);
         const addressText = parts.join(', ');
-        
-        return { province, district, addressText };
+
+        return { province, district, ward, addressText };
     } catch {
         return null;
     }
@@ -116,20 +337,26 @@ function createPinElement() {
 }
 
 export default function ListingForm({
-    defaultValues = {},
-    onSubmit,
-    onSaveDraft,
-    submitting = false,
-    savingDraft = false,
-    mode = 'create',
-    /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
-    submitLabel,
-    /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
-    existingImageUrls = [],
-}) {
+                                        defaultValues = {},
+                                        onSubmit,
+                                        onSaveDraft,
+                                        submitting = false,
+                                        savingDraft = false,
+                                        mode = 'create',
+                                        /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
+                                        submitLabel,
+                                        /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
+                                        existingImageUrls = [],
+                                        /** Lỗi từ API sau submit (hiển thị trong form, có thể cuộn tới ảnh). */
+                                        serverSubmitError = '',
+                                        /** 'images' = báo ngay tại khối ảnh + cuộn tới; 'top' = phía trên form. */
+                                        serverSubmitErrorPlacement = 'top',
+                                        onDismissServerSubmitError,
+                                    }) {
     const [imageFiles, setImageFiles] = useState([]);
     const [imageError, setImageError] = useState('');
     const imageSectionRef = useRef(null);
+    const formTopRef = useRef(null);
     const [categories, setCategories] = useState([]);
     const [openCategory, setOpenCategory] = useState(false);
     const [expandedCatId, setExpandedCatId] = useState(null);
@@ -137,6 +364,9 @@ export default function ListingForm({
     // Admin location — state cho UI, ref cho click handler (tránh closure stale)
     const [adminLocation, setAdminLocation] = useState(null);
     const adminLocationRef = useRef(null);
+    /** Bbox quận/huyện (hoặc phường) từ Nominatim — ưu tiên khi so với reverse chỉ có tên phường */
+    const adminBboxRef = useRef(null);
+    const pendingFlyToRef = useRef(null);
 
     // Pending pin: chờ user xác nhận hoặc từ chối
     const [pendingPin, setPendingPin] = useState(null); // { lat, lng, addressText, districtHint? }
@@ -176,18 +406,9 @@ export default function ListingForm({
     const descriptionValue = watch('description') || '';
     const titleValue = watch('title') || '';
     const pickupAddressText = watch('pickupAddressText');
+    const pickupLocationNameW = watch('pickupLocationName');
     const pickupLat = watch('pickupLat');
     const pickupLng = watch('pickupLng');
-
-    const applyReverseToForm = useCallback((data) => {
-        if (!data) return;
-        const name = (data.locationName || '').trim();
-        const addr = (data.addressText || '').trim();
-        const line = buildFullAddressLine(name, addr);
-        if (!line) return;
-        setValue('pickupLocationName', truncateUtf(line, 200));
-        setValue('pickupAddressText', line);
-    }, [setValue]);
 
     /** Tile key */
     const [vietmapTileKey, setVietmapTileKey] = useState(
@@ -222,36 +443,61 @@ export default function ListingForm({
         adminLocationRef.current = adminLocation;
     }, [adminLocation]);
 
-    // Khi adminLocation được chọn đủ 3 cấp: flyTo + reset pending pin
+    // Khi chọn khu vực: bbox (validate ghim) + flyTo + reset pending pin
     useEffect(() => {
-        if (!adminLocation) return;
-        // Reset pending pin
+        if (!adminLocation) {
+            adminBboxRef.current = null;
+            return;
+        }
         setPendingPin(null);
         setPinStatus('idle');
         if (pendingMarkerRef.current) {
             pendingMarkerRef.current.remove();
             pendingMarkerRef.current = null;
         }
-        // Dùng Nominatim (OSM, miễn phí) - Bỏ ward vì OSM nông thôn VN ít có ward
-        const query = [
-            adminLocation.district?.name,
-            adminLocation.province?.name,
-            'Việt Nam',
-        ].filter(Boolean).join(', ');
-        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`)
-            .then((r) => r.json())
-            .then((data) => {
-                const first = Array.isArray(data) ? data[0] : null;
-                if (!first) {
-                    console.log('Nominatim không tìm thấy:', query);
+        const candidates = buildNominatimQueryCandidates(adminLocation);
+        const ac = new AbortController();
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const hit = await fetchNominatimFirstHit(candidates, {
+                    signal: ac.signal,
+                    wardName: adminLocation?.ward?.name,
+                });
+                if (cancelled) return;
+                if (!hit) {
+                    adminBboxRef.current = null;
+                    if (import.meta.env.DEV) {
+                        // eslint-disable-next-line no-console
+                        console.warn('Nominatim không tìm thấy với các query:', candidates.map((c) => c.query));
+                    }
                     return;
                 }
+                const { first, level } = hit;
+                const bbox = parseNominatimBbox(first);
+                adminBboxRef.current = bbox;
                 const lat = parseFloat(first.lat);
                 const lng = parseFloat(first.lon);
                 if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-                mapRef.current?.flyTo({ center: [lng, lat], zoom: 13, essential: true });
-            })
-            .catch((e) => console.error('Nominatim error:', e));
+                const zoom = level === 'ward' ? 14 : level === 'district' ? 13 : 11;
+                const fly = { center: [lng, lat], zoom, essential: true };
+                if (mapRef.current) {
+                    mapRef.current.flyTo(fly);
+                } else {
+                    pendingFlyToRef.current = fly;
+                }
+            } catch (e) {
+                if (cancelled || e?.name === 'AbortError') return;
+                adminBboxRef.current = null;
+                console.error('Nominatim error:', e);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+            ac.abort();
+        };
     }, [adminLocation]);
 
     // Giá khi bật/tắt "Cho tặng" — không xóa giá lần đầu trên trang sửa (giá đã load từ API)
@@ -320,7 +566,18 @@ export default function ListingForm({
     const handleFilesChange = useCallback((files) => {
         setImageFiles(files);
         if (files.length > 0) setImageError('');
-    }, []);
+        onDismissServerSubmitError?.();
+    }, [onDismissServerSubmitError]);
+
+    useEffect(() => {
+        if (!serverSubmitError) return;
+        const t = window.setTimeout(() => {
+            const el =
+                serverSubmitErrorPlacement === 'images' ? imageSectionRef.current : formTopRef.current;
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 80);
+        return () => window.clearTimeout(t);
+    }, [serverSubmitError, serverSubmitErrorPlacement]);
 
     const onFormSubmit = (e) => {
         e.preventDefault();
@@ -370,6 +627,7 @@ export default function ListingForm({
             let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
             let reverseProvince = '';
             let reverseDistrict = '';
+            let reverseWard = '';
             try {
                 const res = await reverseGeocode({ lat, lng });
                 const data = res?.data?.data ?? res?.data;
@@ -380,6 +638,7 @@ export default function ListingForm({
                     if (line) addressText = line;
                     reverseProvince = (data.province || data.city || '').trim();
                     reverseDistrict = (data.district || '').trim();
+                    reverseWard = (data.ward || '').trim();
                 }
             } catch { /* ignore */ }
 
@@ -389,9 +648,16 @@ export default function ListingForm({
                 if (osm) {
                     reverseProvince = osm.province;
                     reverseDistrict = osm.district;
+                    reverseWard = osm.ward || '';
                     if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
                         addressText = osm.addressText;
                     }
+                }
+            } else {
+                const admPeek = adminLocationRef.current;
+                if (admPeek?.ward?.name) {
+                    const osm = await fetchOsmReverse(lat, lng);
+                    if (osm?.ward) reverseWard = osm.ward;
                 }
             }
 
@@ -407,41 +673,37 @@ export default function ListingForm({
                 return;
             }
 
-            // So sánh text (normalize bỏ dấu)
-            // LOẠI BỢ empty-string: 'anything'.includes('') luôn trả true
-            const chosenProvince = normalize(currentAdmin.province?.name || '');
-            const chosenDistrict = normalize(currentAdmin.district?.name || '');
-            const addrNorm = normalize(addressText);
-            const revProvinceNorm = normalize(reverseProvince);
-            const revDistrictNorm = normalize(reverseDistrict);
+            const {
+                isValid,
+                provinceMatch,
+                districtMatch,
+                wardMatch,
+                bboxInside,
+            } = computePinValidity({
+                lat,
+                lng,
+                addressText,
+                reverseProvince,
+                reverseDistrict,
+                reverseWard,
+                admin: currentAdmin,
+                adminBbox: adminBboxRef.current,
+            });
 
-            console.log('===== DEBUG VALIDATION =====');
-            console.log('CHOSEN (Province|District):', chosenProvince, '|', chosenDistrict);
-            console.log('VIETMAP REVERSE (Province|District):', revProvinceNorm, '|', revDistrictNorm);
-            console.log('VIETMAP ADDRESS:', addrNorm);
+            if (import.meta.env.DEV) {
+                // eslint-disable-next-line no-console
+                console.log('===== DEBUG VALIDATION =====', {
+                    chosen: `${normalize(currentAdmin.province?.name || '')} | ${normalize(currentAdmin.district?.name || '')} | ${normalize(currentAdmin.ward?.name || '')}`,
+                    reverse: `${normalize(reverseProvince)} | ${normalize(reverseDistrict)} | ${normalize(reverseWard)}`,
+                    address: normalize(addressText),
+                    provinceMatch,
+                    districtMatch,
+                    wardMatch,
+                    bboxInside,
+                    isValid,
+                });
+            }
 
-            // Match tỉnh: kiểm tra trong cả reverseProvince (nếu có) lẫn addressText
-            const provinceMatch = !chosenProvince || (
-                (revProvinceNorm && (
-                    revProvinceNorm.includes(chosenProvince) ||
-                    chosenProvince.includes(revProvinceNorm)
-                )) ||
-                addrNorm.includes(chosenProvince) || addrNorm.includes(chosenProvince.replace('tinh ', '').replace('thanh pho ', ''))
-            );
-            // Match huyện: kiểm tra trong cả reverseDistrict (nếu có) lẫn addressText
-            const districtMatch = !chosenDistrict || (
-                (revDistrictNorm && (
-                    revDistrictNorm.includes(chosenDistrict) ||
-                    chosenDistrict.includes(revDistrictNorm)
-                )) ||
-                addrNorm.includes(chosenDistrict) || addrNorm.includes(chosenDistrict.replace('huyen ', '').replace('quan ', '').replace('thi xa ', '').replace('thanh pho ', ''))
-            );
-
-            console.log('MATCH RESULT:', { provinceMatch, districtMatch });
-
-            // Tạm ẩn validate theo yêu cầu
-            const isValid = true; // provinceMatch && districtMatch;
-            
             setPendingPin({
                 lat, lng, addressText,
                 districtHint: isValid ? null : currentAdmin.district?.name,
@@ -472,7 +734,13 @@ export default function ListingForm({
                 );
             }
             map.once('load', () => {
-                if (!cancelled) setMapReady(true);
+                if (cancelled) return;
+                setMapReady(true);
+                const pending = pendingFlyToRef.current;
+                if (pending && mapRef.current) {
+                    mapRef.current.flyTo(pending);
+                    pendingFlyToRef.current = null;
+                }
             });
             map.on('click', onMapClick);
             mapRef.current = map;
@@ -514,7 +782,7 @@ export default function ListingForm({
             markerRef.current = null;
             pendingMarkerRef.current = null;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [vietmapTileKey]); // Chỉ khởi tạo lại khi key thay đổi; adminLocation đọc qua ref
 
     // Đồng bộ marker xác nhận + camera
@@ -546,9 +814,14 @@ export default function ListingForm({
         const { lat, lng, addressText } = pendingPin;
         setValue('pickupLat', lat.toFixed(6));
         setValue('pickupLng', lng.toFixed(6));
-        setValue('pickupLocationName', truncateUtf(addressText, 200));
-        setValue('pickupAddressText', addressText);
         const admin = adminLocationRef.current;
+        const fromAdmin = buildPickupLocationNameFromAdmin(admin);
+        // DB: location_name = 3 cấp đã chọn; ghim chỉ cần lat/lng (không đổ reverse vào location_name)
+        const locationName = fromAdmin
+            ? truncateUtf(fromAdmin, 200)
+            : truncateUtf(addressText, 200);
+        setValue('pickupLocationName', locationName);
+        setValue('pickupAddressText', '');
         if (admin) {
             setValue('pickupProvince', admin.province?.name || '');
             setValue('pickupDistrict', admin.district?.name || '');
@@ -577,12 +850,6 @@ export default function ListingForm({
         }
     }, []);
 
-    // Khi LocationPicker chọn gợi ý Vietmap → flyTo (không gim)
-    const handleSuggestionSelect = useCallback(({ lat, lng }) => {
-        if (!mapRef.current) return;
-        mapRef.current.flyTo({ center: [lng, lat], zoom: 16, essential: true });
-    }, []);
-
     // GPS: lấy vị trí thiết bị → chạy qua validation giống map click
     const [gpsLoading, setGpsLoading] = useState(false);
     const handleGpsClick = useCallback(async () => {
@@ -603,7 +870,9 @@ export default function ListingForm({
                 }
                 setPendingPin(null); setPinStatus('idle');
                 let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                let reverseProvince = ''; let reverseDistrict = '';
+                let reverseProvince = '';
+                let reverseDistrict = '';
+                let reverseWard = '';
                 try {
                     const res = await reverseGeocode({ lat, lng });
                     const data = res?.data?.data ?? res?.data;
@@ -612,46 +881,61 @@ export default function ListingForm({
                         if (line) addressText = line;
                         reverseProvince = (data.province || data.city || '').trim();
                         reverseDistrict = (data.district || '').trim();
+                        reverseWard = (data.ward || '').trim();
                     }
                 } catch { /* ignore */ }
 
-                // Fallback OSM
                 if (!reverseProvince) {
                     const osm = await fetchOsmReverse(lat, lng);
                     if (osm) {
                         reverseProvince = osm.province;
                         reverseDistrict = osm.district;
+                        reverseWard = osm.ward || '';
                         if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
                             addressText = osm.addressText;
                         }
                     }
+                } else {
+                    const admPeek = adminLocationRef.current;
+                    if (admPeek?.ward?.name) {
+                        const osm = await fetchOsmReverse(lat, lng);
+                        if (osm?.ward) reverseWard = osm.ward;
+                    }
                 }
                 const currentAdmin = adminLocationRef.current;
                 if (!currentAdmin) { setPendingPin({ lat, lng, addressText }); setPinStatus('valid'); return; }
-                const chosenProvince = normalize(currentAdmin.province?.name || '');
-                const chosenDistrict = normalize(currentAdmin.district?.name || '');
-                const addrNorm = normalize(addressText);
-                const revPN = normalize(reverseProvince); const revDN = normalize(reverseDistrict);
 
-                console.log('===== DEBUG GPS VALIDATION =====');
-                console.log('CHOSEN (Province|District):', chosenProvince, '|', chosenDistrict);
-                console.log('VIETMAP REVERSE (Province|District):', revPN, '|', revDN);
-                console.log('VIETMAP ADDRESS:', addrNorm);
+                const {
+                    isValid,
+                    provinceMatch,
+                    districtMatch,
+                    wardMatch,
+                    bboxInside,
+                } = computePinValidity({
+                    lat,
+                    lng,
+                    addressText,
+                    reverseProvince,
+                    reverseDistrict,
+                    reverseWard,
+                    admin: currentAdmin,
+                    adminBbox: adminBboxRef.current,
+                });
 
-                const provinceMatch = !chosenProvince || (
-                    (revPN && (revPN.includes(chosenProvince) || chosenProvince.includes(revPN))) ||
-                    addrNorm.includes(chosenProvince) || addrNorm.includes(chosenProvince.replace('tinh ', '').replace('thanh pho ', ''))
-                );
-                const districtMatch = !chosenDistrict || (
-                    (revDN && (revDN.includes(chosenDistrict) || chosenDistrict.includes(revDN))) ||
-                    addrNorm.includes(chosenDistrict) || addrNorm.includes(chosenDistrict.replace('huyen ', '').replace('quan ', '').replace('thi xa ', '').replace('thanh pho ', ''))
-                );
+                if (import.meta.env.DEV) {
+                    // eslint-disable-next-line no-console
+                    console.log('===== DEBUG GPS VALIDATION =====', {
+                        chosen: `${normalize(currentAdmin.province?.name || '')} | ${normalize(currentAdmin.district?.name || '')} | ${normalize(currentAdmin.ward?.name || '')}`,
+                        reverse: `${normalize(reverseProvince)} | ${normalize(reverseDistrict)} | ${normalize(reverseWard)}`,
+                        address: normalize(addressText),
+                        provinceMatch,
+                        districtMatch,
+                        wardMatch,
+                        bboxInside,
+                        isValid,
+                    });
+                }
 
-                console.log('MATCH RESULT:', { provinceMatch, districtMatch });
-
-                // Tạm ẩn validate theo yêu cầu
-                const isValid = true; // provinceMatch && districtMatch;
-                
                 setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
                 setPinStatus(isValid ? 'valid' : 'invalid');
             },
@@ -687,24 +971,60 @@ export default function ListingForm({
                 }
             }}
         >
+            <Box
+                ref={formTopRef}
+                sx={{ mb: serverSubmitError && serverSubmitErrorPlacement === 'top' ? 2 : 0 }}
+            >
+                {serverSubmitError && serverSubmitErrorPlacement === 'top' ? (
+                    <Alert
+                        severity="error"
+                        onClose={() => onDismissServerSubmitError?.()}
+                        sx={{
+                            mb: 0,
+                            bgcolor: 'rgba(211,47,47,0.12)',
+                            color: '#ffcdd2',
+                            border: '1px solid rgba(244,67,54,0.35)',
+                            '& .MuiAlert-icon': { color: '#ef5350' },
+                        }}
+                    >
+                        {serverSubmitError}
+                    </Alert>
+                ) : null}
+            </Box>
+
             {/* 1. HÌNH ẢNH */}
             <Box ref={imageSectionRef}>
-            <Typography fontWeight={600} fontSize={16} mb={2}>
-                Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
-            </Typography>
-            <Box mb={4}>
-                <ImageUploader
-                    onFilesChange={handleFilesChange}
-                    maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
-                    existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
-                />
+                <Typography fontWeight={600} fontSize={16} mb={2}>
+                    Hình ảnh sản phẩm <Box component="span" sx={{ color: 'error.main' }}>*</Box>
+                </Typography>
+                {serverSubmitError && serverSubmitErrorPlacement === 'images' ? (
+                    <Alert
+                        severity="error"
+                        onClose={() => onDismissServerSubmitError?.()}
+                        sx={{
+                            mb: 2,
+                            bgcolor: 'rgba(211,47,47,0.12)',
+                            color: '#ffcdd2',
+                            border: '1px solid rgba(244,67,54,0.35)',
+                            '& .MuiAlert-icon': { color: '#ef5350' },
+                        }}
+                    >
+                        {serverSubmitError}
+                    </Alert>
+                ) : null}
+                <Box mb={4}>
+                    <ImageUploader
+                        onFilesChange={handleFilesChange}
+                        maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
+                        existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
+                    />
 
-                {imageError && (
-                    <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
-                        {imageError}
-                    </Typography>
-                )}
-            </Box>
+                    {imageError && (
+                        <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
+                            {imageError}
+                        </Typography>
+                    )}
+                </Box>
             </Box>
 
             {/* 2. MÔ TẢ */}
@@ -943,8 +1263,8 @@ export default function ListingForm({
                     Địa điểm giao dịch <Box component="span" sx={{ color: 'error.main' }}>*</Box>
                 </Typography>
 
-                    {/* hidden fields */}
-                    <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
+                {/* hidden fields */}
+                <input type="hidden" {...register('pickupLat', { required: 'Vui lòng chọn địa điểm giao dịch trên bản đồ' })} />
                 <input type="hidden" {...register('pickupLng')} />
                 <input type="hidden" {...register('pickupAddressText')} />
                 <input type="hidden" {...register('pickupProvince')} />
@@ -954,7 +1274,6 @@ export default function ListingForm({
                 {/* ── Sequential location picker (Tỉnh → Huyện → Xã) ── */}
                 <LocationPicker
                     onConfirm={(loc) => setAdminLocation(loc)}
-                    onSuggestionSelect={handleSuggestionSelect}
                     value={adminLocation ? {
                         province: adminLocation.province,
                         district: adminLocation.district,
@@ -962,8 +1281,8 @@ export default function ListingForm({
                     } : undefined}
                 />
 
-                {/* ── Địa chỉ đã xác nhận ── */}
-                {pickupAddressText?.trim() && (
+                {/* ── Địa chỉ đã xác nhận (khu vực 3 cấp; tọa độ lưu riêng) ── */}
+                {pickupLat && pickupLng && (pickupLocationNameW?.trim() || pickupAddressText?.trim()) && (
                     <Box
                         sx={{
                             mt: 2,
@@ -980,7 +1299,10 @@ export default function ListingForm({
                                 Vị trí đã xác nhận
                             </Typography>
                             <Typography fontSize={13} color="#e5e7eb" sx={{ lineHeight: 1.4 }}>
-                                {pickupAddressText}
+                                {pickupLocationNameW?.trim() || pickupAddressText}
+                            </Typography>
+                            <Typography fontSize={11} color="rgba(255,255,255,0.45)" sx={{ mt: 0.5 }}>
+                                Tọa độ ghim: {pickupLat}, {pickupLng}
                             </Typography>
                         </Box>
                     </Box>
@@ -1054,7 +1376,7 @@ export default function ListingForm({
                         }}
                         action={
                             <Button size="small" onClick={handleRetryPin}
-                                sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
+                                    sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
                         }
                     >
                         Vị trí không thuộc khu vực đã chọn

@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.AdminUpdateUserStatusRequest;
+import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
@@ -13,7 +14,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,15 +29,19 @@ public class AdminController {
     }
 
     @GetMapping("/api/admin/dashboard")
-    public ResponseEntity<?> m1() {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<AdminDashboardStatsResponse>> getDashboard() {
+        AdminDashboardStatsResponse stats = adminService.getDashboardStats();
+        return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
     @GetMapping("/api/admin/users")
     public ResponseEntity<ApiResponse<Page<UserResponseDTO>>> getUsers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<UserResponseDTO> users = adminService.getUsers(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String status) {
+        Page<UserResponseDTO> users = adminService.getUsers(page, size, sortBy, sortDir, status);
         return ResponseEntity.ok(ApiResponse.success("OK", users));
     }
 
@@ -47,10 +51,5 @@ public class AdminController {
             @Valid @RequestBody AdminUpdateUserStatusRequest request) {
         String message = adminService.updateUserStatus(id, request.status());
         return ResponseEntity.ok(BaseResponse.success(message, message));
-    }
-
-    @PutMapping("/api/admin/configurations/{id}")
-    public ResponseEntity<?> m2(@PathVariable Long id, @RequestBody Object r) {
-        return ResponseEntity.ok().build();
     }
 }

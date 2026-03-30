@@ -23,4 +23,5 @@ export const blockUser = (userId) => axiosClient.post(`/api/users/${userId}/bloc
 export const unblockUser = (userId) => axiosClient.delete(`/api/users/${userId}/block`);
 export const getBlockStatus = (userId) => axiosClient.get(`/api/users/${userId}/block`);
 export const getMyBlockedUsers = (params = {}) => axiosClient.get('/api/users/me/blocks', { params });
-export const getAdminUsers = () => axiosClient.get('/api/admin/users');
+/** @param {Record<string, string|number>} [params] — sortBy, sortDir; status: ACTIVE|BANNED|RESTRICTED (bỏ qua khi lọc tất cả) */
+export const getAdminUsers = (params = {}) => axiosClient.get('/api/admin/users', { params });

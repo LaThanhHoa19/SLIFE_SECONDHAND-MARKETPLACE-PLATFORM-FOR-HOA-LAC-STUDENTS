@@ -131,18 +131,18 @@ describe('MyListingsPage — Status Labels (tiếng Việt)', () => {
 // ─── Currency formatter ────────────────────────────────────────────────────
 
 describe('MyListingsPage — Currency Formatter', () => {
-    const toCurrency = (v) => `${Number(v || 0).toLocaleString('vi-VN')} ₫`;
+    const toCurrency = (v) => `${Number(v || 0).toLocaleString('vi-VN')}đ`;
 
     it('nên format số tiền theo định dạng VND', () => {
         const result = toCurrency(1000000);
-        expect(result).toContain('₫');
+        expect(result).toContain('đ');
         expect(result).toContain('1');
     });
 
-    it('nên trả về "0 ₫" khi giá trị là 0', () => {
+    it('nên trả về "0đ" khi giá trị là 0', () => {
         const result = toCurrency(0);
         expect(result).toContain('0');
-        expect(result).toContain('₫');
+        expect(result).toContain('đ');
     });
 
     it('nên xử lý giá trị null/undefined an toàn', () => {
@@ -181,8 +181,8 @@ describe('MyListingsPage — Empty State Messages', () => {
 // ─── Page size validation ──────────────────────────────────────────────────
 
 describe('MyListingsPage — Hằng số cấu hình', () => {
-    it('PAGE_SIZE nên được đặt là 10', () => {
-        const PAGE_SIZE = 10;
-        expect(PAGE_SIZE).toBe(10);
+    it('PAGE_SIZE nên được đặt là 12 (lưới Stitch)', () => {
+        const PAGE_SIZE = 12;
+        expect(PAGE_SIZE).toBe(12);
     });
 });

@@ -1,9 +1,13 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.CategoryRepository;
+import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.ReportRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,24 +20,97 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
     private final UserRepository userRepository;
+    private final ListingRepository listingRepository;
+    private final CategoryRepository categoryRepository;
+    private final ReportRepository reportRepository;
 
-    public AdminService(UserRepository userRepository) {
+    public AdminService(
+            UserRepository userRepository,
+            ListingRepository listingRepository,
+            CategoryRepository categoryRepository,
+            ReportRepository reportRepository) {
         this.userRepository = userRepository;
+        this.listingRepository = listingRepository;
+        this.categoryRepository = categoryRepository;
+        this.reportRepository = reportRepository;
     }
 
-    public Page<UserResponseDTO> getUsers(int page, int size) {
+    @Transactional(readOnly = true)
+    public AdminDashboardStatsResponse getDashboardStats() {
+        return new AdminDashboardStatsResponse(
+                listingRepository.count(),
+                categoryRepository.count(),
+                userRepository.countByRole("USER"),
+                reportRepository.count());
+    }
+
+    public Page<UserResponseDTO> getUsers(int page, int size, String sortBy, String sortDir, String statusFilter) {
         int normalizedPage = Math.max(page, 0);
         int normalizedSize = size <= 0 ? 20 : Math.min(size, 100);
-        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Sort sort = buildUserListSort(sortBy, sortDir);
+        Pageable pageable = PageRequest.of(normalizedPage, normalizedSize, sort);
 
-        return userRepository.findByRole("USER", pageable)
-                .map(this::toUserResponseDTO);
+        Optional<String> status = resolveAdminUserStatusFilter(statusFilter);
+        Page<User> pageResult = status.isEmpty()
+                ? userRepository.findByRole("USER", pageable)
+                : userRepository.findByRoleAndStatus("USER", status.get(), pageable);
+        return pageResult.map(this::toUserResponseDTO);
+    }
+
+    /**
+     * Lọc theo trạng thái tài khoản. null / rỗng / "all" = không lọc.
+     * Chỉ cho ACTIVE, BANNED, RESTRICTED (khớp dữ liệu thực tế & ChatService).
+     */
+    private static Optional<String> resolveAdminUserStatusFilter(String raw) {
+        if (raw == null || raw.isBlank() || "all".equalsIgnoreCase(raw.trim())) {
+            return Optional.empty();
+        }
+        String s = raw.trim().toUpperCase(Locale.ROOT);
+        return switch (s) {
+            case "ACTIVE", "BANNED", "RESTRICTED" -> Optional.of(s);
+            default -> throw new SlifeException(ErrorCode.INVALID_INPUT,
+                    "status must be all, ACTIVE, BANNED, or RESTRICTED");
+        };
+    }
+
+    private static Sort buildUserListSort(String sortBy, String sortDir) {
+        String raw = trimOrEmpty(sortBy);
+        if (raw.isEmpty() || "none".equalsIgnoreCase(raw) || "default".equalsIgnoreCase(raw)) {
+            return Sort.by(Sort.Direction.ASC, "id");
+        }
+        if ("id".equalsIgnoreCase(raw)) {
+            Sort.Direction direction = "asc".equalsIgnoreCase(trimOrEmpty(sortDir))
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+            return Sort.by(direction, "id");
+        }
+        String property = resolveAdminUserSortProperty(sortBy);
+        Sort.Direction direction = "asc".equalsIgnoreCase(trimOrEmpty(sortDir))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        return Sort.by(direction, property);
+    }
+
+    /** Chỉ cho phép sort theo field entity User — tránh sort property lạ từ client. */
+    private static String resolveAdminUserSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "createdAt";
+        }
+        return switch (sortBy.trim()) {
+            case "reputationScore", "violationCount", "createdAt" -> sortBy.trim();
+            default -> "createdAt";
+        };
+    }
+
+    private static String trimOrEmpty(String s) {
+        return s == null ? "" : s.trim();
     }
 
     @Transactional
@@ -71,6 +148,8 @@ public class AdminService {
                 user.getEmail(),
                 user.getStatus(),
                 user.getRole(),
-                user.getReputationScore());
+                user.getReputationScore(),
+                user.getViolationCount(),
+                user.getCreatedAt());
     }
 }

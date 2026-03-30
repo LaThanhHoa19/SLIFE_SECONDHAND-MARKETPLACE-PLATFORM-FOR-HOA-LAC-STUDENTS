@@ -14,6 +14,7 @@ public enum ErrorCode {
 
     // Common validation / auth
     INVALID_INPUT("INVALID_INPUT", "Invalid input data", HttpStatus.BAD_REQUEST),
+    CONFIGURATION_NOT_FOUND("CONFIGURATION_NOT_FOUND", "Configuration not found", HttpStatus.NOT_FOUND),
     UNAUTHORIZED("UNAUTHORIZED", "Authentication required", HttpStatus.UNAUTHORIZED),
     FORBIDDEN("FORBIDDEN", "Access is denied", HttpStatus.FORBIDDEN),
 

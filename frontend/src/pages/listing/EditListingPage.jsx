@@ -11,6 +11,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { useToast } from '../../context/ToastContext';
+import {
+    getListingSubmitErrorMessage,
+    isListingImageRelatedApiError,
+} from '../../utils/listingSubmitErrors';
 
 const getPayload = unwrapApiData;
 
@@ -92,6 +97,8 @@ export default function EditListingPage() {
     const [formDefaults, setFormDefaults] = useState(null);
     const [existingImageUrls, setExistingImageUrls] = useState([]);
     const [submitting, setSubmitting] = useState(false);
+    const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
+    const { showToast } = useToast();
 
     const listingIdNum = useMemo(() => {
         const n = Number(id);
@@ -108,6 +115,7 @@ export default function EditListingPage() {
         let cancelled = false;
         setLoading(true);
         setError('');
+        setSubmitErrorPlacement('top');
         setForbidden(false);
         setFormDefaults(null);
         setExistingImageUrls([]);
@@ -148,6 +156,7 @@ export default function EditListingPage() {
 
     const handleSubmit = async (values, imageFiles) => {
         setError('');
+        setSubmitErrorPlacement('top');
         setSubmitting(true);
         try {
             const payload = buildPayload(values, false);
@@ -155,8 +164,11 @@ export default function EditListingPage() {
             await uploadListingImages(listingIdNum, imageFiles);
             navigate(`/listings/${listingIdNum}`, { replace: true });
         } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || 'Cập nhật tin thất bại.';
+            const msg = getListingSubmitErrorMessage(err, 'Cập nhật tin thất bại.');
+            const nearImages = isListingImageRelatedApiError(err);
+            setSubmitErrorPlacement(nearImages ? 'images' : 'top');
             setError(msg);
+            if (nearImages) showToast(msg, 'error');
         } finally {
             setSubmitting(false);
         }
@@ -195,13 +207,6 @@ export default function EditListingPage() {
 
     return (
         <Box>
-            {error && (
-                <Box sx={{ maxWidth: '680px', width: '100%', mx: 'auto', mt: 2 }}>
-                    <Alert severity="error" onClose={() => setError('')}>
-                        {error}
-                    </Alert>
-                </Box>
-            )}
             {formDefaults && (
                 <ListingForm
                     key={String(listingIdNum)}
@@ -210,6 +215,9 @@ export default function EditListingPage() {
                     existingImageUrls={existingImageUrls}
                     onSubmit={handleSubmit}
                     submitting={submitting}
+                    serverSubmitError={error}
+                    serverSubmitErrorPlacement={submitErrorPlacement}
+                    onDismissServerSubmitError={() => setError('')}
                 />
             )}
         </Box>
