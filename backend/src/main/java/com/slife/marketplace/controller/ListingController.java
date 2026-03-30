@@ -260,6 +260,16 @@ public class ListingController {
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
+    /**
+     * PATCH /api/listings/{id}/sold — Đánh dấu tin đã bán (chỉ seller).
+     */
+    @PatchMapping("/{id}/sold")
+    public ResponseEntity<ApiResponse<Void>> markSold(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.markSold(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
     @GetMapping("/{id}/share")
     public ResponseEntity<ApiResponse<Map<String, Object>>> share(@PathVariable("id") Long id) {
         Listing listing = listingRepository.findById(id)
