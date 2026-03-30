@@ -248,6 +248,18 @@ function getMessageDomId(id) {
   return `chat-msg-${String(id)}`;
 }
 
+/**
+ * Key cho từng dòng tin — chỉ dựa trên id (BE hoặc tmp_* khi đang gửi).
+ * Không nhét index vào key: khi list thêm/bớt/đảo thứ tự, cùng một tin giữ cùng key → ít remount, cuộn mượt hơn.
+ */
+function getMessageRowKey(msg, indexIfNoId = 0) {
+  const id = msg?.id;
+  if (id != null && id !== '') {
+    return typeof id === 'string' ? id : String(id);
+  }
+  return `chat-row-missing-id-${indexIfNoId}-${msg?.timestamp ?? 'na'}`;
+}
+
 /** Điền replyTo / quote từ messages trong phiên khi BE/WS chỉ trả id (đủ cho tin của chính mình). */
 function enrichMessagesForDisplay(msgs) {
   const byId = new Map();
@@ -1638,7 +1650,7 @@ export default function ChatPage() {
                           const mid = m?.id != null ? String(m.id) : null;
                           const isHighlighted = mid != null && String(highlightedMessageId) === mid;
                           return (
-                              <Fragment key={`msg-${idx}-${m.id}-${m._pending ? 'p' : 's'}`}>
+                              <Fragment key={getMessageRowKey(m, idx)}>
                                 {showDay && m.timestamp && (
                                     <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
                                       <Chip
