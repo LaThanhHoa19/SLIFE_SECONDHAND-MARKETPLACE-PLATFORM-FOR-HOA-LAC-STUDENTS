@@ -108,8 +108,49 @@ export default function TermsPage() {
                 title: 'Quy định đăng tin',
                 items: [
                     {
-                        title: 'Quy định về nội dung tin đăng',
-                        body: 'Người dùng chịu trách nhiệm về tính chính xác của thông tin, hình ảnh, giá cả và tình trạng sản phẩm. Không đăng tải nội dung vi phạm pháp luật, lừa đảo, gây hiểu nhầm hoặc xâm phạm quyền lợi của bên thứ ba.',
+                        title: 'Quy định đăng tin trên SLife',
+                        body:
+                            'Quy định này áp dụng cho việc tạo và đăng tải tin trên SLife.\n\n' +
+                            '- Quy định về tin đăng\n' +
+                            '  - Chỉ dành cho hàng hóa: SLife không chấp nhận tin đăng về dịch vụ (ví dụ sửa máy tính, gia sư, làm hộ bài tập). Hệ thống chỉ dành cho mua bán hoặc tặng đồ vật lý.\n' +
+                            '  - Không đăng tin rác (spam): nghiêm cấm bài đăng không nhằm trao đổi đồ cũ như thông báo họp, lời chúc, thư từ hoặc quảng cáo không liên quan.\n' +
+                            '  - Thông tin chuẩn hóa: mỗi tin phải có tên sản phẩm, giá bán (hoặc giá 0 khi tặng) và ít nhất 3 ảnh thực tế của món đồ.\n\n' +
+                            '- Cơ chế kiểm soát và chế tài\n' +
+                            '  - Hệ thống báo cáo: người dùng có quyền báo cáo tin đăng vi phạm danh mục hàng cấm.\n' +
+                            '  - Quyền quản trị: quản trị viên có quyền ẩn ngay các bài đăng vi phạm chính sách hàng hóa mà không cần báo trước.\n' +
+                            '  - Tự động khóa tài khoản: nếu người dùng đăng hàng cấm và bị cắm cờ quá 3 lần, hệ thống có thể tự động khóa tài khoản vĩnh viễn.\n' +
+                            '  - Lịch sử thỏa thuận: nếu hàng thực tế không đúng mô tả hoặc thuộc danh mục cấm nhưng người bán vẫn đăng, người mua có quyền cung cấp ảnh bằng chứng để quản trị viên xem xét, xử lý hậu kiểm.',
+                    },
+                    {
+                        title: 'Quy định về hàng hóa trên SLife',
+                        body:
+                            'Các hàng hóa đăng tải trên SLife phải tuân thủ pháp luật Việt Nam và quy định cụ thể của cộng đồng sinh viên khu vực Hòa Lạc nhằm đảm bảo an toàn và minh bạch.\n\n' +
+                            '- Hàng hóa bị cấm theo pháp luật Việt Nam\n' +
+                            '  - Hàng hóa bất hợp pháp:\n' +
+                            '    - Chất kích thích: ma túy, thuốc gây nghiện, gây ảo giác, các dạng tương tự.\n' +
+                            '    - Vũ khí và công cụ hỗ trợ: súng, lựu đạn, mìn, dao găm, kiếm, mã tấu, quả đấm, gậy baton, bình xịt hơi cay, đèn pin tự vệ có khả năng gây sát thương.\n' +
+                            '    - Vật dụng quân sự: quân trang, quân hiệu, phù hiệu, thiết bị quân sự chuyên dụng.\n' +
+                            '    - Nội dung phản động: sách báo, tài liệu chống phá Nhà nước, kích động bạo loạn hoặc bạo lực.\n' +
+                            '    - Bộ phận cơ thể: nội tạng hoặc bất kỳ bộ phận cơ thể người nào.\n' +
+                            '  - Hàng hóa nguy hiểm và đồi trụy:\n' +
+                            '    - Pháo hoa, thuốc nổ và hóa chất độc hại (axit, chất phóng xạ, thuốc diệt côn trùng độc hại).\n' +
+                            '    - Sản phẩm khiêu dâm, nội dung người lớn hoặc hình ảnh nhạy cảm không phù hợp chuẩn mực sinh viên.\n' +
+                            '  - Hàng hóa không rõ nguồn gốc và vi phạm bản quyền:\n' +
+                            '    - Phương tiện: xe không giấy tờ, xe biển xanh hoặc biển đỏ; mua bán riêng lẻ biển số, giấy tờ xe hoặc số khung, số máy.\n' +
+                            '    - Hàng giả, hàng nhái: sản phẩm nhái thương hiệu, hàng nhập lậu hoặc vi phạm quyền sở hữu trí tuệ (sách điện tử, phần mềm lậu, bản ghi trái phép).\n' +
+                            '    - Động thực vật hoang dã: loài quý hiếm, vật sống hoặc bộ phận động vật hoang dã (ngà, nanh, sừng), công cụ săn bắt, bẫy thú.\n\n' +
+                            '- Hàng hóa bị cấm theo quy định của SLife (nhóm nhạy cảm, sức khỏe)\n' +
+                            '  - Vì SLife hướng tới môi trường sinh viên an toàn, các nhóm hàng sau không được đăng tải:\n' +
+                            '  - Sản phẩm y tế:\n' +
+                            '    - Thuốc các loại (kê đơn, thực phẩm chức năng, thảo dược, y học cổ truyền).\n' +
+                            '    - Thiết bị y tế cần chỉ định bác sĩ (máy đo SpO2, máy trợ thính, kính cận, kính áp tròng).\n' +
+                            '  - Mặt hàng ảnh hưởng vệ sinh và sức khỏe:\n' +
+                            '    - Quần áo lót đã qua sử dụng.\n' +
+                            '    - Mỹ phẩm dạng uống hoặc tiêm (chỉ chấp nhận mỹ phẩm dùng ngoài da còn mới).\n' +
+                            '    - Rượu, bia, thuốc lá và thuốc lá điện tử.\n' +
+                            '  - Vật phẩm mê tín và cờ bạc: bùa hộ mạng, vật phẩm thần bí hoặc sản phẩm phục vụ cờ bạc (máy đánh bài, máy chơi game quy đổi tiền mặt).\n' +
+                            '  - Di tích lịch sử: hiện vật, di vật thuộc công trình văn hóa, bảo vật quốc gia.\n\n' +
+                            '',
                     },
                 ],
             },
@@ -131,11 +172,11 @@ export default function TermsPage() {
 
     const [activeKey, setActiveKey] = useState(sections[0].key);
     const activeSection = sections.find((s) => s.key === activeKey) ?? sections[0];
-    const [activeItemTitle, setActiveItemTitle] = useState(sections[0].items[0]?.title ?? '');
-    const activeItem =
-        activeSection.key === 'general'
-            ? activeSection.items.find((i) => i.title === activeItemTitle) ?? activeSection.items[0]
-            : null;
+    const [activeItemByKey, setActiveItemByKey] = useState(() =>
+        Object.fromEntries(sections.map((s) => [s.key, s.items?.[0]?.title ?? '']))
+    );
+    const activeItemTitle = activeItemByKey[activeSection.key] ?? '';
+    const activeItem = activeSection.items.find((i) => i.title === activeItemTitle) ?? activeSection.items[0] ?? null;
 
     const renderBody = (body) => {
         const blocks = String(body ?? '')
@@ -255,7 +296,7 @@ export default function TermsPage() {
                         >
                             {sections.map((s, idx) => {
                                 const isExpanded = activeKey === s.key;
-                                const isGeneral = s.key === 'general';
+                                const hasSubItems = (s.items?.length ?? 0) > 1;
 
                                 return (
                                     <Accordion
@@ -266,8 +307,11 @@ export default function TermsPage() {
                                         square={idx !== 0}
                                         onChange={(_, nextExpanded) => {
                                             setActiveKey(nextExpanded ? s.key : s.key);
-                                            if (s.key === 'general' && s.items?.[0]?.title) {
-                                                setActiveItemTitle((prev) => prev || s.items[0].title);
+                                            if (s.items?.[0]?.title) {
+                                                setActiveItemByKey((prev) => ({
+                                                    ...prev,
+                                                    [s.key]: prev?.[s.key] || s.items[0].title,
+                                                }));
                                             }
                                         }}
                                         sx={{
@@ -291,21 +335,21 @@ export default function TermsPage() {
                                                     color: isExpanded ? accentColor : 'rgba(255,255,255,0.75)',
                                                 }}
                                             >
-                                                {s.number}. {s.label}
+                                                {s.label}
                                             </Typography>
                                         </AccordionSummary>
 
                                         <AccordionDetails sx={{ px: 1.25, pb: 1.25, pt: 0 }}>
-                                            {isGeneral ? (
+                                            {hasSubItems ? (
                                                 <Stack spacing={0.5} sx={{ pl: 1 }}>
                                                     {s.items.map((it) => {
-                                                        const selected = activeKey === 'general' && activeItemTitle === it.title;
+                                                        const selected = activeKey === s.key && (activeItemByKey[s.key] ?? '') === it.title;
                                                         return (
                                                             <ButtonBase
                                                                 key={it.title}
                                                                 onClick={() => {
-                                                                    setActiveKey('general');
-                                                                    setActiveItemTitle(it.title);
+                                                                    setActiveKey(s.key);
+                                                                    setActiveItemByKey((prev) => ({ ...prev, [s.key]: it.title }));
                                                                 }}
                                                                 sx={{
                                                                     width: '100%',
@@ -347,12 +391,12 @@ export default function TermsPage() {
                             <Typography variant="h5" sx={{ fontWeight: 850, color: '#FFFFFF', mb: 1.25 }}>
                                 {activeSection.key === 'general'
                                     ? activeItem?.title ?? activeSection.title
-                                    : `${activeSection.number}. ${activeSection.title}`}
+                                    : activeSection.title}
                             </Typography>
                             <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2 }} />
 
                             <Stack spacing={2}>
-                                {activeSection.key === 'general' ? (
+                                {(activeSection.items?.length ?? 0) > 1 ? (
                                     renderBody(activeItem?.body ?? '')
                                 ) : (
                                     activeSection.items.map((item) => (
