@@ -146,6 +146,16 @@ public class ListingController {
     }
 
     /**
+     * GET /api/listings/form-config — public: giới hạn ảnh/tin (đồng bộ FE khi chọn file).
+     */
+    @GetMapping("/form-config")
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> listingFormConfig() {
+        int max = listingService.getMaxImagesPerPost();
+        Map<String, Integer> body = Map.of("maxImagesPerPost", max);
+        return ResponseEntity.ok(ApiResponse.success("OK", body));
+    }
+
+    /**
      * GET /api/listings/{id}
      * Chi tiết listing.
      */

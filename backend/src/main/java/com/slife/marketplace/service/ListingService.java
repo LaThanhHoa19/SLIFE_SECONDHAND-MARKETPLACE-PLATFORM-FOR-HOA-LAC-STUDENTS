@@ -285,7 +285,7 @@ public class ListingService {
 
         boolean isDraft = request.isDraftMode();
         List<MultipartFile> imageParts = nonEmptyImageParts(images);
-        int maxPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        int maxPerPost = getMaxImagesPerPost();
 
         if (!isDraft) {
             if (imageParts.isEmpty()) {
@@ -305,6 +305,13 @@ public class ListingService {
         ListingResponse created = toListingResponse(saved, seller, false, false);
         enrichSingleListingResponseWithLikes(created, seller);
         return created;
+    }
+
+    /**
+     * Giới hạn ảnh mỗi tin (cấu hình MAX_IMAGES_PER_POST + default) — dùng cho API form-config và validate upload.
+     */
+    public int getMaxImagesPerPost() {
+        return Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
     }
 
     private static List<MultipartFile> nonEmptyImageParts(List<MultipartFile> images) {
