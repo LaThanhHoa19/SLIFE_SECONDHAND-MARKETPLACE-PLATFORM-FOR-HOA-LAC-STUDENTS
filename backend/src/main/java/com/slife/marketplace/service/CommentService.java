@@ -13,6 +13,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommentImageRepository;
 import com.slife.marketplace.repository.CommentRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.security.CommentRateLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,11 +34,13 @@ public class CommentService {
     private final UserService userService;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final CommentRateLimitService commentRateLimitService;
 
     @Transactional
     public CommentResponse createComment(CreateCommentRequest request) {
         User currentUser = userService.getCurrentUser();
         checkNotBannedOrRestricted(currentUser);
+        commentRateLimitService.assertAllowed(currentUser.getId());
 
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
@@ -60,6 +63,7 @@ public class CommentService {
                     listing.getSeller(), currentUser,
                     listing.getId(), listing.getTitle());
         }
+        commentRateLimitService.recordSuccess(currentUser.getId());
 
         return toResponse(saved, savedUrls, Collections.emptyList());
     }
@@ -68,6 +72,7 @@ public class CommentService {
     public CommentResponse replyToComment(Long parentCommentId, ReplyCommentRequest request) {
         User currentUser = userService.getCurrentUser();
         checkNotBannedOrRestricted(currentUser);
+        commentRateLimitService.assertAllowed(currentUser.getId());
 
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
@@ -94,6 +99,7 @@ public class CommentService {
 
         Comment saved = commentRepository.save(reply);
         List<String> savedUrls = saveImages(saved, imageUrls);
+        commentRateLimitService.recordSuccess(currentUser.getId());
 
         return toResponse(saved, savedUrls, Collections.emptyList());
     }
