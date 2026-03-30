@@ -4,6 +4,7 @@
  *   onFilesChange  – (files: File[]) => void
  *   maxFiles       – tối đa số ảnh (default 10)
  *   maxSizeMB      – dung lượng tối đa mỗi ảnh MB (default 5)
+ *   variant        – 'default' | 'studioHero' (ảnh đầu lớn + lưới phụ, dùng trang tạo tin)
  */
 import { useState, useEffect, useId, useMemo } from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
@@ -40,6 +41,7 @@ const TILE = {
     size: 110,
     radius: '10px',
 };
+const TILE_SM = 100;
 
 function normalizeExisting(existingImages, existingImageUrls) {
     if (Array.isArray(existingImages) && existingImages.length > 0) {
@@ -59,6 +61,7 @@ export default function ImageUploader({
                                           existingImages,
                                           existingImageUrls = [],
                                           onRemoveExistingImage,
+                                          variant = 'default',
                                       }) {
     const inputId = useId();
     const [files, setFiles] = useState([]);
@@ -144,32 +147,37 @@ export default function ImageUploader({
     const showUnifiedGrid = hasExisting || files.length > 0;
     const showBigDropzone = !showUnifiedGrid && cap > 0;
 
-    const addTile = (
+    const studioHero = variant === 'studioHero';
+
+    const addTileSx = (sz) => ({
+        width: sz,
+        height: sz,
+        borderRadius: TILE.radius,
+        background: studioHero ? 'rgba(157,110,237,0.08)' : '#EDE7F6',
+        border: studioHero ? '2px dashed rgba(157,110,237,0.45)' : 'none',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        flexShrink: 0,
+        '&:hover': { background: studioHero ? 'rgba(157,110,237,0.14)' : '#e0d4f7' },
+    });
+
+    const addTile = (sz = TILE.size) => (
         <label htmlFor={inputId} style={{ display: 'block' }}>
-            <Box
-                sx={{
-                    width: TILE.size,
-                    height: TILE.size,
-                    borderRadius: TILE.radius,
-                    background: '#EDE7F6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    '&:hover': { background: '#e0d4f7' },
-                }}
-            >
-                <AddPhotoAlternateOutlinedIcon sx={{ color: '#9D6EED', fontSize: 35 }} />
+            <Box sx={addTileSx(sz)}>
+                <AddPhotoAlternateOutlinedIcon sx={{ color: '#9D6EED', fontSize: sz > TILE_SM ? 40 : 32 }} />
             </Box>
         </label>
     );
 
     return (
         <Box>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ mb: capNotice ? 0.5 : 1.5 }}>
-                Ảnh sản phẩm — JPG, PNG, GIF, WebP (tối đa {cap} ảnh, mỗi file ≤ {maxSizeMB}MB)
-            </Typography>
+            {!studioHero ? (
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: capNotice ? 0.5 : 1.5 }}>
+                    Ảnh sản phẩm — JPG, PNG, GIF, WebP (tối đa {cap} ảnh, mỗi file ≤ {maxSizeMB}MB)
+                </Typography>
+            ) : null}
             {capNotice ? (
                 <Typography variant="body2" color="error" sx={{ mb: 1.5, fontWeight: 600 }}>
                     {capNotice}
@@ -185,7 +193,7 @@ export default function ImageUploader({
                 onChange={handleAddImages}
             />
 
-            {showBigDropzone && (
+            {showBigDropzone && !studioHero && (
                 <label htmlFor={inputId} style={{ display: 'block' }}>
                     <Box
                         sx={{
@@ -209,9 +217,43 @@ export default function ImageUploader({
                 </label>
             )}
 
-            {showUnifiedGrid && (
+            {showBigDropzone && studioHero && (
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch' }}>
+                    <label htmlFor={inputId} style={{ display: 'block', flex: '1 1 260px', minWidth: 240, maxWidth: '100%' }}>
+                        <Box
+                            sx={{
+                                minHeight: 220,
+                                borderRadius: '14px',
+                                border: '2px dashed rgba(157,110,237,0.45)',
+                                bgcolor: 'rgba(157,110,237,0.06)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                gap: 0.75,
+                                px: 2,
+                                '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
+                            }}
+                        >
+                            <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 48, color: '#9D6EED' }} />
+                            <Typography fontWeight={700} fontSize={15} color="#e5e7eb" textAlign="center">
+                                Tải ảnh chính
+                            </Typography>
+                            <Typography fontSize={12} color="rgba(255,255,255,0.45)" textAlign="center">
+                                Ảnh bìa nổi bật nhất
+                            </Typography>
+                        </Box>
+                    </label>
+                    <Box sx={{ flex: '1 1 200px', display: 'flex', flexWrap: 'wrap', gap: 1.5, alignContent: 'flex-start' }}>
+                        {cap > 1 && files.length < cap ? addTile(TILE_SM) : null}
+                    </Box>
+                </Box>
+            )}
+
+            {showUnifiedGrid && !studioHero && (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'flex-start' }}>
-                    {files.length < cap && addTile}
+                    {files.length < cap && addTile(TILE.size)}
 
                     {hasExisting &&
                         resolvedExisting.map((item, i) => (
@@ -283,6 +325,99 @@ export default function ImageUploader({
                     ))}
                 </Box>
             )}
+
+            {showUnifiedGrid && studioHero && (
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <Box
+                        sx={{
+                            flex: '1 1 260px',
+                            minWidth: 240,
+                            maxWidth: '100%',
+                            minHeight: 220,
+                            borderRadius: '14px',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            border: previews[0] ? 'none' : '2px dashed rgba(157,110,237,0.35)',
+                            bgcolor: previews[0] ? 'transparent' : 'rgba(157,110,237,0.04)',
+                        }}
+                    >
+                        {previews[0] ? (
+                            <>
+                                <img src={previews[0]} alt="" style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
+                                <IconButton
+                                    size="small"
+                                    onClick={() => removeImage(0)}
+                                    sx={{
+                                        position: 'absolute',
+                                        top: 8,
+                                        right: 8,
+                                        background: 'rgba(0,0,0,0.55)',
+                                        color: '#fff',
+                                    }}
+                                >
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </>
+                        ) : (
+                            <label htmlFor={inputId} style={{ display: 'flex', width: '100%', height: 220, cursor: 'pointer' }}>
+                                <Box
+                                    sx={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.75,
+                                        px: 2,
+                                    }}
+                                >
+                                    <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 48, color: '#9D6EED' }} />
+                                    <Typography fontWeight={700} fontSize={15} color="#e5e7eb" textAlign="center">
+                                        Tải ảnh chính
+                                    </Typography>
+                                    <Typography fontSize={12} color="rgba(255,255,255,0.45)">
+                                        Ảnh bìa nổi bật nhất
+                                    </Typography>
+                                </Box>
+                            </label>
+                        )}
+                    </Box>
+                    <Box sx={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 1.5, alignContent: 'flex-start' }}>
+                        {previews.slice(1).map((url, j) => {
+                            const index = j + 1;
+                            return (
+                                <Box
+                                    key={url}
+                                    sx={{
+                                        width: TILE_SM,
+                                        height: TILE_SM,
+                                        borderRadius: TILE.radius,
+                                        overflow: 'hidden',
+                                        position: 'relative',
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => removeImage(index)}
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 4,
+                                            right: 4,
+                                            background: 'rgba(0,0,0,0.5)',
+                                            color: '#fff',
+                                        }}
+                                    >
+                                        <CloseIcon fontSize="small" />
+                                    </IconButton>
+                                </Box>
+                            );
+                        })}
+                        {files.length < cap ? addTile(TILE_SM) : null}
+                    </Box>
+                </Box>
+            )}
         </Box>
     );
 }
@@ -294,4 +429,5 @@ ImageUploader.propTypes = {
     existingImages: PropTypes.arrayOf(PropTypes.object),
     existingImageUrls: PropTypes.arrayOf(PropTypes.string),
     onRemoveExistingImage: PropTypes.func,
+    variant: PropTypes.oneOf(['default', 'studioHero']),
 };

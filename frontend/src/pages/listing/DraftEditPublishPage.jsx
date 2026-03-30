@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { getListing, updateListing, uploadImages } from '../../api/listingApi';
 import { useAuth } from '../../hooks/useAuth';
@@ -206,11 +207,21 @@ export default function DraftEditPublishPage() {
     }
 
     return (
-        <Box>
+        <Box
+            sx={{
+                minHeight: '100%',
+                width: '100%',
+                bgcolor: APP_SHELL_BG,
+                py: { xs: 1, md: 2 },
+                px: 0,
+            }}
+        >
             {formDefaults && (
                 <ListingForm
                     key={`draft-${String(listingIdNum)}`}
                     mode="edit"
+                    layoutVariant="createStudio"
+                    studioSidebarTitle="Hoàn thiện & đăng tin"
                     submitLabel="ĐĂNG TIN"
                     defaultValues={formDefaults}
                     existingImageUrls={existingImageUrls}

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { createListingWithImages } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
@@ -94,13 +95,22 @@ export default function CreateListingPage() {
   };
 
   return (
-      <Box>
+      <Box
+          sx={{
+            minHeight: '100%',
+            width: '100%',
+            bgcolor: APP_SHELL_BG,
+            py: { xs: 1, md: 2 },
+            px: 0,
+          }}
+      >
         <ListingForm
             onSubmit={handleSubmit}
             onSaveDraft={handleSaveDraft}
             submitting={submitting}
             savingDraft={savingDraft}
             mode="create"
+            layoutVariant="createStudio"
             maxImagesPerPost={maxImagesPerPost}
             serverSubmitError={submitError}
             serverSubmitErrorPlacement={submitErrorPlacement}
