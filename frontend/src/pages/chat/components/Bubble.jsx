@@ -1,0 +1,341 @@
+import { useState } from 'react';
+import {
+  Box,
+  Button,
+  Chip,
+  IconButton,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Paper,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
+import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+
+import { getDeliveryReceiptInfo, getReferencePreview, resolveChatImageSrc } from '../chatMessageUtils';
+
+function ImageBubble({ fileUrl }) {
+  const src = resolveChatImageSrc(fileUrl);
+  return (
+    <Box
+      component="img"
+      src={src}
+      alt="Ảnh"
+      sx={{
+        maxWidth: 220,
+        maxHeight: 220,
+        borderRadius: 1,
+        display: 'block',
+        objectFit: 'cover',
+        cursor: 'pointer',
+      }}
+      onClick={() => window.open(src, '_blank')}
+    />
+  );
+}
+
+function OfferBubble({ msg, onAccept, onReject }) {
+  const isMe = msg.isFromCurrentUser;
+  // Chỉ coi là kết thúc khi BE trả về ACCEPTED/REJECTED. offerStatus null (lịch sử cũ) = vẫn đang chờ, không hiện "từ chối" nhầm.
+  const isPending =
+    msg.offerStatus === 'PENDING' ||
+    (msg.messageType === 'OFFER_PROPOSAL' &&
+      msg.offerStatus !== 'ACCEPTED' &&
+      msg.offerStatus !== 'REJECTED');
+  const showTerminalChip = msg.offerStatus === 'ACCEPTED' || msg.offerStatus === 'REJECTED';
+  return (
+    <Box>
+      <Typography variant="body2" fontWeight={600} gutterBottom>
+        {msg.content}
+      </Typography>
+      {!isMe && isPending && msg.offerId != null && (
+        <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+          <Button
+            size="small"
+            variant="contained"
+            color="success"
+            startIcon={<CheckCircleIcon />}
+            onClick={() => onAccept(msg.offerId)}
+          >
+            Chấp nhận
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            startIcon={<CancelIcon />}
+            onClick={() => onReject(msg.offerId)}
+          >
+            Từ chối
+          </Button>
+        </Box>
+      )}
+      {showTerminalChip && (
+        <Chip
+          size="small"
+          label={msg.offerStatus === 'ACCEPTED' ? '✅ Đã chấp nhận' : '❌ Đã từ chối'}
+          color={msg.offerStatus === 'ACCEPTED' ? 'success' : 'error'}
+          sx={{ mt: 0.5 }}
+        />
+      )}
+    </Box>
+  );
+}
+
+export default function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMessage }) {
+  const theme = useTheme();
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const isMe = msg.isFromCurrentUser === true;
+  const isSystem = msg.messageType === 'DEAL_CONFIRMATION';
+  const isPending = !!msg._pending;
+  const isHighlighted = msg._highlighted === true;
+  const quoteRefId = msg?.quote?.id ?? msg?.quoteMessageId ?? null;
+  const remindRefId = msg?.replyTo?.id ?? msg?.replyToMessageId ?? null;
+  const stableMessageId = msg?.id != null && !String(msg.id).startsWith('tmp');
+  const showReport = !isMe && stableMessageId && typeof onReportMessage === 'function';
+  const showBubbleMenu = !isPending && stableMessageId && (Boolean(onReply) || showReport);
+
+  if (isSystem) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
+        <Paper
+          sx={{
+            px: 2,
+            py: 1,
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: alpha(theme.palette.success.main, 0.55),
+            bgcolor: alpha(
+              theme.palette.success.main,
+              theme.palette.mode === 'dark' ? 0.14 : 0.12
+            ),
+            boxShadow: 'none',
+          }}
+        >
+          <Typography
+            variant="body2"
+            fontWeight={600}
+            sx={{
+              color:
+                theme.palette.mode === 'dark'
+                  ? theme.palette.success.light
+                  : theme.palette.success.dark,
+            }}
+          >
+            {msg.content}
+          </Typography>
+        </Paper>
+      </Box>
+    );
+  }
+
+  const refAccent = quoteRefId ? theme.palette.info.main : theme.palette.warning.main;
+  // Yêu cầu UI: tin bên trái (đối phương) để nút … ở bên phải bubble,
+  // tin bên phải (mình) để nút … ở bên trái bubble.
+  const menuOnLeft = isMe;
+
+  const bubbleMenu = showBubbleMenu ? (
+    <>
+      <IconButton
+        size="small"
+        className="chat-bubble-actions"
+        aria-label="Thao tác tin nhắn"
+        onClick={(e) => setMenuAnchor(e.currentTarget)}
+        sx={{
+          mt: 0.25,
+          flexShrink: 0,
+          color: alpha(theme.palette.common.white, 0.92),
+        }}
+      >
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: menuOnLeft ? 'left' : 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: menuOnLeft ? 'left' : 'right' }}
+      >
+        {onReply ? (
+          <MenuItem
+            dense
+            onClick={() => {
+              onReply(msg);
+              setMenuAnchor(null);
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <ReplyRoundedIcon fontSize="small" />
+            </ListItemIcon>
+            Nhắc lại
+          </MenuItem>
+        ) : null}
+        {showReport ? (
+          <MenuItem
+            dense
+            onClick={() => {
+              onReportMessage(msg);
+              setMenuAnchor(null);
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <OutlinedFlagIcon fontSize="small" />
+            </ListItemIcon>
+            Báo cáo tin nhắn
+          </MenuItem>
+        ) : null}
+      </Menu>
+    </>
+  ) : null;
+
+  return (
+    <Box
+      className="chat-bubble-row"
+      sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: isMe ? 'flex-end' : 'flex-start',
+        gap: 0.25,
+        width: '100%',
+        mb: 1,
+        opacity: isPending ? 0.6 : 1,
+        '& .chat-bubble-actions': {
+          opacity: 0.55,
+          transition: 'opacity 160ms ease',
+        },
+        '&:hover .chat-bubble-actions': {
+          opacity: 1,
+        },
+      }}
+    >
+      {isMe && bubbleMenu}
+      <Paper
+        elevation={0}
+        sx={{
+          maxWidth: '78%',
+          p: 1.75,
+          bgcolor: isMe
+            ? 'primary.main'
+            : theme.palette.mode === 'dark'
+              ? alpha(theme.palette.common.white, 0.07)
+              : theme.palette.grey[100],
+          color: isMe ? 'primary.contrastText' : 'text.primary',
+          borderRadius: isMe ? '18px 6px 18px 18px' : '6px 18px 18px 18px',
+          border: '1px solid',
+          borderColor: isHighlighted
+            ? alpha(theme.palette.warning.main, 0.95)
+            : isMe
+              ? alpha(theme.palette.primary.dark, 0.35)
+              : theme.palette.mode === 'dark'
+                ? alpha(theme.palette.common.white, 0.1)
+                : alpha(theme.palette.divider, 0.55),
+          boxShadow: isMe
+            ? `0 2px 14px ${alpha(theme.palette.primary.main, 0.35)}`
+            : theme.palette.mode === 'dark'
+              ? 'inset 0 1px 0 rgba(255,255,255,0.06)'
+              : '0 1px 4px rgba(0,0,0,0.06)',
+        }}
+      >
+        {!isMe && msg.senderName && (
+          <Typography
+            variant="caption"
+            display="block"
+            fontWeight={700}
+            sx={{ mb: 0.5, opacity: 0.75 }}
+          >
+            {msg.senderName}
+          </Typography>
+        )}
+
+        {(quoteRefId || remindRefId) && (
+          <Box
+            onClick={() => onJumpToMessage?.(quoteRefId || remindRefId)}
+            sx={{
+              mb: 0.75,
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              border: '1px solid',
+              borderColor: isMe
+                ? alpha(theme.palette.common.white, 0.4)
+                : alpha(refAccent, 0.45),
+              bgcolor: isMe
+                ? alpha(theme.palette.common.white, 0.14)
+                : alpha(refAccent, 0.08),
+              cursor: 'pointer',
+            }}
+          >
+            <Typography
+              variant="caption"
+              sx={{
+                opacity: 0.92,
+                color: 'inherit',
+                display: 'block',
+                wordBreak: 'break-word',
+              }}
+            >
+              {quoteRefId ? 'Trích dẫn' : 'Nhắc lại'}:{' '}
+              {getReferencePreview(
+                quoteRefId ? msg?.quote : msg?.replyTo,
+                quoteRefId || remindRefId
+              ).slice(0, 80)}
+            </Typography>
+          </Box>
+        )}
+
+        {msg.messageType === 'IMAGE' ? (
+          <ImageBubble fileUrl={msg.fileUrl} />
+        ) : msg.messageType === 'OFFER_PROPOSAL' ? (
+          <OfferBubble msg={msg} onAccept={onAccept} onReject={onReject} />
+        ) : (
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {msg.content}
+          </Typography>
+        )}
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexWrap: 'wrap' }}>
+          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+            {msg.timestamp
+              ? new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+              : '…'}
+          </Typography>
+          {isMe &&
+            (() => {
+              const receipt = getDeliveryReceiptInfo(msg, isPending);
+              return (
+                <Tooltip title={receipt.tooltip} arrow placement="top">
+                  <Typography
+                    variant="caption"
+                    component="span"
+                    sx={{
+                      opacity: 0.9,
+                      fontWeight: isPending ? 500 : 600,
+                      fontSize: '0.7rem',
+                      cursor: 'help',
+                      textDecoration: 'underline',
+                      textDecorationStyle: 'dotted',
+                      textUnderlineOffset: '3px',
+                    }}
+                  >
+                    {receipt.short}
+                  </Typography>
+                </Tooltip>
+              );
+            })()}
+        </Box>
+      </Paper>
+      {!isMe && bubbleMenu}
+    </Box>
+  );
+}
+
