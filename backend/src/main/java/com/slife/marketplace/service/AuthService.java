@@ -1,7 +1,3 @@
-/**
- * Mục đích: Service AuthService
- * Endpoints liên quan: controller
- */
 package com.slife.marketplace.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -14,6 +10,9 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.security.JwtTokenProvider;
+import com.slife.marketplace.security.JwtUserSessionValidator;
+import com.slife.marketplace.security.TokenBlacklistService;
+import io.jsonwebtoken.Claims;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -35,6 +34,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final JwtUserSessionValidator sessionValidator;
+    private final TokenBlacklistService tokenBlacklistService;
     private final StudentVerificationService studentVerificationService;
     private final ObjectMapper objectMapper;
     private final String googleClientId;
@@ -47,6 +48,8 @@ public class AuthService {
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtTokenProvider jwtTokenProvider,
+            JwtUserSessionValidator sessionValidator,
+            TokenBlacklistService tokenBlacklistService,
             StudentVerificationService studentVerificationService,
             ObjectMapper objectMapper,
             @Value("${google.clientId:}") String googleClientId,
@@ -55,6 +58,8 @@ public class AuthService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.sessionValidator = sessionValidator;
+        this.tokenBlacklistService = tokenBlacklistService;
         this.studentVerificationService = studentVerificationService;
         this.objectMapper = objectMapper;
         this.googleClientId = googleClientId;
@@ -81,15 +86,35 @@ public class AuthService {
         }
 
         assertUserMayReceiveToken(user);
-
-        String token = jwtTokenProvider.generateToken(email, buildClaims(user));
-        return buildAuthResponse(token, user);
+        return buildAuthResponse(user);
     }
 
-    /**
-     * DEV ONLY: generate JWT for an existing user without Google flow.
-     * Intended for local testing (e.g. Comment API) when running with dev profile.
-     */
+    public AuthResponse refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED, "refreshToken is required");
+        }
+        if (tokenBlacklistService.isBlacklisted(refreshToken) || !jwtTokenProvider.isTokenValid(refreshToken)) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED, "Invalid refresh token");
+        }
+
+        Claims claims = jwtTokenProvider.parseToken(refreshToken);
+        String tokenType = claims.get("typ", String.class);
+        if (!"refresh".equals(tokenType)) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED, "Invalid refresh token type");
+        }
+
+        String email = claims.getSubject();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new SlifeException(ErrorCode.UNAUTHORIZED, "User not found for token"));
+
+        if (!sessionValidator.isAccessAllowed(claims, user)) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED, "Session has been revoked");
+        }
+
+        tokenBlacklistService.blacklist(refreshToken);
+        return buildAuthResponse(user);
+    }
+
     public AuthResponse devLogin(String email) {
         if (email == null || email.isBlank()) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Email is required");
@@ -99,12 +124,9 @@ public class AuthService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
 
         assertUserMayReceiveToken(user);
-
-        String token = jwtTokenProvider.generateToken(email, buildClaims(user));
-        return buildAuthResponse(token, user);
+        return buildAuthResponse(user);
     }
 
-    /** Popup-based flow: verify credential JWT directly from GIS */
     public AuthResponse googleLogin(GoogleLoginRequest request) {
         if (request == null || request.getCredential() == null || request.getCredential().isBlank()) {
             throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
@@ -113,7 +135,6 @@ public class AuthService {
         return buildAuthResponseFromGooglePayload(googlePayload);
     }
 
-    /** Step 1 of redirect flow: build the Google authorization URL */
     public String getGoogleAuthorizationUrl() {
         String redirectUri = backendUrl + "/api/auth/google/callback";
         return "https://accounts.google.com/o/oauth2/v2/auth"
@@ -125,7 +146,6 @@ public class AuthService {
                 + "&prompt=select_account";
     }
 
-    /** Step 2 of redirect flow: exchange authorization code for tokens */
     public AuthResponse googleCallback(String code) {
         String redirectUri = backendUrl + "/api/auth/google/callback";
         Map<String, Object> tokenData = exchangeCodeForTokens(code, redirectUri);
@@ -136,8 +156,6 @@ public class AuthService {
         Map<String, Object> googlePayload = verifyGoogleIdToken(idToken);
         return buildAuthResponseFromGooglePayload(googlePayload);
     }
-
-    // ─── Private helpers ───────────────────────────────────────────────────────
 
     private AuthResponse buildAuthResponseFromGooglePayload(Map<String, Object> payload) {
         String email = stringValue(payload.get("email"));
@@ -160,8 +178,7 @@ public class AuthService {
                 .map(existingUser -> syncGoogleProfile(existingUser, fullName, avatarUrl))
                 .orElseGet(() -> createGoogleUser(email, fullName, avatarUrl));
         assertUserMayReceiveToken(user);
-        String token = jwtTokenProvider.generateToken(email, buildClaims(user));
-        return buildAuthResponse(token, user);
+        return buildAuthResponse(user);
     }
 
     private static boolean isBcryptHash(String value) {
@@ -169,10 +186,11 @@ public class AuthService {
         return value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$");
     }
 
-    private Map<String, Object> buildClaims(User user) {
+    private Map<String, Object> buildClaims(User user, String tokenType) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("role", user.getRole());
+        claims.put("typ", tokenType);
         long tv = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
         claims.put("tv", tv);
         return claims;
@@ -184,11 +202,17 @@ public class AuthService {
         }
     }
 
-    private AuthResponse buildAuthResponse(String token, User user) {
+    private AuthResponse buildAuthResponse(User user) {
+        String accessToken = jwtTokenProvider.generateToken(user.getEmail(), buildClaims(user, "access"));
+        String refreshToken = jwtTokenProvider.generateToken(
+                user.getEmail(),
+                buildClaims(user, "refresh"),
+                jwtTokenProvider.getRefreshExpirationMs());
+
         AuthResponse response = new AuthResponse();
-        response.setToken(token);
-        response.setAccessToken(token);
-        response.setRefreshToken(null);
+        response.setToken(accessToken);
+        response.setAccessToken(accessToken);
+        response.setRefreshToken(refreshToken);
         response.setUser(user);
         return response;
     }
@@ -231,7 +255,6 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    /** Verify a Google ID token via tokeninfo endpoint (works for both popup and redirect flows) */
     private Map<String, Object> verifyGoogleIdToken(String idToken) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
@@ -251,7 +274,6 @@ public class AuthService {
         }
     }
 
-    /** Exchange OAuth2 authorization code for tokens */
     private Map<String, Object> exchangeCodeForTokens(String code, String redirectUri) {
         try {
             String body = "code=" + enc(code)

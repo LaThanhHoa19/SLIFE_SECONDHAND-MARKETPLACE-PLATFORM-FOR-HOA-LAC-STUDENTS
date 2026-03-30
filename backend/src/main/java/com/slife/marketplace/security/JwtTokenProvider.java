@@ -11,6 +11,7 @@ import java.security.Key;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -22,13 +23,17 @@ public class JwtTokenProvider {
     }
 
     public String generateToken(String subject, Map<String, Object> claims) {
+        return generateToken(subject, claims, properties.getExpiration());
+    }
+
+    public String generateToken(String subject, Map<String, Object> claims, long expirationMs) {
         Instant now = Instant.now();
-        Instant expiry = now.plusMillis(properties.getExpiration());
+        Instant expiry = now.plusMillis(Math.max(expirationMs, 1000L));
 
         return Jwts.builder()
                 .subject(subject)
                 .claims(claims)
-                .id(java.util.UUID.randomUUID().toString())   // jti: moi token unique kể cả cùng giây
+                .id(UUID.randomUUID().toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(getSigningKey())
@@ -52,14 +57,17 @@ public class JwtTokenProvider {
         }
     }
 
+    public long getRefreshExpirationMs() {
+        long configured = properties.getRefreshExpiration();
+        return configured > 0 ? configured : 604800000L;
+    }
+
     private Key getSigningKey() {
         String secret = properties.getSecret();
         if (secret == null || secret.isBlank() || "replace-secret".equals(secret)) {
-            // Dev fallback key – dài để đủ 256-bit cho HS256
             secret = "slife-dev-secret-key-should-be-long-1234567890";
         }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
-
