@@ -1,5 +1,7 @@
 package com.slife.marketplace.security;
 
+import com.slife.marketplace.repository.UserRepository;
+import io.jsonwebtoken.Claims;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
@@ -15,9 +17,15 @@ import java.util.Map;
 public class JwtHandshakeHandler extends DefaultHandshakeHandler {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
+    private final JwtUserSessionValidator sessionValidator;
 
-    public JwtHandshakeHandler(JwtTokenProvider jwtTokenProvider) {
+    public JwtHandshakeHandler(JwtTokenProvider jwtTokenProvider,
+                               UserRepository userRepository,
+                               JwtUserSessionValidator sessionValidator) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
+        this.sessionValidator = sessionValidator;
     }
 
     @Override
@@ -32,9 +40,13 @@ public class JwtHandshakeHandler extends DefaultHandshakeHandler {
                 }
             }
             if (token != null && !token.isBlank() && jwtTokenProvider.isTokenValid(token)) {
-                String email = jwtTokenProvider.parseToken(token).getSubject();
+                Claims claims = jwtTokenProvider.parseToken(token);
+                String email = claims.getSubject();
                 if (email != null && !email.isBlank()) {
-                    return () -> email;
+                    return userRepository.findByEmail(email)
+                            .filter(u -> sessionValidator.isAccessAllowed(claims, u))
+                            .map(u -> (Principal) () -> email)
+                            .orElse(null);
                 }
             }
         }

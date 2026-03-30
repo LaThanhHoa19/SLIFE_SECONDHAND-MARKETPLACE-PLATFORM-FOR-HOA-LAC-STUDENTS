@@ -29,13 +29,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider tokenProvider;
     private final UserRepository userRepository;
     private final TokenBlacklistService tokenBlacklistService;
+    private final JwtUserSessionValidator sessionValidator;
 
     public JwtAuthenticationFilter(JwtTokenProvider tokenProvider,
                                    UserRepository userRepository,
-                                   TokenBlacklistService tokenBlacklistService) {
+                                   TokenBlacklistService tokenBlacklistService,
+                                   JwtUserSessionValidator sessionValidator) {
         this.tokenProvider = tokenProvider;
         this.userRepository = userRepository;
         this.tokenBlacklistService = tokenBlacklistService;
+        this.sessionValidator = sessionValidator;
     }
 
     @Override
@@ -53,11 +56,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Optional<User> userOpt = userRepository.findByEmail(email);
                 if (userOpt.isPresent()) {
                     User user = userOpt.get();
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole());
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(email, null, List.of(authority));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                    log.debug("JwtAuthFilter - authenticated: email={}, path={}", email, request.getRequestURI());
+                    if (!sessionValidator.isAccessAllowed(claims, user)) {
+                        log.debug("JwtAuthFilter - session revoked or banned: email={}, path={}", email, request.getRequestURI());
+                    } else {
+                        SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole());
+                        UsernamePasswordAuthenticationToken auth =
+                                new UsernamePasswordAuthenticationToken(email, null, List.of(authority));
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                        log.debug("JwtAuthFilter - authenticated: email={}, path={}", email, request.getRequestURI());
+                    }
                 }
             } catch (Exception e) {
                 log.error("JwtAuthFilter - error: {}", e.getMessage(), e);

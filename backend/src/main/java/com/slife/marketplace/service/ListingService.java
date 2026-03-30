@@ -821,6 +821,23 @@ public class ListingService {
         listingRepository.save(listing);
     }
 
+    @Transactional
+    public void markSold(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        if (!"ACTIVE".equals(listing.getStatus()) && !"HIDDEN".equals(listing.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh dấu SOLD cho tin ACTIVE/HIDDEN");
+        }
+
+        listing.setStatus("SOLD");
+        listing.setUpdatedAt(Instant.now());
+        listingRepository.save(listing);
+    }
+
     // ----------------------------------------------------------------
     // Renew Listing
     // ----------------------------------------------------------------

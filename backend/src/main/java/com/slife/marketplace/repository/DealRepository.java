@@ -9,6 +9,8 @@ import java.util.Optional;
 
 @Repository 
 public interface DealRepository extends JpaRepository<Deal, Long> {
+    long countByStatusAndDeletedAtIsNull(String status);
+
     Optional<Deal> findByIdAndDeletedAtIsNull(Long id);
     List<Deal> findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull(String status, LocalDateTime updatedAt);
 

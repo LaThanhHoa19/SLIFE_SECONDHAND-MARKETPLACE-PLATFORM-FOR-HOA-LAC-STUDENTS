@@ -13,6 +13,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommentImageRepository;
 import com.slife.marketplace.repository.CommentRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.security.CommentRateLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,16 +26,21 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CommentService {
 
+    private static final String HIDDEN_PLACEHOLDER = "[N\u1ed9i dung \u0111\u00e3 b\u1ecb \u1ea9n do vi ph\u1ea1m.]";
+
     private final CommentRepository commentRepository;
     private final CommentImageRepository commentImageRepository;
     private final ListingRepository listingRepository;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
+    private final CommentRateLimitService commentRateLimitService;
 
     @Transactional
     public CommentResponse createComment(CreateCommentRequest request) {
         User currentUser = userService.getCurrentUser();
         checkNotBannedOrRestricted(currentUser);
+        commentRateLimitService.assertAllowed(currentUser.getId());
 
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
@@ -57,6 +63,7 @@ public class CommentService {
                     listing.getSeller(), currentUser,
                     listing.getId(), listing.getTitle());
         }
+        commentRateLimitService.recordSuccess(currentUser.getId());
 
         return toResponse(saved, savedUrls, Collections.emptyList());
     }
@@ -65,6 +72,7 @@ public class CommentService {
     public CommentResponse replyToComment(Long parentCommentId, ReplyCommentRequest request) {
         User currentUser = userService.getCurrentUser();
         checkNotBannedOrRestricted(currentUser);
+        commentRateLimitService.assertAllowed(currentUser.getId());
 
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
@@ -91,6 +99,7 @@ public class CommentService {
 
         Comment saved = commentRepository.save(reply);
         List<String> savedUrls = saveImages(saved, imageUrls);
+        commentRateLimitService.recordSuccess(currentUser.getId());
 
         return toResponse(saved, savedUrls, Collections.emptyList());
     }
@@ -109,6 +118,11 @@ public class CommentService {
 
         if (!isOwner && !isAdmin && !isListingOwner) {
             throw new SlifeException(ErrorCode.COMMENT_DELETE_FORBIDDEN);
+        }
+
+        if (isAdmin) {
+            Long listingId = comment.getListing() != null ? comment.getListing().getId() : null;
+            auditLogService.logAdminCommentDelete(currentUser, commentId, listingId);
         }
 
         // Xoa anh truoc de tranh FK constraint violation tren comment_images
@@ -201,8 +215,10 @@ public class CommentService {
     private CommentResponse toResponse(Comment c, List<String> imageUrls, List<CommentResponse> replies) {
         CommentResponse res = new CommentResponse();
         res.setId(c.getId());
-        res.setContent(c.getContent());
+        boolean hidden = c.getHiddenAt() != null;
+        res.setContent(hidden ? HIDDEN_PLACEHOLDER : c.getContent());
         res.setCreatedAt(c.getCreatedAt());
+        res.setContentHidden(hidden);
 
         User u = c.getUser();
         Map<String, Object> author = new HashMap<>();
@@ -212,7 +228,9 @@ public class CommentService {
             author.put("avatarUrl", u.getAvatarUrl());
         }
         res.setAuthor(author);
-        res.setImages(imageUrls);
+        if (!hidden) {
+            res.setImages(imageUrls);
+        }
         res.setReplies(replies);
         return res;
     }

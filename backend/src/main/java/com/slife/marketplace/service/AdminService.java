@@ -30,16 +30,19 @@ public class AdminService {
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
     private final ReportRepository reportRepository;
+    private final AuditLogService auditLogService;
 
     public AdminService(
             UserRepository userRepository,
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
-            ReportRepository reportRepository) {
+            ReportRepository reportRepository,
+            AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.reportRepository = reportRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -64,10 +67,6 @@ public class AdminService {
         return pageResult.map(this::toUserResponseDTO);
     }
 
-    /**
-     * Lọc theo trạng thái tài khoản. null / rỗng / "all" = không lọc.
-     * Chỉ cho ACTIVE, BANNED, RESTRICTED (khớp dữ liệu thực tế & ChatService).
-     */
     private static Optional<String> resolveAdminUserStatusFilter(String raw) {
         if (raw == null || raw.isBlank() || "all".equalsIgnoreCase(raw.trim())) {
             return Optional.empty();
@@ -98,7 +97,6 @@ public class AdminService {
         return Sort.by(direction, property);
     }
 
-    /** Chỉ cho phép sort theo field entity User — tránh sort property lạ từ client. */
     private static String resolveAdminUserSortProperty(String sortBy) {
         if (sortBy == null || sortBy.isBlank()) {
             return "createdAt";
@@ -114,17 +112,26 @@ public class AdminService {
     }
 
     @Transactional
-    public String updateUserStatus(Long id, String status) {
+    public String updateUserStatus(Long id, String status, User admin) {
         String normalizedStatus = normalizeStatus(status);
         User user = userRepository.findByIdAndRole(id, "USER")
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
 
+        String previousStatus = user.getStatus();
         user.setStatus(normalizedStatus);
+        if ("BANNED".equals(normalizedStatus)
+                && (previousStatus == null || !"BANNED".equalsIgnoreCase(previousStatus.trim()))) {
+            long v = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
+            user.setTokenRevision(v + 1);
+            log.warn("Admin banned user — sessions revoked. userId={}, email={}", user.getId(), user.getEmail());
+        }
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
 
         if ("BANNED".equals(normalizedStatus)) {
-            log.warn("Admin locked user account. userId={}, email={}", user.getId(), user.getEmail());
+            auditLogService.logUserBan(admin, id, previousStatus);
+        } else if ("ACTIVE".equals(normalizedStatus)) {
+            auditLogService.logUserUnban(admin, id, previousStatus);
         }
 
         return "User status updated successfully";

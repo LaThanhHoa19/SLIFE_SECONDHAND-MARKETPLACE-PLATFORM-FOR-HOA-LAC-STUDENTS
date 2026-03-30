@@ -30,7 +30,8 @@ public class ConfigService {
             "LISTING_EXPIRATION",
             "MAX_IMAGES_PER_POST",
             "DEAL_TIMEOUT_DAYS",
-            "REPORT_THRESHOLD");
+            "REPORT_THRESHOLD",
+            "AUTO_HIDE_REPORT_THRESHOLD");
     private final ConfigRepository configRepository;
 
     public ConfigService(ConfigRepository configRepository) {

@@ -96,6 +96,25 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             @Param("sellerId") Long sellerId,
             Pageable pageable);
 
+    long countByStatus(String status);
+
+    /**
+     * Top danh mục theo số tin ACTIVE (dùng Pageable để giới hạn N).
+     */
+    @Query("""
+            SELECT new com.slife.marketplace.dto.response.CategoryStatDto(
+                c.id,
+                c.name,
+                COUNT(l)
+            )
+            FROM Listing l JOIN l.category c
+            WHERE l.status = 'ACTIVE'
+            GROUP BY c.id, c.name
+            ORDER BY COUNT(l) DESC
+            """)
+    java.util.List<com.slife.marketplace.dto.response.CategoryStatDto> findTopCategoryStatsByActiveListings(
+            Pageable pageable);
+
     long countBySeller_IdAndStatus(Long sellerId, String status);
 
     /** Distinct pickup locations for filter dropdown */

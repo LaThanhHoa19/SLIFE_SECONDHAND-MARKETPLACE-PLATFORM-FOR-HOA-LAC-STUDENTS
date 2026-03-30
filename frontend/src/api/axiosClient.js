@@ -25,6 +25,10 @@ function dedupeApiPrefix(config) {
     const hasApiInUrl = typeof url === 'string' && /^\/api(\/|$)/.test(url);
 
     if (hasApiBase && hasApiInUrl) {
+        // Không strip: base .../api + url /api/public/... — cần giữ /api/public để khớp backend (tránh thành /public/...).
+        if (typeof url === 'string' && /^\/api\/public(\/|$)/.test(url)) {
+            return config;
+        }
         config.url = url.replace(/^\/api(?=\/|$)/, '') || '/';
     }
 

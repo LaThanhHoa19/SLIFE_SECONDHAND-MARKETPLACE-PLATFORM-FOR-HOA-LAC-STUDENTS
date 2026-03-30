@@ -21,5 +21,8 @@ public class DealResponse {
     private Long sellerId;
     private BigDecimal price;
     private String status;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime pickupTime;
+    private Boolean reminderSent;
     private LocalDateTime createdAt;
 }
