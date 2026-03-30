@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Alert, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { getListing, updateListing, uploadImages } from '../../api/listingApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
@@ -89,6 +90,7 @@ export default function EditListingPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const maxImagesPerPost = useMaxImagesPerPost();
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -213,6 +215,7 @@ export default function EditListingPage() {
                     mode="edit"
                     defaultValues={formDefaults}
                     existingImageUrls={existingImageUrls}
+                    maxImagesPerPost={maxImagesPerPost}
                     onSubmit={handleSubmit}
                     submitting={submitting}
                     serverSubmitError={error}

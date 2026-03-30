@@ -347,6 +347,8 @@ export default function ListingForm({
                                         submitLabel,
                                         /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
                                         existingImageUrls = [],
+                                        /** Tối đa ảnh / tin (từ GET /api/listings/form-config), áp ngay khi chọn file. */
+                                        maxImagesPerPost = 10,
                                         /** Lỗi từ API sau submit (hiển thị trong form, có thể cuộn tới ảnh). */
                                         serverSubmitError = '',
                                         /** 'images' = báo ngay tại khối ảnh + cuộn tới; 'top' = phía trên form. */
@@ -1015,7 +1017,7 @@ export default function ListingForm({
                 <Box mb={4}>
                     <ImageUploader
                         onFilesChange={handleFilesChange}
-                        maxFiles={Math.max(0, 10 - (existingImageUrls?.length || 0))}
+                        maxFiles={Math.max(0, maxImagesPerPost - (existingImageUrls?.length || 0))}
                         existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
                     />
 

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { getListing, updateListing, uploadImages } from '../../api/listingApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
@@ -87,6 +88,7 @@ export default function DraftEditPublishPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const maxImagesPerPost = useMaxImagesPerPost();
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -212,6 +214,7 @@ export default function DraftEditPublishPage() {
                     submitLabel="ĐĂNG TIN"
                     defaultValues={formDefaults}
                     existingImageUrls={existingImageUrls}
+                    maxImagesPerPost={maxImagesPerPost}
                     onSubmit={handlePublish}
                     submitting={submitting}
                     serverSubmitError={error}
