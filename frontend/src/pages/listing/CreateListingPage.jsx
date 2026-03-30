@@ -2,7 +2,7 @@
  * Trang tạo tin đăng mới. Chỉ user đã đăng nhập mới vào được (AUTH_REQUIRED).
  * Nút "Đăng tin" trên profile dẫn đến /listings/new.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
@@ -45,6 +45,15 @@ export default function CreateListingPage() {
   const [submitError, setSubmitError] = useState('');
   const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
   const { showToast } = useToast();
+  const draftRedirectTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (draftRedirectTimerRef.current) {
+        window.clearTimeout(draftRedirectTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = async (values, imageFiles) => {
     setSubmitError('');
@@ -80,7 +89,10 @@ export default function CreateListingPage() {
       const id = created?.id ?? created?.listingId;
       showToast('Đã lưu nháp thành công!', 'success');
       // Sau 1.5s navigate về profile/drafts nếu có, hoặc ở lại trang
-      setTimeout(() => {
+      if (draftRedirectTimerRef.current) {
+        window.clearTimeout(draftRedirectTimerRef.current);
+      }
+      draftRedirectTimerRef.current = window.setTimeout(() => {
         if (id) navigate(`/listings/${id}`, { replace: true });
       }, 1500);
     } catch (err) {

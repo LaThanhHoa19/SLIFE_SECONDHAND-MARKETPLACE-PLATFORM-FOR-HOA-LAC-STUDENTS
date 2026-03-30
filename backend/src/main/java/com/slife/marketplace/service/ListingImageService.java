@@ -2,6 +2,7 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingImage;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingImageRepository;
@@ -46,13 +47,16 @@ public class ListingImageService {
     }
 
     @Transactional
-    public void uploadListingImages(Long listingId, List<MultipartFile> files) {
+    public void uploadListingImages(Long listingId, List<MultipartFile> files, User currentUser) {
         if (files == null || files.isEmpty()) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "No images uploaded");
         }
 
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        if (currentUser == null || listing.getSeller() == null || !listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
 
         int existingCount = listingImageRepository.countByListing_Id(listingId);
         int maxImagesPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));

@@ -407,7 +407,7 @@ export default function ListingForm({
     const markerRef = useRef(null);       // marker đã xác nhận (đỏ mặc định Vietmap)
     const pendingMarkerRef = useRef(null); // marker đang chờ xác nhận (vàng SVG)
 
-    const { register, handleSubmit, watch, setValue, clearErrors, formState: { errors } } = useForm({
+    const { register, handleSubmit, watch, setValue, clearErrors, getValues, formState: { errors } } = useForm({
         defaultValues: {
             title: '',
             description: '',
@@ -608,9 +608,11 @@ export default function ListingForm({
     };
 
     const handleSaveDraftSubmit = (values) => {
+        const rawPrice = values?.price ?? '';
+        const digits = String(rawPrice).replace(/\D/g, "");
         const finalValues = {
             ...values,
-            price: Number(values.price.toString().replace(/\D/g, "")),
+            price: digits ? Number(digits) : null,
         };
         onSaveDraft?.(finalValues, imageFiles);
     };
@@ -618,10 +620,9 @@ export default function ListingForm({
     const handleSaveDraftClick = (e) => {
         e.preventDefault();
         if (mode !== 'create') return;
-        if (imageFiles.length === 0) {
-            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
-        }
-        handleSubmit(handleSaveDraftSubmit)(e);
+        setImageError('');
+        const values = getValues();
+        handleSaveDraftSubmit(values);
     };
 
     const hasAtLeastOneImage =
