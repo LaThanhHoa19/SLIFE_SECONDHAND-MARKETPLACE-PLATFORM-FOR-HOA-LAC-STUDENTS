@@ -241,7 +241,9 @@ export function AuthProvider({ children }) {
       // Call logout API (if token exists)
       if (token) {
         try {
-          await authApi.logout();
+          await authApi.logout(
+            refreshToken ? { refreshToken } : undefined
+          );
         } catch (error) {
           // Ignore logout API errors, continue with local cleanup
           console.warn('Logout API failed:', error);
@@ -279,7 +281,7 @@ export function AuthProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [token]);
+  }, [token, refreshToken]);
 
   /**
    * Update user profile

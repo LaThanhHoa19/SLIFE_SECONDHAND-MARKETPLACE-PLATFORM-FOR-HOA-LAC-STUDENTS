@@ -10,6 +10,6 @@
  */
 import axiosClient from './axiosClient';
 export const login = (payload) => axiosClient.post('/api/auth/login', payload);
-export const logout = () => axiosClient.post('/api/auth/logout');
+export const logout = (payload) => axiosClient.post('/api/auth/logout', payload);
 export const refreshToken = (payload) => axiosClient.post('/api/auth/refresh', payload);
 export const googleOAuth = (payload) => axiosClient.post('/api/auth/google', payload);
