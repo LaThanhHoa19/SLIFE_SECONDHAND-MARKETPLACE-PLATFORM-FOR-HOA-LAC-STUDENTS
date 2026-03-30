@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.DealRequest;
+import com.slife.marketplace.dto.request.UpdatePickupTimeRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.DealResponse;
 import com.slife.marketplace.service.DealService;
@@ -32,6 +33,26 @@ public class DealController {
     public ResponseEntity<ApiResponse<DealResponse>> rejectDeal(@PathVariable Long id) {
         DealResponse response = dealService.rejectDeal(id);
         return ResponseEntity.ok(ApiResponse.success("Đã từ chối lượt trả giá", response));
+    }
+
+    @PutMapping("/deals/{id}/confirm")
+    public ResponseEntity<ApiResponse<DealResponse>> confirmDeal(@PathVariable Long id) {
+        DealResponse response = dealService.confirmDeal(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã xác nhận giao dịch", response));
+    }
+
+    @PutMapping("/deals/{id}/pickup-time")
+    public ResponseEntity<ApiResponse<DealResponse>> updatePickupTime(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdatePickupTimeRequest request) {
+        DealResponse response = dealService.updatePickupTime(id, request.getPickupTime());
+        return ResponseEntity.ok(ApiResponse.success("Đã cập nhật thời gian nhận hàng", response));
+    }
+
+    @PostMapping("/deals/{id}/reminder")
+    public ResponseEntity<ApiResponse<Void>> sendReminder(@PathVariable Long id) {
+        dealService.sendReminder(id);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi nhắc nhở", null));
     }
 
     @GetMapping("/deals/{id}")
