@@ -664,6 +664,8 @@ export default function ChatPage() {
   const didInitialScrollForSessionRef = useRef(false);
   const typingTimerRef = useRef(null);
   const typingSentRef = useRef(false);
+  /** Debounce gọi getChats sau WS — cập nhật preview cột trái không cần reload trang */
+  const fetchSessionsDebounceRef = useRef(null);
 
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [newOpponentMsgCount, setNewOpponentMsgCount] = useState(0);
@@ -892,6 +894,25 @@ export default function ChatPage() {
         });
   }, []);
 
+  const scheduleFetchSessions = useCallback(() => {
+    if (fetchSessionsDebounceRef.current != null) {
+      window.clearTimeout(fetchSessionsDebounceRef.current);
+    }
+    fetchSessionsDebounceRef.current = window.setTimeout(() => {
+      fetchSessionsDebounceRef.current = null;
+      fetchSessions();
+    }, 350);
+  }, [fetchSessions]);
+
+  useEffect(() => {
+    return () => {
+      if (fetchSessionsDebounceRef.current != null) {
+        window.clearTimeout(fetchSessionsDebounceRef.current);
+        fetchSessionsDebounceRef.current = null;
+      }
+    };
+  }, []);
+
   useEffect(() => {
     let alive = true;
     setSessionsLoading(true);
@@ -903,11 +924,14 @@ export default function ChatPage() {
     };
   }, [sessionsVersion, fetchSessions]);
 
-  // Poll session list every 10 s when WebSocket is disconnected
+  /**
+   * WS chỉ subscribe đúng 1 session — preview các cuộc khác vẫn cần REST.
+   * Luôn poll nhẹ danh sách; khi WS mở vẫn gọi scheduleFetchSessions khi có tin (nhanh hơn).
+   */
   useEffect(() => {
-    if (wsConnected) return;
-    const id = setInterval(fetchSessions, 10000);
-    return () => clearInterval(id);
+    const ms = wsConnected ? 12000 : 8000;
+    const id = window.setInterval(fetchSessions, ms);
+    return () => window.clearInterval(id);
   }, [wsConnected, fetchSessions]);
 
   // ── Fetch message history ─────────────────────────────────────────────────
@@ -1042,11 +1066,13 @@ export default function ChatPage() {
             }
             if (msg?.event === 'READ' || msg?.type === 'READ') {
               fetchHistory();
+              scheduleFetchSessions();
               return;
             }
             setMessages((prev) => {
               return upsertMessages(prev, msg, { dropPending: true });
             });
+            scheduleFetchSessions();
           } catch {
             // ignore parse errors
           }
@@ -1066,7 +1092,7 @@ export default function ChatPage() {
       setWsConnected(false);
       setTypingLabel('');
     };
-  }, [activeSessionId, currentUser, fetchHistory, authToken]);
+  }, [activeSessionId, currentUser, fetchHistory, authToken, scheduleFetchSessions]);
 
   // ── Typing indicator ──────────────────────────────────────────────────────
   const stopTyping = useCallback(() => {
