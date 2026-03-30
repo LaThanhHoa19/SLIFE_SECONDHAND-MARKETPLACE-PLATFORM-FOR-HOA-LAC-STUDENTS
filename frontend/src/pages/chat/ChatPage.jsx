@@ -1567,7 +1567,7 @@ export default function ChatPage() {
                     </Typography>
                   </Box>
                   {wsConnected && (
-                      <Chip size="small" label="Đang kết nối" color="success" variant="outlined" sx={{ height: 26 }} />
+                      <Chip size="small" label="Đang nhắn tin" color="success" variant="outlined" sx={{ height: 26 }} />
                   )}
                 </Box>
 
