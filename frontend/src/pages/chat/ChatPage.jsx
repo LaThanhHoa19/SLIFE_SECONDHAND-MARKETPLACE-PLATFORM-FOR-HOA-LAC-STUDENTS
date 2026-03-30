@@ -39,10 +39,12 @@ import {
   Paper,
   Stack,
   TextField,
+  ThemeProvider,
   Tooltip,
   Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
+import { chatDarkTheme } from '../../theme/chatDarkTheme';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -403,13 +405,23 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
               sx={{
                 px: 2,
                 py: 1,
-                bgcolor: 'success.light',
-                border: '1px solid',
-                borderColor: 'success.main',
                 borderRadius: 2,
+                border: '1px solid',
+                borderColor: alpha(theme.palette.success.main, 0.55),
+                bgcolor: alpha(theme.palette.success.main, theme.palette.mode === 'dark' ? 0.14 : 0.12),
+                boxShadow: 'none',
               }}
           >
-            <Typography variant="body2" fontWeight={600} color="success.contrastText">
+            <Typography
+                variant="body2"
+                fontWeight={600}
+                sx={{
+                  color:
+                      theme.palette.mode === 'dark'
+                          ? theme.palette.success.light
+                          : theme.palette.success.dark,
+                }}
+            >
               {msg.content}
             </Typography>
           </Paper>
@@ -429,7 +441,7 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
             sx={{
               mt: 0.25,
               flexShrink: 0,
-              color: isMe ? 'primary.main' : 'text.secondary',
+              color: isMe ? alpha(theme.palette.primary.contrastText, 0.88) : 'text.secondary',
             }}
         >
           <MoreHorizIcon fontSize="small" />
@@ -503,17 +515,23 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
               bgcolor: isMe
                   ? 'primary.main'
                   : theme.palette.mode === 'dark'
-                      ? alpha(theme.palette.common.white, 0.08)
+                      ? alpha(theme.palette.common.white, 0.07)
                       : theme.palette.grey[100],
               color: isMe ? 'primary.contrastText' : 'text.primary',
               borderRadius: isMe ? '18px 6px 18px 18px' : '6px 18px 18px 18px',
               border: '1px solid',
               borderColor: isHighlighted
-                  ? alpha(theme.palette.warning.main, 0.9)
+                  ? alpha(theme.palette.warning.main, 0.95)
                   : isMe
-                      ? 'transparent'
-                      : alpha(theme.palette.divider, 0.5),
-              boxShadow: isMe ? '0 2px 8px rgba(0,0,0,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
+                      ? alpha(theme.palette.primary.dark, 0.35)
+                      : theme.palette.mode === 'dark'
+                          ? alpha(theme.palette.common.white, 0.1)
+                          : alpha(theme.palette.divider, 0.55),
+              boxShadow: isMe
+                  ? `0 2px 14px ${alpha(theme.palette.primary.main, 0.35)}`
+                  : theme.palette.mode === 'dark'
+                      ? 'inset 0 1px 0 rgba(255,255,255,0.06)'
+                      : '0 1px 4px rgba(0,0,0,0.06)',
             }}
         >
           {!isMe && msg.senderName && (
@@ -609,7 +627,7 @@ function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMes
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export default function ChatPage() {
+function ChatPageInner() {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
   const navigate = useNavigate();
@@ -1384,10 +1402,7 @@ export default function ChatPage() {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            bgcolor:
-                theme.palette.mode === 'dark'
-                    ? '#0c0c10'
-                    : theme.palette.grey[100],
+            bgcolor: 'background.default',
           }}
       >
         <Box
@@ -1412,6 +1427,7 @@ export default function ChatPage() {
               borderRadius: 0,
               borderRight: { md: 1 },
               borderColor: 'divider',
+              bgcolor: 'background.paper',
             }}
         >
           <Box
@@ -1464,6 +1480,9 @@ export default function ChatPage() {
                           borderRadius: 2,
                           mx: 0.5,
                           mb: 0.25,
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                          },
                         }}
                     >
                       <Avatar
@@ -1555,10 +1574,7 @@ export default function ChatPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1,
-                      background: (t) =>
-                          t.palette.mode === 'dark'
-                              ? alpha(t.palette.common.black, 0.35)
-                              : alpha(t.palette.common.white, 0.95),
+                      bgcolor: 'background.paper',
                     }}
                 >
                   {!isMdUp ? (
@@ -1593,7 +1609,17 @@ export default function ChatPage() {
                     </Typography>
                   </Box>
                   {wsConnected && (
-                      <Chip size="small" label="Đang nhắn tin" color="success" variant="outlined" sx={{ height: 26 }} />
+                      <Chip
+                          size="small"
+                          label="Đang nhắn tin"
+                          color="success"
+                          variant="outlined"
+                          sx={{
+                            height: 26,
+                            borderColor: alpha(theme.palette.success.main, 0.55),
+                            color: 'success.light',
+                          }}
+                      />
                   )}
                 </Box>
 
@@ -1648,7 +1674,7 @@ export default function ChatPage() {
                         p: 2,
                         bgcolor:
                             theme.palette.mode === 'dark'
-                                ? alpha(theme.palette.common.black, 0.2)
+                                ? alpha(theme.palette.common.black, 0.35)
                                 : alpha(theme.palette.grey[500], 0.08),
                       }}
                   >
@@ -1683,7 +1709,10 @@ export default function ChatPage() {
                                           size="small"
                                           label={formatChatDayLabel(m.timestamp)}
                                           sx={{
-                                            bgcolor: alpha(theme.palette.primary.main, 0.12),
+                                            bgcolor: alpha(theme.palette.primary.main, 0.18),
+                                            color: 'text.secondary',
+                                            border: '1px solid',
+                                            borderColor: alpha(theme.palette.primary.main, 0.35),
                                             fontWeight: 600,
                                             fontSize: '0.7rem',
                                           }}
@@ -1879,7 +1908,10 @@ export default function ChatPage() {
                         borderRadius: 2,
                         border: 1,
                         borderColor: 'divider',
-                        bgcolor: theme.palette.mode === 'dark' ? alpha('#fff', 0.03) : 'grey.50',
+                        bgcolor:
+                            theme.palette.mode === 'dark'
+                                ? alpha(theme.palette.common.white, 0.04)
+                                : 'grey.50',
                       }}
                   >
                     <Stack direction="row" spacing={1} alignItems="flex-end">
@@ -2062,5 +2094,13 @@ export default function ChatPage() {
           </DialogActions>
         </Dialog>
       </Box>
+  );
+}
+
+export default function ChatPage() {
+  return (
+      <ThemeProvider theme={chatDarkTheme}>
+        <ChatPageInner />
+      </ThemeProvider>
   );
 }
