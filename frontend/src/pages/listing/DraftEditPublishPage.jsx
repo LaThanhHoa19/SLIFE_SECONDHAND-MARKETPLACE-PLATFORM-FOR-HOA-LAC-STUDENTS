@@ -40,14 +40,17 @@ function mapListingToFormDefaults(data) {
         data?.purpose === 'GIVEAWAY' ||
         (priceDigits !== '' && Number(priceDigits) === 0);
 
+    const categoryIdRaw = data?.categoryId ?? data?.category?.id ?? data?.category?.categoryId;
+    const categoryNameRaw = data?.categoryName ?? data?.category?.name;
+
     return {
         title: data?.title ?? '',
         description: data?.description ?? '',
         price: isGiveaway ? '0' : priceDigits,
         condition: data?.condition ?? 'USED_GOOD',
         isGiveaway,
-        categoryId: data?.categoryId != null ? String(data.categoryId) : '',
-        categoryName: data?.categoryName ?? '',
+        categoryId: categoryIdRaw != null ? String(categoryIdRaw) : '',
+        categoryName: categoryNameRaw ?? '',
         pickupAddressId: pa?.id != null ? Number(pa.id) : null,
         pickupLocationName: locName || displayLine,
         pickupAddressText: displayLine,

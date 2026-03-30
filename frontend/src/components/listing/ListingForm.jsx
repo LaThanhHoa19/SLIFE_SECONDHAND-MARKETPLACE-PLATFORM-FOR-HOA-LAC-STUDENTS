@@ -430,6 +430,7 @@ export default function ListingForm({
     });
 
     const isGiveaway = watch('isGiveaway');
+    const selectedCategoryId = watch('categoryId');
     const selectedCategoryName = watch('categoryName');
     const currentCondition = watch('condition');
     const descriptionValue = watch('description') || '';
@@ -501,6 +502,39 @@ export default function ListingForm({
             })
             .catch(() => setCategories([]));
     }, []);
+
+    // Khi vào trang sửa: backend GET /api/listings/{id} trả category = {id,name,parentId}
+    // Mapper FE có thể chỉ set categoryName = tên con; ở đây suy ra nhãn "Cha > Con" từ cây danh mục.
+    useEffect(() => {
+        if (!selectedCategoryId) return;
+        if (!Array.isArray(categories) || categories.length === 0) return;
+
+        const idStr = String(selectedCategoryId);
+        const byId = new Map();
+        categories.forEach((c) => {
+            const id = c?.id ?? c?.categoryId;
+            if (id != null) byId.set(String(id), c);
+        });
+
+        const chain = [];
+        let cur = byId.get(idStr);
+        let guard = 0;
+        while (cur && guard++ < 10) {
+            const name = (cur?.name ?? '').trim();
+            if (name) chain.push(name);
+            const pid = cur?.parentId ?? cur?.parent_id ?? null;
+            if (pid == null) break;
+            cur = byId.get(String(pid));
+        }
+        if (chain.length === 0) return;
+        const label = chain.reverse().join(' > ');
+
+        const current = String(selectedCategoryName || '').trim();
+        // Chỉ auto-fill nếu đang rỗng hoặc chỉ có tên con (không có dấu '>').
+        if (!current || (!current.includes('>') && current !== label)) {
+            setValue('categoryName', label, { shouldDirty: false });
+        }
+    }, [categories, selectedCategoryId, selectedCategoryName, setValue]);
 
     // Đồng bộ ref khi adminLocation state thay đổi
     useEffect(() => {
