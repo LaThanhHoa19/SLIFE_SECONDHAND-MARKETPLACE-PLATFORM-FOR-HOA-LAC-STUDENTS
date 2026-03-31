@@ -117,6 +117,19 @@ public class ListingController {
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
+    /**
+     * DELETE /api/listings/{id}/images/{imageId}
+     * Xóa một ảnh đã lưu (chỉ chủ tin) — dùng khi sửa tin để thay ảnh.
+     */
+    @DeleteMapping("/{id}/images/{imageId}")
+    public ResponseEntity<ApiResponse<Void>> deleteListingImage(
+            @PathVariable("id") Long id,
+            @PathVariable("imageId") Long imageId) {
+        User currentUser = userService.getCurrentUser();
+        listingImageService.deleteListingImage(id, imageId, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<ListingCardResponse>>> getListings(
             @RequestParam(name = "sellerId", required = false) Long sellerId,

@@ -22,6 +22,7 @@ public class MyListingResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private List<String> images;
+    private List<ListingImageItemResponse> imageItems;
 
     // Management-specific fields
     private String status;
