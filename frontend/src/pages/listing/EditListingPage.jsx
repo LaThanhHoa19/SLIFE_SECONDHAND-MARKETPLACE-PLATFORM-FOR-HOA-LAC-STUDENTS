@@ -1,16 +1,23 @@
 /**
  * Trang chỉnh sửa tin đăng — đường dẫn: /listings/:id/edit
- * Dùng lại ListingForm + ImageUploader (ảnh mới); ảnh đã lưu hiển thị qua existingImageUrls.
+ * Dùng lại ListingForm + ImageUploader; ảnh đã lưu qua imageItems (id + url) để hiển thị / xóa.
  */
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Alert, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
-import { getListing, updateListing, uploadImages } from '../../api/listingApi';
+import { APP_SHELL_BG } from '../../utils/layoutConstants';
+import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
+import { deleteListingImage, getListing, updateListing, uploadImages } from '../../api/listingApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { useToast } from '../../context/ToastContext';
+import {
+    getListingSubmitErrorMessage,
+    isListingImageRelatedApiError,
+} from '../../utils/listingSubmitErrors';
 
 const getPayload = unwrapApiData;
 
@@ -38,8 +45,10 @@ function mapListingToFormDefaults(data) {
         price: isGiveaway ? '0' : priceDigits,
         condition: data?.condition ?? 'USED_GOOD',
         isGiveaway,
-        categoryId: data?.categoryId != null ? String(data.categoryId) : '',
-        categoryName: data?.categoryName ?? '',
+        categoryId: data?.category?.id != null
+            ? String(data.category.id)
+            : (data?.categoryId != null ? String(data.categoryId) : ''),
+        categoryName: data?.category?.name ?? data?.categoryName ?? '',
         pickupAddressId: pa?.id != null ? Number(pa.id) : null,
         pickupLocationName: locName || displayLine,
         pickupAddressText: displayLine,
@@ -49,10 +58,20 @@ function mapListingToFormDefaults(data) {
     };
 }
 
-function mapExistingImageUrls(data) {
+/** Ảnh đã lưu: ưu tiên imageItems (có id để xóa), fallback images[] chỉ URL. */
+function mapExistingImages(data) {
+    const items = data?.imageItems;
+    if (Array.isArray(items) && items.length > 0) {
+        return items
+            .map((x) => ({
+                id: x?.id != null ? x.id : null,
+                url: fullImageUrl(x?.url),
+            }))
+            .filter((x) => x.url);
+    }
     const raw = data?.images;
     if (!Array.isArray(raw)) return [];
-    return raw.map((u) => fullImageUrl(u)).filter(Boolean);
+    return raw.map((u) => ({ id: null, url: fullImageUrl(u) })).filter((x) => x.url);
 }
 
 function buildPayload(values, isDraft = false) {
@@ -84,14 +103,17 @@ export default function EditListingPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const maxImagesPerPost = useMaxImagesPerPost();
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [forbidden, setForbidden] = useState(false);
     const [listingData, setListingData] = useState(null);
     const [formDefaults, setFormDefaults] = useState(null);
-    const [existingImageUrls, setExistingImageUrls] = useState([]);
+    const [existingImages, setExistingImages] = useState([]);
     const [submitting, setSubmitting] = useState(false);
+    const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
+    const { showToast } = useToast();
 
     const listingIdNum = useMemo(() => {
         const n = Number(id);
@@ -108,9 +130,10 @@ export default function EditListingPage() {
         let cancelled = false;
         setLoading(true);
         setError('');
+        setSubmitErrorPlacement('top');
         setForbidden(false);
         setFormDefaults(null);
-        setExistingImageUrls([]);
+        setExistingImages([]);
         setListingData(null);
 
         getListing(id)
@@ -119,7 +142,7 @@ export default function EditListingPage() {
                 const data = getPayload(res);
                 setListingData(data);
                 setFormDefaults(mapListingToFormDefaults(data));
-                setExistingImageUrls(mapExistingImageUrls(data));
+                setExistingImages(mapExistingImages(data));
             })
             .catch((err) => {
                 if (!cancelled) {
@@ -146,8 +169,21 @@ export default function EditListingPage() {
         }
     }, [listingData, user?.id]);
 
+    const handleRemoveExistingImage = async (imageId) => {
+        if (imageId == null) return;
+        try {
+            await deleteListingImage(listingIdNum, imageId);
+            setExistingImages((prev) => prev.filter((x) => x.id !== imageId));
+            showToast('Đã xóa ảnh.', 'success');
+        } catch (err) {
+            const msg = err?.response?.data?.message || err?.message || 'Không xóa được ảnh.';
+            showToast(msg, 'error');
+        }
+    };
+
     const handleSubmit = async (values, imageFiles) => {
         setError('');
+        setSubmitErrorPlacement('top');
         setSubmitting(true);
         try {
             const payload = buildPayload(values, false);
@@ -155,8 +191,11 @@ export default function EditListingPage() {
             await uploadListingImages(listingIdNum, imageFiles);
             navigate(`/listings/${listingIdNum}`, { replace: true });
         } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || 'Cập nhật tin thất bại.';
+            const msg = getListingSubmitErrorMessage(err, 'Cập nhật tin thất bại.');
+            const nearImages = isListingImageRelatedApiError(err);
+            setSubmitErrorPlacement(nearImages ? 'images' : 'top');
             setError(msg);
+            if (nearImages) showToast(msg, 'error');
         } finally {
             setSubmitting(false);
         }
@@ -194,22 +233,29 @@ export default function EditListingPage() {
     }
 
     return (
-        <Box>
-            {error && (
-                <Box sx={{ maxWidth: '680px', width: '100%', mx: 'auto', mt: 2 }}>
-                    <Alert severity="error" onClose={() => setError('')}>
-                        {error}
-                    </Alert>
-                </Box>
-            )}
+        <Box
+            sx={{
+                minHeight: '100%',
+                width: '100%',
+                bgcolor: APP_SHELL_BG,
+                py: { xs: 1, md: 2 },
+                px: 0,
+            }}
+        >
             {formDefaults && (
                 <ListingForm
                     key={String(listingIdNum)}
                     mode="edit"
+                    layoutVariant="createStudio"
                     defaultValues={formDefaults}
-                    existingImageUrls={existingImageUrls}
+                    existingImages={existingImages}
+                    onRemoveExistingImage={handleRemoveExistingImage}
+                    maxImagesPerPost={maxImagesPerPost}
                     onSubmit={handleSubmit}
                     submitting={submitting}
+                    serverSubmitError={error}
+                    serverSubmitErrorPlacement={submitErrorPlacement}
+                    onDismissServerSubmitError={() => setError('')}
                 />
             )}
         </Box>

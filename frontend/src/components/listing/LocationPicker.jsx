@@ -1,20 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-    Box, Typography, TextField, MenuItem, CircularProgress,
-    Chip, IconButton, Divider, Alert,
+    Box, Typography, TextField, CircularProgress,
+    IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import SearchIcon from '@mui/icons-material/Search';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import { getProvinces, getDistricts, getWards } from '../../api/vnAddressApi';
-import { searchPlaces, getPlaceByRefId } from '../../api/geoApi';
-import useDebounce from '../../hooks/useDebounce';
-
-const FPT_LAT = 21.0135;
-const FPT_LNG = 105.5257;
 
 function normalize(str = '') {
     return str
@@ -152,10 +145,9 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
 /**
  * Props:
  *   onConfirm({ province, district, ward, searchText }) — gọi khi user xác nhận khu vực
- *   onSuggestionSelect({ lat, lng, addressText }) — gọi khi chọn gợi ý Vietmap (di chuyển bản đồ nhưng chưa xác nhận khu vực địa chính)
  *   value — giá trị hiện tại { province, district, ward }
  */
-export default function LocationPicker({ onConfirm, onSuggestionSelect, value }) {
+export default function LocationPicker({ onConfirm, value }) {
     // VN admin data
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -168,15 +160,6 @@ export default function LocationPicker({ onConfirm, onSuggestionSelect, value })
     const [province, setProvince] = useState(value?.province || null);
     const [district, setDistrict] = useState(value?.district || null);
     const [ward, setWard] = useState(value?.ward || null);
-
-    // Vietmap search
-    const [searchQuery, setSearchQuery] = useState('');
-    const debouncedQuery = useDebounce(searchQuery, 400);
-    const [suggestions, setSuggestions] = useState([]);
-    const [isSearching, setIsSearching] = useState(false);
-
-    const searchRef = useRef(null);
-    const [searchOpen, setSearchOpen] = useState(false);
 
     // Load provinces on mount
     useEffect(() => {
@@ -219,63 +202,10 @@ export default function LocationPicker({ onConfirm, onSuggestionSelect, value })
         }
     }, [ward]);
 
-    // Vietmap search suggestions
-    useEffect(() => {
-        const q = debouncedQuery.trim();
-        if (!q) { setSuggestions([]); return; }
-        setIsSearching(true);
-        searchPlaces({ q, lat: FPT_LAT, lng: FPT_LNG })
-            .then((res) => {
-                const data = res?.data?.data ?? res?.data;
-                setSuggestions(Array.isArray(data) ? data.slice(0, 7) : []);
-            })
-            .catch(() => setSuggestions([]))
-            .finally(() => setIsSearching(false));
-    }, [debouncedQuery]);
-
-    // Click outside search dropdown
-    useEffect(() => {
-        const handler = (e) => {
-            if (searchRef.current && !searchRef.current.contains(e.target)) {
-                setSearchOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    const handleSuggestionClick = async (sugg) => {
-        const refId = sugg.ref_id ?? sugg.refId ?? null;
-        let lat = Number(sugg.lat ?? sugg.latitude);
-        let lng = Number(sugg.lng ?? sugg.longitude);
-
-        if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && refId) {
-            try {
-                const res = await getPlaceByRefId(refId);
-                const pl = res?.data?.data ?? res?.data ?? {};
-                lat = Number(pl.lat); lng = Number(pl.lng);
-            } catch { /* ignore */ }
-        }
-
-        const name = sugg.name || sugg.locationName || '';
-        const addr = sugg.address || sugg.addressText || '';
-        const text = addr || name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-
-        setSearchQuery(text);
-        setSuggestions([]);
-        setSearchOpen(false);
-
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-            onSuggestionSelect?.({ lat, lng, addressText: text });
-        }
-    };
-
     const handleReset = () => {
         setProvince(null);
         setDistrict(null);
         setWard(null);
-        setSearchQuery('');
-        setSuggestions([]);
         onConfirm?.(null);
     };
 
@@ -328,79 +258,6 @@ export default function LocationPicker({ onConfirm, onSuggestionSelect, value })
                     </Box>
                 </Box>
             )}
-
-            {/* ── Vietmap search ── */}
-            <Box ref={searchRef} sx={{ position: 'relative', mb: 1.5 }}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Tìm kiếm địa điểm trên bản đồ (VD: KTX FPT, tòa Alpha…)"
-                    value={searchQuery}
-                    onFocus={() => { if (suggestions.length > 0) setSearchOpen(true); }}
-                    onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
-                    InputProps={{
-                        startAdornment: <SearchIcon sx={{ mr: 1, fontSize: 18, color: 'rgba(255,255,255,0.4)' }} />,
-                        endAdornment: isSearching ? <CircularProgress size={14} sx={{ color: '#9D6EED' }} /> : null,
-                    }}
-                    sx={{
-                        '& .MuiInputBase-root': { bgcolor: '#312F37', color: '#fff', fontSize: 14, borderRadius: 1 },
-                        '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.15)' },
-                        '& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#9D6EED' },
-                        '& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#9D6EED' },
-                    }}
-                />
-                {searchOpen && (searchQuery.trim()) && (suggestions.length > 0 || isSearching) && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: '100%',
-                            left: 0,
-                            right: 0,
-                            zIndex: 1400,
-                            mt: 0.5,
-                            bgcolor: '#23202A',
-                            border: '1px solid rgba(157,110,237,0.4)',
-                            borderRadius: 1.5,
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                            maxHeight: 220,
-                            overflowY: 'auto',
-                        }}
-                    >
-                        {suggestions.map((sugg, idx) => (
-                            <Box
-                                key={`${sugg.id || idx}-${sugg.name || ''}`}
-                                onMouseDown={() => handleSuggestionClick(sugg)}
-                                sx={{
-                                    px: 2, py: 1.1,
-                                    cursor: 'pointer',
-                                    borderBottom: idx < suggestions.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                                    '&:hover': { bgcolor: 'rgba(157,110,237,0.12)' },
-                                    display: 'flex',
-                                    gap: 1.2,
-                                    alignItems: 'flex-start',
-                                }}
-                            >
-                                <LocationOnIcon sx={{ fontSize: 16, color: '#9D6EED', mt: 0.2, flexShrink: 0 }} />
-                                <Box>
-                                    <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.9)">
-                                        {sugg.name || sugg.locationName || 'Điểm gợi ý'}
-                                    </Typography>
-                                    {sugg.address && (
-                                        <Typography fontSize={12} color="rgba(255,255,255,0.5)">
-                                            {sugg.address}
-                                        </Typography>
-                                    )}
-                                </Box>
-                            </Box>
-                        ))}
-                        {isSearching && (
-                            <Box sx={{ px: 2, py: 1 }}>
-                                <Typography fontSize={12} color="rgba(255,255,255,0.4)">Đang tìm kiếm…</Typography>
-                            </Box>
-                        )}
-                    </Box>
-                )}
-            </Box>
 
             {/* ── 3-level dropdowns ── */}
             <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1.5 }}>

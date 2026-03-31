@@ -25,6 +25,7 @@ public enum ErrorCode {
     INVALID_STUDENT_EMAIL("INVALID_STUDENT_EMAIL", "Only @fpt.edu.vn email is allowed", HttpStatus.BAD_REQUEST),
     INVALID_GOOGLE_TOKEN("INVALID_GOOGLE_TOKEN", "Invalid or expired Google sign-in token", HttpStatus.UNAUTHORIZED),
     GOOGLE_DOMAIN_NOT_ALLOWED("GOOGLE_DOMAIN_NOT_ALLOWED", "Only @fpt.edu.vn email is allowed to sign in", HttpStatus.FORBIDDEN),
+    USER_BANNED("USER_BANNED", "Account has been banned", HttpStatus.FORBIDDEN),
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),

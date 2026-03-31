@@ -1,10 +1,13 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.AdminUpdateUserStatusRequest;
+import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
+import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.AdminService;
+import com.slife.marketplace.service.UserService;
 
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -22,14 +25,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final AdminService adminService;
+    private final UserService userService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, UserService userService) {
         this.adminService = adminService;
+        this.userService = userService;
     }
 
     @GetMapping("/api/admin/dashboard")
-    public ResponseEntity<?> m1() {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<AdminDashboardStatsResponse>> getDashboard() {
+        AdminDashboardStatsResponse stats = adminService.getDashboardStats();
+        return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
     @GetMapping("/api/admin/users")
@@ -47,7 +53,8 @@ public class AdminController {
     public ResponseEntity<BaseResponse<String>> updateUserStatus(
             @PathVariable Long id,
             @Valid @RequestBody AdminUpdateUserStatusRequest request) {
-        String message = adminService.updateUserStatus(id, request.status());
+        User admin = userService.getCurrentUser();
+        String message = adminService.updateUserStatus(id, request.status(), admin);
         return ResponseEntity.ok(BaseResponse.success(message, message));
     }
 }

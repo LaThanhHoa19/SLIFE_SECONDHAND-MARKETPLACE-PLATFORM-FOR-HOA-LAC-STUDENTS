@@ -128,6 +128,45 @@ const theme = createTheme({
                 }
             }
         },
+        /** Trình duyệt vẽ outline xanh/cyan trên <input> — chồng lên border focus MUI */
+        MuiOutlinedInput: {
+            styleOverrides: {
+                root: {
+                    '&:focus-within': {
+                        outline: 'none',
+                        boxShadow: 'none',
+                    },
+                },
+                input: {
+                    outline: 'none',
+                    '&:focus': { outline: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                    '&:-moz-focusring': { outline: 'none' },
+                },
+            },
+        },
+        MuiInputBase: {
+            styleOverrides: {
+                root: {
+                    '&.MuiOutlinedInput-root': {
+                        '&:focus-within': { outline: 'none', boxShadow: 'none' },
+                    },
+                },
+                input: {
+                    outline: 'none',
+                    '&:focus': { outline: 'none', boxShadow: 'none' },
+                    '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                },
+                multiline: {
+                    outline: 'none',
+                    '& textarea': {
+                        outline: 'none',
+                        '&:focus': { outline: 'none', boxShadow: 'none' },
+                        '&:focus-visible': { outline: 'none', boxShadow: 'none' },
+                    },
+                },
+            },
+        },
         MuiSnackbar: {
             defaultProps: {
                 anchorOrigin: {

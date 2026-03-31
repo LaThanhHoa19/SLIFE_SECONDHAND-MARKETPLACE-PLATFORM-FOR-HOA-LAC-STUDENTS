@@ -71,6 +71,16 @@ export default function AppRouter() {
                 />
             </Route>
 
+            {/* Chat toàn màn hình (Messenger-style), không Header/Sidebar/Footer */}
+            <Route
+                path="/chat"
+                element={
+                    <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                        <SuspenseChatPage />
+                    </RouteGuard>
+                }
+            />
+
             {/* Đăng nhập admin: full page, không AuthLayout / không MainLayout */}
             <Route path="/admin/login" element={<SuspenseAdminLoginPage />} />
 

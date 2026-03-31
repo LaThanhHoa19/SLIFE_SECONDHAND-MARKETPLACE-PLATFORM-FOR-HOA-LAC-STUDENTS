@@ -11,11 +11,15 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 
+const ACCESS_TOKEN_KEY = 'slife_access_token';
+const REFRESH_TOKEN_KEY = 'slife_refresh_token';
+
 function normalizeApiBaseUrl(baseUrl) {
     return (baseUrl || '').replace(/\/api\/?$/, '');
 }
 
 const axiosClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000 });
+const refreshClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000 });
 
 function dedupeApiPrefix(config) {
     const base = (config.baseURL || '').replace(/\/+$/, '');
@@ -25,24 +29,66 @@ function dedupeApiPrefix(config) {
     const hasApiInUrl = typeof url === 'string' && /^\/api(\/|$)/.test(url);
 
     if (hasApiBase && hasApiInUrl) {
+        // Không strip: base .../api + url /api/public/... — cần giữ /api/public để khớp backend (tránh thành /public/...).
+        if (typeof url === 'string' && /^\/api\/public(\/|$)/.test(url)) {
+            return config;
+        }
         config.url = url.replace(/^\/api(?=\/|$)/, '') || '/';
     }
 
     return config;
 }
 
+function setBearerToken(config, token) {
+    config.headers = config.headers || {};
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    } else if (config.headers.Authorization) {
+        delete config.headers.Authorization;
+    }
+}
+
+let refreshInFlight = null;
+
+async function refreshAccessToken() {
+    if (refreshInFlight) return refreshInFlight;
+
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+    if (!storedRefreshToken) return null;
+
+    refreshInFlight = (async () => {
+        const response = await refreshClient.post('/api/auth/refresh', { refreshToken: storedRefreshToken });
+        const payload = response?.data?.data ?? response?.data ?? null;
+        const nextAccessToken = payload?.accessToken || payload?.token || null;
+        if (!nextAccessToken) throw new Error('Missing access token in refresh response');
+
+        localStorage.setItem(ACCESS_TOKEN_KEY, nextAccessToken);
+        if (payload?.refreshToken) {
+            localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+        }
+        return nextAccessToken;
+    })().finally(() => {
+        refreshInFlight = null;
+    });
+
+    return refreshInFlight;
+}
+
 
 axiosClient.interceptors.request.use((config) => {
     dedupeApiPrefix(config);
-
-
-    const token = localStorage.getItem('slife_access_token');
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    setBearerToken(config, token);
+    return config;
+});
+refreshClient.interceptors.request.use((config) => {
+    dedupeApiPrefix(config);
     return config;
 });
 axiosClient.interceptors.response.use(
     (response) => response,
-    (error) => {
+    async (error) => {
+        const originalConfig = error?.config || {};
         const normalizedError = {
             status: error?.response?.status,
             message: error?.response?.data?.message || error.message || 'Unknown error',
@@ -50,10 +96,25 @@ axiosClient.interceptors.response.use(
             raw: error,
         };
         if (normalizedError.status === 401) {
-            const isAuthEndpoint = error?.config?.url?.includes('/api/auth/');
+            const isAuthEndpoint = originalConfig?.url?.includes('/api/auth/');
+            const wasRetried = !!originalConfig._retry;
+            if (!isAuthEndpoint && !wasRetried) {
+                try {
+                    originalConfig._retry = true;
+                    const nextAccessToken = await refreshAccessToken();
+                    if (nextAccessToken) {
+                        setBearerToken(originalConfig, nextAccessToken);
+                        return axiosClient(originalConfig);
+                    }
+                } catch (_) {
+                    // fall through to cleanup + redirect
+                }
+            }
+
             const isAlreadyOnLogin = window.location.pathname === '/login';
-            const hadToken = !!localStorage.getItem('slife_access_token');
-            localStorage.removeItem('slife_access_token');
+            const hadToken = !!localStorage.getItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(ACCESS_TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
             // Chỉ redirect khi: không phải auth endpoint, không đang ở trang login, và trước đó có token
             if (!isAuthEndpoint && !isAlreadyOnLogin && hadToken) {
                 window.location.href = '/login';

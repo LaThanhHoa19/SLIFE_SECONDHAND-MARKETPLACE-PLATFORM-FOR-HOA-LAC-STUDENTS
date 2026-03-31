@@ -12,7 +12,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
+import { APP_SHELL_BG, SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
 const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/chat'];
 
@@ -30,7 +30,7 @@ export default function Sidebar({ open = true }) {
     ];
     
     const currentWidth = open ? SIDEBAR_WIDTH : SIDEBAR_MINI_WIDTH;
-    
+
     // Config: độ rộng của thanh menu khi mở (để ngắn hơn Sidebar_width, nằm giữa)
     const OPEN_PILL_WIDTH = '180px';
     const CLOSED_PILL_WIDTH = '44px'; // Độ rộng của khối tròn khi đóng
@@ -42,7 +42,7 @@ export default function Sidebar({ open = true }) {
         }
 
         if (location.pathname === path) {
-            navigate(0); 
+            navigate(0);
             return;
         }
 
@@ -66,7 +66,7 @@ export default function Sidebar({ open = true }) {
                 width: currentWidth,
                 minWidth: currentWidth,
                 height: `calc(100vh - ${SIDEBAR_TOP_OFFSET}px)`,
-                backgroundColor: '#141225',
+                backgroundColor: APP_SHELL_BG,
                 borderRight: '1px solid rgba(255,255,255,0.06)',
                 display: 'flex',
                 flexDirection: 'column',

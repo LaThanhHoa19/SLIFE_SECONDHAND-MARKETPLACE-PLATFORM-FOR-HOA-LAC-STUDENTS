@@ -90,6 +90,59 @@ public class DealService {
     }
 
     @Transactional
+    public DealResponse confirmDeal(Long dealId) {
+        User seller = userService.getCurrentUser();
+        Deal deal = dealRepository.findByIdAndDeletedAtIsNull(dealId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND));
+
+        if (deal.getSeller() == null || !deal.getSeller().getId().equals(seller.getId())) {
+            throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT, "Chỉ người bán mới có quyền xác nhận giao dịch");
+        }
+        if (!STATUS_PENDING.equals(deal.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ giao dịch PENDING mới được xác nhận");
+        }
+
+        deal.setStatus(STATUS_CONFIRMED);
+        deal.setConfirmedAt(LocalDateTime.now());
+        deal = dealRepository.save(deal);
+        return mapToResponse(deal);
+    }
+
+    @Transactional
+    public DealResponse updatePickupTime(Long dealId, LocalDateTime pickupTime) {
+        User current = userService.getCurrentUser();
+        Deal deal = dealRepository.findByIdAndDeletedAtIsNull(dealId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND));
+
+        boolean isBuyer = deal.getBuyer() != null && deal.getBuyer().getId().equals(current.getId());
+        boolean isSeller = deal.getSeller() != null && deal.getSeller().getId().equals(current.getId());
+        if (!isBuyer && !isSeller) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        deal.setPickupTime(pickupTime);
+        deal = dealRepository.save(deal);
+        return mapToResponse(deal);
+    }
+
+    @Transactional
+    public void sendReminder(Long dealId) {
+        User current = userService.getCurrentUser();
+        Deal deal = dealRepository.findByIdAndDeletedAtIsNull(dealId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND));
+
+        boolean isBuyer = deal.getBuyer() != null && deal.getBuyer().getId().equals(current.getId());
+        boolean isSeller = deal.getSeller() != null && deal.getSeller().getId().equals(current.getId());
+        if (!isBuyer && !isSeller) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        if (!STATUS_CONFIRMED.equals(deal.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ giao dịch CONFIRMED mới gửi được nhắc nhở");
+        }
+        deal.setReminderSent(true);
+        dealRepository.save(deal);
+    }
+
+    @Transactional
     public void cancelDeal(Long dealId) {
         User buyer = userService.getCurrentUser();
         Deal deal = dealRepository.findByIdAndDeletedAtIsNull(dealId)
@@ -168,6 +221,9 @@ public class DealService {
                 .sellerId(deal.getSeller().getId())
                 .price(deal.getOfferedPrice())
                 .status(deal.getStatus())
+                .confirmedAt(deal.getConfirmedAt())
+                .pickupTime(deal.getPickupTime())
+                .reminderSent(deal.getReminderSent())
                 .createdAt(deal.getCreatedAt())
                 .build();
     }

@@ -22,8 +22,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.validation.Valid;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -67,9 +71,22 @@ public class ListingController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<com.slife.marketplace.dto.response.ListingResponse>> createListingJson(
-            @RequestBody CreateListingRequest request) {
+            @Valid @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
+        return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    /**
+     * POST /api/listings — multipart: payload (JSON) + images[] trong một request.
+     * Ảnh và listing cùng transaction — tránh tạo tin khi upload ảnh thất bại.
+     */
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ListingResponse>> createListingMultipart(
+            @RequestPart("payload") @Valid CreateListingRequest request,
+            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        User seller = userService.getCurrentUser();
+        ListingResponse response = listingService.createListingWithImages(seller, request, images);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
     }
 
@@ -95,7 +112,21 @@ public class ListingController {
     public ResponseEntity<ApiResponse<Void>> uploadListingImages(
             @PathVariable("id") Long id,
             @RequestPart("images") java.util.List<org.springframework.web.multipart.MultipartFile> images) {
-        listingImageService.uploadListingImages(id, images);
+        User currentUser = userService.getCurrentUser();
+        listingImageService.uploadListingImages(id, images, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * DELETE /api/listings/{id}/images/{imageId}
+     * Xóa một ảnh đã lưu (chỉ chủ tin) — dùng khi sửa tin để thay ảnh.
+     */
+    @DeleteMapping("/{id}/images/{imageId}")
+    public ResponseEntity<ApiResponse<Void>> deleteListingImage(
+            @PathVariable("id") Long id,
+            @PathVariable("imageId") Long imageId) {
+        User currentUser = userService.getCurrentUser();
+        listingImageService.deleteListingImage(id, imageId, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
@@ -126,6 +157,16 @@ public class ListingController {
         User currentUser = userService.getCurrentUser();
         PagedResponse<MyListingResponse> listings = listingService.getMyListings(status, page, size, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
+    }
+
+    /**
+     * GET /api/listings/form-config — public: giới hạn ảnh/tin (đồng bộ FE khi chọn file).
+     */
+    @GetMapping("/form-config")
+    public ResponseEntity<ApiResponse<Map<String, Integer>>> listingFormConfig() {
+        int max = listingService.getMaxImagesPerPost();
+        Map<String, Integer> body = Map.of("maxImagesPerPost", max);
+        return ResponseEntity.ok(ApiResponse.success("OK", body));
     }
 
     /**
@@ -229,6 +270,16 @@ public class ListingController {
     public ResponseEntity<ApiResponse<Void>> unhideListing(@PathVariable("id") Long id) {
         User currentUser = userService.getCurrentUser();
         listingService.unhideListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/sold — Đánh dấu tin đã bán (chỉ seller).
+     */
+    @PatchMapping("/{id}/sold")
+    public ResponseEntity<ApiResponse<Void>> markSold(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.markSold(id, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
