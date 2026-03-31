@@ -39,6 +39,7 @@ import {
   Paper,
   Stack,
   TextField,
+  InputAdornment,
   ThemeProvider,
   Tooltip,
   Typography,
@@ -51,6 +52,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
 import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
 import CancelIcon from '@mui/icons-material/Cancel';
+import CloseIcon from '@mui/icons-material/Close';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -61,8 +63,10 @@ import SendIcon from '@mui/icons-material/Send';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
+import { getListing } from '../../api/listingApi';
 import { useToast } from '../../context/ToastContext';
 import Bubble from './components/Bubble';
+import { fullImageUrl } from '../../utils/constants';
 import {
   CHAT_NEAR_BOTTOM_PX,
   LOCAL_BUYER_CHIPS,
@@ -146,6 +150,7 @@ function ChatPageInner() {
 
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [newOpponentMsgCount, setNewOpponentMsgCount] = useState(0);
+  const [listingMetaById, setListingMetaById] = useState({});
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -293,6 +298,20 @@ function ChatPageInner() {
       [sessions, activeSessionId]
   );
 
+  const activeListingThumb = useMemo(() => {
+    const raw =
+        activeSession?.listingImageUrl ||
+        activeSession?.listingImage ||
+        activeSession?.listingThumbnailUrl ||
+        (activeSession?.listingId != null ? listingMetaById[activeSession.listingId]?.thumb : null);
+    return fullImageUrl(raw);
+  }, [activeSession, listingMetaById]);
+  const activeListingPrice = useMemo(() => {
+    if (activeSession?.listingPrice != null) return Number(activeSession.listingPrice);
+    if (activeSession?.listingId != null) return Number(listingMetaById[activeSession.listingId]?.price ?? NaN);
+    return NaN;
+  }, [activeSession, listingMetaById]);
+
   const isSellerInActiveChat = useMemo(() => {
     if (!activeSession || currentUserId == null) return false;
     return Number(activeSession.sellerId) === Number(currentUserId);
@@ -364,6 +383,48 @@ function ChatPageInner() {
       alive = false;
     };
   }, [sessionsVersion, fetchSessions]);
+
+  // Nạp thumbnail cho banner "Tin đang trao đổi" (fallback nếu session chưa trả sẵn ảnh).
+  useEffect(() => {
+    const listingIds = Array.from(
+        new Set(
+            (sessions || [])
+                .map((s) => s?.listingId)
+                .filter((id) => Number.isFinite(Number(id)))
+                .map((id) => Number(id)),
+        ),
+    );
+    const missingIds = listingIds.filter((id) => !listingMetaById[id]);
+    if (missingIds.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            const res = await getListing(id);
+            const body = res?.data;
+            const data = body?.data ?? body;
+            const thumb = Array.isArray(data?.images) ? data.images[0] : null;
+            const price = data?.price != null ? Number(data.price) : null;
+            return [id, { thumb: thumb || null, price }];
+          } catch {
+            return [id, { thumb: null, price: null }];
+          }
+        }),
+    ).then((pairs) => {
+      if (cancelled) return;
+      setListingMetaById((prev) => {
+        const next = { ...prev };
+        pairs.forEach(([id, meta]) => {
+          next[id] = meta;
+        });
+        return next;
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessions, listingMetaById]);
 
   /**
    * WS chỉ subscribe đúng 1 session — preview các cuộc khác vẫn cần REST.
@@ -808,6 +869,21 @@ function ChatPageInner() {
     }
   };
 
+  const parsedOfferAmount = Number(String(offerAmount || '').replace(/[^\d.]/g, ''));
+  const canSubmitOffer = Number.isFinite(parsedOfferAmount) && parsedOfferAmount > 0;
+  const formattedOfferAmount = canSubmitOffer
+      ? `${parsedOfferAmount.toLocaleString('vi-VN')}đ`
+      : null;
+  const formattedListingPrice = Number.isFinite(activeListingPrice) && activeListingPrice > 0
+      ? `${activeListingPrice.toLocaleString('vi-VN')}đ`
+      : null;
+  const quickOfferSuggestions = useMemo(() => {
+    if (!Number.isFinite(activeListingPrice) || activeListingPrice <= 0) return [];
+    const toStep = (n) => Math.max(1000, Math.round(n / 10000) * 10000);
+    const arr = [toStep(activeListingPrice * 0.85), toStep(activeListingPrice * 0.9), toStep(activeListingPrice * 0.95)];
+    return Array.from(new Set(arr));
+  }, [activeListingPrice]);
+
   // ── render ────────────────────────────────────────────────────────────────
   const showConversationMobile = Boolean(activeSessionId);
   const listDisplay = { xs: showConversationMobile ? 'none' : 'flex', md: 'flex' };
@@ -826,6 +902,10 @@ function ChatPageInner() {
             flexDirection: 'column',
             overflow: 'hidden',
             bgcolor: 'background.default',
+            backgroundImage:
+                theme.palette.mode === 'dark'
+                    ? 'radial-gradient(1200px 500px at 10% -10%, rgba(124,58,237,0.18), transparent 60%), radial-gradient(900px 420px at 100% 0%, rgba(59,130,246,0.12), transparent 60%)'
+                    : 'radial-gradient(1200px 500px at 10% -10%, rgba(124,58,237,0.08), transparent 60%), radial-gradient(900px 420px at 100% 0%, rgba(59,130,246,0.08), transparent 60%)',
           }}
       >
         <Box
@@ -837,542 +917,636 @@ function ChatPageInner() {
               overflow: 'hidden',
             }}
         >
-        {/* ── Session list ── */}
-        <Paper
-            elevation={0}
-            sx={{
-              width: { xs: '100%', md: 320 },
-              maxWidth: { xs: '100%', md: 320 },
-              flexShrink: 0,
-              display: listDisplay,
-              flexDirection: 'column',
-              overflow: 'hidden',
-              borderRadius: 0,
-              borderRight: { md: 1 },
-              borderColor: 'divider',
-              bgcolor: 'background.paper',
-            }}
-        >
-          <Box
+          {/* ── Session list ── */}
+          <Paper
+              elevation={0}
               sx={{
-                px: 1,
-                py: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                borderBottom: 1,
+                width: { xs: '100%', md: 336 },
+                maxWidth: { xs: '100%', md: 336 },
+                flexShrink: 0,
+                display: listDisplay,
+                flexDirection: 'column',
+                overflow: 'hidden',
+                borderRadius: { xs: 0, md: 3 },
+                borderRight: { md: 1 },
                 borderColor: 'divider',
-                bgcolor: 'background.paper',
+                bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.82 : 0.95),
+                backdropFilter: 'blur(10px)',
+                m: { xs: 0, md: 1.25 },
               }}
           >
-            <IconButton size="small" aria-label="Về bảng tin" onClick={() => navigate('/feed')}>
-              <ArrowBackIcon />
-            </IconButton>
-            <ChatBubbleOutlineIcon color="primary" fontSize="small" />
-            <Typography variant="subtitle1" fontWeight={700}>
-              Tin nhắn
+            <Box
+                sx={{
+                  px: 1,
+                  py: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper',
+                }}
+            >
+              <IconButton size="small" aria-label="Về bảng tin" onClick={() => navigate('/feed')}>
+                <ArrowBackIcon />
+              </IconButton>
+              <ChatBubbleOutlineIcon color="primary" fontSize="small" />
+              <Typography variant="subtitle1" fontWeight={700}>
+                Tin nhắn
+              </Typography>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 1, display: 'block' }}>
+              Trao đổi nhanh — gửi ảnh, trả giá, hẹn xem hàng.
             </Typography>
-          </Box>
-          <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 1, display: 'block' }}>
-            Trao đổi nhanh — gửi ảnh, trả giá, hẹn xem hàng.
-          </Typography>
-          <Divider />
-          {sessionsLoading ? (
-              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
-                <CircularProgress size={24} />
-              </Box>
-          ) : (
-              <List dense sx={{ flex: 1, overflow: 'auto', pt: 0 }}>
-                {sessions.length === 0 && (
-                    <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ px: 2, py: 2 }}
-                    >
-                      Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
-                    </Typography>
-                )}
-                {sessions.map((s) => (
-                    <ListItemButton
-                        key={s.sessionId}
-                        selected={s.sessionId === activeSessionId}
-                        onClick={() => setActiveSessionId(s.sessionId)}
-                        sx={{
-                          py: 1.25,
-                          alignItems: 'flex-start',
-                          borderRadius: 2,
-                          mx: 0.5,
-                          mb: 0.25,
-                          '&:hover': {
-                            bgcolor: 'action.hover',
-                          },
-                        }}
-                    >
-                      <Avatar
-                          sx={{
-                            width: 44,
-                            height: 44,
-                            mr: 1.5,
-                            bgcolor: 'primary.main',
-                            fontSize: 16,
-                            flexShrink: 0,
-                          }}
-                      >
-                        {(
-                            s.otherParticipantName ||
-                            s.listingTitle ||
-                            'C'
-                        )[0]?.toUpperCase()}
-                      </Avatar>
-                      <ListItemText
-                          primary={s.otherParticipantName || s.listingTitle || 'Chat'}
-                          secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
-                          primaryTypographyProps={{
-                            noWrap: true,
-                            fontWeight: s.unreadCount > 0 ? 700 : 600,
-                            fontSize: '0.9rem',
-                          }}
-                          secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
-                          sx={{ mr: 0.5, minWidth: 0 }}
-                      />
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
-                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-                          {formatSessionTimeShort(s.lastMessageAt)}
-                        </Typography>
-                        {s.unreadCount > 0 && (
-                            <Badge badgeContent={s.unreadCount} color="primary" sx={{ mt: 0.5 }} />
-                        )}
-                      </Box>
-                    </ListItemButton>
-                ))}
-              </List>
-          )}
-        </Paper>
-
-        {/* ── Chat panel ── */}
-        <Paper
-            elevation={0}
-            sx={{
-              flex: 1,
-              display: panelDisplay,
-              flexDirection: 'column',
-              minWidth: 0,
-              minHeight: 0,
-              borderRadius: 0,
-              overflow: 'hidden',
-              bgcolor: 'background.paper',
-            }}
-        >
-          {!activeSessionId ? (
-              <Box
-                  sx={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'text.secondary',
-                    p: 4,
-                    textAlign: 'center',
-                  }}
-              >
-                <StorefrontOutlinedIcon sx={{ fontSize: 48, opacity: 0.35, mb: 1 }} />
-                <Typography variant="h6" fontWeight={600}>
-                  Chọn cuộc trò chuyện
-                </Typography>
-                <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 320, mt: 1 }}>
-                  Mở một tin đăng và bấm <strong>Nhắn tin</strong> để hỏi hàng, trả giá hoặc hẹn gặp — giống các sàn
-                  đồ cũ phổ biến.
-                </Typography>
-              </Box>
-          ) : (
-              <>
-                {/* Header */}
-                <Box
+            <Divider />
+            {sessionsLoading ? (
+                <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                  <CircularProgress size={24} />
+                </Box>
+            ) : (
+                <List
+                    dense
                     sx={{
-                      px: { xs: 0.5, sm: 2 },
-                      py: 1.25,
-                      borderBottom: 1,
-                      borderColor: 'divider',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      bgcolor: 'background.paper',
+                      flex: 1,
+                      overflow: 'auto',
+                      pt: 0,
+                      scrollbarWidth: 'thin',
+                      scrollbarColor: `${alpha(theme.palette.primary.main, 0.42)} ${alpha(theme.palette.common.white, 0.06)}`,
+                      '&::-webkit-scrollbar': {
+                        width: 9,
+                      },
+                      '&::-webkit-scrollbar-track': {
+                        background: alpha(theme.palette.common.white, 0.04),
+                        borderRadius: 999,
+                      },
+                      '&::-webkit-scrollbar-thumb': {
+                        background: alpha(theme.palette.primary.main, 0.46),
+                        borderRadius: 999,
+                        border: `2px solid ${alpha(theme.palette.background.paper, 0.75)}`,
+                      },
+                      '&::-webkit-scrollbar-thumb:hover': {
+                        background: alpha(theme.palette.primary.light, 0.62),
+                      },
                     }}
                 >
-                  {!isMdUp ? (
-                      <IconButton size="small" aria-label="Danh sách hội thoại" onClick={handleChatMobileBack}>
-                        <ArrowBackIcon />
-                      </IconButton>
-                  ) : null}
-                  <Avatar
-                      sx={{
-                        width: 44,
-                        height: 44,
-                        bgcolor: 'primary.main',
-                        fontSize: 18,
-                      }}
-                  >
-                    {(
-                        activeSession?.otherParticipantName ||
-                        activeSession?.listingTitle ||
-                        'C'
-                    )[0]?.toUpperCase()}
-                  </Avatar>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="subtitle1" fontWeight={700} noWrap>
-                      {activeSession?.otherParticipantName ||
-                          activeSession?.listingTitle ||
-                          'Chat'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">
-                      {isSellerInActiveChat
-                          ? 'Bạn đang chat với người quan tâm tin của bạn'
-                          : 'Nhắn trực tiếp với người bán — an toàn hơn khi giao dịch trong app'}
-                    </Typography>
-                  </Box>
-                  {wsConnected && (
-                      <Chip
-                          size="small"
-                          label="Đang nhắn tin"
-                          color="success"
-                          variant="outlined"
-                          sx={{
-                            height: 26,
-                            borderColor: alpha(theme.palette.success.main, 0.55),
-                            color: 'success.light',
-                          }}
-                      />
+                  {sessions.length === 0 && (
+                      <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ px: 2, py: 2 }}
+                      >
+                        Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
+                      </Typography>
                   )}
-                </Box>
+                  {sessions.map((s) => (
+                      <ListItemButton
+                          key={s.sessionId}
+                          selected={s.sessionId === activeSessionId}
+                          onClick={() => setActiveSessionId(s.sessionId)}
+                          sx={{
+                            py: 1.1,
+                            alignItems: 'flex-start',
+                            borderRadius: 2.25,
+                            mx: 0.75,
+                            mb: 0.4,
+                            border: '1px solid',
+                            borderColor:
+                                s.sessionId === activeSessionId
+                                    ? alpha(theme.palette.primary.main, 0.45)
+                                    : 'transparent',
+                            bgcolor:
+                                s.sessionId === activeSessionId
+                                    ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1)
+                                    : 'transparent',
+                            '&:hover': {
+                              bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                            },
+                          }}
+                      >
+                        <Avatar
+                            sx={{
+                              width: 44,
+                              height: 44,
+                              mr: 1.5,
+                              bgcolor: 'primary.main',
+                              fontSize: 16,
+                              flexShrink: 0,
+                            }}
+                        >
+                          {(
+                              s.otherParticipantName ||
+                              s.listingTitle ||
+                              'C'
+                          )[0]?.toUpperCase()}
+                        </Avatar>
+                        <ListItemText
+                            primary={s.otherParticipantName || s.listingTitle || 'Chat'}
+                            secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
+                            primaryTypographyProps={{
+                              noWrap: true,
+                              fontWeight: s.unreadCount > 0 ? 700 : 600,
+                              fontSize: '0.9rem',
+                            }}
+                            secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
+                            sx={{ mr: 0.5, minWidth: 0 }}
+                        />
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                          <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+                            {formatSessionTimeShort(s.lastMessageAt)}
+                          </Typography>
+                          {s.unreadCount > 0 && (
+                              <Badge badgeContent={s.unreadCount} color="primary" sx={{ mt: 0.5 }} />
+                          )}
+                        </Box>
+                      </ListItemButton>
+                  ))}
+                </List>
+            )}
+          </Paper>
 
-                {/* Tin đang trao đổi (giống banner chợ) */}
-                {activeSession?.listingId != null && (
-                    <Box
-                        component={Link}
-                        to={`/listings/${activeSession.listingId}`}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1.5,
-                          px: 2,
-                          py: 1.25,
-                          borderBottom: 1,
-                          borderColor: 'divider',
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          '&:hover': { bgcolor: 'action.hover' },
-                        }}
-                    >
-                      <StorefrontOutlinedIcon color="primary" />
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          Tin đang trao đổi
-                        </Typography>
-                        <Typography variant="body2" fontWeight={600} noWrap>
-                          {activeSession.listingTitle || `Tin #${activeSession.listingId}`}
-                        </Typography>
-                      </Box>
-                      <Chip size="small" icon={<OpenInNewIcon fontSize="small" />} label="Xem tin" variant="outlined" />
-                    </Box>
-                )}
-
-                {/* Messages — cuộn trong khung; nút “Mới nhất” nổi phía trên (không cuộn theo nội dung) */}
+          {/* ── Chat panel ── */}
+          <Paper
+              elevation={0}
+              sx={{
+                flex: 1,
+                display: panelDisplay,
+                flexDirection: 'column',
+                minWidth: 0,
+                minHeight: 0,
+                borderRadius: { xs: 0, md: 3 },
+                overflow: 'hidden',
+                bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.95),
+                backdropFilter: 'blur(12px)',
+                m: { xs: 0, md: 1.25 },
+                ml: { xs: 0, md: 0 },
+                border: { xs: 0, md: '1px solid' },
+                borderColor: { xs: 'transparent', md: alpha(theme.palette.divider, 0.35) },
+              }}
+          >
+            {!activeSessionId ? (
                 <Box
                     sx={{
                       flex: 1,
-                      minHeight: 0,
-                      position: 'relative',
                       display: 'flex',
                       flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'text.secondary',
+                      p: 4,
+                      textAlign: 'center',
                     }}
                 >
+                  <StorefrontOutlinedIcon sx={{ fontSize: 48, opacity: 0.35, mb: 1 }} />
+                  <Typography variant="h6" fontWeight={600}>
+                    Chọn cuộc trò chuyện
+                  </Typography>
+                  <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 320, mt: 1 }}>
+                    Mở một tin đăng và bấm <strong>Nhắn tin</strong> để hỏi hàng, trả giá hoặc hẹn gặp — giống các sàn
+                    đồ cũ phổ biến.
+                  </Typography>
+                </Box>
+            ) : (
+                <>
+                  {/* Header */}
                   <Box
-                      ref={messagesScrollRef}
-                      onScroll={updateJumpToLatestVisibility}
                       sx={{
-                        flex: 1,
-                        overflow: 'auto',
-                        overscrollBehavior: 'contain',
-                        p: 2,
-                        bgcolor:
-                            theme.palette.mode === 'dark'
-                                ? alpha(theme.palette.common.black, 0.35)
-                                : alpha(theme.palette.grey[500], 0.08),
+                        px: { xs: 0.5, sm: 2 },
+                        py: 1.25,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.9 : 0.98),
                       }}
                   >
-                    {historyLoading ? (
-                        <Box display="flex" justifyContent="center" py={2}>
-                          <CircularProgress size={28} />
-                        </Box>
-                    ) : displayMessages.length === 0 ? (
-                        <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
-                          <LightbulbOutlinedIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.7, mb: 1 }} />
-                          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-                            Bắt đầu hội thoại
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
-                            Dòng <strong>gợi ý nhanh</strong> ngay trên ô nhập nhắc bạn có thể bấm icon <strong>bóng đèn</strong> để chọn câu gửi
-                            ngay. Hoặc gõ tin trực tiếp ở ô bên dưới.
-                          </Typography>
-                        </Box>
-                    ) : (
-                        displayMessages.map((m, idx) => {
-                          const msgIsMe = isMessageFromCurrentUser(m, currentUserId);
-                          const prev = idx > 0 ? displayMessages[idx - 1] : null;
-                          const showDay =
-                              idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
-                          const mid = m?.id != null ? String(m.id) : null;
-                          const isHighlighted = mid != null && String(highlightedMessageId) === mid;
-                          return (
-                              <Fragment key={getMessageRowKey(m, idx)}>
-                                {showDay && m.timestamp && (
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-                                      <Chip
-                                          size="small"
-                                          label={formatChatDayLabel(m.timestamp)}
-                                          sx={{
-                                            bgcolor: alpha(theme.palette.primary.main, 0.18),
-                                            color: 'text.secondary',
-                                            border: '1px solid',
-                                            borderColor: alpha(theme.palette.primary.main, 0.35),
-                                            fontWeight: 600,
-                                            fontSize: '0.7rem',
-                                          }}
-                                      />
-                                    </Box>
-                                )}
-                                <div id={getMessageDomId(mid)}>
-                                  <Bubble
-                                      msg={{ ...m, isFromCurrentUser: msgIsMe, _highlighted: isHighlighted }}
-                                      onAccept={handleAccept}
-                                      onReject={handleReject}
-                                      onReply={handleReplyMessage}
-                                      onJumpToMessage={handleJumpToMessage}
-                                      onReportMessage={handleReportMessage}
-                                  />
-                                </div>
-                              </Fragment>
-                          );
-                        })
-                    )}
-                    {typingLabel && (
-                        <Box
+                    {!isMdUp ? (
+                        <IconButton size="small" aria-label="Danh sách hội thoại" onClick={handleChatMobileBack}>
+                          <ArrowBackIcon />
+                        </IconButton>
+                    ) : null}
+                    <Avatar
+                        sx={{
+                          width: 44,
+                          height: 44,
+                          bgcolor: 'primary.main',
+                          fontSize: 18,
+                        }}
+                    >
+                      {(
+                          activeSession?.otherParticipantName ||
+                          activeSession?.listingTitle ||
+                          'C'
+                      )[0]?.toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="subtitle1" fontWeight={700} noWrap>
+                        {activeSession?.otherParticipantName ||
+                            activeSession?.listingTitle ||
+                            'Chat'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {isSellerInActiveChat
+                            ? 'Bạn đang chat với người quan tâm tin của bạn'
+                            : 'Nhắn trực tiếp với người bán — an toàn hơn khi giao dịch trong app'}
+                      </Typography>
+                    </Box>
+                    {wsConnected && (
+                        <Chip
+                            size="small"
+                            label="Đang nhắn tin"
+                            color="success"
+                            variant="outlined"
                             sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                              px: 1,
-                              mb: 1,
+                              height: 26,
+                              borderColor: alpha(theme.palette.success.main, 0.55),
+                              color: 'success.light',
                             }}
-                        >
-                          <CircularProgress size={12} />
-                          <Typography variant="caption" color="text.secondary">
-                            {typingLabel}
-                          </Typography>
-                        </Box>
+                        />
                     )}
-                    <div ref={bottomRef} />
                   </Box>
 
-                  {newOpponentMsgCount > 0 && showJumpToLatest && !historyLoading && (
+                  {/* Tin đang trao đổi (giống banner chợ) */}
+                  {activeSession?.listingId != null && (
                       <Box
+                          component={Link}
+                          to={`/listings/${activeSession.listingId}`}
                           sx={{
-                            position: 'absolute',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            bottom: 58,
-                            zIndex: 2,
-                            pointerEvents: 'none',
-                          }}
-                      >
-                        <Chip
-                            label="Tin nhắn mới!"
-                            color="primary"
-                            size="small"
-                            sx={{ fontWeight: 700, boxShadow: 2 }}
-                        />
-                      </Box>
-                  )}
-
-                  {showJumpToLatest && !historyLoading && messages.length > 0 && (
-                      <Tooltip
-                          title={
-                            newOpponentMsgCount > 0
-                                ? `${newOpponentMsgCount} tin mới từ đối phương`
-                                : 'Xuống tin mới nhất'
-                          }
-                          placement="left"
-                      >
-                        <Badge
-                            badgeContent={newOpponentMsgCount > 0 ? newOpponentMsgCount : 0}
-                            color="error"
-                            overlap="circular"
-                            invisible={newOpponentMsgCount === 0}
-                            sx={{
-                              position: 'absolute',
-                              bottom: 12,
-                              right: 16,
-                              zIndex: 5,
-                              '& .MuiBadge-badge': {
-                                fontWeight: 700,
-                                minWidth: 18,
-                                zIndex: 6,
-                                top: 6,
-                                right: 6,
-                                boxShadow: (t) => `0 0 0 2px ${t.palette.background.paper}`,
-                              },
-                            }}
-                        >
-                          <Fab
-                              size="small"
-                              color="primary"
-                              aria-label="Xuống tin mới nhất"
-                              onClick={() => scrollToBottom('smooth')}
-                              sx={{ boxShadow: 3, zIndex: 4 }}
-                          >
-                            <KeyboardArrowDownIcon />
-                          </Fab>
-                        </Badge>
-                      </Tooltip>
-                  )}
-                </Box>
-
-                {/* Ô nhập + tiện ích (ảnh, trả giá, gợi ý bóng đèn) */}
-                <Box
-                    sx={{
-                      borderTop: 1,
-                      borderColor: 'divider',
-                      bgcolor: 'background.paper',
-                    }}
-                >
-                  {composerRef && (
-                      <Box
-                          sx={{
-                            mx: 1.5,
-                            mt: 1,
-                            px: 1.25,
-                            py: 0.75,
-                            borderRadius: 1.5,
-                            border: '1px solid',
-                            borderColor: alpha(theme.palette.primary.main, 0.35),
-                            bgcolor: alpha(theme.palette.primary.main, 0.06),
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: 1,
+                            gap: 1.5,
+                            px: 2,
+                            py: 1.25,
+                            borderBottom: 1,
+                            borderColor: 'divider',
+                            textDecoration: 'none',
+                            color: 'inherit',
+                            '&:hover': { bgcolor: 'action.hover' },
                           }}
                       >
-                        <Typography variant="caption" sx={{ minWidth: 0 }}>
-                          Nhắc lại {composerRef.senderName}: {(composerRef.content || '').slice(0, 80)}
-                        </Typography>
-                        <Button size="small" onClick={() => setComposerRef(null)}>Bỏ</Button>
+                        {activeListingThumb ? (
+                            <Box
+                                component="img"
+                                src={activeListingThumb}
+                                alt={activeSession.listingTitle || 'Ảnh tin đăng'}
+                                sx={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 1.5,
+                                  objectFit: 'cover',
+                                  border: '1px solid',
+                                  borderColor: alpha(theme.palette.primary.main, 0.35),
+                                  flexShrink: 0,
+                                }}
+                            />
+                        ) : (
+                            <Box
+                                sx={{
+                                  width: 52,
+                                  height: 52,
+                                  borderRadius: 1.5,
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  border: '1px dashed',
+                                  borderColor: alpha(theme.palette.primary.main, 0.4),
+                                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                  flexShrink: 0,
+                                }}
+                            >
+                              <StorefrontOutlinedIcon color="primary" />
+                            </Box>
+                        )}
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Tin đang trao đổi
+                          </Typography>
+                          <Typography variant="body2" fontWeight={600} noWrap>
+                            {activeSession.listingTitle || `Tin #${activeSession.listingId}`}
+                          </Typography>
+                        </Box>
+                        <Chip size="small" icon={<OpenInNewIcon fontSize="small" />} label="Xem tin" variant="outlined" />
                       </Box>
                   )}
+
+                  {/* Messages — cuộn trong khung; nút “Mới nhất” nổi phía trên (không cuộn theo nội dung) */}
                   <Box
                       sx={{
-                        mx: 1.5,
-                        mt: composerRef ? 0.75 : 1,
-                        mb: 0.5,
-                        px: 1.25,
-                        py: 0.75,
-                        borderRadius: 2,
-                        border: '1px dashed',
-                        borderColor: alpha(theme.palette.primary.main, 0.4),
-                        bgcolor: alpha(theme.palette.primary.main, 0.08),
+                        flex: 1,
+                        minHeight: 0,
+                        position: 'relative',
                         display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 1,
+                        flexDirection: 'column',
                       }}
                   >
-                    <LightbulbOutlinedIcon
-                        color="primary"
-                        sx={{ fontSize: 20, mt: 0.15, flexShrink: 0, opacity: 0.95 }}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.45 }}>
-                      <Box component="span" fontWeight={700} color="primary.light" sx={{ mr: 0.5 }}>
-                        Gợi ý nhanh
-                      </Box>
-                      — câu hay dùng khi mua/bán; bấm icon <strong>bóng đèn</strong> cạnh ô nhập để mở và gửi ngay.
-                    </Typography>
-                  </Box>
-                  <Popover
-                      open={Boolean(suggestAnchorEl)}
-                      anchorEl={suggestAnchorEl}
-                      onClose={() => setSuggestAnchorEl(null)}
-                      anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-                      transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                      PaperProps={{
-                        sx: {
-                          p: 2,
-                          width: { xs: 'min(100vw - 32px, 360px)', sm: 360 },
-                          maxHeight: 'min(420px, 55vh)',
+                    <Box
+                        ref={messagesScrollRef}
+                        onScroll={updateJumpToLatestVisibility}
+                        sx={{
+                          flex: 1,
                           overflow: 'auto',
-                          borderRadius: 2,
-                          boxShadow: 6,
-                        },
-                      }}
-                  >
-                    <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 1 }}>
-                      <LightbulbOutlinedIcon color="primary" />
-                      <Typography variant="subtitle1" fontWeight={700}>
-                        Gợi ý nhanh
-                      </Typography>
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                      Một bấm là <strong>gửi tin ngay</strong>. Đóng hộp này rồi mở lại bằng icon bóng đèn bất cứ lúc nào.
-                    </Typography>
-                    <Stack spacing={1}>
-                      {suggestedChatPhrases.map((phrase) => (
-                          <Chip
-                              key={phrase}
-                              label={phrase}
-                              size="medium"
-                              variant="outlined"
-                              color="primary"
-                              disabled={sending}
-                              onClick={() => {
-                                void handleSend(phrase);
-                                setSuggestAnchorEl(null);
-                              }}
+                          overscrollBehavior: 'contain',
+                          p: 2,
+                          bgcolor:
+                              theme.palette.mode === 'dark'
+                                  ? alpha(theme.palette.common.black, 0.22)
+                                  : alpha(theme.palette.grey[500], 0.06),
+                          backgroundImage:
+                              theme.palette.mode === 'dark'
+                                  ? 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)'
+                                  : 'linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px)',
+                          backgroundSize: '20px 20px',
+                          scrollbarWidth: 'thin',
+                          scrollbarColor: `${alpha(theme.palette.primary.main, 0.42)} ${alpha(theme.palette.common.white, 0.06)}`,
+                          '&::-webkit-scrollbar': {
+                            width: 10,
+                          },
+                          '&::-webkit-scrollbar-track': {
+                            background: alpha(theme.palette.common.white, 0.04),
+                            borderRadius: 999,
+                          },
+                          '&::-webkit-scrollbar-thumb': {
+                            background: alpha(theme.palette.primary.main, 0.48),
+                            borderRadius: 999,
+                            border: `2px solid ${alpha(theme.palette.background.paper, 0.72)}`,
+                          },
+                          '&::-webkit-scrollbar-thumb:hover': {
+                            background: alpha(theme.palette.primary.light, 0.66),
+                          },
+                        }}
+                    >
+                      {historyLoading ? (
+                          <Box display="flex" justifyContent="center" py={2}>
+                            <CircularProgress size={28} />
+                          </Box>
+                      ) : displayMessages.length === 0 ? (
+                          <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
+                            <LightbulbOutlinedIcon sx={{ fontSize: 40, color: 'primary.main', opacity: 0.7, mb: 1 }} />
+                            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                              Bắt đầu hội thoại
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
+                              Dòng <strong>gợi ý nhanh</strong> ngay trên ô nhập nhắc bạn có thể bấm icon <strong>bóng đèn</strong> để chọn câu gửi
+                              ngay. Hoặc gõ tin trực tiếp ở ô bên dưới.
+                            </Typography>
+                          </Box>
+                      ) : (
+                          displayMessages.map((m, idx) => {
+                            const msgIsMe = isMessageFromCurrentUser(m, currentUserId);
+                            const prev = idx > 0 ? displayMessages[idx - 1] : null;
+                            const showDay =
+                                idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
+                            const mid = m?.id != null ? String(m.id) : null;
+                            const isHighlighted = mid != null && String(highlightedMessageId) === mid;
+                            return (
+                                <Fragment key={getMessageRowKey(m, idx)}>
+                                  {showDay && m.timestamp && (
+                                      <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                                        <Chip
+                                            size="small"
+                                            label={formatChatDayLabel(m.timestamp)}
+                                            sx={{
+                                              bgcolor: alpha(theme.palette.primary.main, 0.18),
+                                              color: 'text.secondary',
+                                              border: '1px solid',
+                                              borderColor: alpha(theme.palette.primary.main, 0.35),
+                                              fontWeight: 600,
+                                              fontSize: '0.7rem',
+                                            }}
+                                        />
+                                      </Box>
+                                  )}
+                                  <div id={getMessageDomId(mid)}>
+                                    <Bubble
+                                        msg={{ ...m, isFromCurrentUser: msgIsMe, _highlighted: isHighlighted }}
+                                        onAccept={handleAccept}
+                                        onReject={handleReject}
+                                        onReply={handleReplyMessage}
+                                        onJumpToMessage={handleJumpToMessage}
+                                        onReportMessage={handleReportMessage}
+                                    />
+                                  </div>
+                                </Fragment>
+                            );
+                          })
+                      )}
+                      {typingLabel && (
+                          <Box
                               sx={{
-                                width: '100%',
-                                height: 'auto',
-                                py: 0.5,
-                                '& .MuiChip-label': {
-                                  whiteSpace: 'normal',
-                                  textAlign: 'left',
-                                  display: 'block',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                px: 1,
+                                mb: 1,
+                              }}
+                          >
+                            <CircularProgress size={12} />
+                            <Typography variant="caption" color="text.secondary">
+                              {typingLabel}
+                            </Typography>
+                          </Box>
+                      )}
+                      <div ref={bottomRef} />
+                    </Box>
+
+                    {newOpponentMsgCount > 0 && showJumpToLatest && !historyLoading && (
+                        <Box
+                            sx={{
+                              position: 'absolute',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              bottom: 58,
+                              zIndex: 2,
+                              pointerEvents: 'none',
+                            }}
+                        >
+                          <Chip
+                              label="Tin nhắn mới!"
+                              color="primary"
+                              size="small"
+                              sx={{ fontWeight: 700, boxShadow: 2 }}
+                          />
+                        </Box>
+                    )}
+
+                    {showJumpToLatest && !historyLoading && messages.length > 0 && (
+                        <Tooltip
+                            title={
+                              newOpponentMsgCount > 0
+                                  ? `${newOpponentMsgCount} tin mới từ đối phương`
+                                  : 'Xuống tin mới nhất'
+                            }
+                            placement="left"
+                        >
+                          <Badge
+                              badgeContent={newOpponentMsgCount > 0 ? newOpponentMsgCount : 0}
+                              color="error"
+                              overlap="circular"
+                              invisible={newOpponentMsgCount === 0}
+                              sx={{
+                                position: 'absolute',
+                                bottom: 12,
+                                right: 16,
+                                zIndex: 5,
+                                '& .MuiBadge-badge': {
+                                  fontWeight: 700,
+                                  minWidth: 18,
+                                  zIndex: 6,
+                                  top: 6,
+                                  right: 6,
+                                  boxShadow: (t) => `0 0 0 2px ${t.palette.background.paper}`,
                                 },
                               }}
-                          />
-                      ))}
-                    </Stack>
-                  </Popover>
+                          >
+                            <Fab
+                                size="small"
+                                color="primary"
+                                aria-label="Xuống tin mới nhất"
+                                onClick={() => scrollToBottom('smooth')}
+                                sx={{ boxShadow: 3, zIndex: 4 }}
+                            >
+                              <KeyboardArrowDownIcon />
+                            </Fab>
+                          </Badge>
+                        </Tooltip>
+                    )}
+                  </Box>
 
-                  <Paper
-                      elevation={0}
+                  {/* Ô nhập + tiện ích (ảnh, trả giá, gợi ý bóng đèn) */}
+                  <Box
                       sx={{
-                        m: 1.5,
-                        p: 1,
-                        borderRadius: 2,
-                        border: 1,
+                        borderTop: 1,
                         borderColor: 'divider',
-                        bgcolor:
-                            theme.palette.mode === 'dark'
-                                ? alpha(theme.palette.common.white, 0.04)
-                                : 'grey.50',
+                        bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.88 : 0.98),
                       }}
                   >
-                    <Stack direction="row" spacing={1} alignItems="flex-end">
-                      <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          style={{ display: 'none' }}
-                          onChange={handleFileChange}
+                    {composerRef && (
+                        <Box
+                            sx={{
+                              mx: 1.5,
+                              mt: 1,
+                              px: 1.25,
+                              py: 0.75,
+                              borderRadius: 1.5,
+                              border: '1px solid',
+                              borderColor: alpha(theme.palette.primary.main, 0.35),
+                              bgcolor: alpha(theme.palette.primary.main, 0.06),
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 1,
+                            }}
+                        >
+                          <Typography variant="caption" sx={{ minWidth: 0 }}>
+                            Nhắc lại {composerRef.senderName}: {(composerRef.content || '').slice(0, 80)}
+                          </Typography>
+                          <Button size="small" onClick={() => setComposerRef(null)}>Bỏ</Button>
+                        </Box>
+                    )}
+                    <Box
+                        sx={{
+                          mx: 1.5,
+                          mt: composerRef ? 0.75 : 1,
+                          mb: 0.5,
+                          px: 1.25,
+                          py: 0.75,
+                          borderRadius: 2,
+                          border: '1px dashed',
+                          borderColor: alpha(theme.palette.primary.main, 0.4),
+                          bgcolor: alpha(theme.palette.primary.main, 0.08),
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 1,
+                        }}
+                    >
+                      <LightbulbOutlinedIcon
+                          color="primary"
+                          sx={{ fontSize: 20, mt: 0.15, flexShrink: 0, opacity: 0.95 }}
                       />
-                      <Tooltip title="Gửi ảnh (JPG, PNG, WebP)">
+                      <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.45 }}>
+                        <Box component="span" fontWeight={700} color="primary.light" sx={{ mr: 0.5 }}>
+                          Gợi ý nhanh
+                        </Box>
+                        : chọn câu mẫu để gửi ngay.
+                      </Typography>
+                    </Box>
+                    <Popover
+                        open={Boolean(suggestAnchorEl)}
+                        anchorEl={suggestAnchorEl}
+                        onClose={() => setSuggestAnchorEl(null)}
+                        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                        PaperProps={{
+                          sx: {
+                            p: 2,
+                            width: { xs: 'min(100vw - 32px, 360px)', sm: 360 },
+                            maxHeight: 'min(420px, 55vh)',
+                            overflow: 'auto',
+                            borderRadius: 2,
+                            boxShadow: 6,
+                          },
+                        }}
+                    >
+                      <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 1 }}>
+                        <LightbulbOutlinedIcon color="primary" />
+                        <Typography variant="subtitle1" fontWeight={700}>
+                          Gợi ý nhanh
+                        </Typography>
+                      </Stack>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                        Một bấm là <strong>gửi tin ngay</strong>. Đóng hộp này rồi mở lại bằng icon bóng đèn bất cứ lúc nào.
+                      </Typography>
+                      <Stack spacing={1}>
+                        {suggestedChatPhrases.map((phrase) => (
+                            <Chip
+                                key={phrase}
+                                label={phrase}
+                                size="medium"
+                                variant="outlined"
+                                color="primary"
+                                disabled={sending}
+                                onClick={() => {
+                                  void handleSend(phrase);
+                                  setSuggestAnchorEl(null);
+                                }}
+                                sx={{
+                                  width: '100%',
+                                  height: 'auto',
+                                  py: 0.5,
+                                  '& .MuiChip-label': {
+                                    whiteSpace: 'normal',
+                                    textAlign: 'left',
+                                    display: 'block',
+                                  },
+                                }}
+                            />
+                        ))}
+                      </Stack>
+                    </Popover>
+
+                    <Paper
+                        elevation={0}
+                        sx={{
+                          m: 1.5,
+                          p: 1.1,
+                          borderRadius: 2.5,
+                          border: 1,
+                          borderColor: 'divider',
+                          bgcolor:
+                              theme.palette.mode === 'dark'
+                                  ? alpha(theme.palette.common.white, 0.05)
+                                  : alpha(theme.palette.common.white, 0.95),
+                          boxShadow: theme.palette.mode === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : '0 8px 20px rgba(15,23,42,0.06)',
+                        }}
+                    >
+                      <Stack direction="row" spacing={1} alignItems="flex-end">
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            style={{ display: 'none' }}
+                            onChange={handleFileChange}
+                        />
+                        <Tooltip title="Gửi ảnh (JPG, PNG, WebP)">
                     <span>
                       <IconButton
                           size="small"
@@ -1383,8 +1557,8 @@ function ChatPageInner() {
                         {imageUploading ? <CircularProgress size={20} /> : <AttachFileIcon fontSize="small" />}
                       </IconButton>
                     </span>
-                      </Tooltip>
-                      <Tooltip title="Trả giá / đề xuất giá">
+                        </Tooltip>
+                        <Tooltip title="Trả giá / đề xuất giá">
                     <span>
                       <IconButton
                           size="small"
@@ -1395,8 +1569,8 @@ function ChatPageInner() {
                         <MonetizationOnIcon fontSize="small" />
                       </IconButton>
                     </span>
-                      </Tooltip>
-                      <Tooltip title={suggestAnchorEl ? 'Đóng gợi ý nhanh' : 'Mở gợi ý nhanh — chọn câu gửi ngay'}>
+                        </Tooltip>
+                        <Tooltip title={suggestAnchorEl ? 'Đóng gợi ý nhanh' : 'Mở gợi ý nhanh — chọn câu gửi ngay'}>
                     <span>
                       <IconButton
                           ref={suggestBtnRef}
@@ -1416,27 +1590,27 @@ function ChatPageInner() {
                         <LightbulbOutlinedIcon fontSize="small" />
                       </IconButton>
                     </span>
-                      </Tooltip>
-                      <TextField
-                          inputRef={inputRef}
-                          size="small"
-                          fullWidth
-                          multiline
-                          maxRows={4}
-                          placeholder="Nhập tin nhắn… (Enter gửi, Shift+Enter xuống dòng)"
-                          value={inputText}
-                          onChange={handleInputChange}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              void handleSend();
-                            }
-                          }}
-                          sx={{
-                            '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'background.paper' },
-                          }}
-                      />
-                      <Tooltip title="Gửi">
+                        </Tooltip>
+                        <TextField
+                            inputRef={inputRef}
+                            size="small"
+                            fullWidth
+                            multiline
+                            maxRows={4}
+                            placeholder="Nhập tin nhắn… (Enter gửi, Shift+Enter xuống dòng)"
+                            value={inputText}
+                            onChange={handleInputChange}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                void handleSend();
+                              }
+                            }}
+                            sx={{
+                              '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: 'background.paper' },
+                            }}
+                        />
+                        <Tooltip title="Gửi">
                     <span>
                       <IconButton
                           color="primary"
@@ -1453,13 +1627,13 @@ function ChatPageInner() {
                         {sending ? <CircularProgress size={22} color="inherit" /> : <SendIcon />}
                       </IconButton>
                     </span>
-                      </Tooltip>
-                    </Stack>
-                  </Paper>
-                </Box>
-              </>
-          )}
-        </Paper>
+                        </Tooltip>
+                      </Stack>
+                    </Paper>
+                  </Box>
+                </>
+            )}
+          </Paper>
         </Box>
 
         {/* ── Image preview dialog ── */}
@@ -1505,37 +1679,213 @@ function ChatPageInner() {
             onClose={() => setOfferOpen(false)}
             maxWidth="xs"
             fullWidth
+            PaperProps={{
+              sx: {
+                borderRadius: 3.5,
+                border: '1px solid',
+                borderColor: alpha(theme.palette.primary.main, 0.26),
+                bgcolor: alpha(theme.palette.background.paper, 0.98),
+                backgroundImage:
+                    'radial-gradient(800px 260px at 50% -120px, rgba(168,85,247,0.18), transparent 65%)',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 30px 70px rgba(2,6,23,0.55)',
+                overflow: 'hidden',
+              },
+            }}
         >
-          <DialogTitle>Đề xuất giá</DialogTitle>
-          <DialogContent>
+          <IconButton
+              aria-label="Đóng"
+              onClick={() => setOfferOpen(false)}
+              sx={{ position: 'absolute', top: 10, right: 10, color: 'text.secondary' }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+          <DialogTitle sx={{ pb: 0.5, pt: 2.5 }}>
+            <Stack spacing={1} alignItems="center">
+              <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: alpha(theme.palette.primary.main, 0.22),
+                    border: '1px solid',
+                    borderColor: alpha(theme.palette.primary.main, 0.38),
+                  }}
+              >
+                <MonetizationOnIcon color="primary" />
+              </Box>
+              <Typography variant="h5" fontWeight={800}>
+                Đề xuất giá
+              </Typography>
+              <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ maxWidth: 320 }}>
+                Nhập số tiền bạn muốn đề xuất cho sản phẩm này.
+              </Typography>
+            </Stack>
+          </DialogTitle>
+          <DialogContent sx={{ pt: 1.5 }}>
+            <Typography variant="caption" sx={{ display: 'block', mb: 0.8, fontWeight: 700, letterSpacing: 0.8, color: 'text.secondary' }}>
+              SỐ TIỀN ĐỀ XUẤT
+            </Typography>
             <TextField
                 autoFocus
                 fullWidth
-                label="Số tiền (VNĐ)"
+                id="chat-offer-price"
+                name="offer_price_custom"
+                placeholder="0"
                 value={offerAmount}
-                onChange={(e) => setOfferAmount(e.target.value)}
-                type="number"
-                inputProps={{ min: 0 }}
-                sx={{ mt: 1 }}
+                onChange={(e) => setOfferAmount(String(e.target.value || '').replace(/[^\d]/g, ''))}
+                type="text"
+                autoComplete="off"
+                inputProps={{
+                  inputMode: 'numeric',
+                  pattern: '[0-9]*',
+                  autoComplete: 'off',
+                  spellCheck: 'false',
+                  autoCorrect: 'off',
+                  autoCapitalize: 'off',
+                  'aria-autocomplete': 'none',
+                  'data-lpignore': 'true',
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2.25,
+                    fontSize: '1.9rem',
+                    fontWeight: 700,
+                    bgcolor: alpha(theme.palette.common.black, 0.18),
+                    '& fieldset': {
+                      borderColor: alpha(theme.palette.primary.main, 0.55),
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderWidth: 1.5,
+                      borderColor: alpha(theme.palette.primary.light, 0.95),
+                    },
+                  },
+                  '& .MuiOutlinedInput-input:focus': {
+                    outline: 'none',
+                    boxShadow: 'none',
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    caretColor: theme.palette.primary.light,
+                  },
+                  '& input[type=number]': {
+                    MozAppearance: 'textfield',
+                  },
+                  '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button': {
+                    WebkitAppearance: 'none',
+                    margin: 0,
+                  },
+                }}
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">đ</InputAdornment>,
+                }}
+                helperText={formattedOfferAmount ? `Đề xuất của bạn: ${formattedOfferAmount}` : 'Nhập số tiền lớn hơn 0'}
             />
-          </DialogContent>
-          <DialogActions>
+            {formattedListingPrice && (
+                <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.75, mb: 0.25 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Giá gốc: {formattedListingPrice}
+                  </Typography>
+                </Stack>
+            )}
+            {quickOfferSuggestions.length > 0 && (
+                <>
+                  <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mt: 2.25, mb: 1 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, letterSpacing: 0.8, color: 'text.secondary' }}>
+                      GỢI Ý NHANH
+                    </Typography>
+                    <Box sx={{ flex: 1 }} />
+                  </Stack>
+                  <Stack direction="row" spacing={1} sx={{ mb: 2.5 }}>
+                    {quickOfferSuggestions.map((amount) => (
+                        <Chip
+                            key={amount}
+                            label={`${Math.round(amount / 1000)}k`}
+                            clickable
+                            onClick={() => setOfferAmount(String(amount))}
+                            color={parsedOfferAmount === amount ? 'primary' : 'default'}
+                            variant={parsedOfferAmount === amount ? 'filled' : 'outlined'}
+                        />
+                    ))}
+                  </Stack>
+                </>
+            )}
             <Button
+                fullWidth
+                variant="contained"
+                onClick={submitOffer}
+                disabled={!canSubmitOffer}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 800,
+                  py: 1.15,
+                  borderRadius: 999,
+                  background: 'linear-gradient(90deg, #a78bfa 0%, #b794f4 100%)',
+                  color: '#17142a',
+                  boxShadow: '0 10px 24px rgba(168,85,247,0.35)',
+                  '&:hover': {
+                    background: 'linear-gradient(90deg, #c4b5fd 0%, #c084fc 100%)',
+                  },
+                }}
+            >
+              Gửi đề xuất
+            </Button>
+            <Button
+                fullWidth
                 onClick={() => {
                   setOfferOpen(false);
                   setOfferAmount('');
                 }}
+                sx={{ mt: 1, textTransform: 'none', color: 'text.secondary', fontWeight: 700 }}
             >
               Hủy
             </Button>
-            <Button
-                variant="contained"
-                onClick={submitOffer}
-                disabled={!offerAmount || parseFloat(offerAmount) <= 0}
+
+            <Divider sx={{ my: 2 }} />
+            <Paper
+                variant="outlined"
+                sx={{
+                  p: 1.2,
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  bgcolor: alpha(theme.palette.common.black, 0.12),
+                  borderColor: alpha(theme.palette.primary.main, 0.2),
+                }}
             >
-              Gửi đề xuất
-            </Button>
-          </DialogActions>
+              {activeListingThumb ? (
+                  <Box
+                      component="img"
+                      src={activeListingThumb}
+                      alt={activeSession?.listingTitle || 'Ảnh sản phẩm'}
+                      sx={{ width: 42, height: 42, borderRadius: 1.2, objectFit: 'cover' }}
+                  />
+              ) : (
+                  <Box
+                      sx={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 1.2,
+                        display: 'grid',
+                        placeItems: 'center',
+                        bgcolor: alpha(theme.palette.primary.main, 0.15),
+                      }}
+                  >
+                    <StorefrontOutlinedIcon color="primary" fontSize="small" />
+                  </Box>
+              )}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="body2" fontWeight={700} noWrap>
+                  {activeSession?.listingTitle || 'Sản phẩm đang trao đổi'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" noWrap>
+                  Người bán: {activeSession?.otherParticipantName || 'Đang cập nhật'}
+                </Typography>
+              </Box>
+            </Paper>
+          </DialogContent>
         </Dialog>
       </Box>
   );
