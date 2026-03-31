@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
+import com.slife.marketplace.dto.response.ListingImageItemResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
@@ -490,7 +491,7 @@ public class ListingService {
         response.setPurpose(listing.getPurpose());
         response.setLocation(resolveLocation(listing));
         response.setCreatedAt(listing.getCreatedAt());
-        response.setImages(findImageUrls(listing.getId()));
+        attachListingImages(response, listing.getId());
         response.setSellerSummary(buildSellerSummary(listing));
         response.setIsGiveaway(listing.getIsGiveaway());
 
@@ -688,12 +689,20 @@ public class ListingService {
                 listing.getPickupAddress().getAddressText());
     }
 
-    private List<String> findImageUrls(Long listingId) {
-        return listingImageRepository
-                .findByListing_IdOrderByDisplayOrderAsc(listingId)
-                .stream()
-                .map(ListingImage::getImageUrl)
-                .toList();
+    private void attachListingImages(ListingResponse response, Long listingId) {
+        List<ListingImage> rows = listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId);
+        response.setImageItems(rows.stream()
+                .map(img -> new ListingImageItemResponse(img.getId(), img.getImageUrl()))
+                .toList());
+        response.setImages(rows.stream().map(ListingImage::getImageUrl).toList());
+    }
+
+    private void attachListingImages(MyListingResponse response, Long listingId) {
+        List<ListingImage> rows = listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId);
+        response.setImageItems(rows.stream()
+                .map(img -> new ListingImageItemResponse(img.getId(), img.getImageUrl()))
+                .toList());
+        response.setImages(rows.stream().map(ListingImage::getImageUrl).toList());
     }
 
     private Sort parseSort(String sort) {
@@ -779,7 +788,7 @@ public class ListingService {
         response.setLocation(resolveLocation(listing));
         response.setCreatedAt(listing.getCreatedAt());
         response.setUpdatedAt(listing.getUpdatedAt());
-        response.setImages(findImageUrls(listing.getId()));
+        attachListingImages(response, listing.getId());
         response.setStatus(listing.getStatus());
         response.setPurpose(listing.getPurpose());
         response.setIsGiveaway(listing.getIsGiveaway());

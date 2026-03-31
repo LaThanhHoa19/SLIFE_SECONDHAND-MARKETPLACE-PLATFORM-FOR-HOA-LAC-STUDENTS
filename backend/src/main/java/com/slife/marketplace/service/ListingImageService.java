@@ -103,5 +103,45 @@ public class ListingImageService {
         }
         return ".jpg";
     }
+
+    /**
+     * Xóa một ảnh của tin (chỉ chủ tin); đồng thời xóa file trong thư mục upload nếu an toàn.
+     */
+    @Transactional
+    public void deleteListingImage(Long listingId, Long imageId, User currentUser) {
+        if (currentUser == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        if (listing.getSeller() == null || !listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        ListingImage img = listingImageRepository.findById(imageId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Image not found"));
+        if (!img.getListing().getId().equals(listingId)) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        deleteStoredFileIfSafe(img.getImageUrl());
+        listingImageRepository.delete(img);
+    }
+
+    private void deleteStoredFileIfSafe(String imageUrl) {
+        if (imageUrl == null || !imageUrl.startsWith("/uploads/")) {
+            return;
+        }
+        try {
+            String relative = imageUrl.substring("/uploads/".length());
+            Path base = uploadBasePath.toAbsolutePath().normalize();
+            Path target = base.resolve(relative).normalize();
+            if (!target.startsWith(base)) {
+                log.warn("Refusing to delete outside upload dir: {}", imageUrl);
+                return;
+            }
+            Files.deleteIfExists(target);
+        } catch (IOException e) {
+            log.warn("Could not delete listing image file: {}", imageUrl, e);
+        }
+    }
 }
 
