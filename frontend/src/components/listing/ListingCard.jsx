@@ -30,6 +30,7 @@ import {
     ChatOutlined as MessageIcon,
     ShareOutlined as ShareIconOutlined,
     ModeCommentOutlined as CommentIconOutlined,
+    Collections as CollectionsIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
@@ -631,14 +632,16 @@ export default function ListingCard({
                                             position: 'absolute', top: 10, right: 10,
                                             bgcolor: 'rgba(32, 29, 38, 0.7)', color: '#FFF',
                                             fontSize: 11, fontWeight: 700,
-                                            px: 1.2, py: 0.5, borderRadius: '20px',
+                                            px: 1, py: 0.5, borderRadius: '20px',
                                             pointerEvents: 'none', userSelect: 'none',
                                             backdropFilter: 'blur(10px)',
                                             border: '1px solid rgba(255,255,255,0.1)',
                                             boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                                            display: 'flex', alignItems: 'center', gap: 0.5
                                         }}
                                     >
-                                        {`1/${images.length}`}
+                                        <CollectionsIcon sx={{ fontSize: 13 }} />
+                                        {`${images.length}`}
                                     </Box>
                                 )}
                             </Box>

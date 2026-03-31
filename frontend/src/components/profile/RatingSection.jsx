@@ -3,11 +3,11 @@ import StarIcon from '@mui/icons-material/Star';
 
 const PURPLE = '#6366f1';
 
-export default function RatingSection({ reputationScore, ratingCount }) {
+export default function RatingSection({ reputationScore, ratingCount, sx = {} }) {
   return (
-    <>
+    <Box sx={sx}>
       <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>
-        Đánh giá từ người mua
+        Đánh giá từ người bán
       </Typography>
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -40,6 +40,6 @@ export default function RatingSection({ reputationScore, ratingCount }) {
           />
         ))}
       </Box>
-    </>
+    </Box>
   );
 }

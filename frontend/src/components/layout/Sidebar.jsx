@@ -16,18 +16,19 @@ import { APP_SHELL_BG, SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } f
 
 const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/chat'];
 
-const NAV_ITEMS = [
-    { label: 'Feed', icon: HomeIcon, path: '/feed' },
-    { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
-    { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
-    { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
-];
-
 export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const { isAuthenticated, logout } = useAuth();
-
+    const { isAuthenticated, user, logout } = useAuth();
+    
+    const NAV_ITEMS = [
+        { label: 'Feed', icon: HomeIcon, path: '/feed' },
+        { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
+        { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
+        { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
+        ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
+    ];
+    
     const currentWidth = open ? SIDEBAR_WIDTH : SIDEBAR_MINI_WIDTH;
 
     // Config: độ rộng của thanh menu khi mở (để ngắn hơn Sidebar_width, nằm giữa)
@@ -94,18 +95,19 @@ export default function Sidebar({ open = true }) {
                                     width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH,
                                     height: '44px',
                                     cursor: 'pointer',
-                                    borderRadius: '22px', // Tròn trịa hơn
-                                    mb: 0.6,
+                                    borderRadius: '22px',
+                                    mb: 0.8,
                                     background: active
-                                        ? 'linear-gradient(90deg, rgba(167,139,250,0.34) 0%, rgba(157,110,237,0.86) 100%)'
+                                        ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
                                         : 'transparent',
-                                    border: active ? '1px solid rgba(207,190,255,0.46)' : '1px solid transparent',
-                                    boxShadow: active ? '0 8px 18px rgba(122,78,211,0.28)' : 'none',
-                                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s',
+                                    border: active ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
+                                    boxShadow: active ? '0 8px 24px rgba(157, 110, 237, 0.4)' : 'none',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     '&:hover': {
                                         background: active
-                                            ? 'linear-gradient(90deg, rgba(167,139,250,0.4) 0%, rgba(157,110,237,0.94) 100%)'
+                                            ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
                                             : 'rgba(255,255,255,0.06)',
+                                        transform: open && !active ? 'translateX(4px)' : 'none',
                                     },
                                     overflow: 'hidden',
                                 }}
@@ -113,17 +115,18 @@ export default function Sidebar({ open = true }) {
                                 <Icon
                                     sx={{
                                         fontSize: 20,
-                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.78)',
+                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.6)',
                                         flexShrink: 0,
-                                        ml: open ? 2 : '12px', // Dịch icon vào giữa khi state đóng/mở
+                                        ml: open ? 2 : '12px',
                                         transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     }}
                                 />
                                 <Typography
                                     sx={{
-                                        fontSize: 13.5,
-                                        fontWeight: active ? 700 : 500,
-                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.78)',
+                                        fontSize: 14,
+                                        fontWeight: active ? 800 : 600,
+                                        fontFamily: "'Outfit', sans-serif",
+                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.7)',
                                         whiteSpace: 'nowrap',
                                         ml: 1.5,
                                         opacity: open ? 1 : 0,
@@ -155,17 +158,31 @@ export default function Sidebar({ open = true }) {
                             cursor: 'pointer',
                             borderRadius: '22px',
                             mb: 0.5,
-                            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s',
-                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.06)' },
+                            background: isActive('/community')
+                                ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
+                                : 'transparent',
+                            boxShadow: isActive('/community') ? '0 8px 24px rgba(157, 110, 237, 0.4)' : 'none',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            '&:hover': { 
+                                backgroundColor: isActive('/community') ? undefined : 'rgba(255,255,255,0.06)',
+                                transform: open && !isActive('/community') ? 'translateX(4px)' : 'none',
+                            },
                             overflow: 'hidden',
                         }}
                     >
-                        <PeopleIcon sx={{ fontSize: 20, color: 'rgba(226,232,240,0.78)', flexShrink: 0, ml: open ? 2 : '12px', transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+                        <PeopleIcon sx={{ 
+                            fontSize: 20, 
+                            color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.6)', 
+                            flexShrink: 0, 
+                            ml: open ? 2 : '12px', 
+                            transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        }} />
                         <Typography
                             sx={{
-                                fontSize: '13.5px',
-                                fontWeight: 500,
-                                color: 'rgba(226,232,240,0.78)',
+                                fontSize: '14px',
+                                fontWeight: isActive('/community') ? 800 : 600,
+                                fontFamily: "'Outfit', sans-serif",
+                                color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.7)',
                                 whiteSpace: 'nowrap',
                                 ml: 1.5,
                                 opacity: open ? 1 : 0,
@@ -177,7 +194,6 @@ export default function Sidebar({ open = true }) {
                         </Typography>
                     </Box>
                 </Tooltip>
-
             </Box>
 
             {isAuthenticated && (
