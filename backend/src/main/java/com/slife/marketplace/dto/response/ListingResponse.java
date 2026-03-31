@@ -14,7 +14,10 @@ public class ListingResponse {
     private String purpose;
     private String location;
     private java.time.Instant createdAt;
+    /** URL thuần (giữ tương thích client cũ). */
     private java.util.List<String> images;
+    /** id + url — dùng khi sửa tin để xóa từng ảnh. */
+    private java.util.List<ListingImageItemResponse> imageItems;
     private Object sellerSummary;
     private Boolean isSaved;
     private Boolean isFollowed;
@@ -25,4 +28,4 @@ public class ListingResponse {
     private Object pickupAddress;
     private Object category;
     private Object seller;
-}
+}
