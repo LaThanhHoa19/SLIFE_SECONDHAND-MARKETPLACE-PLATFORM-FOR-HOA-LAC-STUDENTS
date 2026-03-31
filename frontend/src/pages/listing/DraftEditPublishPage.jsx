@@ -43,8 +43,10 @@ function mapListingToFormDefaults(data) {
         price: isGiveaway ? '0' : priceDigits,
         condition: data?.condition ?? 'USED_GOOD',
         isGiveaway,
-        categoryId: data?.categoryId != null ? String(data.categoryId) : '',
-        categoryName: data?.categoryName ?? '',
+        categoryId: data?.category?.id != null
+            ? String(data.category.id)
+            : (data?.categoryId != null ? String(data.categoryId) : ''),
+        categoryName: data?.category?.name ?? data?.categoryName ?? '',
         pickupAddressId: pa?.id != null ? Number(pa.id) : null,
         pickupLocationName: locName || displayLine,
         pickupAddressText: displayLine,
