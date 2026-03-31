@@ -1,0 +1,168 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as chatApi from '../../../api/chatApi';
+import { getListing } from '../../../api/listingApi';
+import { fullImageUrl } from '../../../utils/constants';
+import { LOCAL_BUYER_CHIPS, LOCAL_SELLER_CHIPS } from '../chatMessageUtils';
+
+export function useChatSessions({ activeSessionId, currentUserId, sessionsVersion }) {
+    const [sessions, setSessions] = useState([]);
+    const [sessionsLoading, setSessionsLoading] = useState(true);
+    const [quickRepliesFromApi, setQuickRepliesFromApi] = useState([]);
+    const [listingMetaById, setListingMetaById] = useState({});
+    const fetchSessionsDebounceRef = useRef(null);
+
+    const fetchSessions = useCallback(() => {
+        return chatApi
+            .getChats('ALL')
+            .then((res) => {
+                const body = res?.data;
+                const list = Array.isArray(body?.data)
+                    ? body.data
+                    : Array.isArray(body?.content)
+                        ? body.content
+                        : Array.isArray(body)
+                            ? body
+                            : [];
+                setSessions(list);
+                return list;
+            })
+            .catch((err) => {
+                if (import.meta.env.DEV) console.warn('[Chat] getChats failed:', err?.message ?? err);
+                return [];
+            });
+    }, []);
+
+    const scheduleFetchSessions = useCallback(() => {
+        if (fetchSessionsDebounceRef.current != null) {
+            window.clearTimeout(fetchSessionsDebounceRef.current);
+        }
+        fetchSessionsDebounceRef.current = window.setTimeout(() => {
+            fetchSessionsDebounceRef.current = null;
+            fetchSessions();
+        }, 350);
+    }, [fetchSessions]);
+
+    useEffect(() => {
+        return () => {
+            if (fetchSessionsDebounceRef.current != null) {
+                window.clearTimeout(fetchSessionsDebounceRef.current);
+                fetchSessionsDebounceRef.current = null;
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        let alive = true;
+        setSessionsLoading(true);
+        fetchSessions().finally(() => {
+            if (alive) setSessionsLoading(false);
+        });
+        return () => {
+            alive = false;
+        };
+    }, [sessionsVersion, fetchSessions]);
+
+    useEffect(() => {
+        chatApi
+            .getQuickReplies()
+            .then((res) => {
+                const raw = res?.data?.data ?? res?.data;
+                setQuickRepliesFromApi(Array.isArray(raw) ? raw : []);
+            })
+            .catch(() => setQuickRepliesFromApi([]));
+    }, []);
+
+    useEffect(() => {
+        const listingIds = Array.from(
+            new Set(
+                (sessions || [])
+                    .map((s) => s?.listingId)
+                    .filter((id) => Number.isFinite(Number(id)))
+                    .map((id) => Number(id)),
+            ),
+        );
+        const missingIds = listingIds.filter((id) => !listingMetaById[id]);
+        if (missingIds.length === 0) return;
+
+        let cancelled = false;
+        Promise.all(
+            missingIds.map(async (id) => {
+                try {
+                    const res = await getListing(id);
+                    const body = res?.data;
+                    const data = body?.data ?? body;
+                    const thumb = Array.isArray(data?.images) ? data.images[0] : null;
+                    const price = data?.price != null ? Number(data.price) : null;
+                    return [id, { thumb: thumb || null, price }];
+                } catch {
+                    return [id, { thumb: null, price: null }];
+                }
+            }),
+        ).then((pairs) => {
+            if (cancelled) return;
+            setListingMetaById((prev) => {
+                const next = { ...prev };
+                pairs.forEach(([id, meta]) => {
+                    next[id] = meta;
+                });
+                return next;
+            });
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [sessions, listingMetaById]);
+
+    const activeSession = useMemo(
+        () => sessions.find((s) => s.sessionId === activeSessionId),
+        [sessions, activeSessionId],
+    );
+
+    const activeListingThumb = useMemo(() => {
+        const raw =
+            activeSession?.listingImageUrl ||
+            activeSession?.listingImage ||
+            activeSession?.listingThumbnailUrl ||
+            (activeSession?.listingId != null ? listingMetaById[activeSession.listingId]?.thumb : null);
+        return fullImageUrl(raw);
+    }, [activeSession, listingMetaById]);
+
+    const activeListingPrice = useMemo(() => {
+        if (activeSession?.listingPrice != null) return Number(activeSession.listingPrice);
+        if (activeSession?.listingId != null) return Number(listingMetaById[activeSession.listingId]?.price ?? NaN);
+        return NaN;
+    }, [activeSession, listingMetaById]);
+
+    const isSellerInActiveChat = useMemo(() => {
+        if (!activeSession || currentUserId == null) return false;
+        return Number(activeSession.sellerId) === Number(currentUserId);
+    }, [activeSession, currentUserId]);
+
+    const suggestedChatPhrases = useMemo(() => {
+        const localFirst = isSellerInActiveChat ? LOCAL_SELLER_CHIPS : LOCAL_BUYER_CHIPS;
+        const fromApi = Array.isArray(quickRepliesFromApi) ? quickRepliesFromApi : [];
+        const seen = new Set();
+        const out = [];
+        for (const t of [...localFirst, ...fromApi]) {
+            if (typeof t === 'string' && t.trim() && !seen.has(t)) {
+                seen.add(t);
+                out.push(t.trim());
+            }
+            if (out.length >= 14) break;
+        }
+        return out;
+    }, [quickRepliesFromApi, isSellerInActiveChat]);
+
+    return {
+        sessions,
+        sessionsLoading,
+        activeSession,
+        activeListingThumb,
+        activeListingPrice,
+        isSellerInActiveChat,
+        suggestedChatPhrases,
+        fetchSessions,
+        scheduleFetchSessions,
+        setSessions,
+    };
+}
