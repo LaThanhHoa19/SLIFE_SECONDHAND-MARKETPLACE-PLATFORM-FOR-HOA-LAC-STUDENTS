@@ -331,7 +331,7 @@ public class ChatService {
 
     /**
      * Make an offer: saves Offer entity + OFFER_PROPOSAL message.
-     * BR-35: max 5 offers per buyer per listing.
+     * At most one {@link OfferService#STATUS_PENDING} per buyer per listing until seller responds (anti-spam).
      */
     @Transactional
     public ChatMessageResponse makeOffer(String sessionId, BigDecimal amount, User buyer) {
@@ -351,10 +351,11 @@ public class ChatService {
             throw new SlifeException(ErrorCode.OFFER_PRICE_INVALID);
         }
 
-        // BR-35: check spam limit
-        long offerCount = offerRepository.countByBuyerIdAndListingId(buyer.getId(), listing.getId());
-        if (offerCount >= Constants.MAX_OFFERS_PER_LISTING) {
-            throw new SlifeException(ErrorCode.OFFER_SPAM_LIMIT);
+        long pendingOffers = offerRepository.countByBuyer_IdAndListing_IdAndStatus(
+                buyer.getId(), listing.getId(), OfferService.STATUS_PENDING);
+        if (pendingOffers > 0) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT,
+                    "Bạn đã có một lượt trả giá đang chờ người bán phản hồi. Vui lòng đợi được chấp nhận hoặc từ chối rồi mới gửi lượt mới.");
         }
 
         // Persist offer
