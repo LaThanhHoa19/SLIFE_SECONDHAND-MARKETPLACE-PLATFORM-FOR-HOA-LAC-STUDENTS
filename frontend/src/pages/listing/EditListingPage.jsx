@@ -37,7 +37,13 @@ function mapListingToFormDefaults(data) {
         }
     }
 
-    const isGiveaway = data?.isGiveaway === true || data?.purpose === 'GIVEAWAY';
+    const isGiveaway =
+        data?.isGiveaway === true ||
+        data?.purpose === 'GIVEAWAY' ||
+        (priceDigits !== '' && Number(priceDigits) === 0);
+
+    const categoryIdRaw = data?.categoryId ?? data?.category?.id ?? data?.category?.categoryId;
+    const categoryNameRaw = data?.categoryName ?? data?.category?.name;
 
     return {
         title: data?.title ?? '',
@@ -111,6 +117,7 @@ export default function EditListingPage() {
     const [listingData, setListingData] = useState(null);
     const [formDefaults, setFormDefaults] = useState(null);
     const [existingImages, setExistingImages] = useState([]);
+    const [pendingDeleteImageIds, setPendingDeleteImageIds] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
     const { showToast } = useToast();
@@ -134,6 +141,7 @@ export default function EditListingPage() {
         setForbidden(false);
         setFormDefaults(null);
         setExistingImages([]);
+        setPendingDeleteImageIds([]);
         setListingData(null);
 
         getListing(id)
@@ -171,14 +179,9 @@ export default function EditListingPage() {
 
     const handleRemoveExistingImage = async (imageId) => {
         if (imageId == null) return;
-        try {
-            await deleteListingImage(listingIdNum, imageId);
-            setExistingImages((prev) => prev.filter((x) => x.id !== imageId));
-            showToast('Đã xóa ảnh.', 'success');
-        } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || 'Không xóa được ảnh.';
-            showToast(msg, 'error');
-        }
+        setExistingImages((prev) => prev.filter((x) => x.id !== imageId));
+        setPendingDeleteImageIds((prev) => (prev.includes(imageId) ? prev : [...prev, imageId]));
+        showToast('Đã đánh dấu xóa ảnh. Nhấn "Cập nhật" để lưu thay đổi.', 'info');
     };
 
     const handleSubmit = async (values, imageFiles) => {
@@ -189,6 +192,11 @@ export default function EditListingPage() {
             const payload = buildPayload(values, false);
             await updateListing(listingIdNum, payload);
             await uploadListingImages(listingIdNum, imageFiles);
+            if (pendingDeleteImageIds.length > 0) {
+                await Promise.all(
+                    pendingDeleteImageIds.map((imageId) => deleteListingImage(listingIdNum, imageId))
+                );
+            }
             navigate(`/listings/${listingIdNum}`, { replace: true });
         } catch (err) {
             const msg = getListingSubmitErrorMessage(err, 'Cập nhật tin thất bại.');

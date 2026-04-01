@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const LINKS = [
     { label: 'Góp ý', href: '/feedback' },
     { label: 'Quy chế hoạt động', href: '/terms' },
-    { label: 'Chính sách bảo mật', href: '/privacy' },
+    { label: 'Chính sách bảo mật', href: '/terms?key=general&item=privacy' },
     { label: 'Giải quyết tranh chấp', href: '/dispute' },
     { label: 'Thông tin trợ giúp', href: '/help' },
     { label: 'An toàn mua bán', href: '/safety' },
@@ -13,7 +13,7 @@ const LINKS = [
 ];
 
 const MINIMAL_LINKS = [
-    { label: 'Privacy', href: '/privacy' },
+    { label: 'Privacy', href: '/terms?key=general&item=privacy' },
     { label: 'Terms', href: '/terms' },
     { label: 'Community Guidelines', href: '/safety' },
     { label: 'Contact', href: '/contact' },

@@ -165,6 +165,23 @@ export default function ImageUploader({
     const showBigDropzone = !showUnifiedGrid && cap > 0;
 
     const studioHero = variant === 'studioHero';
+    const studioHeroTiles = useMemo(() => {
+        if (!studioHero) return [];
+        const ex = resolvedExisting.map((item, idx) => ({
+            kind: 'existing',
+            key: item.id != null ? `existing-${item.id}` : `existing-${item.url}-${idx}`,
+            url: item.url,
+            id: item.id ?? null,
+        }));
+        const pv = previews.map((url, idx) => ({
+            kind: 'preview',
+            key: `preview-${url}-${idx}`,
+            url,
+            index: idx,
+        }));
+        // Ưu tiên hiển thị ảnh mới chọn trước; nếu chưa chọn, dùng ảnh existing.
+        return pv.length > 0 ? [...pv, ...ex] : ex;
+    }, [studioHero, resolvedExisting, previews]);
 
     const addTileSx = (sz) => ({
         width: sz,
