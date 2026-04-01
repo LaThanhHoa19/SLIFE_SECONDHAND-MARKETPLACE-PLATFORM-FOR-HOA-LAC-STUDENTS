@@ -146,6 +146,8 @@ public class ListingController {
     /**
      * GET /api/listings/my — Lấy danh sách tin đăng của user hiện tại.
      * ?status=ACTIVE|DRAFT|HIDDEN|SOLD|GIVEN_AWAY|BANNED|EXPIRED|REPORTED
+     * HIDDEN: chỉ tin status HIDDEN và chưa quá expirationDate (tin HIDDEN đã hết hạn nằm ở EXPIRED).
+     * EXPIRED: expirationDate &lt; now (mọi status, kể cả HIDDEN đã quá hạn).
      * Không truyền status → trả về tất cả.
      */
     @GetMapping("/my")

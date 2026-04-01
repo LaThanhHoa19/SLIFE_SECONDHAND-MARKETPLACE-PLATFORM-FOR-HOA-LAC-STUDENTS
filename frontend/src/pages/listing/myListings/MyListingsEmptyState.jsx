@@ -4,7 +4,7 @@ import { STITCH_CARD, STITCH_CARD_BORDER, STITCH_PURPLE } from './myListingsConf
 export default function MyListingsEmptyState({ tab }) {
     const messages = {
         ACTIVE:   { icon: '📭', title: 'Chưa có tin đăng',       text: 'Bạn chưa có tin đăng nào đang hoạt động.' },
-        HIDDEN:   { icon: '👁️', title: 'Không có tin đã ẩn',      text: 'Bạn chưa ẩn bài đăng nào.' },
+        HIDDEN:   { icon: '👁️', title: 'Không có tin đã ẩn',      text: 'Chỉ hiện tin ẩn mà chưa quá hạn — tin ẩn đã hết hạn nằm ở tab Hết hạn.' },
         DRAFT:    { icon: '📝', title: 'Không có bản nháp',       text: 'Chưa có bản nháp nào được lưu lại.' },
         EXPIRED:  { icon: '⏳', title: 'Không có tin hết hạn',    text: 'Tất cả tin đăng của bạn vẫn còn hiệu lực.' },
         SOLD:     { icon: '✅', title: 'Chưa có tin đã bán',      text: 'Các tin bạn đánh dấu đã bán sẽ hiển thị ở đây.' },
