@@ -617,6 +617,29 @@ function ChatPageInner() {
     return Array.from(new Set(arr));
   }, [activeListingPrice]);
 
+  /** Một lượt trả giá PENDING / chưa kết thúc từ phía mình — khớp rule BE (1 pending / tin / người mua). */
+  const hasOpenOfferAwaitingSeller = useMemo(() => {
+    if (isSellerInActiveChat) return false;
+    return messages.some(
+        (m) =>
+            m.messageType === 'OFFER_PROPOSAL' &&
+            isMessageFromCurrentUser(m, currentUserId) &&
+            m.offerId != null &&
+            m.offerStatus !== 'ACCEPTED' &&
+            m.offerStatus !== 'REJECTED',
+    );
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const priceOfferDisabled =
+      Boolean(activeSessionId) && (isSellerInActiveChat || hasOpenOfferAwaitingSeller);
+  const priceOfferTooltip = !activeSessionId
+      ? 'Trả giá / đề xuất giá'
+      : isSellerInActiveChat
+          ? 'Chỉ người mua mới có thể trả giá'
+          : hasOpenOfferAwaitingSeller
+              ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
+              : 'Trả giá / đề xuất giá';
+
   // ── render ────────────────────────────────────────────────────────────────
   const showConversationMobile = Boolean(activeSessionId);
   const listDisplay = { xs: showConversationMobile ? 'none' : 'flex', md: 'flex' };
@@ -755,6 +778,8 @@ function ChatPageInner() {
                       imageUploading={imageUploading}
                       activeSessionId={activeSessionId}
                       setOfferOpen={setOfferOpen}
+                      priceOfferDisabled={priceOfferDisabled}
+                      priceOfferTooltip={priceOfferTooltip}
                       suggestBtnRef={suggestBtnRef}
                       inputRef={inputRef}
                       inputText={inputText}

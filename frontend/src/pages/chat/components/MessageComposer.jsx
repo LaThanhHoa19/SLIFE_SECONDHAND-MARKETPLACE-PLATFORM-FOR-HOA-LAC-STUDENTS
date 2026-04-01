@@ -31,6 +31,8 @@ export default function MessageComposer({
                                             imageUploading,
                                             activeSessionId,
                                             setOfferOpen,
+                                            priceOfferDisabled,
+                                            priceOfferTooltip,
                                             suggestBtnRef,
                                             inputRef,
                                             inputText,
@@ -185,12 +187,12 @@ export default function MessageComposer({
               </IconButton>
             </span>
                     </Tooltip>
-                    <Tooltip title="Trả giá / đề xuất giá">
+                    <Tooltip title={priceOfferTooltip ?? 'Trả giá / đề xuất giá'}>
             <span>
               <IconButton
                   size="small"
                   onClick={() => setOfferOpen(true)}
-                  disabled={!activeSessionId}
+                  disabled={!activeSessionId || Boolean(priceOfferDisabled)}
                   sx={{ bgcolor: 'action.hover' }}
               >
                 <MonetizationOnIcon fontSize="small" />
