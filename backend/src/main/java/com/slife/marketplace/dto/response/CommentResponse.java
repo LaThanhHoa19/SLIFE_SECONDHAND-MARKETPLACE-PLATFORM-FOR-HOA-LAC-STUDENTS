@@ -21,6 +21,8 @@ public class CommentResponse {
 
     private List<CommentResponse> replies;
 
-    /** True when comment was hidden by moderation (auto or admin report approve). */
+    /**
+     * True when comment was hidden by moderation (auto or admin report approve).
+     */
     private Boolean contentHidden;
 }

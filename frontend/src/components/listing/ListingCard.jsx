@@ -521,7 +521,7 @@ export default function ListingCard({
                         const handleMouseUpOrLeave = () => {
                             if (!isDraggingRef.current || !scrollContainerRef.current) return;
                             isDraggingRef.current = false;
-                            
+
                             const el = scrollContainerRef.current;
                             el.style.cursor = 'grab';
 
@@ -555,10 +555,16 @@ export default function ListingCard({
                                         scrollContainerRef.current = el;
                                         if (!el) return;
                                         const onScroll = () => {
-                                            const w = el.clientWidth * 0.5;
-                                            const idx = w > 0 ? Math.round(el.scrollLeft / w) : 0;
+                                            const total = images.length || 0;
+                                            if (total <= 1) return;
+                                            const maxScroll = el.scrollWidth - el.clientWidth;
+                                            const currentScroll = el.scrollLeft;
+                                            const idx = maxScroll > 0 ? Math.round((currentScroll / maxScroll) * (total - 1)) : 0;
                                             const badge = el.parentElement?.querySelector('[data-img-badge]');
-                                            if (badge) badge.textContent = `${idx + 1}/${images.length}`;
+                                            if (badge) {
+                                                const badgeText = badge.querySelector('.badge-text');
+                                                if (badgeText) badgeText.textContent = `${idx + 1}/${total}`;
+                                            }
                                         };
                                         el.addEventListener('scroll', onScroll, { passive: true });
                                     }}
@@ -641,7 +647,7 @@ export default function ListingCard({
                                         }}
                                     >
                                         <CollectionsIcon sx={{ fontSize: 13 }} />
-                                        {`${images.length}`}
+                                        <span className="badge-text">{`1/${images.length}`}</span>
                                     </Box>
                                 )}
                             </Box>
