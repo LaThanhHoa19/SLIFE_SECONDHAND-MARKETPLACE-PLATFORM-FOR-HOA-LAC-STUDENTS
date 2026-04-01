@@ -7,8 +7,6 @@ export default function MyListingsEmptyState({ tab }) {
         HIDDEN:   { icon: '👁️', title: 'Không có tin đã ẩn',      text: 'Bạn chưa ẩn bài đăng nào.' },
         DRAFT:    { icon: '📝', title: 'Không có bản nháp',       text: 'Chưa có bản nháp nào được lưu lại.' },
         EXPIRED:  { icon: '⏳', title: 'Không có tin hết hạn',    text: 'Tất cả tin đăng của bạn vẫn còn hiệu lực.' },
-        PENDING:  { icon: '⏰', title: 'Không có tin chờ duyệt',  text: 'Không có bài đăng nào đang chờ được duyệt.' },
-        REJECTED: { icon: '🚫', title: 'Không có tin bị từ chối', text: 'Không có bài đăng nào bị từ chối đăng.' },
         REPORTED: { icon: '🛡️', title: 'Không bị báo cáo',        text: 'Tin đăng của bạn chưa bị báo cáo nào.' },
     };
     const { icon, title, text } = messages[tab] || { icon: '📭', title: 'Trống', text: 'Không có dữ liệu.' };
