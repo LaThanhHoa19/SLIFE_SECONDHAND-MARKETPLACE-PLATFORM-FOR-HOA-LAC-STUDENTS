@@ -82,6 +82,48 @@ export default function ProfileHeader({
         '& .MuiInputLabel-root.Mui-focused': { color: PURPLE, outline: 'none' }
     };
 
+    const [fieldErrors, setFieldErrors] = useState({ fullName: '', phoneNumber: '', bio: '' });
+
+    const handleLocalSave = (e) => {
+        if (e) e.preventDefault();
+        
+        let isValid = true;
+        const errors = { fullName: '', phoneNumber: '', bio: '' };
+
+        // Validate Full Name
+        const nameWords = editForm.fullName?.trim().split(/\s+/) || [];
+        if (nameWords.length < 2) {
+            errors.fullName = 'Họ và tên phải có ít nhất 2 từ';
+            isValid = false;
+        }
+
+        // Validate Phone Number
+        const phoneRegex = /^0\d{9}$/;
+        if (!phoneRegex.test(editForm.phoneNumber?.trim() || '')) {
+            errors.phoneNumber = 'Số điện thoại phải bắt đầu bằng số 0 và gồm đúng 10 chữ số';
+            isValid = false;
+        }
+
+        // Validate Bio
+        const bioLen = editForm.bio?.trim().length || 0;
+        if (bioLen <= 1 || bioLen >= 200) {
+            errors.bio = 'Giới thiệu phải từ 2 đến 199 kí tự';
+            isValid = false;
+        }
+
+        setFieldErrors(errors);
+
+        if (isValid) {
+            handleSave();
+        }
+    };
+
+    const handleCloseEdit = () => {
+        if (saving) return;
+        setEditing(false);
+        setFieldErrors({ fullName: '', phoneNumber: '', bio: '' });
+    };
+
     return (
         <Box sx={{ maxWidth: 880, width: { xs: '100%', sm: '76%' }, mx: 'auto', px: { xs: 2, sm: 4 }, pt: { xs: 2, sm: 4 }, pb: 2, position: 'relative' }}>
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 3, sm: 4 }, alignItems: { xs: 'center', sm: 'flex-start' } }}>
@@ -150,20 +192,35 @@ export default function ProfileHeader({
                         anchorEl={avatarAnchorEl}
                         open={Boolean(avatarAnchorEl)}
                         onClose={() => setAvatarAnchorEl(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
                         PaperProps={{
                             sx: {
-                                bgcolor: '#262626', color: 'white', borderRadius: 3, minWidth: 210,
-                                '& .MuiMenuItem-root': { py: 1.5, gap: 1.5, borderBottom: '1px solid rgba(255,255,255,0.08)' }
+                                bgcolor: '#201D26', 
+                                color: 'white', 
+                                borderRadius: 3, 
+                                minWidth: 210,
+                                mt: 1.5,
+                                border: '1px solid rgba(255,255,255,0.06)',
+                                boxShadow: '0 16px 40px rgba(0,0,0,0.6)',
+                                '& .MuiList-root': { p: 1 },
+                                '& .MuiMenuItem-root': { 
+                                    py: 1.25, px: 2, gap: 1.5, borderRadius: 2,
+                                    transition: 'all 0.2s',
+                                    fontSize: '0.95rem',
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' }
+                                }
                             }
                         }}
                     >
                         <MenuItem onClick={() => { setAvatarAnchorEl(null); setViewAvatarOpen(true); }} sx={{ fontWeight: 600 }}>
-                            <VisibilityIcon sx={{ fontSize: 20 }} /> Xem ảnh
+                            <VisibilityIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.6)' }} /> Xem ảnh
                         </MenuItem>
                         <MenuItem onClick={() => { setAvatarAnchorEl(null); avatarInputRef.current?.click(); }} sx={{ fontWeight: 600, color: '#0095f6' }}>
                             <PhotoCameraIcon sx={{ fontSize: 20 }} /> Chỉnh sửa ảnh
                         </MenuItem>
-                        <MenuItem onClick={() => setAvatarAnchorEl(null)} sx={{ color: 'rgba(255,255,255,0.5)' }}>Hủy</MenuItem>
+                        <Divider sx={{ my: 0.5, borderColor: 'rgba(255,255,255,0.06)' }} />
+                        <MenuItem onClick={() => setAvatarAnchorEl(null)} sx={{ color: 'rgba(255,255,255,0.4)', justifyContent: 'center', py: 1 }}>Hủy</MenuItem>
                     </Menu>
 
                     <input type="file" accept="image/*" ref={avatarInputRef} style={{ display: 'none' }} onChange={handleAvatarChange} />
@@ -323,7 +380,7 @@ export default function ProfileHeader({
             {/* ─── Edit Profile Popup Dialog ────────────────── */}
             <Dialog 
                 open={editing} 
-                onClose={() => !saving && setEditing(false)}
+                onClose={handleCloseEdit}
                 maxWidth="xs"
                 fullWidth
                 PaperProps={{
@@ -342,26 +399,41 @@ export default function ProfileHeader({
                     }
                 }}
             >
-                <DialogTitle sx={{ color: 'white', textAlign: 'center', fontWeight: 700, pt: 5, pb: 1 }}>
+                <DialogTitle sx={{ color: 'white', textAlign: 'center', fontWeight: 700, pt: 4, pb: 1 }}>
                     Chỉnh sửa trang cá nhân
                 </DialogTitle>
-                <DialogContent sx={{ mt: 2, pb: 3, px: 4 }}>
-                    <Box component="form" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+                <DialogContent sx={{ pt: 2, pb: 4, px: { xs: 3, sm: 4 } }}>
+                    <Box component="form" onSubmit={handleLocalSave}>
                         <TextField 
                             fullWidth label="Họ tên" variant="outlined" value={editForm.fullName}
-                            onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
-                            sx={textFieldStyle}
+                            onChange={(e) => {
+                                setEditForm((f) => ({ ...f, fullName: e.target.value }));
+                                if (fieldErrors.fullName) setFieldErrors(e => ({...e, fullName: ''}));
+                            }}
+                            error={Boolean(fieldErrors.fullName)}
+                            helperText={fieldErrors.fullName}
+                            sx={{ ...textFieldStyle, mt: 1 }}
                             size="small"
                         />
                         <TextField 
                             fullWidth label="Số điện thoại" value={editForm.phoneNumber}
-                            onChange={(e) => setEditForm((f) => ({ ...f, phoneNumber: e.target.value }))}
+                            onChange={(e) => {
+                                setEditForm((f) => ({ ...f, phoneNumber: e.target.value }));
+                                if (fieldErrors.phoneNumber) setFieldErrors(e => ({...e, phoneNumber: ''}));
+                            }}
+                            error={Boolean(fieldErrors.phoneNumber)}
+                            helperText={fieldErrors.phoneNumber}
                             sx={textFieldStyle}
                             size="small"
                         />
                         <TextField 
                             fullWidth multiline rows={3} label="Giới thiệu" value={editForm.bio}
-                            onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                            onChange={(e) => {
+                                setEditForm((f) => ({ ...f, bio: e.target.value }));
+                                if (fieldErrors.bio) setFieldErrors(e => ({...e, bio: ''}));
+                            }}
+                            error={Boolean(fieldErrors.bio)}
+                            helperText={fieldErrors.bio}
                             sx={{ ...textFieldStyle, mb: 1 }}
                             size="small"
                         />
@@ -375,7 +447,7 @@ export default function ProfileHeader({
                         <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                             <Button 
                                 fullWidth
-                                onClick={handleSave}
+                                onClick={handleLocalSave}
                                 variant="contained" 
                                 disabled={saving}
                                 sx={{ 
@@ -395,7 +467,7 @@ export default function ProfileHeader({
                             <Button 
                                 fullWidth
                                 variant="text" 
-                                onClick={() => setEditing(false)}
+                                onClick={handleCloseEdit}
                                 sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', fontSize: '0.9rem' }}
                             >
                                 Hủy
@@ -404,6 +476,7 @@ export default function ProfileHeader({
                     </Box>
                 </DialogContent>
             </Dialog>
+
 
             {/* ─── Floating Chat button – bottom-right of page ── */}
             {!isMe && (

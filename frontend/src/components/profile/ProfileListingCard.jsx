@@ -54,11 +54,13 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
           aspectRatio: '3/4', // Vertical rectangle
           overflow: 'hidden',
           position: 'relative',
-          cursor: 'pointer',
+          cursor: listing.status === 'SOLD' ? 'default' : 'pointer',
           border: 'none',
           '&:hover .overlay': { opacity: 1 },
         }}
-        onClick={() => onClick?.(listing)}
+        onClick={() => {
+            if (listing.status !== 'SOLD') onClick?.(listing);
+        }}
       >
         {currentImg ? (
           <>
@@ -154,13 +156,19 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
         transition: 'all 0.3s ease',
         background: 'rgba(255, 255, 255, 0.05)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
-        '&:hover': {
+        '&:hover': listing.status === 'SOLD' ? {} : {
           bgcolor: 'rgba(157, 110, 237, 0.08)',
           borderColor: PURPLE,
         },
       }}
     >
-      <CardActionArea onClick={() => onClick?.(listing)} sx={{ display: 'flex', alignItems: 'stretch', justifyContent: 'flex-start' }}>
+      <CardActionArea 
+        onClick={() => {
+            if (listing.status !== 'SOLD') onClick?.(listing);
+        }} 
+        sx={{ display: 'flex', alignItems: 'stretch', justifyContent: 'flex-start', cursor: listing.status === 'SOLD' ? 'default' : 'pointer' }}
+        disableRipple={listing.status === 'SOLD'}
+      >
         <Box
           sx={{
             width: 150,

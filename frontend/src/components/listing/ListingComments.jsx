@@ -424,6 +424,31 @@ export default function ListingComments({ listingId, onNotify }) {
                 Xem thêm {comments.length - 3} bình luận khác
               </Typography>
             )}
+            
+            {showAll && comments.length > 3 && (
+              <Typography
+                onClick={() => setShowAll(false)}
+                fontSize={13}
+                fontWeight={700}
+                sx={{
+                  color: TEXT_SEC,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  mt: 2,
+                  py: 1,
+                  bgcolor: 'transparent',
+                  borderRadius: '12px',
+                  width: 'fit-content',
+                  px: 3,
+                  mx: 'auto',
+                  transition: 'all 0.2s',
+                  border: `1px solid ${BORDER}`,
+                  '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.05)' }
+                }}
+              >
+                Thu gọn bình luận
+              </Typography>
+            )}
           </Box>
         )}
       </Box>
