@@ -570,7 +570,7 @@ function ChatPageInner() {
       const msg = getData(res);
       setMessages((prev) => {
         const updated = prev.map((m) =>
-            m.offerId === offerId ? { ...m, offerStatus: 'ACCEPTED' } : m
+            Number(m.offerId) === Number(offerId) ? { ...m, offerStatus: 'ACCEPTED' } : m
         );
         return msg?.id && !updated.some((m) => m.id === msg.id)
             ? [...updated, msg]
@@ -589,7 +589,7 @@ function ChatPageInner() {
       const msg = getData(res);
       setMessages((prev) => {
         const updated = prev.map((m) =>
-            m.offerId === offerId ? { ...m, offerStatus: 'REJECTED' } : m
+            Number(m.offerId) === Number(offerId) ? { ...m, offerStatus: 'REJECTED' } : m
         );
         return msg?.id && !updated.some((m) => m.id === msg.id)
             ? [...updated, msg]

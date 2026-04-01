@@ -432,6 +432,12 @@ public class ChatService {
         offerRepository.save(offer);
 
         String sessionId = conv.getSessionUuid();
+        // WS: cập nhật offerStatus trên bubble OFFER_PROPOSAL (FE không refetch full history).
+        broadcastToSession(sessionId, Map.of(
+                "event", "OFFER_STATUS",
+                "offerId", offer.getId(),
+                "status", accepted ? OfferService.STATUS_ACCEPTED : OfferService.STATUS_REJECTED));
+
         ChatMessageResponse response;
 
         if (accepted) {
