@@ -29,17 +29,12 @@ export default function ListingSummary({ title, price, isGiveaway, locationText,
   return (
     <Box>
       <Typography
-        fontSize={{ xs: 20, sm: 24 }}
+        fontSize={{ xs: 18, sm: 22 }}
         fontWeight={700}
         color={TEXT_PRI}
         sx={{
           lineHeight: 1.3,
-          mb: 1.5,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          mb: 2,
           wordBreak: 'break-word'
         }}
       >
@@ -47,7 +42,7 @@ export default function ListingSummary({ title, price, isGiveaway, locationText,
       </Typography>
 
       <Typography
-        fontSize={{ xs: 24, sm: 30 }}
+        fontSize={{ xs: 22, sm: 26 }}
         fontWeight={800}
         color={isGiveaway ? GREEN : RED}
         sx={{ mb: 2.5 }}

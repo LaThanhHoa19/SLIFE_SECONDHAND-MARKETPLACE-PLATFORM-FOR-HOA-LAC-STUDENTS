@@ -1,5 +1,5 @@
 /** Mục đích: Sidebar nền tối kiểu modern với active rõ và logout sticky. Responsive: co lại khi !open. */
-import { Box, Typography, IconButton, Tooltip, Button, Divider } from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, Button, Divider, useTheme, useMediaQuery } from '@mui/material';
 import {
     Home as HomeIcon,
     Bookmark as BookmarkIcon,
@@ -21,13 +21,24 @@ export default function Sidebar({ open = true }) {
     const location = useLocation();
     const { isAuthenticated, user, logout } = useAuth();
     
-    const NAV_ITEMS = [
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    
+    let NAV_ITEMS = [
         { label: 'Feed', icon: HomeIcon, path: '/feed' },
         { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
         { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
         { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
         ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
     ];
+
+    // Thêm nút Đăng tin vào sidebar nếu màn hình nhỏ (khi nút trên header ẩn đi)
+    if (isMobile) {
+        NAV_ITEMS = [
+            { label: 'Đăng tin', icon: AddIcon, path: '/listings/new', color: '#FF6B6B' },
+            ...NAV_ITEMS
+        ];
+    }
     
     const currentWidth = open ? SIDEBAR_WIDTH : SIDEBAR_MINI_WIDTH;
 
@@ -50,8 +61,13 @@ export default function Sidebar({ open = true }) {
     };
 
     const isActive = (path) => {
-        if (path === '/feed') return location.pathname === '/feed';
-        return location.pathname.startsWith(path);
+        const current = location.pathname;
+        if (path === '/feed') return current === '/feed' || (current.startsWith('/listings/') && !current.includes('/new'));
+        if (path.startsWith('/profile')) {
+            // Check if both are profile paths
+            return current.startsWith('/profile');
+        }
+        return current === path || current.startsWith(path + '/');
     };
 
     const handleLogout = async () => {
@@ -98,16 +114,17 @@ export default function Sidebar({ open = true }) {
                                     borderRadius: '22px',
                                     mb: 0.8,
                                     background: active
-                                        ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
+                                        ? (path === '/listings/new' ? 'linear-gradient(135deg, #FF6B6B 10%, #EE5253 100%)' : 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)')
                                         : 'transparent',
-                                    border: active ? '1px solid rgba(255,255,255,0.2)' : '1px solid transparent',
-                                    boxShadow: active ? '0 8px 24px rgba(157, 110, 237, 0.4)' : 'none',
+                                    border: active ? '1px solid rgba(255,255,255,0.2)' : (path === '/listings/new' ? '1px solid rgba(255,107,107,0.3)' : '1px solid transparent'),
+                                    boxShadow: active ? (path === '/listings/new' ? '0 8px 24px rgba(238, 82, 83, 0.4)' : '0 8px 24px rgba(157, 110, 237, 0.4)') : 'none',
+                                    transform: open && active ? 'translateX(4px)' : 'none',
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     '&:hover': {
                                         background: active
-                                            ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
+                                            ? (path === '/listings/new' ? 'linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%)' : 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)')
                                             : 'rgba(255,255,255,0.06)',
-                                        transform: open && !active ? 'translateX(4px)' : 'none',
+                                        transform: open ? 'translateX(6px)' : 'none',
                                     },
                                     overflow: 'hidden',
                                 }}
@@ -115,7 +132,7 @@ export default function Sidebar({ open = true }) {
                                 <Icon
                                     sx={{
                                         fontSize: 20,
-                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.6)',
+                                        color: active ? '#FFFFFF' : (path === '/listings/new' ? '#FF6B6B' : 'rgba(226,232,240,0.6)'),
                                         flexShrink: 0,
                                         ml: open ? 2 : '12px',
                                         transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -124,9 +141,9 @@ export default function Sidebar({ open = true }) {
                                 <Typography
                                     sx={{
                                         fontSize: 14,
-                                        fontWeight: active ? 800 : 600,
+                                        fontWeight: active ? 800 : 700,
                                         fontFamily: "'Outfit', sans-serif",
-                                        color: active ? '#FFFFFF' : 'rgba(226,232,240,0.7)',
+                                        color: active ? '#FFFFFF' : (path === '/listings/new' ? '#FF6B6B' : 'rgba(226,232,240,0.7)'),
                                         whiteSpace: 'nowrap',
                                         ml: 1.5,
                                         opacity: open ? 1 : 0,

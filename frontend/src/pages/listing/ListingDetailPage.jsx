@@ -50,6 +50,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
 import MiniListingCard from '../../components/listing/MiniListingCard';
+import ListingCard from '../../components/listing/ListingCard';
 import ListingImageGallery from '../../components/listing/ListingImageGallery';
 import ListingComments from '../../components/listing/ListingComments';
 import ListingDescription from '../../components/listing/ListingDescription';
@@ -428,6 +429,39 @@ export default function ListingDetailPage() {
         ? (listing.sellerPhone || seller?.phoneNumber || 'Không có SĐT')
         : null;
     const pickupAddress = listing?.pickupAddress;
+    const s = String(listing?.status || listing?.itemStatus || '').toUpperCase();
+    const isSoldOrHidden = s === 'SOLD' || s === 'HIDDEN';
+
+    // If SOLD or HIDDEN, show as a Card (Feed style) instead of detail page
+    if (isSoldOrHidden) {
+        return (
+            <Box sx={{ maxWidth: 600, mx: 'auto', px: 2, py: 6, textAlign: 'center' }}>
+                <Box sx={{ mb: 4, display: 'inline-flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(46, 213, 115, 0.1)', px: 3, py: 1.2, borderRadius: '30px', border: `1px solid ${GREEN}` }}>
+                    <VerifiedIcon sx={{ color: GREEN, fontSize: 20 }} />
+                    <Typography color={GREEN} fontWeight={700} fontSize={15}>
+                        {listing.status === 'HIDDEN' ? 'Bài đăng này đã bị ẩn' : 'Sản phẩm này đã được bán thành công'}
+                    </Typography>
+                </Box>
+                
+                <Box sx={{ mb: 4, transform: 'scale(1.05)', transition: 'transform 0.3s' }}>
+                    <ListingCard listing={listing} />
+                </Box>
+
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIosNewIcon />}
+                    onClick={() => navigate('/feed')}
+                    sx={{
+                        borderRadius: '12px', border: `1px solid ${BORDER}`, 
+                        bgcolor: CARD_BG, color: TEXT_PRI, px: 4, py: 1.5,
+                        '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE }
+                    }}
+                >
+                    Khám phá tin khác
+                </Button>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
@@ -484,7 +518,7 @@ export default function ListingDetailPage() {
                     {listing.category?.name || 'Tin đăng'}
                 </Link>
                 <Typography color={TEXT_PRI} fontSize={13} fontWeight={500} sx={{
-                    maxWidth: 200,
+                    maxWidth: { xs: 150, sm: 300 },
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -498,14 +532,14 @@ export default function ListingDetailPage() {
             <Box
                 sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', md: '5.5fr 4.5fr' },
-                    gap: { xs: 3, md: 4 },
+                    gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' },
+                    gap: { xs: 3, md: 4 }, 
                     mb: 4,
-                    alignItems: 'stretch'
+                    alignItems: 'start' // Critical: content stays at top, doesn't stretch
                 }}
             >
                 {/* Row 1: Gallery (Left) | Info Block (Right) */}
-                <Box>
+                <Box sx={{ gridColumn: { md: 'span 6' } }}>
                     <ListingImageGallery
                         images={images}
                         title={listing.title}
@@ -523,7 +557,7 @@ export default function ListingDetailPage() {
                     />
                 </Box>
 
-                <Box>
+                <Box sx={{ gridColumn: { md: 'span 6' } }}>
                     <ListingRightInfoBlock
                         listing={listing}
                         locationText={locationText}
@@ -543,7 +577,7 @@ export default function ListingDetailPage() {
                 </Box>
 
                 {/* Row 2: Description & Comments (Left) | Sidebar Stack (Right: Map -> Other Listings -> Ad) */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: { md: 'span 6' } }}>
                     <ListingDescription description={listing.description} />
                     
                     <Card
@@ -563,7 +597,7 @@ export default function ListingDetailPage() {
                 </Box>
 
                 {/* Cot phai (Sidebar): Map -> Other Listings -> Ad Banner */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, gridColumn: { md: 'span 6' } }}>
                     {/* Map Preview */}
                     {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null ? (() => {
                         const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${pickupAddress.lat},${pickupAddress.lng}`)}`;
@@ -649,25 +683,7 @@ export default function ListingDetailPage() {
                         listing={listing}
                     />
 
-                    {/* Ad Banner */}
-                    <Box
-                        sx={{
-                            borderRadius: '16px',
-                            overflow: 'hidden',
-                            width: '100%',
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                            cursor: 'pointer',
-                            transition: 'transform 0.3s',
-                            '&:hover': { transform: 'scale(1.01)' },
-                        }}
-                    >
-                        <Box
-                            component="img"
-                            src="/brand_advertisement_banner_v2.png"
-                            alt="Brand Advertisement"
-                            sx={{ width: '100%', height: 'auto', display: 'block' }}
-                        />
-                    </Box>
+                    {/* Ad Banner removed */}
                 </Box>
             </Box>
 

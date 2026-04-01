@@ -161,6 +161,7 @@ export default function Header({ onToggleSidebar }) {
     const navigate = useNavigate();
     const location = useLocation();
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [searchValue, setSearchValue] = useState('');
     const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const [userMenuAnchor, setUserMenuAnchor] = useState(null);
@@ -331,9 +332,11 @@ export default function Header({ onToggleSidebar }) {
 
                     {user ? (
                         <>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1.5 }}>
-                                <ActionButton sx={{ gap: 0.5 }} startIcon={<PostAddIcon sx={{ fontSize: '18px !important' }} />} onClick={handleCreatePost}>Đăng tin</ActionButton>
-                            </Box>
+                            {!isMobile && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1.5 }}>
+                                    <ActionButton sx={{ gap: 0.5 }} startIcon={<PostAddIcon sx={{ fontSize: '18px !important' }} />} onClick={handleCreatePost}>Đăng tin</ActionButton>
+                                </Box>
+                            )}
                             <IconButton
                                 onClick={handleUserMenuOpen}
                                 sx={{

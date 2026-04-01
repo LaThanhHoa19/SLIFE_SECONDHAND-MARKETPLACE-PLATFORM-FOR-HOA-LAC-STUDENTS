@@ -135,9 +135,26 @@ export default function ProfilePage() {
     if (!profileUser?.id) return;
     setListingsLoading(true);
     try {
+      // 1. Fetch tin đăng bình thường (ACTIVE)
       const res = await getListings({ sellerId: profileUser.id, size: 50 });
       const data = getPayload(res);
-      const list = Array.isArray(data) ? data : data?.content ?? [];
+      let list = Array.isArray(data) ? data : data?.content ?? [];
+
+      // 2. Nếu là trang của chính mình, fetch thêm tin Đã bán (SOLD)
+      if (isMe) {
+        try {
+          const { getMyListings } = await import('../../api/myListingApi');
+          const soldRes = await getMyListings({ status: 'SOLD', size: 50 });
+          const soldData = getPayload(soldRes);
+          const soldList = Array.isArray(soldData) ? soldData : soldData?.content ?? [];
+          
+          // Gộp tin ACTIVE và SOLD vào chung state để render theo Tab
+          list = [...list, ...soldList];
+        } catch (e) {
+          console.error("Lỗi khi tải tin đã bán:", e);
+        }
+      }
+
       setListings(list);
     } catch (err) {
       console.error("Failed to load listings:", err);
@@ -145,7 +162,7 @@ export default function ProfilePage() {
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser?.id, profileUser?.fullName, profileUser?.full_name]);
+  }, [profileUser?.id, isMe]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser?.id) loadListings(); }, [profileUser?.id, loadListings]);
