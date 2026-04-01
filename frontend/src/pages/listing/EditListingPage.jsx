@@ -1,6 +1,6 @@
 /**
  * Trang chỉnh sửa tin đăng — đường dẫn: /listings/:id/edit
- * Dùng lại ListingForm + ImageUploader (ảnh mới); ảnh đã lưu hiển thị qua existingImageUrls.
+ * Dùng lại ListingForm + ImageUploader; ảnh đã lưu qua imageItems (id + url) để hiển thị / xóa.
  */
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { Box, Alert, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
 import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
-import { getListing, updateListing, uploadImages } from '../../api/listingApi';
+import { deleteListingImage, getListing, updateListing, uploadImages } from '../../api/listingApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { fullImageUrl } from '../../utils/constants';
@@ -51,8 +51,10 @@ function mapListingToFormDefaults(data) {
         price: isGiveaway ? '0' : priceDigits,
         condition: data?.condition ?? 'USED_GOOD',
         isGiveaway,
-        categoryId: categoryIdRaw != null ? String(categoryIdRaw) : '',
-        categoryName: categoryNameRaw ?? '',
+        categoryId: data?.category?.id != null
+            ? String(data.category.id)
+            : (data?.categoryId != null ? String(data.categoryId) : ''),
+        categoryName: data?.category?.name ?? data?.categoryName ?? '',
         pickupAddressId: pa?.id != null ? Number(pa.id) : null,
         pickupLocationName: locName || displayLine,
         pickupAddressText: displayLine,
@@ -62,10 +64,20 @@ function mapListingToFormDefaults(data) {
     };
 }
 
-function mapExistingImageUrls(data) {
+/** Ảnh đã lưu: ưu tiên imageItems (có id để xóa), fallback images[] chỉ URL. */
+function mapExistingImages(data) {
+    const items = data?.imageItems;
+    if (Array.isArray(items) && items.length > 0) {
+        return items
+            .map((x) => ({
+                id: x?.id != null ? x.id : null,
+                url: fullImageUrl(x?.url),
+            }))
+            .filter((x) => x.url);
+    }
     const raw = data?.images;
     if (!Array.isArray(raw)) return [];
-    return raw.map((u) => fullImageUrl(u)).filter(Boolean);
+    return raw.map((u) => ({ id: null, url: fullImageUrl(u) })).filter((x) => x.url);
 }
 
 function buildPayload(values, isDraft = false) {
@@ -104,7 +116,7 @@ export default function EditListingPage() {
     const [forbidden, setForbidden] = useState(false);
     const [listingData, setListingData] = useState(null);
     const [formDefaults, setFormDefaults] = useState(null);
-    const [existingImageUrls, setExistingImageUrls] = useState([]);
+    const [existingImages, setExistingImages] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
     const { showToast } = useToast();
@@ -127,7 +139,7 @@ export default function EditListingPage() {
         setSubmitErrorPlacement('top');
         setForbidden(false);
         setFormDefaults(null);
-        setExistingImageUrls([]);
+        setExistingImages([]);
         setListingData(null);
 
         getListing(id)
@@ -136,7 +148,7 @@ export default function EditListingPage() {
                 const data = getPayload(res);
                 setListingData(data);
                 setFormDefaults(mapListingToFormDefaults(data));
-                setExistingImageUrls(mapExistingImageUrls(data));
+                setExistingImages(mapExistingImages(data));
             })
             .catch((err) => {
                 if (!cancelled) {
@@ -162,6 +174,18 @@ export default function EditListingPage() {
             setFormDefaults(null);
         }
     }, [listingData, user?.id]);
+
+    const handleRemoveExistingImage = async (imageId) => {
+        if (imageId == null) return;
+        try {
+            await deleteListingImage(listingIdNum, imageId);
+            setExistingImages((prev) => prev.filter((x) => x.id !== imageId));
+            showToast('Đã xóa ảnh.', 'success');
+        } catch (err) {
+            const msg = err?.response?.data?.message || err?.message || 'Không xóa được ảnh.';
+            showToast(msg, 'error');
+        }
+    };
 
     const handleSubmit = async (values, imageFiles) => {
         setError('');
@@ -230,7 +254,8 @@ export default function EditListingPage() {
                     mode="edit"
                     layoutVariant="createStudio"
                     defaultValues={formDefaults}
-                    existingImageUrls={existingImageUrls}
+                    existingImages={existingImages}
+                    onRemoveExistingImage={handleRemoveExistingImage}
                     maxImagesPerPost={maxImagesPerPost}
                     onSubmit={handleSubmit}
                     submitting={submitting}

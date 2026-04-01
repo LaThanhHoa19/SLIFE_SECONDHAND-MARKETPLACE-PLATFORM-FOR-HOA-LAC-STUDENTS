@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
 import com.slife.marketplace.service.AdminService;
+import com.slife.marketplace.service.UserService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,7 +21,8 @@ class AdminControllerTest {
   @Test
   void getUsers_shouldReturnPagedUsers() {
     AdminService adminService = org.mockito.Mockito.mock(AdminService.class);
-    AdminController controller = new AdminController(adminService);
+    UserService userService = org.mockito.Mockito.mock(UserService.class);
+    AdminController controller = new AdminController(adminService, userService);
 
     List<UserResponseDTO> mockedUsers = List.of(
         new UserResponseDTO(1L, "Test User", "user@slife.vn", "ACTIVE", "USER", new BigDecimal("5.00"),

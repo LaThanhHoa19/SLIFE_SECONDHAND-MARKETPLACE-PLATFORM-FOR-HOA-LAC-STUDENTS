@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateListingRequest;
+import com.slife.marketplace.dto.response.ListingImageItemResponse;
 import com.slife.marketplace.dto.response.ListingResponse;
 import com.slife.marketplace.dto.response.MyListingResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
@@ -298,7 +299,7 @@ public class ListingService {
 
         Listing saved = persistNewListing(seller, request);
         if (!imageParts.isEmpty()) {
-            listingImageService.uploadListingImages(saved.getId(), imageParts);
+            listingImageService.uploadListingImages(saved.getId(), imageParts, seller);
         }
         log.info("createListingWithImages: id={}, status={}, seller={}, images={}", saved.getId(), saved.getStatus(), seller.getId(), imageParts.size());
 
@@ -324,26 +325,33 @@ public class ListingService {
     private Listing persistNewListing(User seller, CreateListingRequest request) {
         boolean isDraft = request.isDraftMode();
 
-        if (request.getTitle() == null || request.getTitle().isBlank()) {
+        if (!isDraft && (request.getTitle() == null || request.getTitle().isBlank())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
         }
-        if (request.getCategoryId() == null) {
+        if (!isDraft && request.getCategoryId() == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không được để trống");
         }
-        if (request.getPrice() == null) {
+        if (!isDraft && request.getPrice() == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá không được để trống");
         }
 
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+        Category category = null;
+        if (request.getCategoryId() != null) {
+            category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+        }
 
         Address pickup = resolvePickupAddress(seller, request);
+        if (!isDraft && pickup == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Vui lòng chọn địa điểm giao dịch");
+        }
 
         Listing listing = new Listing();
         listing.setSeller(seller);
         listing.setCategory(category);
         listing.setPickupAddress(pickup);
-        listing.setTitle(request.getTitle().trim());
+        String title = request.getTitle() != null ? request.getTitle().trim() : "";
+        listing.setTitle(!title.isBlank() ? title : "Bản nháp chưa đặt tiêu đề");
         listing.setDescription(request.getDescription());
         listing.setPrice(request.normalizedPrice() != null ? request.normalizedPrice() : java.math.BigDecimal.ZERO);
         listing.setItemCondition(normalizeCondition(request.getCondition()));
@@ -379,26 +387,43 @@ public class ListingService {
 
         boolean isDraft = request.isDraftMode();
 
-        if (request.getTitle() == null || request.getTitle().isBlank()) {
+        if (!isDraft && (request.getTitle() == null || request.getTitle().isBlank())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
         }
-        if (request.getCategoryId() == null) {
+        if (!isDraft && request.getCategoryId() == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không được để trống");
         }
-        if (request.getPrice() == null) {
+        if (!isDraft && request.getPrice() == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá không được để trống");
         }
 
-        Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+        Category category = listing.getCategory();
+        if (request.getCategoryId() != null) {
+            category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không tồn tại"));
+        } else if (!isDraft) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Danh mục không được để trống");
+        }
 
         Address pickup = resolvePickupAddress(seller, request);
+        if (!isDraft && pickup == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Vui lòng chọn địa điểm giao dịch");
+        }
 
         listing.setCategory(category);
         listing.setPickupAddress(pickup);
-        listing.setTitle(request.getTitle().trim());
+        String title = request.getTitle() != null ? request.getTitle().trim() : "";
+        if (!title.isBlank()) {
+            listing.setTitle(title);
+        } else if (!isDraft) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Tiêu đề không được để trống");
+        }
         listing.setDescription(request.getDescription());
-        listing.setPrice(request.normalizedPrice() != null ? request.normalizedPrice() : java.math.BigDecimal.ZERO);
+        if (request.normalizedPrice() != null) {
+            listing.setPrice(request.normalizedPrice());
+        } else if (!isDraft) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá không được để trống");
+        }
         listing.setItemCondition(normalizeCondition(request.getCondition()));
         listing.setPurpose(
                 request.getPurpose() != null && !request.getPurpose().isBlank()
@@ -466,7 +491,7 @@ public class ListingService {
         response.setPurpose(listing.getPurpose());
         response.setLocation(resolveLocation(listing));
         response.setCreatedAt(listing.getCreatedAt());
-        response.setImages(findImageUrls(listing.getId()));
+        attachListingImages(response, listing.getId());
         response.setSellerSummary(buildSellerSummary(listing));
         response.setIsGiveaway(listing.getIsGiveaway());
 
@@ -664,12 +689,20 @@ public class ListingService {
                 listing.getPickupAddress().getAddressText());
     }
 
-    private List<String> findImageUrls(Long listingId) {
-        return listingImageRepository
-                .findByListing_IdOrderByDisplayOrderAsc(listingId)
-                .stream()
-                .map(ListingImage::getImageUrl)
-                .toList();
+    private void attachListingImages(ListingResponse response, Long listingId) {
+        List<ListingImage> rows = listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId);
+        response.setImageItems(rows.stream()
+                .map(img -> new ListingImageItemResponse(img.getId(), img.getImageUrl()))
+                .toList());
+        response.setImages(rows.stream().map(ListingImage::getImageUrl).toList());
+    }
+
+    private void attachListingImages(MyListingResponse response, Long listingId) {
+        List<ListingImage> rows = listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(listingId);
+        response.setImageItems(rows.stream()
+                .map(img -> new ListingImageItemResponse(img.getId(), img.getImageUrl()))
+                .toList());
+        response.setImages(rows.stream().map(ListingImage::getImageUrl).toList());
     }
 
     private Sort parseSort(String sort) {
@@ -755,7 +788,7 @@ public class ListingService {
         response.setLocation(resolveLocation(listing));
         response.setCreatedAt(listing.getCreatedAt());
         response.setUpdatedAt(listing.getUpdatedAt());
-        response.setImages(findImageUrls(listing.getId()));
+        attachListingImages(response, listing.getId());
         response.setStatus(listing.getStatus());
         response.setPurpose(listing.getPurpose());
         response.setIsGiveaway(listing.getIsGiveaway());
@@ -793,6 +826,23 @@ public class ListingService {
         }
 
         listing.setStatus("ACTIVE");
+        listing.setUpdatedAt(Instant.now());
+        listingRepository.save(listing);
+    }
+
+    @Transactional
+    public void markSold(Long id, User currentUser) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN);
+        }
+        if (!"ACTIVE".equals(listing.getStatus()) && !"HIDDEN".equals(listing.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh dấu SOLD cho tin ACTIVE/HIDDEN");
+        }
+
+        listing.setStatus("SOLD");
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
     }

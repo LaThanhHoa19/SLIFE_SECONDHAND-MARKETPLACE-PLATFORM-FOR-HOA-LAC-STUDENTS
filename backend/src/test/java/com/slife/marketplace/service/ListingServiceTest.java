@@ -112,6 +112,7 @@ class ListingServiceTest {
         listing.setPickupAddress(address);
 
         ListingImage image = new ListingImage();
+        image.setId(555L);
         image.setImageUrl("https://example.com/iphone.jpg");
 
         Page<Listing> pageData = new PageImpl<>(List.of(listing));
@@ -131,6 +132,9 @@ class ListingServiceTest {
         assertEquals(10L, listingResponse.getId());
         assertEquals("iPhone 12", listingResponse.getTitle());
         assertEquals(List.of("https://example.com/iphone.jpg"), listingResponse.getImages());
+        assertEquals(1, listingResponse.getImageItems().size());
+        assertEquals(555L, listingResponse.getImageItems().get(0).getId());
+        assertEquals("https://example.com/iphone.jpg", listingResponse.getImageItems().get(0).getUrl());
         assertEquals("Máy còn dùng ổn", listingResponse.getDescription());
         assertEquals(new BigDecimal("5000000"), listingResponse.getPrice());
         assertEquals("USED_GOOD", listingResponse.getCondition());

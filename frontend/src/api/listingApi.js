@@ -45,6 +45,10 @@ export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
 export const uploadImages = (id, formData, onUploadProgress) =>
     axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
 
+/** Xóa một ảnh đã lưu (chỉ chủ tin). */
+export const deleteListingImage = (listingId, imageId) =>
+    axiosClient.delete(`/api/listings/${listingId}/images/${imageId}`);
+
 // Comments
 export const getComments = (listingId) => axiosClient.get(`/api/v1/listings/${listingId}/comments`);
 export const createComment = (payload) => axiosClient.post('/api/v1/comments', payload);

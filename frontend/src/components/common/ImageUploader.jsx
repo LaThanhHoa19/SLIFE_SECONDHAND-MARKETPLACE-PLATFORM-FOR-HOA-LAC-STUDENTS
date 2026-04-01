@@ -81,6 +81,23 @@ export default function ImageUploader({
         [existingImages, existingImageUrls],
     );
 
+    /** Studio layout: ảnh server trước, rồi preview file mới — trước đây chỉ render previews nên sửa tin không thấy ảnh cũ. */
+    const studioDisplaySlots = useMemo(() => {
+        const slots = [];
+        resolvedExisting.forEach((ex, i) => {
+            slots.push({
+                kind: 'existing',
+                url: ex.url,
+                existing: ex,
+                key: `ex-${ex.id ?? 'noid'}-${i}-${ex.url}`,
+            });
+        });
+        previews.forEach((url, i) => {
+            slots.push({ kind: 'new', url, fileIndex: i, key: `nw-${i}-${url}` });
+        });
+        return slots;
+    }, [resolvedExisting, previews]);
+
     const handleRemoveExisting = async (imageId) => {
         if (imageId == null || !onRemoveExistingImage) return;
         setRemovingId(imageId);
@@ -354,17 +371,21 @@ export default function ImageUploader({
                             borderRadius: '14px',
                             overflow: 'hidden',
                             position: 'relative',
-                            border: studioHeroTiles[0]?.url ? 'none' : '2px dashed rgba(157,110,237,0.35)',
-                            bgcolor: studioHeroTiles[0]?.url ? 'transparent' : 'rgba(157,110,237,0.04)',
+                            border: studioDisplaySlots[0] ? 'none' : '2px dashed rgba(157,110,237,0.35)',
+                            bgcolor: studioDisplaySlots[0] ? 'transparent' : 'rgba(157,110,237,0.04)',
                         }}
                     >
-                        {studioHeroTiles[0]?.url ? (
+                        {studioDisplaySlots[0] ? (
                             <>
-                                <img src={studioHeroTiles[0].url} alt="" style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
-                                {studioHeroTiles[0].kind === 'preview' ? (
+                                <img
+                                    src={studioDisplaySlots[0].url}
+                                    alt=""
+                                    style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }}
+                                />
+                                {studioDisplaySlots[0].kind === 'new' ? (
                                     <IconButton
                                         size="small"
-                                        onClick={() => removeImage(studioHeroTiles[0].index ?? 0)}
+                                        onClick={() => removeImage(studioDisplaySlots[0].fileIndex)}
                                         sx={{
                                             position: 'absolute',
                                             top: 8,
@@ -375,15 +396,18 @@ export default function ImageUploader({
                                     >
                                         <CloseIcon fontSize="small" />
                                     </IconButton>
-                                ) : (studioHeroTiles[0].kind === 'existing' && studioHeroTiles[0].id != null && onRemoveExistingImage) ? (
+                                ) : null}
+                                {studioDisplaySlots[0].kind === 'existing' &&
+                                studioDisplaySlots[0].existing?.id != null &&
+                                onRemoveExistingImage ? (
                                     <IconButton
                                         type="button"
                                         size="small"
-                                        disabled={removingId === studioHeroTiles[0].id}
+                                        disabled={removingId === studioDisplaySlots[0].existing.id}
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            handleRemoveExisting(studioHeroTiles[0].id);
+                                            handleRemoveExisting(studioDisplaySlots[0].existing.id);
                                         }}
                                         sx={{
                                             position: 'absolute',
@@ -422,58 +446,59 @@ export default function ImageUploader({
                         )}
                     </Box>
                     <Box sx={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 1.5, alignContent: 'flex-start' }}>
-                        {studioHeroTiles.slice(1).map((tile) => {
-                            return (
-                                <Box
-                                    key={tile.key}
-                                    sx={{
-                                        width: TILE_SM,
-                                        height: TILE_SM,
-                                        borderRadius: TILE.radius,
-                                        overflow: 'hidden',
-                                        position: 'relative',
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    <img src={tile.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    {tile.kind === 'preview' ? (
-                                        <IconButton
-                                            size="small"
-                                            onClick={() => removeImage(tile.index)}
-                                            sx={{
-                                                position: 'absolute',
-                                                top: 4,
-                                                right: 4,
-                                                background: 'rgba(0,0,0,0.5)',
-                                                color: '#fff',
-                                            }}
-                                        >
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    ) : (tile.kind === 'existing' && tile.id != null && onRemoveExistingImage) ? (
-                                        <IconButton
-                                            type="button"
-                                            size="small"
-                                            disabled={removingId === tile.id}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleRemoveExisting(tile.id);
-                                            }}
-                                            sx={{
-                                                position: 'absolute',
-                                                top: 4,
-                                                right: 4,
-                                                background: 'rgba(0,0,0,0.5)',
-                                                color: '#fff',
-                                            }}
-                                        >
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    ) : null}
-                                </Box>
-                            );
-                        })}
+                        {studioDisplaySlots.slice(1).map((slot) => (
+                            <Box
+                                key={slot.key}
+                                sx={{
+                                    width: TILE_SM,
+                                    height: TILE_SM,
+                                    borderRadius: TILE.radius,
+                                    overflow: 'hidden',
+                                    position: 'relative',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <img src={slot.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                {slot.kind === 'new' ? (
+                                    <IconButton
+                                        size="small"
+                                        onClick={() => removeImage(slot.fileIndex)}
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 4,
+                                            right: 4,
+                                            background: 'rgba(0,0,0,0.5)',
+                                            color: '#fff',
+                                            '&:hover': { background: 'rgba(0,0,0,0.7)' },
+                                        }}
+                                    >
+                                        <CloseIcon fontSize="small" />
+                                    </IconButton>
+                                ) : null}
+                                {slot.kind === 'existing' && slot.existing?.id != null && onRemoveExistingImage ? (
+                                    <IconButton
+                                        type="button"
+                                        size="small"
+                                        disabled={removingId === slot.existing.id}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleRemoveExisting(slot.existing.id);
+                                        }}
+                                        sx={{
+                                            position: 'absolute',
+                                            top: 4,
+                                            right: 4,
+                                            background: 'rgba(0,0,0,0.5)',
+                                            color: '#fff',
+                                            '&:hover': { background: 'rgba(0,0,0,0.7)' },
+                                        }}
+                                    >
+                                        <CloseIcon fontSize="small" />
+                                    </IconButton>
+                                ) : null}
+                            </Box>
+                        ))}
                         {files.length < cap ? addTile(TILE_SM) : null}
                     </Box>
                 </Box>

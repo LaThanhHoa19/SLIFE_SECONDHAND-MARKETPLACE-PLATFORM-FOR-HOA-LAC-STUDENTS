@@ -368,8 +368,11 @@ export default function ListingForm({
                                         mode = 'create',
                                         /** Override label cho nút submit (vd: trang bản nháp muốn "Đăng tin"). */
                                         submitLabel,
-                                        /** Chế độ sửa: URL ảnh đã lưu (hiển thị + tính đủ điều kiện có ít nhất 1 ảnh). */
+                                        /** Chế độ sửa: chỉ URL (legacy). */
                                         existingImageUrls = [],
+                                        /** Chế độ sửa: [{ id, url }] từ API imageItems — có id mới xóa ảnh được. */
+                                        existingImages = [],
+                                        onRemoveExistingImage,
                                         /** Tối đa ảnh / tin (từ GET /api/listings/form-config), áp ngay khi chọn file. */
                                         maxImagesPerPost = 10,
                                         /** Lỗi từ API sau submit (hiển thị trong form, có thể cuộn tới ảnh). */
@@ -407,7 +410,7 @@ export default function ListingForm({
     const markerRef = useRef(null);       // marker đã xác nhận (đỏ mặc định Vietmap)
     const pendingMarkerRef = useRef(null); // marker đang chờ xác nhận (vàng SVG)
 
-    const { register, handleSubmit, watch, setValue, clearErrors, formState: { errors } } = useForm({
+    const { register, handleSubmit, watch, setValue, clearErrors, getValues, formState: { errors } } = useForm({
         defaultValues: {
             title: '',
             description: '',
@@ -441,8 +444,15 @@ export default function ListingForm({
     const pickupLng = watch('pickupLng');
     const watchedPrice = watch('price');
 
+    const existingForUploader = useMemo(() => {
+        if (Array.isArray(existingImages) && existingImages.length > 0) {
+            return existingImages;
+        }
+        return (existingImageUrls || []).map((u) => ({ id: null, url: u }));
+    }, [existingImages, existingImageUrls]);
+
     const isStudioLayout = layoutVariant === 'createStudio';
-    const hasListingImages = imageFiles.length > 0 || (existingImageUrls?.length > 0);
+    const hasListingImages = imageFiles.length > 0 || (existingForUploader?.length > 0);
     const studioHeading = studioSidebarTitle ?? (mode === 'create' ? 'Đăng tin mới' : 'Chỉnh sửa tin đăng');
     const studioSubmitPrimaryText = submitting
         ? 'Đang xử lý...'
@@ -642,9 +652,11 @@ export default function ListingForm({
     };
 
     const handleSaveDraftSubmit = (values) => {
+        const rawPrice = values?.price ?? '';
+        const digits = String(rawPrice).replace(/\D/g, "");
         const finalValues = {
             ...values,
-            price: Number(values.price.toString().replace(/\D/g, "")),
+            price: digits ? Number(digits) : null,
         };
         onSaveDraft?.(finalValues, imageFiles);
     };
@@ -652,14 +664,13 @@ export default function ListingForm({
     const handleSaveDraftClick = (e) => {
         e.preventDefault();
         if (mode !== 'create') return;
-        if (imageFiles.length === 0) {
-            setImageError('Vui lòng tải lên ít nhất 1 hình ảnh');
-        }
-        handleSubmit(handleSaveDraftSubmit)(e);
+        setImageError('');
+        const values = getValues();
+        handleSaveDraftSubmit(values);
     };
 
     const hasAtLeastOneImage =
-        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingImageUrls) && existingImageUrls.length > 0);
+        imageFiles.length > 0 || (mode === 'edit' && Array.isArray(existingForUploader) && existingForUploader.length > 0);
 
     const handleFilesChange = useCallback((files) => {
         setImageFiles(files);
@@ -1245,8 +1256,10 @@ export default function ListingForm({
                         <Box mb={isStudioLayout ? 0 : 4}>
                             <ImageUploader
                                 onFilesChange={handleFilesChange}
-                                maxFiles={Math.max(0, maxImagesPerPost - (existingImageUrls?.length || 0))}
-                                existingImageUrls={mode === 'edit' ? (existingImageUrls || []) : []}
+                                maxFiles={Math.max(0, maxImagesPerPost - (existingForUploader?.length || 0))}
+                                existingImages={mode === 'edit' ? existingForUploader : []}
+                                existingImageUrls={[]}
+                                onRemoveExistingImage={mode === 'edit' ? onRemoveExistingImage : undefined}
                                 variant={isStudioLayout ? 'studioHero' : 'default'}
                             />
 

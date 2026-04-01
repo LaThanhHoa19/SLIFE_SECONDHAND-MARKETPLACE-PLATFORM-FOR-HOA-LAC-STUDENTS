@@ -71,7 +71,7 @@ public class ListingController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<com.slife.marketplace.dto.response.ListingResponse>> createListingJson(
-            @RequestBody CreateListingRequest request) {
+            @Valid @RequestBody CreateListingRequest request) {
         User seller = userService.getCurrentUser();
         var response = listingService.createListing(seller, request);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
@@ -112,7 +112,21 @@ public class ListingController {
     public ResponseEntity<ApiResponse<Void>> uploadListingImages(
             @PathVariable("id") Long id,
             @RequestPart("images") java.util.List<org.springframework.web.multipart.MultipartFile> images) {
-        listingImageService.uploadListingImages(id, images);
+        User currentUser = userService.getCurrentUser();
+        listingImageService.uploadListingImages(id, images, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * DELETE /api/listings/{id}/images/{imageId}
+     * Xóa một ảnh đã lưu (chỉ chủ tin) — dùng khi sửa tin để thay ảnh.
+     */
+    @DeleteMapping("/{id}/images/{imageId}")
+    public ResponseEntity<ApiResponse<Void>> deleteListingImage(
+            @PathVariable("id") Long id,
+            @PathVariable("imageId") Long imageId) {
+        User currentUser = userService.getCurrentUser();
+        listingImageService.deleteListingImage(id, imageId, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
@@ -256,6 +270,16 @@ public class ListingController {
     public ResponseEntity<ApiResponse<Void>> unhideListing(@PathVariable("id") Long id) {
         User currentUser = userService.getCurrentUser();
         listingService.unhideListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
+    /**
+     * PATCH /api/listings/{id}/sold — Đánh dấu tin đã bán (chỉ seller).
+     */
+    @PatchMapping("/{id}/sold")
+    public ResponseEntity<ApiResponse<Void>> markSold(@PathVariable("id") Long id) {
+        User currentUser = userService.getCurrentUser();
+        listingService.markSold(id, currentUser);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
