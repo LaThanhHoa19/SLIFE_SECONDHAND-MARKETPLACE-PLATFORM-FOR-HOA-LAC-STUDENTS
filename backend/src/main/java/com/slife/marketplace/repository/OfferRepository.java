@@ -4,8 +4,6 @@ import com.slife.marketplace.entity.Offer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,7 +17,6 @@ public interface OfferRepository extends JpaRepository<Offer, Long> {
 
     List<Offer> findByListing_IdAndStatusOrderByCreatedAtDesc(Long listingId, String status);
 
-    /** BR-35: Count how many offers a buyer has submitted for a listing (across all conversations). */
-    @Query("SELECT COUNT(o) FROM Offer o WHERE o.buyer.id = :buyerId AND o.listing.id = :listingId")
-    long countByBuyerIdAndListingId(@Param("buyerId") Long buyerId, @Param("listingId") Long listingId);
+    /** At most one PENDING offer per buyer per listing until seller accepts/rejects (UC-30). */
+    long countByBuyer_IdAndListing_IdAndStatus(Long buyerId, Long listingId, String status);
 }

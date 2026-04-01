@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Avatar, Box, IconButton, InputAdornment, TextField, Typography, 
+import {
+  Avatar, Box, IconButton, InputAdornment, TextField, Typography,
   CircularProgress, Menu, MenuItem, ListItemIcon, ListItemText,
   Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button,
   Tooltip
@@ -37,7 +37,7 @@ export default function ListingComments({ listingId, onNotify }) {
   const [replyingTo, setReplyingTo] = useState(null); // { id, name }
   const [editingComment, setEditingComment] = useState(null); // { id, content }
   const [showAll, setShowAll] = useState(false);
-  
+
   // States for parent-level management
   const [selectedComment, setSelectedComment] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -49,7 +49,7 @@ export default function ListingComments({ listingId, onNotify }) {
       const res = await listingApi.getComments(listingId);
       const data = res?.data?.data || res?.data || [];
       // Sắp xếp mới nhất lên đầu
-      const sorted = Array.isArray(data) ? [...data].sort((a,b) => (b.id - a.id)) : [];
+      const sorted = Array.isArray(data) ? [...data].sort((a, b) => (b.id - a.id)) : [];
       setComments(sorted);
     } catch (err) {
       console.error('Failed to fetch comments:', err);
@@ -114,7 +114,10 @@ export default function ListingComments({ listingId, onNotify }) {
     }
   };
 
-  const CommentItem = ({ comment, depth = 0 }) => {
+  const CommentItem = ({
+    comment, depth = 0, currentUser, editingComment, setEditingComment,
+    handleUpdate, setReplyingTo, setSelectedComment, setDeleteConfirmOpen
+  }) => {
     const author = comment.author || {};
     const authorId = author.userId || author.id;
     const isMyComment = String(authorId) === String(currentUser?.id ?? currentUser?.userId);
@@ -129,8 +132,8 @@ export default function ListingComments({ listingId, onNotify }) {
             component={RouterLink}
             to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
             src={fullImageUrl(author.avatarUrl)}
-            sx={{ 
-              width: 34, height: 34, mt: 0.1, cursor: 'pointer', textDecoration: 'none', 
+            sx={{
+              width: 34, height: 34, mt: 0.1, cursor: 'pointer', textDecoration: 'none',
               bgcolor: PURPLE, border: isMyComment ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`
             }}
           >
@@ -138,8 +141,8 @@ export default function ListingComments({ listingId, onNotify }) {
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {isEditing ? (
-              <Box 
-                sx={{ 
+              <Box
+                sx={{
                   width: '100%', p: 1, borderRadius: '16px', border: `1px solid ${PURPLE}`,
                   animation: 'pulse-glow 2s infinite',
                   '@keyframes pulse-glow': {
@@ -155,6 +158,10 @@ export default function ListingComments({ listingId, onNotify }) {
                   size="small"
                   autoFocus
                   value={editingComment.content}
+                  onFocus={(e) => {
+                    const len = e.currentTarget.value.length;
+                    e.currentTarget.setSelectionRange(len, len);
+                  }}
                   onChange={(e) => setEditingComment({ ...editingComment, content: e.target.value })}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -164,15 +171,15 @@ export default function ListingComments({ listingId, onNotify }) {
                   }}
                 />
                 <Box sx={{ mt: 1, display: 'flex', gap: 2, px: 1 }}>
-                  <Typography 
-                    fontSize={11} fontWeight={700} color={PURPLE} 
+                  <Typography
+                    fontSize={11} fontWeight={700} color={PURPLE}
                     sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
                     onClick={handleUpdate}
                   >
                     LƯU
                   </Typography>
-                  <Typography 
-                    fontSize={11} fontWeight={600} color={TEXT_SEC} 
+                  <Typography
+                    fontSize={11} fontWeight={600} color={TEXT_SEC}
                     sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}
                     onClick={() => setEditingComment(null)}
                   >
@@ -192,12 +199,12 @@ export default function ListingComments({ listingId, onNotify }) {
                     '&:hover .more-btn': { opacity: 1 }
                   }}
                 >
-                  <Typography 
+                  <Typography
                     component={RouterLink}
                     to={authorId === (currentUser?.id ?? currentUser?.userId) ? '/profile' : `/profile/${authorId || ''}`}
-                    fontSize={12} 
-                    fontWeight={800} 
-                    color={PURPLE} 
+                    fontSize={12}
+                    fontWeight={800}
+                    color={PURPLE}
                     sx={{ mb: 0.1, textDecoration: 'none', cursor: 'pointer', '&:hover': { color: '#fff' } }}
                   >
                     {author?.fullName || 'Người dùng'}
@@ -206,34 +213,31 @@ export default function ListingComments({ listingId, onNotify }) {
                     {comment.content}
                   </Typography>
                 </Box>
-                
+
                 {isMyComment && (
-                <Tooltip title="Tùy chọn bình luận">
-                  <IconButton 
-                    size="small" 
-                    className="more-btn"
-                    onClick={(e) => setMenuAnchor(e.currentTarget)}
-                    sx={{ 
-                      ml: 0.5, color: TEXT_SEC, opacity: 0.6, 
-                      transition: 'all 0.2s',
-                      '&:hover': { color: PURPLE, opacity: 1, bgcolor: 'rgba(255,255,255,0.05)' } 
-                    }}
-                  >
-                    <MoreIcon sx={{ fontSize: 18 }} />
-                  </IconButton>
-                </Tooltip>
+                  <Tooltip title="Tùy chọn bình luận">
+                    <IconButton
+                      size="small"
+                      className="more-btn"
+                      onClick={(e) => setMenuAnchor(e.currentTarget)}
+                      sx={{
+                        ml: 0.5, color: TEXT_SEC, opacity: 0.6,
+                        transition: 'all 0.2s',
+                        '&:hover': { color: PURPLE, opacity: 1, bgcolor: 'rgba(255,255,255,0.05)' }
+                      }}
+                    >
+                      <MoreIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </Tooltip>
                 )}
               </Box>
             )}
-            
+
             <Box sx={{ display: 'flex', gap: 2.2, alignItems: 'center', mt: 0.6, pl: 1 }}>
               <Typography fontSize={11} color={TEXT_SEC} sx={{ fontWeight: 500 }}>
                 {formatDate(comment.createdAt)}
               </Typography>
-              <Typography sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}>
-                Thích
-              </Typography>
-              <Typography 
+              <Typography
                 sx={{ cursor: 'pointer', fontSize: 11, fontWeight: 700, color: TEXT_SEC, '&:hover': { color: PURPLE } }}
                 onClick={() => {
                   setReplyingTo({ id: comment.id, name: author?.fullName || 'Người dùng' });
@@ -274,7 +278,18 @@ export default function ListingComments({ listingId, onNotify }) {
         {comment.replies && comment.replies.length > 0 && (
           <Box sx={{ pl: 4.5, mt: 2, borderLeft: `1px solid ${BORDER}`, ml: 2 }}>
             {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} depth={depth + 1} />
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                depth={depth + 1}
+                currentUser={currentUser}
+                editingComment={editingComment}
+                setEditingComment={setEditingComment}
+                handleUpdate={handleUpdate}
+                setReplyingTo={setReplyingTo}
+                setSelectedComment={setSelectedComment}
+                setDeleteConfirmOpen={setDeleteConfirmOpen}
+              />
             ))}
           </Box>
         )}
@@ -282,8 +297,9 @@ export default function ListingComments({ listingId, onNotify }) {
     );
   };
 
+
   return (
-    <Box sx={{ 
+    <Box sx={{
       '&::-webkit-scrollbar': { width: '6px' },
       '&::-webkit-scrollbar-track': { background: 'transparent' },
       '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '10px' },
@@ -345,7 +361,7 @@ export default function ListingComments({ listingId, onNotify }) {
               />
             </>
           ) : (
-            <Box 
+            <Box
               onClick={() => navigate('/login', { state: { from: location.pathname } })}
               sx={{
                 width: '100%', cursor: 'pointer', p: 1.8, px: 2.5,
@@ -371,15 +387,27 @@ export default function ListingComments({ listingId, onNotify }) {
           <Typography fontSize={13} color={TEXT_SEC} textAlign="center" sx={{ py: 4 }}>Chưa có gì ở đây. Hãy mở lời trước nhé!</Typography>
         ) : (
           <Box sx={{ display: 'flex', flexDirection: 'column', pb: 2 }}>
-            {(showAll ? comments : comments.slice(0, 3)).map((c) => (<CommentItem key={c.id} comment={c} />))}
-            
+            {(showAll ? comments : comments.slice(0, 3)).map((c) => (
+              <CommentItem
+                key={c.id}
+                comment={c}
+                currentUser={currentUser}
+                editingComment={editingComment}
+                setEditingComment={setEditingComment}
+                handleUpdate={handleUpdate}
+                setReplyingTo={setReplyingTo}
+                setSelectedComment={setSelectedComment}
+                setDeleteConfirmOpen={setDeleteConfirmOpen}
+              />
+            ))}
+
             {comments.length > 3 && !showAll && (
-              <Typography 
+              <Typography
                 onClick={() => setShowAll(true)}
                 fontSize={13}
                 fontWeight={700}
-                sx={{ 
-                  color: '#fff', 
+                sx={{
+                  color: '#fff',
                   cursor: 'pointer',
                   textAlign: 'center',
                   mt: 2,
@@ -394,6 +422,31 @@ export default function ListingComments({ listingId, onNotify }) {
                 }}
               >
                 Xem thêm {comments.length - 3} bình luận khác
+              </Typography>
+            )}
+            
+            {showAll && comments.length > 3 && (
+              <Typography
+                onClick={() => setShowAll(false)}
+                fontSize={13}
+                fontWeight={700}
+                sx={{
+                  color: TEXT_SEC,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  mt: 2,
+                  py: 1,
+                  bgcolor: 'transparent',
+                  borderRadius: '12px',
+                  width: 'fit-content',
+                  px: 3,
+                  mx: 'auto',
+                  transition: 'all 0.2s',
+                  border: `1px solid ${BORDER}`,
+                  '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.05)' }
+                }}
+              >
+                Thu gọn bình luận
               </Typography>
             )}
           </Box>

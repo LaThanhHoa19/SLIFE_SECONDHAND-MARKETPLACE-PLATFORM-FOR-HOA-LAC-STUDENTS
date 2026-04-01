@@ -111,8 +111,8 @@ public class CommentService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.COMMENT_NOT_FOUND));
 
-        boolean isOwner        = comment.getUser().getId().equals(currentUser.getId());
-        boolean isAdmin        = "ADMIN".equalsIgnoreCase(currentUser.getRole());
+        boolean isOwner = comment.getUser().getId().equals(currentUser.getId());
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(currentUser.getRole());
         boolean isListingOwner = comment.getListing() != null
                 && comment.getListing().getSeller().getId().equals(currentUser.getId());
 
@@ -158,7 +158,8 @@ public class CommentService {
     @Transactional(readOnly = true)
     public List<CommentResponse> getCommentsForListing(Long listingId) {
         List<Comment> all = commentRepository.findByListing_IdOrderByCreatedAtAsc(listingId);
-        if (all.isEmpty()) return List.of();
+        if (all.isEmpty())
+            return List.of();
 
         // Load tat ca images 1 lan cho toan bo comments -> tranh N+1
         Set<Long> commentIds = all.stream().map(Comment::getId).collect(Collectors.toSet());
@@ -202,8 +203,8 @@ public class CommentService {
     }
 
     private List<CommentResponse> buildReplies(Comment parent,
-                                               Map<Long, List<Comment>> childrenByParentId,
-                                               Map<Long, List<String>> imagesByCommentId) {
+            Map<Long, List<Comment>> childrenByParentId,
+            Map<Long, List<String>> imagesByCommentId) {
         List<Comment> children = childrenByParentId.getOrDefault(parent.getId(), List.of());
         return children.stream()
                 .map(child -> toResponse(child,
@@ -223,8 +224,8 @@ public class CommentService {
         User u = c.getUser();
         Map<String, Object> author = new HashMap<>();
         if (u != null) {
-            author.put("userId",    u.getId());
-            author.put("fullName",  u.getFullName());
+            author.put("userId", u.getId());
+            author.put("fullName", u.getFullName());
             author.put("avatarUrl", u.getAvatarUrl());
         }
         res.setAuthor(author);
@@ -236,7 +237,7 @@ public class CommentService {
     }
 
     private void validateContentOrImage(String text, List<String> imageUrls) {
-        boolean hasText  = text != null && !text.isBlank();
+        boolean hasText = text != null && !text.isBlank();
         boolean hasImage = imageUrls != null && !imageUrls.isEmpty();
         if (!hasText && !hasImage) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Comment must have text or at least one image");
@@ -255,7 +256,8 @@ public class CommentService {
     }
 
     private static List<String> sanitize(List<String> urls) {
-        if (urls == null) return Collections.emptyList();
+        if (urls == null)
+            return Collections.emptyList();
         return urls.stream()
                 .filter(u -> u != null && !u.isBlank())
                 .collect(Collectors.toList());

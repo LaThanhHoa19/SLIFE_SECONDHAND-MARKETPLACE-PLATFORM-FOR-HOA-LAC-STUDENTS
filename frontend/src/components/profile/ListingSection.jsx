@@ -32,7 +32,7 @@ export default function ListingSection({
               gridTemplateColumns: isGrid 
                 ? { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)' } 
                 : '1fr',
-              gap: 0,
+              gap: '2.5px', // "1 đường chỉ" - made slightly thicker as requested
             }}
           >
             {listings.map((item) => (

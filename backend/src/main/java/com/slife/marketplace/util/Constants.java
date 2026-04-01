@@ -22,9 +22,6 @@ public final class Constants {
     /** Auto-confirm: days after which deal becomes COMPLETED if no dispute (UC-56). */
     public static final int DEAL_AUTO_COMPLETE_DAYS = 3;
 
-    /** BR-35: Max offer proposals per buyer per listing. */
-    public static final int MAX_OFFERS_PER_LISTING = 5;
-
     /** Max chat image size in bytes (5 MB). */
     public static final long MAX_CHAT_IMAGE_BYTES = 5L * 1024 * 1024;
 

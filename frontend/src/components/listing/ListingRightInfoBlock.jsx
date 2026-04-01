@@ -1,6 +1,7 @@
 import { Box, Divider } from '@mui/material';
 import ListingSummary from './ListingSummary';
 import ListingActions from './ListingActions';
+import ListingOwnerActions from './ListingOwnerActions';
 import ListingSellerInfo from './ListingSellerInfo';
 import ListingOffer from './ListingOffer';
 
@@ -26,8 +27,8 @@ export default function ListingRightInfoBlock({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 3,
-                height: '100%',
-                justifyContent: 'space-between' // Push Offer to bottom
+                // height: '100%', // Remove to prevent stretching
+                // justifyContent: 'space-between' 
             }}
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
@@ -42,12 +43,20 @@ export default function ListingRightInfoBlock({
                 />
 
                 {/* Action Buttons */}
-                {!isOwnListing && (
-                    <ListingActions
-                        phoneNumber={phoneNumber}
-                        startingChat={startingChat}
-                        handleShowPhone={handleShowPhone}
-                        handleChat={handleChat}
+                {!isOwnListing ? (
+                    !(listing.status === 'SOLD' || listing.status === 'HIDDEN') && (
+                        <ListingActions
+                            phoneNumber={phoneNumber}
+                            startingChat={startingChat}
+                            handleShowPhone={handleShowPhone}
+                            handleChat={handleChat}
+                        />
+                    )
+                ) : (
+                    <ListingOwnerActions 
+                        listingId={listing.id}
+                        onNotify={onNotify}
+                        status={listing.status}
                     />
                 )}
 
@@ -66,7 +75,7 @@ export default function ListingRightInfoBlock({
 
             {/* Offer Block - Pushed to bottom if there is space */}
             <Box>
-                {!isOwnListing && !listing.isGiveaway && (
+                {!isOwnListing && !listing.isGiveaway && !(listing.status === 'SOLD' || listing.status === 'HIDDEN') && (
                     <ListingOffer
                         listing={listing}
                         onNotify={onNotify}

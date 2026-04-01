@@ -176,6 +176,8 @@ export default function ListingCard({
 
     const { showToast } = useToast();
 
+    const sellerFollowed = listing?.seller?.isFollowed ?? listing?.isFollowed ?? followed;
+
     useEffect(() => {
         setFollowed(!!listing?.isFollowed);
     }, [listing?.id, listing?.isFollowed]);
@@ -189,7 +191,12 @@ export default function ListingCard({
         setIsSaved(Boolean(listing?.isSaved ?? listing?.is_saved));
     }, [listing?.id, listing?.isSaved, listing?.is_saved]);
 
+    const isSoldOrHidden = listing?.status === 'SOLD' || listing?.itemStatus === 'SOLD' || listing?.status === 'HIDDEN' || listing?.itemStatus === 'HIDDEN';
+
     const handleClick = () => {
+        // Neu da ban hoac an, khong cho phep bam vao trang chi tiet
+        if (isSoldOrHidden) return;
+
         if (onClick) onClick(listing);
         else if (id) navigate(`/listings/${id}`);
     };
@@ -372,7 +379,7 @@ export default function ListingCard({
                                 to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                                 src={fullImageUrl(seller?.avatarUrl)}
                                 alt={seller?.fullName || 'seller'}
-                                sx={{ width: 44, height: 44, cursor: 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
+                                sx={{ width: 44, height: 44, cursor: isSoldOrHidden ? 'default' : 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
                                 onClick={(e) => { e.stopPropagation(); }}
                             >
                                 {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
@@ -455,7 +462,7 @@ export default function ListingCard({
                         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick()}
                         role="button"
                         tabIndex={0}
-                        sx={{ cursor: 'pointer', outline: 'none', mb: images.length ? 1.5 : 0 }}
+                        sx={{ cursor: isSoldOrHidden ? 'default' : 'pointer', outline: 'none', mb: images.length ? 1.5 : 0 }}
                     >
                         <Typography fontSize={15} fontWeight={400} color="rgba(255,255,255,0.95)" sx={{ lineHeight: 1.4, mb: 0.5 }}>
                             {listing?.title || 'Không có tiêu đề'}
@@ -521,7 +528,7 @@ export default function ListingCard({
                         const handleMouseUpOrLeave = () => {
                             if (!isDraggingRef.current || !scrollContainerRef.current) return;
                             isDraggingRef.current = false;
-                            
+
                             const el = scrollContainerRef.current;
                             el.style.cursor = 'grab';
 
@@ -541,8 +548,6 @@ export default function ListingCard({
                             if (movedRef.current > 5) {
                                 e.preventDefault();
                                 e.stopPropagation();
-                            } else {
-                                handleClick();
                             }
                         };
 
@@ -555,10 +560,16 @@ export default function ListingCard({
                                         scrollContainerRef.current = el;
                                         if (!el) return;
                                         const onScroll = () => {
-                                            const w = el.clientWidth * 0.5;
-                                            const idx = w > 0 ? Math.round(el.scrollLeft / w) : 0;
+                                            const total = images.length || 0;
+                                            if (total <= 1) return;
+                                            const maxScroll = el.scrollWidth - el.clientWidth;
+                                            const currentScroll = el.scrollLeft;
+                                            const idx = maxScroll > 0 ? Math.round((currentScroll / maxScroll) * (total - 1)) : 0;
                                             const badge = el.parentElement?.querySelector('[data-img-badge]');
-                                            if (badge) badge.textContent = `${idx + 1}/${images.length}`;
+                                            if (badge) {
+                                                const badgeText = badge.querySelector('.badge-text');
+                                                if (badgeText) badgeText.textContent = `${idx + 1}/${total}`;
+                                            }
                                         };
                                         el.addEventListener('scroll', onScroll, { passive: true });
                                     }}
@@ -589,12 +600,12 @@ export default function ListingCard({
                                             onClick={handleDragItemClick}
                                             sx={{
                                                 flexShrink: 0,
-                                                width: '50%',
+                                                width: images.length === 1 ? '100%' : '50%',
                                                 // scrollSnapAlign removed
-                                                aspectRatio: '1/1',
+                                                aspectRatio: images.length === 1 ? '4/3' : '1/1',
                                                 overflow: 'hidden',
                                                 mr: idx < images.length - 1 ? '4px' : 0,
-                                                cursor: 'pointer',
+                                                cursor: 'inherit',
                                                 transition: 'transform 0.4s cubic-bezier(0.2, 0, 0.4, 1), opacity 0.3s ease, filter 0.3s ease',
                                                 '&:active': { transform: 'scale(0.92)' }, // Individual active scale
                                                 transformOrigin: 'center center',
@@ -641,7 +652,7 @@ export default function ListingCard({
                                         }}
                                     >
                                         <CollectionsIcon sx={{ fontSize: 13 }} />
-                                        {`${images.length}`}
+                                        <span className="badge-text">{`1/${images.length}`}</span>
                                     </Box>
                                 )}
                             </Box>

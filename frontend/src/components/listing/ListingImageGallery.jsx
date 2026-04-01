@@ -68,7 +68,7 @@ export default function ListingImageGallery({
                 sx={{
                     position: 'relative',
                     width: '100%',
-                    paddingTop: '80%', // Cao hơn một chút
+                    paddingTop: '75%', // 4:3 Aspect Ratio (Standard)
                     borderRadius: '16px',
                     overflow: 'hidden',
                     bgcolor: '#2A2535',
