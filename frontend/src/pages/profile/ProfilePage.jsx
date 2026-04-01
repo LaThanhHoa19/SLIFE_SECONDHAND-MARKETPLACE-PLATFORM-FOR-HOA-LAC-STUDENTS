@@ -7,11 +7,17 @@ import {
   Tabs,
   Typography,
   Button,
-  TextField
+  TextField,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import GridOnIcon from '@mui/icons-material/GridOn';
+import ListIcon from '@mui/icons-material/List';
+import StarOutlineIcon from '@mui/icons-material/StarOutline';
 
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
@@ -81,6 +87,7 @@ export default function ProfilePage() {
   const [otpCode, setOtpCode] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState(null);
+  const [viewMode, setViewMode] = useState('grid');
   const { showToast } = useToast();
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
@@ -137,9 +144,26 @@ export default function ProfilePage() {
     if (!profileUser?.id) return;
     setListingsLoading(true);
     try {
+      // 1. Fetch tin đăng bình thường (ACTIVE)
       const res = await getListings({ sellerId: profileUser.id, size: 50 });
       const data = getPayload(res);
-      const list = Array.isArray(data) ? data : data?.content ?? [];
+      let list = Array.isArray(data) ? data : data?.content ?? [];
+
+      // 2. Nếu là trang của chính mình, fetch thêm tin Đã bán (SOLD)
+      if (isMe) {
+        try {
+          const { getMyListings } = await import('../../api/myListingApi');
+          const soldRes = await getMyListings({ status: 'SOLD', size: 50 });
+          const soldData = getPayload(soldRes);
+          const soldList = Array.isArray(soldData) ? soldData : soldData?.content ?? [];
+          
+          // Gộp tin ACTIVE và SOLD vào chung state để render theo Tab
+          list = [...list, ...soldList];
+        } catch (e) {
+          console.error("Lỗi khi tải tin đã bán:", e);
+        }
+      }
+
       setListings(list);
     } catch (err) {
       console.error("Failed to load listings:", err);
@@ -147,7 +171,7 @@ export default function ProfilePage() {
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser?.id, profileUser?.fullName, profileUser?.full_name]);
+  }, [profileUser?.id, isMe]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser?.id) loadListings(); }, [profileUser?.id, loadListings]);
@@ -383,7 +407,8 @@ export default function ProfilePage() {
   const displayCoverUrl = coverPreviewUrl || (fullImageUrl(user.coverImageUrl ?? user.cover_image_url) || user.coverImageUrl);
   const fullName = user.fullName ?? user.full_name ?? 'Người dùng';
   const bio = user.bio || 'Người bán uy tín, chuyên đồ điện tử và gia dụng.';
-  const reputationScore = user.reputationScore ?? user.reputation_score ?? 4.8;
+  const reputationScore = user.reputationScore ?? user.reputation_score ?? 0;
+  const ratingCount = user.ratingCount ?? user.rating_count ?? 0;
   const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
   const phoneVerified = !isMe || !!user.phoneVerified || !!user.phone_verified || !!user.phoneVerifiedAt || !!user.phone_verified_at;
 
@@ -393,7 +418,7 @@ export default function ProfilePage() {
             user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
             handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
             avatarUrl={avatarUrl} displayCoverUrl={displayCoverUrl} fullName={fullName}
-            joinDate={joinDate} reputationScore={reputationScore} ratingCount={137}
+            joinDate={joinDate} reputationScore={reputationScore} ratingCount={ratingCount}
             chatLoading={chatLoading} handleOpenReportDialog={() => setReportDialogOpen(true)}
             handleCoverChange={(e) => handleFileChange(e.target.files[0], 'cover')}
             handleAvatarChange={(e) => handleFileChange(e.target.files[0], 'avatar')}
@@ -407,6 +432,7 @@ export default function ProfilePage() {
             onRequireLogin={() => navigate('/login')}
             followListUserId={followListUserId}
             onOpenFollowList={handleOpenFollowList}
+            listingCount={listings.length}
         />
 
         <FollowListDialog
@@ -416,100 +442,142 @@ export default function ProfilePage() {
             userId={followListUserId}
         />
 
-        <Box sx={{ maxWidth: DETAIL_PAGE_MAX_WIDTH, mx: 'auto', px: { xs: 1.5, sm: 2 } }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '350px 1fr' }, gap: 3, mt: 3 }}>
-            {/* Sidebar: Giới thiệu + Xác minh */}
-            <Box sx={{
-              p: 3,
-              borderRadius: 4,
-              bgcolor: 'rgba(255, 255, 255, 0.03)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              height: 'fit-content'
-            }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>Giới thiệu</Typography>
-              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 4, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>{editing ? editForm.bio : bio}</Typography>
-
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2, color: 'white', letterSpacing: '0.5px' }}>Xác minh thông tin</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 4 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  {phoneVerified
-                      ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
-                      : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
-                  <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>{phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}</Typography>
-                </Box>
-                {isMe && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, mt: 1 }}>
-                    <Box id="firebase-phone-recaptcha" />
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      disabled={sendingPhoneOtp}
-                      onClick={handleRequestPhoneOtp}
-                      sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
-                    >
-                      {sendingPhoneOtp ? 'Đang gửi OTP...' : 'Gửi mã xác thực'}
-                    </Button>
-                    {otpSent && (
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <TextField
-                          size="small"
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="Nhập OTP 6 số"
-                          inputProps={{ maxLength: 6 }}
-                          sx={{
-                            '& .MuiInputBase-root': { color: 'white' },
-                            '& .MuiOutlinedInput-root fieldset': { borderColor: 'rgba(255,255,255,0.2)' }
-                          }}
-                        />
-                        <Button
-                          variant="contained"
-                          size="small"
-                          disabled={verifyingPhoneOtp}
-                          onClick={handleVerifyPhoneOtp}
-                          sx={{ textTransform: 'none' }}
-                        >
-                          {verifyingPhoneOtp ? 'Đang xác thực...' : 'Xác thực OTP'}
-                        </Button>
-                      </Box>
-                    )}
-                  </Box>
-                )}
-              </Box>
-              {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} />}
+        <Box sx={{ maxWidth: 1000, width: { xs: '100%', sm: '86%' }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
+          <Box sx={{ px: { xs: 1.5, sm: 0 }, mb: 2 }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>
+              {editing ? editForm.bio : bio}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              {phoneVerified
+                ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
+                : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}
+              </Typography>
+              {isMe && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={sendingPhoneOtp}
+                  onClick={handleRequestPhoneOtp}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {sendingPhoneOtp ? 'Đang gửi OTP...' : 'Gửi mã xác thực'}
+                </Button>
+              )}
             </Box>
+            {isMe && otpSent && (
+              <Box sx={{ display: 'flex', gap: 1, mt: 1.2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Box id="firebase-phone-recaptcha" />
+                <TextField
+                  size="small"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Nhập OTP 6 số"
+                  inputProps={{ maxLength: 6 }}
+                  sx={{
+                    minWidth: 190,
+                    '& .MuiInputBase-root': { color: 'white' },
+                    '& .MuiOutlinedInput-root fieldset': { borderColor: 'rgba(255,255,255,0.2)' }
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={verifyingPhoneOtp}
+                  onClick={handleVerifyPhoneOtp}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {verifyingPhoneOtp ? 'Đang xác thực...' : 'Xác thực OTP'}
+                </Button>
+              </Box>
+            )}
+          </Box>
 
-            {/* Main Content: Tabs + Content */}
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              bgcolor: 'rgba(255, 255, 255, 0.03)',
-              borderRadius: 4,
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              overflow: 'hidden'
-            }}>
+          {/* Main Content: Tabs + Content */}
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'transparent',
+            borderRadius: 0,
+            overflow: 'hidden'
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
               <Tabs
                   value={tab}
                   onChange={(_, v) => setTab(v)}
+                  centered
                   sx={{
                     px: 2,
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 3 },
-                    '& .MuiTab-root': { color: 'rgba(255, 255, 255, 0.5)', fontWeight: 700, textTransform: 'none', py: 2 },
-                    '& .Mui-selected': { color: '#6366f1 !important' }
+                    '& .MuiTabs-indicator': { 
+                      bgcolor: 'white', 
+                      height: 1.5, 
+                      bottom: 0,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    },
+                    '& .MuiTab-root': { 
+                      color: 'rgba(255, 255, 255, 0.4)', 
+                      fontWeight: 600, 
+                      textTransform: 'uppercase', 
+                      fontSize: '0.75rem',
+                      letterSpacing: '1px',
+                      py: 2,
+                      minWidth: { xs: 80, sm: 160 },
+                      mx: { xs: 0.5, sm: 2 },
+                      flexDirection: 'row',
+                      gap: 1.5,
+                      minHeight: 52,
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '& .MuiSvgIcon-root': {
+                        fontSize: 20,
+                        transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                      },
+                      '&.Mui-selected': { 
+                        color: 'white !important',
+                        '& .MuiSvgIcon-root': { transform: 'scale(1.2)' },
+                      }
+                    }
                   }}
               >
-                {!isMe && <Tab label="Đang bán" />}
-                {!isMe && <Tab label="Đã bán" />}
-                <Tab label="Đánh giá" />
+                <Tab icon={<Tooltip title="Tất cả bài đăng"><GridOnIcon /></Tooltip>} />
+                <Tab icon={<Tooltip title="Bài đăng đã bán"><ShoppingBagIcon /></Tooltip>} />
+                <Tab icon={<Tooltip title="Đánh giá"><StarOutlineIcon /></Tooltip>} />
               </Tabs>
-              <Box sx={{ flex: 1, p: { xs: 2, sm: 3 } }}>
-                {!isMe && tab === 0 && <ListingSection isMe={false} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 5)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-                {!isMe && tab === 1 && <ListingSection isMe={false} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
-                {((!isMe && tab === 2) || (isMe && tab === 0)) && <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 5)} showAll={showAllReviews} setShowAll={setShowAllReviews} />}
+
+              {/* Grid/List View Filter */}
+              <Box sx={{ 
+                position: 'absolute', 
+                right: 0, 
+                height: '100%', 
+                display: { xs: 'none', sm: 'flex' }, 
+                alignItems: 'center', 
+                gap: 1, 
+                pr: 2 
+              }}>
+                <IconButton 
+                  onClick={() => setViewMode('grid')} 
+                  sx={{ color: viewMode === 'grid' ? '#0095f6' : 'rgba(255,255,255,0.3)' }}
+                >
+                  <GridOnIcon fontSize="small" />
+                </IconButton>
+                <IconButton 
+                  onClick={() => setViewMode('list')} 
+                  sx={{ color: viewMode === 'list' ? '#0095f6' : 'rgba(255,255,255,0.3)' }}
+                >
+                  <ListIcon fontSize="small" />
+                </IconButton>
               </Box>
+            </Box>
+
+            <Box sx={{ flex: 1, p: { xs: 0.1, sm: 0.5 } }}>
+              {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {tab === 2 && (
+                <Box sx={{ px: { xs: 1.5, sm: 3 }, py: 3 }}>
+                  {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} sx={{ mb: 3 }} />}
+                  <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 12)} showAll={showAllReviews} setShowAll={setShowAllReviews} />
+                </Box>
+              )}
             </Box>
           </Box>
         </Box>

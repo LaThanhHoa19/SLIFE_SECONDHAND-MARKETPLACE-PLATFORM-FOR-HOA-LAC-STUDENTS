@@ -12,28 +12,13 @@ export default function ListingSection({
   onNavigateNew,
   onNavigateDetail,
   emptyMessage,
-  isSold = false
+  isSold = false,
+  viewMode = 'grid'
 }) {
+  const isGrid = viewMode === 'grid';
+
   return (
     <Box>
-      {isMe && !isSold && (
-        <Button
-          startIcon={<AddIcon />}
-          variant="contained"
-          sx={{
-            mb: 3,
-            borderRadius: 2,
-            textTransform: 'none',
-            fontWeight: 700,
-            bgcolor: PURPLE,
-            boxShadow: '0 4px 12px rgba(157, 110, 237, 0.3)',
-            '&:hover': { bgcolor: '#835cd4' },
-          }}
-          onClick={onNavigateNew}
-        >
-          Đăng tin mới
-        </Button>
-      )}
 
       {listings.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8 }}>
@@ -44,8 +29,10 @@ export default function ListingSection({
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(auto-fill, minmax(180px, 1fr))' },
-              gap: 2,
+              gridTemplateColumns: isGrid 
+                ? { xs: 'repeat(3, 1fr)', sm: 'repeat(4, 1fr)' } 
+                : '1fr',
+              gap: '2.5px', // "1 đường chỉ" - made slightly thicker as requested
             }}
           >
             {listings.map((item) => (
@@ -53,10 +40,11 @@ export default function ListingSection({
                 key={item.id}
                 listing={isSold ? { ...item, status: 'SOLD' } : item}
                 onClick={onNavigateDetail}
+                viewMode={viewMode}
               />
             ))}
           </Box>
-          {listings.length >= 5 && (
+          {listings.length >= 12 && (
             <Box sx={{ mt: 4, textAlign: 'center' }}>
               <Button
                 variant="outlined"
