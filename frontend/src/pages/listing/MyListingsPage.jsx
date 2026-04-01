@@ -56,6 +56,7 @@ const TAB_CONTEXT_PHRASE = {
     HIDDEN:   'đã ẩn',
     DRAFT:    'bản nháp',
     EXPIRED:  'hết hạn',
+    SOLD:     'đã bán',
     REPORTED: 'bị báo cáo',
 };
 

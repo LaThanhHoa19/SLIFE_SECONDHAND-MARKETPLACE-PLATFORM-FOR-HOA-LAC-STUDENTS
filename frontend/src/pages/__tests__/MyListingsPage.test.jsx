@@ -43,9 +43,9 @@ describe('MyListingsPage', () => {
 // ─── Tab configuration ─────────────────────────────────────────────────────
 
 describe('MyListingsPage — Cấu hình Tabs', () => {
-    it('nên có 5 tabs (không gồm Chờ duyệt / Bị từ chối)', () => {
-        expect(TABS).toHaveLength(5);
-        expect(TABS.map((t) => t.value)).toEqual(['ACTIVE', 'HIDDEN', 'DRAFT', 'EXPIRED', 'REPORTED']);
+    it('nên có 6 tabs gồm Đã bán (SOLD), không gồm Chờ duyệt / Bị từ chối', () => {
+        expect(TABS).toHaveLength(6);
+        expect(TABS.map((t) => t.value)).toEqual(['ACTIVE', 'HIDDEN', 'DRAFT', 'EXPIRED', 'SOLD', 'REPORTED']);
     });
 
     it.each(TABS)('nên có tab value=$value với label=$label', ({ value, label }) => {
@@ -159,14 +159,15 @@ describe('MyListingsPage — Empty State Messages', () => {
         HIDDEN:   { icon: '👁️', text: 'Bạn chưa ẩn bài đăng nào.' },
         DRAFT:    { icon: '📝', text: 'Chưa có bản nháp nào được lưu.' },
         EXPIRED:  { icon: '⏳', text: 'Không có tin đăng nào hết hạn.' },
+        SOLD:     { icon: '✅', text: 'Các tin bạn đánh dấu đã bán sẽ hiển thị ở đây.' },
         REPORTED: { icon: '🛡️', text: 'Không có tin đăng nào bị báo cáo.' },
     };
 
-    it('nên có thông báo trống cho cả 5 tabs', () => {
-        expect(Object.keys(EMPTY_MESSAGES)).toHaveLength(5);
+    it('nên có thông báo trống cho cả 6 tabs', () => {
+        expect(Object.keys(EMPTY_MESSAGES)).toHaveLength(6);
     });
 
-    it.each(['ACTIVE', 'HIDDEN', 'DRAFT', 'EXPIRED', 'REPORTED'])(
+    it.each(['ACTIVE', 'HIDDEN', 'DRAFT', 'EXPIRED', 'SOLD', 'REPORTED'])(
         'nên có icon và text cho tab %s',
         (tab) => {
             expect(EMPTY_MESSAGES[tab].icon).toBeTruthy();
