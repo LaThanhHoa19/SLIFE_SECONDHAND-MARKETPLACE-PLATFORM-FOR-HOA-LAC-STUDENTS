@@ -40,6 +40,7 @@ import {
     SuspenseStitchLandingPage,
     SuspenseSearchPage,
     SuspenseAdminLoginPage,
+    SuspenseTermsPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -108,6 +109,7 @@ export default function AppRouter() {
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
+                <Route path="/terms" element={<SuspenseTermsPage />} />
 
                 {/* Google OAuth2 redirect callback — no guard, no layout needed */}
                 <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />

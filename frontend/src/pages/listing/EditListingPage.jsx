@@ -37,7 +37,13 @@ function mapListingToFormDefaults(data) {
         }
     }
 
-    const isGiveaway = data?.isGiveaway === true || data?.purpose === 'GIVEAWAY';
+    const isGiveaway =
+        data?.isGiveaway === true ||
+        data?.purpose === 'GIVEAWAY' ||
+        (priceDigits !== '' && Number(priceDigits) === 0);
+
+    const categoryIdRaw = data?.categoryId ?? data?.category?.id ?? data?.category?.categoryId;
+    const categoryNameRaw = data?.categoryName ?? data?.category?.name;
 
     return {
         title: data?.title ?? '',
