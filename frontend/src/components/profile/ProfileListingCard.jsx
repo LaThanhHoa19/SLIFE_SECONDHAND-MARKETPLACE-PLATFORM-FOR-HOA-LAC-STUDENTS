@@ -174,10 +174,10 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
             position: 'relative'
           }}
         >
-          {thumb ? (
+          {currentImg ? (
             <CardMedia
               component="img"
-              image={thumb}
+              image={currentImg}
               alt={title}
               sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
