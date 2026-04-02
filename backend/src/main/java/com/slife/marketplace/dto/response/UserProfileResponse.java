@@ -16,6 +16,8 @@ public class UserProfileResponse {
     private String email;
     private String fullName;
     private String phoneNumber;
+    private Boolean phoneVerified;
+    private LocalDateTime phoneVerifiedAt;
     private String avatarUrl;
     private String coverImageUrl;
     private String bio;
@@ -57,6 +59,8 @@ public class UserProfileResponse {
         r.setEmail(user.getEmail());
         r.setFullName(user.getFullName());
         r.setPhoneNumber(user.getPhoneNumber());
+        r.setPhoneVerifiedAt(user.getPhoneVerifiedAt());
+        r.setPhoneVerified(user.getPhoneVerifiedAt() != null);
         r.setAvatarUrl(user.getAvatarUrl());
         r.setCoverImageUrl(user.getCoverImageUrl());
         r.setBio(user.getBio());

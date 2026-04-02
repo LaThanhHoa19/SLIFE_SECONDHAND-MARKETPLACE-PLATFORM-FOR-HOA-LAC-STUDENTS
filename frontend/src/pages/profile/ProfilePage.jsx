@@ -7,9 +7,11 @@ import {
   Tabs,
   Typography,
   Button,
+  TextField,
   IconButton,
   Tooltip
 } from '@mui/material';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -29,6 +31,7 @@ import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
+import { firebaseAuth } from '../../lib/firebase';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -79,10 +82,16 @@ export default function ProfilePage() {
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const { showToast } = useToast();
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
+  const recaptchaVerifierRef = useRef(null);
   const { followLoading, toggleFollow } = useFollowActions({
     user: currentUser,
     updateAuthUser,
@@ -175,6 +184,12 @@ export default function ProfilePage() {
       });
     }
   }, [profileUser]);
+  useEffect(() => () => {
+    if (recaptchaVerifierRef.current) {
+      try { recaptchaVerifierRef.current.clear(); } catch (_) { /* noop */ }
+      recaptchaVerifierRef.current = null;
+    }
+  }, []);
 
   const handleSave = async () => {
     if (!isMe) return;
@@ -191,6 +206,110 @@ export default function ProfilePage() {
     } catch (err) {
       setError(err?.message || err?.response?.data?.message || 'Cập nhật thất bại.');
     } finally { setSaving(false); }
+  };
+
+  const handleRequestPhoneOtp = async () => {
+    const sourcePhone = (editing ? editForm.phoneNumber : (profileUser?.phoneNumber ?? profileUser?.phone_number ?? '')).trim();
+    if (!sourcePhone) {
+      showToast('Vui lòng nhập số điện thoại trước khi xác thực.', 'warning');
+      return;
+    }
+    setSendingPhoneOtp(true);
+    try {
+      const normalizedPhone = sourcePhone.startsWith('+')
+        ? sourcePhone
+        : sourcePhone.replace(/^0/, '+84');
+
+      // Always recreate verifier cleanly to avoid duplicate-render errors.
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear(); } catch (_) { /* noop */ }
+        recaptchaVerifierRef.current = null;
+      }
+      const recaptchaContainer = document.getElementById('firebase-phone-recaptcha');
+      if (recaptchaContainer) {
+        recaptchaContainer.innerHTML = '';
+      }
+      recaptchaVerifierRef.current = new RecaptchaVerifier(firebaseAuth, 'firebase-phone-recaptcha', {
+        // Invisible reCAPTCHA: user does not need to click checkbox in normal flow.
+        size: 'invisible',
+      });
+      await recaptchaVerifierRef.current.render();
+
+      const result = await signInWithPhoneNumber(firebaseAuth, normalizedPhone, recaptchaVerifierRef.current);
+      console.info('[PhoneVerify] send OTP success', {
+        phone: normalizedPhone,
+        origin: window.location.origin,
+        host: window.location.host,
+        firebaseProjectId: firebaseAuth?.app?.options?.projectId,
+      });
+      setConfirmationResult(result);
+      setOtpSent(true);
+      showToast('Đã gửi mã OTP. Vui lòng kiểm tra điện thoại.', 'success');
+    } catch (err) {
+      const code = err?.code || '';
+      console.error('[PhoneVerify] send OTP failed', {
+        code,
+        message: err?.message,
+        name: err?.name,
+        origin: window.location.origin,
+        host: window.location.host,
+        phoneInput: sourcePhone,
+        normalizedPhone: sourcePhone.startsWith('+') ? sourcePhone : sourcePhone.replace(/^0/, '+84'),
+        firebaseProjectId: firebaseAuth?.app?.options?.projectId,
+        recaptchaExists: !!recaptchaVerifierRef.current,
+      });
+      if (code === 'auth/invalid-app-credential') {
+        showToast('Firebase app credential không hợp lệ. Hãy kiểm tra Authorized domains, reCAPTCHA và billing.', 'error');
+      } else {
+        showToast(err?.message || 'Gửi OTP thất bại.', 'error');
+      }
+      if (recaptchaVerifierRef.current) {
+        try { recaptchaVerifierRef.current.clear(); } catch (_) { /* noop */ }
+        recaptchaVerifierRef.current = null;
+      }
+    } finally {
+      setSendingPhoneOtp(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!confirmationResult) {
+      showToast('Bạn cần gửi OTP trước.', 'warning');
+      return;
+    }
+    if (!otpCode || otpCode.trim().length !== 6) {
+      showToast('OTP phải gồm 6 chữ số.', 'warning');
+      return;
+    }
+    setVerifyingPhoneOtp(true);
+    try {
+      const credential = await confirmationResult.confirm(otpCode.trim());
+      const idToken = await credential.user.getIdToken();
+      const res = await userApi.verifyPhoneWithFirebase({ idToken });
+      console.info('[PhoneVerify] confirm OTP success', {
+        origin: window.location.origin,
+        host: window.location.host,
+        firebaseProjectId: firebaseAuth?.app?.options?.projectId,
+      });
+      const updated = getPayload(res);
+      if (updated) {
+        setProfileUser((prev) => ({ ...prev, ...updated }));
+        if (updateAuthUser) updateAuthUser(updated);
+      }
+      setOtpCode('');
+      setOtpSent(false);
+      setConfirmationResult(null);
+      showToast('Xác thực số điện thoại thành công.', 'success');
+    } catch (err) {
+      console.error('[PhoneVerify] confirm OTP failed', {
+        code: err?.code,
+        message: err?.message,
+        name: err?.name,
+      });
+      showToast(err?.message || 'Xác thực OTP thất bại.', 'error');
+    } finally {
+      setVerifyingPhoneOtp(false);
+    }
   };
 
   const handleFileChange = async (file, type) => {
@@ -291,7 +410,7 @@ export default function ProfilePage() {
   const reputationScore = user.reputationScore ?? user.reputation_score ?? 0;
   const ratingCount = user.ratingCount ?? user.rating_count ?? 0;
   const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
+  const phoneVerified = !isMe || !!user.phoneVerified || !!user.phone_verified || !!user.phoneVerifiedAt || !!user.phone_verified_at;
 
   return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: 6 }}>
@@ -324,6 +443,57 @@ export default function ProfilePage() {
         />
 
         <Box sx={{ maxWidth: 1000, width: { xs: '100%', sm: '86%' }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
+          <Box sx={{ px: { xs: 1.5, sm: 0 }, mb: 2 }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>
+              {editing ? editForm.bio : bio}
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              {isMe && <Box id="firebase-phone-recaptcha" sx={{ display: 'none' }} />}
+              {phoneVerified
+                ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
+                : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
+              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                {phoneVerified ? 'Số điện thoại đã xác minh' : 'Số điện thoại chưa xác minh'}
+              </Typography>
+              {isMe && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  disabled={sendingPhoneOtp}
+                  onClick={handleRequestPhoneOtp}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {sendingPhoneOtp ? 'Đang gửi OTP...' : 'Gửi mã xác thực'}
+                </Button>
+              )}
+            </Box>
+            {isMe && otpSent && (
+              <Box sx={{ display: 'flex', gap: 1, mt: 1.2, alignItems: 'center', flexWrap: 'wrap' }}>
+                <TextField
+                  size="small"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Nhập OTP 6 số"
+                  inputProps={{ maxLength: 6 }}
+                  sx={{
+                    minWidth: 190,
+                    '& .MuiInputBase-root': { color: 'white' },
+                    '& .MuiOutlinedInput-root fieldset': { borderColor: 'rgba(255,255,255,0.2)' }
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={verifyingPhoneOtp}
+                  onClick={handleVerifyPhoneOtp}
+                  sx={{ textTransform: 'none' }}
+                >
+                  {verifyingPhoneOtp ? 'Đang xác thực...' : 'Xác thực OTP'}
+                </Button>
+              </Box>
+            )}
+          </Box>
+
           {/* Main Content: Tabs + Content */}
           <Box sx={{
             display: 'flex',
