@@ -129,9 +129,24 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     Page<Listing> findBySellerAndStatus(User seller, String status, Pageable pageable);
 
     /**
-     * Tin hết hạn theo ngày (kể cả HIDDEN nếu đã quá expirationDate) — tránh trùng tab với {@link #findHiddenNotExpiredBySeller}.
+     * Nhiều status, không lọc theo expirationDate (dùng khi cần đủ mọi tin trong các status đó).
+     * Tab "Đã ẩn" của My Listings nên dùng {@link #findHiddenNotExpiredBySeller} hoặc
+     * {@link #findBySellerAndStatusInAndNotExpiredWhen} với {@code notExpiredOnly = true}.
      */
     Page<Listing> findBySellerAndStatusIn(User seller, List<String> statuses, Pageable pageable);
+
+    /**
+     * Seller + danh sách status + tùy chọn lọc "chưa hết hạn" ({@code expirationDate} null hoặc &gt;= hiện tại).
+     * {@code notExpiredOnly = false} → hành vi gần giống {@link #findBySellerAndStatusIn}.
+     * {@code notExpiredOnly = true} → thêm điều kiện ngày (dùng cho tab Đã ẩn, tránh trùng EXPIRED).
+     */
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller AND l.status IN :statuses AND "
+            + "((:notExpiredOnly) = false OR l.expirationDate IS NULL OR l.expirationDate >= CURRENT_TIMESTAMP)")
+    Page<Listing> findBySellerAndStatusInAndNotExpiredWhen(
+            @Param("seller") User seller,
+            @Param("statuses") List<String> statuses,
+            @Param("notExpiredOnly") boolean notExpiredOnly,
+            Pageable pageable);
 
     @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
             "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
@@ -139,12 +154,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
 
     /**
-     * Tab "Đã ẩn": chỉ HIDDEN và chưa quá hạn (null expiration hoặc expirationDate &gt;= hiện tại).
-     * Tin HIDDEN nhưng expirationDate đã qua chỉ hiển thị ở tab hết hạn.
+     * Tab "Đã ẩn": HIDDEN + MOD_HIDDEN và chưa quá hạn — uỷ quyền cho
+     * {@link #findBySellerAndStatusInAndNotExpiredWhen} (một nguồn điều kiện ngày).
      */
-    @Query("SELECT l FROM Listing l WHERE l.seller = :seller AND l.status = 'HIDDEN' " +
-            "AND (l.expirationDate IS NULL OR l.expirationDate >= CURRENT_TIMESTAMP)")
-    Page<Listing> findHiddenNotExpiredBySeller(@Param("seller") User seller, Pageable pageable);
+    default Page<Listing> findHiddenNotExpiredBySeller(User seller, Pageable pageable) {
+        return findBySellerAndStatusInAndNotExpiredWhen(
+                seller, List.of("HIDDEN", "MOD_HIDDEN"), true, pageable);
+    }
 
     @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
             "AND EXISTS (SELECT r FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = l.id) " +

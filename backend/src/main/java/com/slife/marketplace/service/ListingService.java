@@ -786,7 +786,7 @@ public class ListingService {
         } else if (LISTING_STATUS_EXPIRED.equalsIgnoreCase(status)) {
             pageResult = listingRepository.findExpiredListingsBySeller(currentUser, pageable);
         } else if (LISTING_STATUS_HIDDEN.equalsIgnoreCase(status)) {
-            pageResult = listingRepository.findBySellerAndStatusIn(currentUser, List.of(LISTING_STATUS_HIDDEN, LISTING_STATUS_MOD_HIDDEN), pageable);
+            pageResult = listingRepository.findHiddenNotExpiredBySeller(currentUser, pageable);
         } else if (status != null && !status.isBlank()) {
             pageResult = listingRepository.findBySellerAndStatus(currentUser, status.toUpperCase(), pageable);
         } else {
