@@ -193,7 +193,8 @@ export default function ListingCard({
         setIsSaved(Boolean(listing?.isSaved ?? listing?.is_saved));
     }, [listing?.id, listing?.isSaved, listing?.is_saved]);
 
-    const isSoldOrHidden = listing?.status === 'SOLD' || listing?.itemStatus === 'SOLD' || listing?.status === 'HIDDEN' || listing?.itemStatus === 'HIDDEN';
+    const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
+    const isSoldOrHidden = normalizedStatus === 'SOLD' || normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN';
 
     const handleClick = () => {
         // Neu da ban hoac an, khong cho phep bam vao trang chi tiet

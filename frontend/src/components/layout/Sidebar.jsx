@@ -1,5 +1,5 @@
 /** Mục đích: Sidebar nền tối kiểu modern với active rõ và logout sticky. Responsive: co lại khi !open. */
-import { Box, Typography, IconButton, Tooltip, Button, Divider, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Typography, Tooltip, Button, Divider, useTheme, useMediaQuery } from '@mui/material';
 import {
     Home as HomeIcon,
     Bookmark as BookmarkIcon,
@@ -20,10 +20,10 @@ export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { isAuthenticated, user, logout } = useAuth();
-    
+
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    
+
     let NAV_ITEMS = [
         { label: 'Feed', icon: HomeIcon, path: '/feed' },
         { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
@@ -39,11 +39,15 @@ export default function Sidebar({ open = true }) {
             ...NAV_ITEMS
         ];
     }
-    
-    const currentWidth = open ? SIDEBAR_WIDTH : SIDEBAR_MINI_WIDTH;
+
+    const isListingDetailView = location.pathname.startsWith('/listings/')
+        && !location.pathname.endsWith('/new')
+        && !location.pathname.endsWith('/edit');
+    const shouldCompressInDetail = isListingDetailView && open && !isMobile;
+    const currentWidth = shouldCompressInDetail ? Math.max(208, SIDEBAR_WIDTH - 32) : (open ? SIDEBAR_WIDTH : SIDEBAR_MINI_WIDTH);
 
     // Config: độ rộng của thanh menu khi mở (để ngắn hơn Sidebar_width, nằm giữa)
-    const OPEN_PILL_WIDTH = '180px';
+    const OPEN_PILL_WIDTH = shouldCompressInDetail ? '168px' : '180px';
     const CLOSED_PILL_WIDTH = '44px'; // Độ rộng của khối tròn khi đóng
 
     const handleNavClick = (path) => {
@@ -82,8 +86,8 @@ export default function Sidebar({ open = true }) {
                 width: currentWidth,
                 minWidth: currentWidth,
                 height: `calc(100vh - ${SIDEBAR_TOP_OFFSET}px)`,
-                backgroundColor: APP_SHELL_BG,
-                borderRight: '1px solid rgba(255,255,255,0.06)',
+                backgroundColor: isListingDetailView ? 'rgba(20,18,37,0.52)' : APP_SHELL_BG,
+                borderRight: isListingDetailView ? '1px solid rgba(255,255,255,0.03)' : '1px solid rgba(255,255,255,0.06)',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'sticky',
@@ -114,17 +118,25 @@ export default function Sidebar({ open = true }) {
                                     borderRadius: '22px',
                                     mb: 0.8,
                                     background: active
-                                        ? (path === '/listings/new' ? 'linear-gradient(135deg, #FF6B6B 10%, #EE5253 100%)' : 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)')
+                                        ? (path === '/listings/new'
+                                            ? (isListingDetailView ? 'linear-gradient(135deg, rgba(255,107,107,0.86) 10%, rgba(238,82,83,0.86) 100%)' : 'linear-gradient(135deg, #FF6B6B 10%, #EE5253 100%)')
+                                            : (isListingDetailView ? 'linear-gradient(135deg, rgba(167,139,250,0.82) 0%, rgba(157,110,237,0.82) 100%)' : 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'))
                                         : 'transparent',
-                                    border: active ? '1px solid rgba(255,255,255,0.2)' : (path === '/listings/new' ? '1px solid rgba(255,107,107,0.3)' : '1px solid transparent'),
-                                    boxShadow: active ? (path === '/listings/new' ? '0 8px 24px rgba(238, 82, 83, 0.4)' : '0 8px 24px rgba(157, 110, 237, 0.4)') : 'none',
-                                    transform: open && active ? 'translateX(4px)' : 'none',
+                                    border: active
+                                        ? (isListingDetailView ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(255,255,255,0.2)')
+                                        : (path === '/listings/new' ? '1px solid rgba(255,107,107,0.3)' : '1px solid transparent'),
+                                    boxShadow: active
+                                        ? (path === '/listings/new'
+                                            ? (isListingDetailView ? '0 6px 18px rgba(238, 82, 83, 0.28)' : '0 8px 24px rgba(238, 82, 83, 0.4)')
+                                            : (isListingDetailView ? '0 6px 18px rgba(157, 110, 237, 0.26)' : '0 8px 24px rgba(157, 110, 237, 0.4)'))
+                                        : 'none',
+                                    transform: open && active ? (shouldCompressInDetail ? 'translateX(2px)' : 'translateX(4px)') : 'none',
                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                     '&:hover': {
                                         background: active
                                             ? (path === '/listings/new' ? 'linear-gradient(135deg, #FF6B6B 0%, #EE5253 100%)' : 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)')
                                             : 'rgba(255,255,255,0.06)',
-                                        transform: open ? 'translateX(6px)' : 'none',
+                                        transform: open ? (shouldCompressInDetail ? 'translateX(3px)' : 'translateX(6px)') : 'none',
                                     },
                                     overflow: 'hidden',
                                 }}
@@ -132,7 +144,11 @@ export default function Sidebar({ open = true }) {
                                 <Icon
                                     sx={{
                                         fontSize: 20,
-                                        color: active ? '#FFFFFF' : (path === '/listings/new' ? '#FF6B6B' : 'rgba(226,232,240,0.6)'),
+                                        color: active
+                                            ? '#FFFFFF'
+                                            : (path === '/listings/new'
+                                                ? (isListingDetailView ? 'rgba(255,107,107,0.84)' : '#FF6B6B')
+                                                : (isListingDetailView ? 'rgba(226,232,240,0.5)' : 'rgba(226,232,240,0.6)')),
                                         flexShrink: 0,
                                         ml: open ? 2 : '12px',
                                         transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -143,7 +159,11 @@ export default function Sidebar({ open = true }) {
                                         fontSize: 14,
                                         fontWeight: active ? 800 : 700,
                                         fontFamily: "'Outfit', sans-serif",
-                                        color: active ? '#FFFFFF' : (path === '/listings/new' ? '#FF6B6B' : 'rgba(226,232,240,0.7)'),
+                                        color: active
+                                            ? '#FFFFFF'
+                                            : (path === '/listings/new'
+                                                ? (isListingDetailView ? 'rgba(255,107,107,0.86)' : '#FF6B6B')
+                                                : (isListingDetailView ? 'rgba(226,232,240,0.58)' : 'rgba(226,232,240,0.7)')),
                                         whiteSpace: 'nowrap',
                                         ml: 1.5,
                                         opacity: open ? 1 : 0,
@@ -180,19 +200,19 @@ export default function Sidebar({ open = true }) {
                                 : 'transparent',
                             boxShadow: isActive('/community') ? '0 8px 24px rgba(157, 110, 237, 0.4)' : 'none',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': { 
+                            '&:hover': {
                                 backgroundColor: isActive('/community') ? undefined : 'rgba(255,255,255,0.06)',
                                 transform: open && !isActive('/community') ? 'translateX(4px)' : 'none',
                             },
                             overflow: 'hidden',
                         }}
                     >
-                        <PeopleIcon sx={{ 
-                            fontSize: 20, 
-                            color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.6)', 
-                            flexShrink: 0, 
-                            ml: open ? 2 : '12px', 
-                            transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+                        <PeopleIcon sx={{
+                            fontSize: 20,
+                            color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.6)',
+                            flexShrink: 0,
+                            ml: open ? 2 : '12px',
+                            transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                         }} />
                         <Typography
                             sx={{

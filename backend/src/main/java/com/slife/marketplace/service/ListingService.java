@@ -491,6 +491,8 @@ public class ListingService {
         response.setItemCondition(listing.getItemCondition());
         response.setPurpose(listing.getPurpose());
         response.setLocation(resolveLocation(listing));
+        response.setStatus(listing.getStatus());
+        response.setItemStatus(listing.getStatus());
         response.setCreatedAt(listing.getCreatedAt());
         attachListingImages(response, listing.getId());
         response.setSellerSummary(buildSellerSummary(listing));

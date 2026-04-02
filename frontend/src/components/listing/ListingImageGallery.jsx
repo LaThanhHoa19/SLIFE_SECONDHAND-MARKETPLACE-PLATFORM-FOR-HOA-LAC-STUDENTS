@@ -68,10 +68,12 @@ export default function ListingImageGallery({
                 sx={{
                     position: 'relative',
                     width: '100%',
-                    paddingTop: '75%', // 4:3 Aspect Ratio (Standard)
+                    paddingTop: { xs: '78%', md: '72%' },
                     borderRadius: '16px',
                     overflow: 'hidden',
                     bgcolor: '#2A2535',
+                    border: `1px solid ${BORDER}`,
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.28)',
                     cursor: src ? 'zoom-in' : 'default',
                     '&:hover .zoom-overlay': { opacity: 1 },
                 }}
@@ -159,7 +161,7 @@ export default function ListingImageGallery({
                 )}
 
                 {/* Lưu tin (bookmark) + Share + Report góc phải trên */}
-                <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 1 }}>
+                <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 1.2 }}>
                     <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
             <span>
             <IconButton
@@ -169,14 +171,14 @@ export default function ListingImageGallery({
                 sx={{
                     bgcolor: 'rgba(0,0,0,0.55)',
                     color: isSaved ? PURPLE : '#fff',
-                    width: 36,
-                    height: 36,
+                    width: 34,
+                    height: 34,
                     backdropFilter: 'blur(4px)',
                     transition: 'all 0.2s',
                     '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.05)' },
                 }}
             >
-              {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+              {isSaved ? <BookmarkIcon sx={{ fontSize: 17 }} /> : <BookmarkBorderIcon sx={{ fontSize: 17 }} />}
             </IconButton>
             </span>
                     </Tooltip>
@@ -186,12 +188,12 @@ export default function ListingImageGallery({
                             onClick={onShare}
                             sx={{
                                 bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
-                                width: 36, height: 36, backdropFilter: 'blur(4px)',
+                                width: 34, height: 34, backdropFilter: 'blur(4px)',
                                 transition: 'all 0.2s',
                                 '&:hover': { bgcolor: PURPLE, transform: 'scale(1.05)' },
                             }}
                         >
-                            <ShareIcon sx={{ fontSize: 18 }} />
+                            <ShareIcon sx={{ fontSize: 17 }} />
                         </IconButton>
                     </Tooltip>
                     <Tooltip title="Báo cáo tin">
@@ -200,12 +202,12 @@ export default function ListingImageGallery({
                             onClick={onReport}
                             sx={{
                                 bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
-                                width: 36, height: 36, backdropFilter: 'blur(4px)',
+                                width: 34, height: 34, backdropFilter: 'blur(4px)',
                                 transition: 'all 0.2s',
                                 '&:hover': { bgcolor: RED, transform: 'scale(1.05)' },
                             }}
                         >
-                            <FlagIcon sx={{ fontSize: 18 }} />
+                            <FlagIcon sx={{ fontSize: 17 }} />
                         </IconButton>
                     </Tooltip>
                 </Box>
@@ -253,8 +255,15 @@ export default function ListingImageGallery({
             {count > 1 && !hideThumbs && (
                 <Box
                     sx={{
-                        display: 'flex', gap: 1, mt: 1.5,
-                        overflowX: 'auto', pb: 0.5,
+                        display: 'flex',
+                        gap: 1,
+                        mt: 1.5,
+                        px: 0.5,
+                        py: 0.5,
+                        borderRadius: '10px',
+                        bgcolor: 'rgba(255,255,255,0.02)',
+                        border: `1px solid ${BORDER}`,
+                        overflowX: 'auto',
                         '::-webkit-scrollbar': { height: 4 },
                         '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
                     }}
@@ -264,13 +273,17 @@ export default function ListingImageGallery({
                             key={i}
                             onClick={() => setActiveIdx(i)}
                             sx={{
+                                position: 'relative',
                                 flexShrink: 0,
-                                width: 64, height: 64,
-                                borderRadius: '8px',
+                                width: 66,
+                                height: 66,
+                                borderRadius: '9px',
                                 overflow: 'hidden',
                                 border: `2px solid ${i === activeIdx ? PURPLE : BORDER}`,
+                                boxShadow: i === activeIdx ? '0 0 0 2px rgba(157,110,237,0.25), 0 8px 20px rgba(0,0,0,0.35)' : 'none',
+                                transform: i === activeIdx ? 'translateY(-1px)' : 'none',
                                 cursor: 'pointer',
-                                transition: 'border-color 0.15s',
+                                transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s',
                                 '&:hover': { borderColor: PURPLE },
                             }}
                         >
@@ -291,9 +304,9 @@ export default function ListingImageGallery({
                 maxWidth="lg"
                 fullWidth
                 PaperProps={{
-                    sx: { 
-                        bgcolor: 'rgb(15, 14, 20)', 
-                        color: '#fff', 
+                    sx: {
+                        bgcolor: 'rgb(15, 14, 20)',
+                        color: '#fff',
                         borderRadius: '24px',
                         overflow: 'hidden',
                         border: `1px solid ${BORDER}`,
@@ -370,25 +383,25 @@ export default function ListingImageGallery({
                             boxShadow: '0 12px 48px rgba(0,0,0,0.5)'
                         }}
                     />
-                    
+
                     {/* Floating thumbnails in zoom mode */}
                     {count > 1 && (
                         <Box
-                           sx={{
-                               position: 'absolute',
-                               bottom: 30,
-                               left: '50%',
-                               transform: 'translateX(-50%)',
-                               display: 'flex',
-                               gap: 1.5,
-                               p: 1.5,
-                               bgcolor: 'rgba(0,0,0,0.5)',
-                               borderRadius: '12px',
-                               backdropFilter: 'blur(10px)',
-                               maxWidth: '90vw',
-                               overflowX: 'auto',
-                               '::-webkit-scrollbar': { display: 'none' }
-                           }}
+                            sx={{
+                                position: 'absolute',
+                                bottom: 30,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                display: 'flex',
+                                gap: 1.5,
+                                p: 1.5,
+                                bgcolor: 'rgba(0,0,0,0.5)',
+                                borderRadius: '12px',
+                                backdropFilter: 'blur(10px)',
+                                maxWidth: '90vw',
+                                overflowX: 'auto',
+                                '::-webkit-scrollbar': { display: 'none' }
+                            }}
                         >
                             {images.map((img, i) => (
                                 <Box

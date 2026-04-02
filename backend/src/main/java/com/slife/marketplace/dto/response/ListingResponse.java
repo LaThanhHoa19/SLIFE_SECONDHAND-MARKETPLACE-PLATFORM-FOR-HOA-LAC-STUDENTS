@@ -13,6 +13,10 @@ public class ListingResponse {
     private String itemCondition;
     private String purpose;
     private String location;
+    /** Trạng thái listing hiện tại (ACTIVE, HIDDEN, MOD_HIDDEN, SOLD, ...). */
+    private String status;
+    /** Alias tương thích FE cũ. */
+    private String itemStatus;
     private java.time.Instant createdAt;
     /** URL thuần (giữ tương thích client cũ). */
     private java.util.List<String> images;
