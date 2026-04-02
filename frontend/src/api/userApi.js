@@ -25,3 +25,7 @@ export const getBlockStatus = (userId) => axiosClient.get(`/api/users/${userId}/
 export const getMyBlockedUsers = (params = {}) => axiosClient.get('/api/users/me/blocks', { params });
 /** @param {Record<string, string|number>} [params] — sortBy, sortDir; status: ACTIVE|BANNED|RESTRICTED (bỏ qua khi lọc tất cả) */
 export const getAdminUsers = (params = {}) => axiosClient.get('/api/admin/users', { params });
+
+/** Admin cập nhật trạng thái user: ACTIVE | BANNED | RESTRICTED */
+export const updateAdminUserStatus = (id, status) =>
+    axiosClient.patch(`/api/admin/users/${id}/status`, { status });

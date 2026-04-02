@@ -113,6 +113,45 @@ public class NotificationService {
         }
     }
 
+    /** Notify listing owner when admin hides their listing due to violation/report. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyAdminHiddenListing(User listingOwner, Long listingId, String listingTitle, Long reportId, String reasonCode) {
+        try {
+            String suffix = (reasonCode != null && !reasonCode.isBlank())
+                    ? " (lý do: " + reasonCode.trim() + ")"
+                    : "";
+            Notification n = buildNotification(listingOwner, TYPE_SYSTEM,
+                    "LISTING", listingId,
+                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                            + ": Quản trị viên đã ẩn tin đăng \"" + truncate(listingTitle, 40)
+                            + "\" do vi phạm quy định" + suffix + ".");
+            notificationRepository.save(n);
+            pushNotificationCount(listingOwner);
+        } catch (Exception ex) {
+            log.error("notifyAdminHiddenListing failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify user when admin bans account due to violation/report. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyAdminBannedUser(User user, Long reportId, String reasonCode) {
+        try {
+            String suffix = (reasonCode != null && !reasonCode.isBlank())
+                    ? " (lý do: " + reasonCode.trim() + ")"
+                    : "";
+            Notification n = buildNotification(user, TYPE_SYSTEM,
+                    "USER", user.getId(),
+                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                            + ": Tài khoản của bạn đã bị khóa do vi phạm quy định cộng đồng"
+                            + suffix
+                            + ". Nếu cần khiếu nại, vui lòng liên hệ bộ phận hỗ trợ.");
+            notificationRepository.save(n);
+            pushNotificationCount(user);
+        } catch (Exception ex) {
+            log.error("notifyAdminBannedUser failed userId={}", user.getId(), ex);
+        }
+    }
+
     /** Notify user when someone starts following them. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyNewFollower(User followed, User follower) {

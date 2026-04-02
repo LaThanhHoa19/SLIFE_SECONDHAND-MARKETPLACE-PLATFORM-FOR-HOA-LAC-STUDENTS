@@ -66,7 +66,7 @@ public enum ErrorCode {
     REPORT_DUPLICATE("REPORT_DUPLICATE", "You have already reported this item", HttpStatus.CONFLICT),
     REPORT_SELF("REPORT_SELF", "You cannot report your own content", HttpStatus.BAD_REQUEST),
     REPORT_INVALID_TARGET("REPORT_INVALID_TARGET", "Invalid report target type (must be LISTING/POST, USER, COMMENT, or MESSAGE)", HttpStatus.BAD_REQUEST),
-    REPORT_INVALID_STATUS("REPORT_INVALID_STATUS", "Invalid resolve status (must be RESOLVED or DISMISSED)", HttpStatus.BAD_REQUEST);
+    REPORT_INVALID_STATUS("REPORT_INVALID_STATUS", "Invalid resolve status (must be RESOLVED or REJECTED)", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

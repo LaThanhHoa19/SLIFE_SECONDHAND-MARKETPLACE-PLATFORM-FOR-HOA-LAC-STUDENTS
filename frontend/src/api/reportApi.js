@@ -13,5 +13,3 @@ export const getAdminReportById = (id) => axiosClient.get(`/api/admin/reports/${
 
 export const processReport = (id, payload) => axiosClient.patch(`/api/admin/reports/${id}`, payload);
 
-export const resolveReport = (id, payload) => axiosClient.put(`/api/admin/reports/${id}/resolve`, payload);
-

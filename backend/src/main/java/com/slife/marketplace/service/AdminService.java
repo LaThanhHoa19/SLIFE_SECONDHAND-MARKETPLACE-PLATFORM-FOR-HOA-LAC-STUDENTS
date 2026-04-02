@@ -2,6 +2,7 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.AdminDashboardStatsResponse;
 import com.slife.marketplace.dto.response.UserResponseDTO;
+import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
@@ -146,6 +147,25 @@ public class AdminService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "status must be ACTIVE or BANNED");
         }
         return normalized;
+    }
+
+    @Transactional
+    public String adminHideListing(Long listingId, User admin) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
+        String previousStatus = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase(Locale.ROOT) : "";
+        if ("MOD_HIDDEN".equals(previousStatus)) {
+            return "Listing already moderation-hidden";
+        }
+
+        listing.setStatus("MOD_HIDDEN");
+        listing.setUpdatedAt(java.time.Instant.now());
+        listingRepository.save(listing);
+
+        log.warn("Admin hid listing. listingId={}, previousStatus={}, adminId={}",
+                listingId, previousStatus, admin != null ? admin.getId() : null);
+        return "Listing hidden successfully";
     }
 
     private UserResponseDTO toUserResponseDTO(User user) {

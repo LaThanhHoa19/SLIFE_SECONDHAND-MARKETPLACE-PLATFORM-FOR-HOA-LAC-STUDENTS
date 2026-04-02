@@ -11,7 +11,12 @@ export const PAGE_SIZES = [10, 20, 50];
 /** URL đầy đủ cho ảnh (avatar, cover, listing) từ path backend trả về. */
 export function fullImageUrl(url) {
   if (!url) return null;
-  if (url.startsWith('http')) return url;
+  const normalized = String(url).trim().replace(/\\/g, '/');
+  if (!normalized) return null;
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+  if (normalized.startsWith('//')) return `https:${normalized}`;
+
   const base = API_BASE_URL.replace(/\/$/, '');
-  return url.startsWith('/') ? base + url : base + '/' + url;
+  const path = normalized.startsWith('/') ? normalized : `/${normalized}`;
+  return `${base}${path}`;
 }
