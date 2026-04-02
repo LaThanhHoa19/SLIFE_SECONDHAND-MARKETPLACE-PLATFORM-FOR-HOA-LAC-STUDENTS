@@ -5,3 +5,7 @@ export const confirmDeal = (id) => axiosClient.put(`/api/deals/${id}/confirm`);
 export const cancelDeal = (id) => axiosClient.delete(`/api/deals/${id}`);
 export const updatePickupTime = (id, pickupTime) => axiosClient.put(`/api/deals/${id}/pickup-time`, { pickupTime });
 export const sendReminder = (id) => axiosClient.post(`/api/deals/${id}/reminder`);
+
+/** Tạo deal trực tiếp từ listing (khớp backend: POST /api/listings/{listingId}/deals). */
+export const createDealForListing = (listingId, price) =>
+  axiosClient.post(`/api/listings/${listingId}/deals`, { price });

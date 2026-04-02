@@ -39,6 +39,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
 import { getListing } from '../../api/listingApi';
+import { createDealForListing, updatePickupTime } from '../../api/dealApi';
 import { useToast } from '../../context/ToastContext';
 import ChatSidebar from './components/ChatSidebar';
 import ListingContextBanner from './components/ListingContextBanner';
@@ -729,6 +730,34 @@ function ChatPageInner() {
     return messages.find((m) => m?.messageType === 'OFFER_PROPOSAL' && Number(m.offerId) === Number(oid)) ?? null;
   }, [messages, latestPendingOfferIdForSeller]);
 
+  // If seller already accepted an offer, show that accepted price in the confirm popup.
+  const latestAcceptedOfferForFinalize = useMemo(() => {
+    if (!isSellerInActiveChat) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m) continue;
+      if (m.messageType !== 'OFFER_PROPOSAL') continue;
+      if (m.offerStatus !== 'ACCEPTED') continue;
+      // Offer proposals come from buyer; guard against picking my own messages.
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      return m;
+    }
+    return null;
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const offerContentToPriceText = useCallback(
+    (text) => {
+      if (!text) return null;
+      const raw = String(text);
+      const digits = raw.replace(/[^\d]/g, '');
+      if (!digits) return raw;
+      const n = Number(digits);
+      if (!Number.isFinite(n)) return raw;
+      return fmtPrice(n);
+    },
+    [fmtPrice],
+  );
+
   useEffect(() => {
     if (!finalizeOpen) return;
     const lid = activeSession?.listingId;
@@ -793,6 +822,159 @@ function ChatPageInner() {
     finalizeListing?.title || activeSession?.listingTitle || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : '—');
   const listingPriceForFinalize = finalizeListing?.price ?? activeListingPrice;
   const pickupAddressForFinalize = finalizeListing?.pickupAddress ?? null;
+
+  const latestAcceptedOfferForConfirm = useMemo(() => {
+    if (!isSellerInActiveChat) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m) continue;
+      if (m.messageType !== 'OFFER_PROPOSAL') continue;
+      if (m.offerStatus !== 'ACCEPTED') continue;
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      return m;
+    }
+    return null;
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const dealPriceTextForConfirm = useMemo(() => {
+    const accepted = latestAcceptedOfferForConfirm?.content;
+    if (accepted && String(accepted).trim()) return String(accepted).trim();
+    // No accepted offer → default to listing price.
+    return fmtPrice(listingPriceForFinalize);
+  }, [latestAcceptedOfferForConfirm?.content, fmtPrice, listingPriceForFinalize]);
+
+  const parseDealPriceNumber = useCallback(
+    (priceText) => {
+      if (!priceText) return NaN;
+      const digits = String(priceText).replace(/[^\d]/g, '');
+      if (!digits) return NaN;
+      const n = Number(digits);
+      return Number.isFinite(n) ? n : NaN;
+    },
+    [],
+  );
+
+  const toIsoFromDatetimeLocal = useCallback((dtLocal) => {
+    if (!dtLocal) return null;
+    // datetime-local format: YYYY-MM-DDTHH:mm
+    const d = new Date(dtLocal);
+    if (isNaN(d)) return null;
+    return d.toISOString();
+  }, []);
+
+  const sendDealConfirmation = useCallback(async () => {
+    if (!activeSessionId) return;
+    const title = listingTitleForFinalize || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : 'Tin đăng');
+    const when = finalizePickupTimeLocal ? String(finalizePickupTimeLocal) : '—';
+    const where =
+      (finalizePickupLocationText && String(finalizePickupLocationText).trim()) ||
+      fmtAddress(pickupAddressForFinalize) ||
+      '—';
+
+    const content = [
+      '🧾 XÁC NHẬN GIAO DỊCH',
+      '',
+      `- Tin đăng: ${title}`,
+      `- Giá thỏa thuận: ${dealPriceTextForConfirm}`,
+      `- Thời gian nhận hàng: ${when}`,
+      `- Địa điểm nhận hàng: ${where}`,
+      '',
+      'Vui lòng chọn: Chấp nhận hoặc Hủy.',
+    ].join('\n');
+
+    try {
+      suppressOpponentDiffRef.current = true;
+      const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');
+      const msg = getData(res);
+      if (msg?.id) setMessages((prev) => upsertMessages(prev, msg, { dropPending: true }));
+      fetchSessions();
+      scrollToBottom('smooth');
+      setNewOpponentMsgCount(0);
+    } catch (err) {
+      const detail = err?.response?.data?.message || err?.message || 'Lỗi không xác định';
+      showToast(`Chốt đơn thất bại: ${detail}`, 'error');
+    }
+  }, [
+    activeSession?.listingId,
+    activeSessionId,
+    dealPriceTextForConfirm,
+    fetchSessions,
+    finalizePickupLocationText,
+    finalizePickupTimeLocal,
+    fmtAddress,
+    getData,
+    listingTitleForFinalize,
+    pickupAddressForFinalize,
+    scrollToBottom,
+    showToast,
+  ]);
+
+  const handleDealConfirmDecision = useCallback(
+    async (confirmMsg, decision) => {
+      if (!activeSessionId) return;
+      const confirmId = confirmMsg?.id ?? null;
+
+      // Frontend-only: disable actions after choosing once.
+      if (confirmId != null) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m?.id) === String(confirmId) ? { ...m, dealDecision: decision } : m,
+          ),
+        );
+      }
+
+      const replyText =
+        decision === 'ACCEPT'
+          ? '✅ Mình đồng ý với thông tin giao dịch trên.'
+          : '❌ Mình không đồng ý / hủy giao dịch này.';
+
+      try {
+        if (decision === 'ACCEPT') {
+          const listingId = activeSession?.listingId;
+          const price = parseDealPriceNumber(dealPriceTextForConfirm);
+          if (listingId != null && Number.isFinite(price)) {
+            const created = await createDealForListing(listingId, price);
+            const body = created?.data;
+            const data = body?.data ?? body;
+            const dealId = data?.dealId ?? data?.id;
+
+            const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
+            if (dealId && pickupIso) {
+              try {
+                await updatePickupTime(dealId, pickupIso);
+              } catch {
+                // ignore pickup time update errors (deal still created)
+              }
+            }
+          }
+        }
+        suppressOpponentDiffRef.current = true;
+        const res = await chatApi.sendMessage(activeSessionId, replyText, 'TEXT', null, {
+          replyToMessageId: confirmId,
+        });
+        const msg = getData(res);
+        if (msg?.id) setMessages((prev) => upsertMessages(prev, msg, { dropPending: true }));
+        fetchSessions();
+        scrollToBottom('smooth');
+      } catch (err) {
+        const detail = err?.response?.data?.message || err?.message || 'Lỗi không xác định';
+        showToast(`Gửi phản hồi thất bại: ${detail}`, 'error');
+      }
+    },
+    [
+      activeSession?.listingId,
+      activeSessionId,
+      createDealForListing,
+      dealPriceTextForConfirm,
+      fetchSessions,
+      finalizePickupTimeLocal,
+      parseDealPriceNumber,
+      scrollToBottom,
+      showToast,
+      toIsoFromDatetimeLocal,
+      updatePickupTime,
+    ],
+  );
 
   function FormField({ label, value, icon, multiline = false, inputProps = {}, type }) {
     return (
@@ -978,6 +1160,7 @@ function ChatPageInner() {
                       highlightedMessageId={highlightedMessageId}
                       handleAccept={handleAccept}
                       handleReject={handleReject}
+                      handleDealConfirmDecision={handleDealConfirmDecision}
                       handleReplyMessage={handleReplyMessage}
                       handleJumpToMessage={handleJumpToMessage}
                       handleReportMessage={handleReportMessage}
@@ -1158,8 +1341,9 @@ function ChatPageInner() {
               <FormField
                 label="Giá thỏa thuận"
                 value={
-                  pendingOfferForFinalize?.content ||
-                  (finalizePriceText ? fmtPrice(finalizePriceText) : fmtPrice(listingPriceForFinalize))
+                  offerContentToPriceText(latestAcceptedOfferForFinalize?.content) ||
+                  offerContentToPriceText(pendingOfferForFinalize?.content) ||
+                  fmtPrice(listingPriceForFinalize)
                 }
                 icon={<AttachMoneyIcon />}
               />
@@ -1342,10 +1526,8 @@ function ChatPageInner() {
                   },
                 }}
                 onClick={async () => {
-                  const oid = latestPendingOfferIdForSeller;
                   setFinalizeOpen(false);
-                  if (!oid) return;
-                  await handleAccept(oid);
+                  await sendDealConfirmation();
                 }}
             >
               Chốt đơn
