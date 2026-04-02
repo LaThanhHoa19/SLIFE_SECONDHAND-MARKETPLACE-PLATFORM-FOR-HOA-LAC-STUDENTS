@@ -4,13 +4,18 @@ import { Link } from 'react-router-dom';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 
-export default function ListingContextBanner({ theme, activeSession, activeListingThumb }) {
+export default function ListingContextBanner({
+    theme,
+    activeSession,
+    activeListingThumb,
+    isSellerInActiveChat = false,
+    onFinalizeOrder,
+    finalizeDisabled = false,
+}) {
     if (activeSession?.listingId == null) return null;
 
     return (
         <Box
-            component={Link}
-            to={`/listings/${activeSession.listingId}`}
             sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -19,8 +24,6 @@ export default function ListingContextBanner({ theme, activeSession, activeListi
                 py: 1.25,
                 borderBottom: 1,
                 borderColor: 'divider',
-                textDecoration: 'none',
-                color: 'inherit',
                 '&:hover': { bgcolor: 'action.hover' },
             }}
         >
@@ -64,7 +67,40 @@ export default function ListingContextBanner({ theme, activeSession, activeListi
                     {activeSession.listingTitle || `Tin #${activeSession.listingId}`}
                 </Typography>
             </Box>
-            <Chip size="small" icon={<OpenInNewIcon fontSize="small" />} label="Xem tin" variant="outlined" />
+            {isSellerInActiveChat && (
+                <Chip
+                    size="small"
+                    label="Chốt đơn"
+                    variant="outlined"
+                    clickable
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onFinalizeOrder?.();
+                    }}
+                    sx={{
+                        fontWeight: 800,
+                        borderColor: alpha(theme.palette.primary.main, 0.55),
+                        color: theme.palette.primary.main,
+                        bgcolor: alpha(theme.palette.primary.main, 0.06),
+                        opacity: finalizeDisabled ? 0.7 : 1,
+                        '&:hover': {
+                            bgcolor: alpha(theme.palette.primary.main, 0.12),
+                            borderColor: alpha(theme.palette.primary.main, 0.7),
+                        },
+                    }}
+                />
+            )}
+            <Chip
+                size="small"
+                component={Link}
+                to={`/listings/${activeSession.listingId}`}
+                icon={<OpenInNewIcon fontSize="small" />}
+                label="Xem tin"
+                variant="outlined"
+                clickable
+                onClick={(e) => e.stopPropagation()}
+            />
         </Box>
     );
 }

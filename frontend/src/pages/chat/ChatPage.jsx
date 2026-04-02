@@ -20,6 +20,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Paper,
   ThemeProvider,
   Typography,
@@ -29,6 +30,8 @@ import { chatDarkTheme } from '../../theme/chatDarkTheme';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
+import { getListing } from '../../api/listingApi';
+import { fullImageUrl } from '../../utils/constants';
 import { useToast } from '../../context/ToastContext';
 import ChatSidebar from './components/ChatSidebar';
 import ListingContextBanner from './components/ListingContextBanner';
@@ -83,6 +86,36 @@ function ChatPageInner() {
   const [uploadError, setUploadError] = useState('');
   /** Anchor Popover gợi ý — null = đóng (dùng state để Popover mở đúng sau khi nút mount) */
   const [suggestAnchorEl, setSuggestAnchorEl] = useState(null);
+  const [finalizeOpen, setFinalizeOpen] = useState(false);
+  const [finalizeListing, setFinalizeListing] = useState(null);
+  const [finalizeListingLoading, setFinalizeListingLoading] = useState(false);
+
+  // UI tokens (tham khảo DealDetailPage)
+  const DEAL_UI = useMemo(
+    () => ({
+      bg: '#201D26',
+      surface: '#312F37',
+      surfaceHover: '#3a3845',
+      accent: theme.palette.primary.main,
+      text: theme.palette.common.white,
+      textMuted: 'rgba(255,255,255,0.62)',
+      border: 'rgba(255,255,255,0.10)',
+    }),
+    [theme.palette.common.white, theme.palette.primary.main],
+  );
+
+  const fmtPrice = useCallback((val) => {
+    if (val == null || val === '') return '—';
+    const n = Number(val);
+    if (!Number.isFinite(n)) return '—';
+    return `${n.toLocaleString('vi-VN')} ₫`;
+  }, []);
+
+  const fmtAddress = useCallback((pickupAddress) => {
+    if (!pickupAddress) return '—';
+    const parts = [pickupAddress.locationName, pickupAddress.addressText].filter(Boolean);
+    return parts.join(' — ') || '—';
+  }, []);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef(null);
@@ -630,6 +663,55 @@ function ChatPageInner() {
     );
   }, [messages, currentUserId, isSellerInActiveChat]);
 
+  const latestPendingOfferIdForSeller = useMemo(() => {
+    if (!isSellerInActiveChat) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m) continue;
+      if (m.messageType !== 'OFFER_PROPOSAL') continue;
+      if (m.offerId == null) continue;
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      if (m.offerStatus === 'ACCEPTED' || m.offerStatus === 'REJECTED') continue;
+      return m.offerId;
+    }
+    return null;
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const pendingOfferForFinalize = useMemo(() => {
+    const oid = latestPendingOfferIdForSeller;
+    if (!oid) return null;
+    return messages.find((m) => m?.messageType === 'OFFER_PROPOSAL' && Number(m.offerId) === Number(oid)) ?? null;
+  }, [messages, latestPendingOfferIdForSeller]);
+
+  useEffect(() => {
+    if (!finalizeOpen) return;
+    const lid = activeSession?.listingId;
+    if (!lid) {
+      setFinalizeListing(null);
+      return;
+    }
+    let alive = true;
+    setFinalizeListingLoading(true);
+    getListing(lid)
+      .then((res) => {
+        if (!alive) return;
+        const body = res?.data;
+        const data = body?.data ?? body;
+        setFinalizeListing(data ?? null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setFinalizeListing(null);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setFinalizeListingLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [finalizeOpen, activeSession?.listingId]);
+
   const priceOfferDisabled =
       Boolean(activeSessionId) && (isSellerInActiveChat || hasOpenOfferAwaitingSeller);
   const priceOfferTooltip = !activeSessionId
@@ -741,6 +823,11 @@ function ChatPageInner() {
                       theme={theme}
                       activeSession={activeSession}
                       activeListingThumb={activeListingThumb}
+                      isSellerInActiveChat={isSellerInActiveChat}
+                      finalizeDisabled={!latestPendingOfferIdForSeller}
+                      onFinalizeOrder={() => {
+                        setFinalizeOpen(true);
+                      }}
                   />
 
                   <ChatMessagesPanel
@@ -845,6 +932,176 @@ function ChatPageInner() {
             activeListingThumb={activeListingThumb}
             activeSession={activeSession}
         />
+
+        <Dialog
+            open={finalizeOpen}
+            onClose={() => setFinalizeOpen(false)}
+            maxWidth="xs"
+            fullWidth
+            PaperProps={{
+              sx: {
+                bgcolor: DEAL_UI.bg,
+                border: `1px solid ${DEAL_UI.border}`,
+                borderRadius: 3,
+                overflow: 'hidden',
+              },
+            }}
+        >
+          <DialogTitle sx={{ color: DEAL_UI.text, fontWeight: 800, letterSpacing: 0.2 }}>
+            Xác nhận giao dịch
+          </DialogTitle>
+          <DialogContent sx={{ pt: 0.5 }}>
+            <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0.25 }}>
+              Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi hoàn tất.
+            </Typography>
+            <Divider sx={{ borderColor: DEAL_UI.border, mt: 1.5, mb: 1.75 }} />
+
+            {/* Section: Tin đăng */}
+            <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
+              Tin đăng
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1.5,
+                alignItems: 'center',
+                mb: 2,
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: DEAL_UI.surface,
+                cursor: activeSession?.listingId ? 'pointer' : 'default',
+                '&:hover': activeSession?.listingId ? { bgcolor: DEAL_UI.surfaceHover } : {},
+                transition: 'background 0.15s',
+                border: `1px solid ${DEAL_UI.border}`,
+              }}
+              onClick={() => activeSession?.listingId && navigate(`/listings/${activeSession.listingId}`)}
+            >
+              {activeListingThumb ? (
+                <Box
+                  component="img"
+                  src={activeListingThumb}
+                  alt={activeSession?.listingTitle || 'Ảnh tin đăng'}
+                  sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1.5, flexShrink: 0 }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 1.5,
+                    bgcolor: 'rgba(255,255,255,0.06)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    border: `1px dashed ${alpha(DEAL_UI.accent, 0.35)}`,
+                  }}
+                >
+                  <StorefrontOutlinedIcon sx={{ color: DEAL_UI.textMuted, fontSize: 28 }} />
+                </Box>
+              )}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text }} noWrap>
+                  {activeSession?.listingTitle || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : '—')}
+                </Typography>
+                <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0.35 }}>
+                  Giá niêm yết:{' '}
+                  <Box component="span" sx={{ color: alpha(DEAL_UI.accent, 0.95), fontWeight: 800 }}>
+                    {fmtPrice(finalizeListing?.price ?? activeListingPrice)}
+                  </Box>
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ borderColor: DEAL_UI.border, mb: 1.75 }} />
+
+            {/* Section: Thông tin giao dịch */}
+            <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
+              Thông tin giao dịch
+            </Typography>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: DEAL_UI.surface,
+                border: `1px solid ${DEAL_UI.border}`,
+                mb: 2,
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
+                  Người mua
+                </Typography>
+                <Typography variant="caption" sx={{ color: DEAL_UI.text, fontWeight: 800 }} noWrap>
+                  {activeSession?.otherParticipantName || '—'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 0.75 }}>
+                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
+                  Người bán
+                </Typography>
+                <Typography variant="caption" sx={{ color: DEAL_UI.text, fontWeight: 800 }} noWrap>
+                  {currentUser?.fullName || '—'}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 0.75 }}>
+                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
+                  Giá thỏa thuận
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{ color: DEAL_UI.text, fontWeight: 900, textAlign: 'right' }}
+                >
+                  {pendingOfferForFinalize?.content || 'Chưa có offer (thỏa thuận qua chat)'}
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ borderColor: DEAL_UI.border, mb: 1.75 }} />
+
+            {/* Section: Thời gian & Địa điểm */}
+            <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
+              Thời gian &amp; Địa điểm
+            </Typography>
+            <Box
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: DEAL_UI.surface,
+                border: `1px solid ${DEAL_UI.border}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
+                  Địa điểm giao dịch
+                </Typography>
+                <Typography variant="caption" sx={{ color: DEAL_UI.text, fontWeight: 800, textAlign: 'right' }}>
+                  {finalizeListingLoading ? 'Đang tải…' : fmtAddress(finalizeListing?.pickupAddress)}
+                </Typography>
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setFinalizeOpen(false)} sx={{ color: DEAL_UI.textMuted }}>
+              Hủy
+            </Button>
+            <Button
+                variant="contained"
+                sx={{
+                  bgcolor: DEAL_UI.accent,
+                  fontWeight: 800,
+                  '&:hover': { bgcolor: alpha(DEAL_UI.accent, 0.85) },
+                }}
+                onClick={async () => {
+                  const oid = latestPendingOfferIdForSeller;
+                  setFinalizeOpen(false);
+                  if (!oid) return;
+                  await handleAccept(oid);
+                }}
+            >
+              Chốt đơn
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
   );
 }
