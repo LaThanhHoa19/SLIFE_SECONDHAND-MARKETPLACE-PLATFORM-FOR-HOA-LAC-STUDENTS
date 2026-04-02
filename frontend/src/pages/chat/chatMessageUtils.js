@@ -168,7 +168,17 @@ export function getReferencePreview(ref, fallbackId) {
     if (fallbackId != null) return `[Tin nhắn #${fallbackId}]`;
     return '[Tin nhắn]';
   }
-  if (ref.content && String(ref.content).trim()) return String(ref.content).trim();
+  if (ref.content && String(ref.content).trim()) {
+    let text = String(ref.content).trim();
+    if (
+      ref.messageType === 'DEAL_CONFIRMATION' ||
+      /\bXÁC NHẬN GIAO DỊCH\b/i.test(text) ||
+      text.includes('Giá thỏa thuận')
+    ) {
+      text = formatDealConfirmationDisplayContent(text);
+    }
+    return text;
+  }
   if (ref.messageType === 'IMAGE' && ref.fileUrl) return '[Hình ảnh]';
   if (fallbackId != null) return `[Tin nhắn #${fallbackId}]`;
   return '[Tin nhắn]';
@@ -294,5 +304,45 @@ export function enrichMessagesForDisplay(msgs) {
 
     return { ...m, replyTo, quote, dealDecision };
   });
+}
+
+/** Giá trị sau `Thời gian nhận hàng:` — đổi 2026-04-03T02:11 / ISO → hiển thị vi-VN. */
+export function formatDealConfirmationPickupTimeValue(rest) {
+  const s = String(rest ?? '').trim();
+  if (!s || s === '—') return s;
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Chuẩn hóa hiển thị tin DEAL_CONFIRMATION: giá (1.700.000 ₫) và thời gian (dd/mm/yyyy, giờ).
+ */
+export function formatDealConfirmationDisplayContent(content) {
+  if (typeof content !== 'string') return content;
+  let out = content;
+  if (out.includes('Giá thỏa thuận')) {
+    out = out.replace(/(^-\s*Giá thỏa thuận:\s*)(.+)$/m, (full, prefix, rest) => {
+      const digits = String(rest).replace(/[^\d]/g, '');
+      if (!digits) return full;
+      const n = Number(digits);
+      if (!Number.isFinite(n)) return full;
+      return `${prefix}${n.toLocaleString('vi-VN')} ₫`;
+    });
+  }
+  if (out.includes('Thời gian nhận hàng')) {
+    out = out.replace(/(^-\s*Thời gian nhận hàng:\s*)(.+)$/m, (full, prefix, rest) => {
+      const formatted = formatDealConfirmationPickupTimeValue(rest);
+      return `${prefix}${formatted}`;
+    });
+  }
+  return out;
 }
 

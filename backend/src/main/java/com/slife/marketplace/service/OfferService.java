@@ -339,9 +339,7 @@ public class OfferService {
             offerRepository.saveAll(pendingOffers);
         }
 
-        listing.setStatus("SOLD");
-        listing.setUpdatedAt(now);
-        listingRepository.save(listing);
+        // Listing stays ACTIVE until seller marks SOLD (PATCH /api/listings/{id}/sold).
 
         Deal deal = new Deal();
         deal.setConversation(resolveConversationForOffer(offer));

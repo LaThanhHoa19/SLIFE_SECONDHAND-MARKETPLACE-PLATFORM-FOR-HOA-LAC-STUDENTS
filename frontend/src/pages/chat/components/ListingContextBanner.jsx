@@ -12,6 +12,11 @@ export default function ListingContextBanner({
     onFinalizeOrder,
     finalizeDisabled = false,
     showPostSaleActions = false,
+    /** Một nút: gọi ẩn tin (HIDDEN), không còn tách Đã bán / Ẩn tin. */
+    onPostSaleAction,
+    postSaleOutcome = null,
+    postSaleBusy = false,
+    hideViewListing = false,
 }) {
     if (activeSession?.listingId == null) return null;
 
@@ -93,58 +98,55 @@ export default function ListingContextBanner({
                 />
             )}
 
-            {isSellerInActiveChat && showPostSaleActions && (
-                <>
-                    <Chip
-                        size="small"
-                        label="Đã bán"
-                        variant="outlined"
-                        component={Link}
-                        to={`/listings/${activeSession.listingId}`}
-                        clickable
-                        onClick={(e) => e.stopPropagation()}
-                        sx={{
-                            fontWeight: 900,
-                            borderColor: alpha(theme.palette.success.main, 0.55),
-                            color: theme.palette.success.main,
-                            bgcolor: alpha(theme.palette.success.main, 0.08),
-                            '&:hover': {
-                                bgcolor: alpha(theme.palette.success.main, 0.12),
-                                borderColor: alpha(theme.palette.success.main, 0.75),
-                            },
-                        }}
-                    />
-                    <Chip
-                        size="small"
-                        label="Ẩn tin"
-                        variant="outlined"
-                        component={Link}
-                        to={`/listings/${activeSession.listingId}`}
-                        clickable
-                        onClick={(e) => e.stopPropagation()}
-                        sx={{
-                            fontWeight: 900,
-                            borderColor: alpha(theme.palette.warning.main, 0.55),
-                            color: theme.palette.warning.main,
-                            bgcolor: alpha(theme.palette.warning.main, 0.08),
-                            '&:hover': {
-                                bgcolor: alpha(theme.palette.warning.main, 0.12),
-                                borderColor: alpha(theme.palette.warning.main, 0.75),
-                            },
-                        }}
-                    />
-                </>
+            {isSellerInActiveChat && showPostSaleActions && postSaleOutcome == null && (
+                <Chip
+                    size="small"
+                    label="Đã bán / ẩn tin"
+                    variant="outlined"
+                    clickable={!postSaleBusy && Boolean(onPostSaleAction)}
+                    disabled={postSaleBusy}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!postSaleBusy) onPostSaleAction?.();
+                    }}
+                    sx={{
+                        fontWeight: 900,
+                        borderColor: alpha(theme.palette.primary.main, 0.55),
+                        color: theme.palette.primary.light,
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        '&:hover': {
+                            bgcolor: alpha(theme.palette.primary.main, 0.16),
+                            borderColor: alpha(theme.palette.primary.main, 0.8),
+                        },
+                    }}
+                />
             )}
-            <Chip
-                size="small"
-                component={Link}
-                to={`/listings/${activeSession.listingId}`}
-                icon={<OpenInNewIcon fontSize="small" />}
-                label="Xem tin"
-                variant="outlined"
-                clickable
-                onClick={(e) => e.stopPropagation()}
-            />
+            {isSellerInActiveChat && showPostSaleActions && postSaleOutcome === 'hidden' && (
+                <Chip
+                    size="small"
+                    label="Tin đã ẩn"
+                    variant="outlined"
+                    sx={{
+                        fontWeight: 800,
+                        borderColor: alpha(theme.palette.warning.main, 0.45),
+                        color: theme.palette.warning.light,
+                        bgcolor: alpha(theme.palette.warning.main, 0.1),
+                    }}
+                />
+            )}
+            {!hideViewListing && (
+                <Chip
+                    size="small"
+                    component={Link}
+                    to={`/listings/${activeSession.listingId}`}
+                    icon={<OpenInNewIcon fontSize="small" />}
+                    label="Xem tin"
+                    variant="outlined"
+                    clickable
+                    onClick={(e) => e.stopPropagation()}
+                />
+            )}
         </Box>
     );
 }

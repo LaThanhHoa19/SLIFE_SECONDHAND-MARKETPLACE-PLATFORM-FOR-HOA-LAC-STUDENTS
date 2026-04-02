@@ -18,7 +18,12 @@ import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
-import { getDeliveryReceiptInfo, getReferencePreview, resolveChatImageSrc } from '../chatMessageUtils';
+import {
+    formatDealConfirmationDisplayContent,
+    getDeliveryReceiptInfo,
+    getReferencePreview,
+    resolveChatImageSrc,
+} from '../chatMessageUtils';
 
 function ImageBubble({ fileUrl }) {
     const src = resolveChatImageSrc(fileUrl);
@@ -135,7 +140,7 @@ export default function Bubble({ msg, onAccept, onReject, onDealConfirmDecision,
                             whiteSpace: 'pre-wrap',
                         }}
                     >
-                        {msg.content}
+                        {formatDealConfirmationDisplayContent(msg.content)}
                     </Typography>
                     {!isMe &&
                         isDealConfirmationRequest &&

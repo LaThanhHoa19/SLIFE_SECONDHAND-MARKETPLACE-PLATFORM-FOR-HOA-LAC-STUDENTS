@@ -395,7 +395,7 @@ public class ChatService {
 
     /**
      * Seller accepts or rejects an offer.
-     * If ACCEPTED: updates listing to SOLD + sends DEAL_CONFIRMATION system message + notifies both parties.
+     * If ACCEPTED: sends DEAL_CONFIRMATION system message + notifies both parties (listing stays ACTIVE until seller marks SOLD).
      */
     @Transactional
     public ChatMessageResponse respondToOffer(Long offerId, String action, User seller) {
@@ -442,12 +442,7 @@ public class ChatService {
 
         if (accepted) {
             Listing listing = offer.getListing();
-            // Update listing to SOLD (UC-28)
-            if (listing != null) {
-                listing.setStatus("SOLD");
-                listing.setUpdatedAt(Instant.now());
-                listingRepository.save(listing);
-            }
+            // Listing stays ACTIVE until seller marks SOLD (PATCH /api/listings/{id}/sold).
             // System DEAL_CONFIRMATION message
             Message sysMsg = buildMessage(conv, seller, Constants.DEAL_CONFIRMED_MSG,
                     MessageType.DEAL_CONFIRMATION, null, null, null);

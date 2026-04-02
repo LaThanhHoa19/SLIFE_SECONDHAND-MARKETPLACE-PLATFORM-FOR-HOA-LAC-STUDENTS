@@ -17,6 +17,8 @@ import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import SendIcon from '@mui/icons-material/Send';
 
+import { formatDealConfirmationDisplayContent } from '../chatMessageUtils';
+
 export default function MessageComposer({
                                             theme,
                                             composerRef,
@@ -64,7 +66,15 @@ export default function MessageComposer({
                     }}
                 >
                     <Typography variant="caption" sx={{ minWidth: 0 }}>
-                        Nhắc lại {composerRef.senderName}: {(composerRef.content || '').slice(0, 80)}
+                        Nhắc lại {composerRef.senderName}:{' '}
+                        {(() => {
+                            const raw = composerRef.content || '';
+                            const preview =
+                                raw.includes('XÁC NHẬN GIAO DỊCH') || raw.includes('Giá thỏa thuận')
+                                    ? formatDealConfirmationDisplayContent(raw)
+                                    : raw;
+                            return preview.slice(0, 80);
+                        })()}
                     </Typography>
                     <Button size="small" onClick={() => setComposerRef(null)}>
                         Bỏ

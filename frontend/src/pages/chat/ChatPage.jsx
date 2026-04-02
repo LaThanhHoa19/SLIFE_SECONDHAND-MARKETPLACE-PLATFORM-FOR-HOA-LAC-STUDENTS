@@ -38,7 +38,7 @@ import StoreOutlinedIcon from '@mui/icons-material/StoreOutlined';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
-import { getListing } from '../../api/listingApi';
+import { getListing, hideListing } from '../../api/listingApi';
 import { createDealForListing, updatePickupTime } from '../../api/dealApi';
 import { useToast } from '../../context/ToastContext';
 import ChatSidebar from './components/ChatSidebar';
@@ -82,6 +82,7 @@ function ChatPageInner() {
   const [sessionsVersion, setSessionsVersion] = useState(0);
   const [imageUploading, setImageUploading] = useState(false);
   const [composerRef, setComposerRef] = useState(null);
+  const [activeListingStatus, setActiveListingStatus] = useState(null);
 
   // Offer dialog
   const [offerOpen, setOfferOpen] = useState(false);
@@ -171,6 +172,7 @@ function ChatPageInner() {
   const bottomRef = useRef(null);
   const messagesScrollRef = useRef(null);
   const messagesRef = useRef(messages);
+  const activeListingStatusRef = useRef(null);
   /** Snapshot danh sách tin để diff tin mới từ đối phương khi không ở đáy */
   const prevMessagesForDiffRef = useRef([]);
   /** Bỏ qua một lần diff sau khi mình vừa gửi (fetchHistory / setMessages) để không cộng nhầm */
@@ -326,6 +328,48 @@ function ChatPageInner() {
     sessionsVersion,
   });
 
+  useEffect(() => {
+    activeListingStatusRef.current = activeListingStatus;
+  }, [activeListingStatus]);
+
+  // UI gating: when listing becomes SOLD or HIDDEN, disable buyer bidding icon.
+  // Poll periodically while chatting; stop polling once SOLD or HIDDEN.
+  useEffect(() => {
+    if (!activeSession?.listingId) {
+      setActiveListingStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    let timerId = null;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await getListing(activeSession.listingId);
+        const body = res?.data;
+        const data = body?.data ?? body;
+        const status = data?.status ?? null;
+        if (!cancelled) setActiveListingStatus(status);
+      } catch {
+        if (!cancelled) setActiveListingStatus(null);
+      }
+    };
+
+    const tick = () => {
+      const s = activeListingStatusRef.current;
+      if (s === 'SOLD' || s === 'HIDDEN') return;
+      void fetchStatus();
+    };
+
+    void fetchStatus();
+    timerId = window.setInterval(tick, 7000);
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearInterval(timerId);
+    };
+  }, [activeSession?.listingId]);
+
   // Seller UI: once buyer accepts the "XÁC NHẬN GIAO DỊCH" message, hide "Chốt đơn"
   // and show post-sale actions. Must run after useChatSessions (isSellerInActiveChat).
   const showPostSaleActions = useMemo(() => {
@@ -342,6 +386,34 @@ function ChatPageInner() {
     }
     return false;
   }, [displayMessages, currentUserId, isSellerInActiveChat]);
+
+  const [postSaleBannerOutcome, setPostSaleBannerOutcome] = useState(null);
+  const [postSaleBannerBusy, setPostSaleBannerBusy] = useState(false);
+
+  useEffect(() => {
+    setPostSaleBannerOutcome(null);
+    setPostSaleBannerBusy(false);
+  }, [activeSessionId]);
+
+  /** Nút "Đã bán / ẩn tin": chỉ chuyển tin sang HIDDEN (không gọi markSold). */
+  const handlePostSaleBannerAction = useCallback(async () => {
+    const id = activeSession?.listingId;
+    if (id == null || postSaleBannerBusy) return;
+    setPostSaleBannerBusy(true);
+    try {
+      await hideListing(id);
+      showToast('Đã ẩn tin.', 'success');
+      setPostSaleBannerOutcome('hidden');
+      fetchSessions();
+      setSessionsVersion((v) => v + 1);
+    } catch (e) {
+      const detail =
+        e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Không thể ẩn tin';
+      showToast(detail, 'error');
+    } finally {
+      setPostSaleBannerBusy(false);
+    }
+  }, [activeSession?.listingId, fetchSessions, postSaleBannerBusy, showToast]);
 
   // ── Fetch message history ─────────────────────────────────────────────────
   const fetchHistory = useCallback(() => {
@@ -855,10 +927,11 @@ function ChatPageInner() {
 
   const dealPriceTextForConfirm = useMemo(() => {
     const accepted = latestAcceptedOfferForConfirm?.content;
-    if (accepted && String(accepted).trim()) return String(accepted).trim();
-    // No accepted offer → default to listing price.
+    if (accepted && String(accepted).trim()) {
+      return offerContentToPriceText(accepted);
+    }
     return fmtPrice(listingPriceForFinalize);
-  }, [latestAcceptedOfferForConfirm?.content, fmtPrice, listingPriceForFinalize]);
+  }, [latestAcceptedOfferForConfirm?.content, fmtPrice, listingPriceForFinalize, offerContentToPriceText]);
 
   const parseDealPriceNumber = useCallback(
     (priceText) => {
@@ -882,7 +955,7 @@ function ChatPageInner() {
   const sendDealConfirmation = useCallback(async () => {
     if (!activeSessionId) return;
     const title = listingTitleForFinalize || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : 'Tin đăng');
-    const when = finalizePickupTimeLocal ? String(finalizePickupTimeLocal) : '—';
+    const when = finalizePickupTimeLocal ? fmtDatetime(finalizePickupTimeLocal) : '—';
     const where =
       (finalizePickupLocationText && String(finalizePickupLocationText).trim()) ||
       fmtAddress(pickupAddressForFinalize) ||
@@ -919,6 +992,7 @@ function ChatPageInner() {
     finalizePickupLocationText,
     finalizePickupTimeLocal,
     fmtAddress,
+    fmtDatetime,
     getData,
     listingTitleForFinalize,
     pickupAddressForFinalize,
@@ -1049,10 +1123,22 @@ function ChatPageInner() {
 
   // Note: popup only previews info; no editing in this screen.
 
+  const listingClosedForBuyer =
+      activeListingStatus === 'SOLD' || activeListingStatus === 'HIDDEN';
+
+  useEffect(() => {
+    if (listingClosedForBuyer) setOfferOpen(false);
+  }, [listingClosedForBuyer]);
+
   const priceOfferDisabled =
-      Boolean(activeSessionId) && (isSellerInActiveChat || hasOpenOfferAwaitingSeller);
+      Boolean(activeSessionId) &&
+      (isSellerInActiveChat || hasOpenOfferAwaitingSeller || listingClosedForBuyer);
   const priceOfferTooltip = !activeSessionId
       ? 'Trả giá / đề xuất giá'
+      : listingClosedForBuyer
+          ? activeListingStatus === 'HIDDEN'
+              ? 'Tin đã được ẩn'
+              : 'Tin đăng đã được bán'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
           : hasOpenOfferAwaitingSeller
@@ -1162,6 +1248,10 @@ function ChatPageInner() {
                       activeListingThumb={activeListingThumb}
                       isSellerInActiveChat={isSellerInActiveChat}
                       showPostSaleActions={showPostSaleActions}
+                      hideViewListing={listingClosedForBuyer}
+                      onPostSaleAction={handlePostSaleBannerAction}
+                      postSaleOutcome={postSaleBannerOutcome}
+                      postSaleBusy={postSaleBannerBusy}
                       finalizeDisabled={!latestPendingOfferIdForSeller}
                       onFinalizeOrder={() => {
                         setFinalizeOpen(true);
