@@ -130,6 +130,8 @@ export default function ReportDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [adminNote, setAdminNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [quickActionLoading, setQuickActionLoading] = useState(false);
+    const [autoClosedByQuickAction, setAutoClosedByQuickAction] = useState(false);
     const { showToast } = useToast();
 
     const loadReport = useCallback(async () => {
@@ -239,6 +241,52 @@ export default function ReportDetailPage() {
         }
     };
 
+    const handleQuickHideListing = async () => {
+        const id = reportRowId(report);
+        const listingId = report?.listingId ?? report?.targetId;
+        if (!id || !listingId) return;
+        const ok = window.confirm(`Bạn có chắc muốn ẩn tin #${listingId}?`);
+        if (!ok) return;
+
+        try {
+            setQuickActionLoading(true);
+            await processReport(id, {
+                action: 'HIDE_LISTING_APPROVE',
+                note: adminNote.trim() || `Admin đã ẩn tin #${listingId} do vi phạm.`,
+            });
+            setAutoClosedByQuickAction(true);
+            showToast(`Đã ẩn tin #${listingId} và đóng báo cáo.`, 'success');
+            await loadReport();
+        } catch (error) {
+            showToast(error?.message || 'Không thể ẩn tin.', 'error');
+        } finally {
+            setQuickActionLoading(false);
+        }
+    };
+
+    const handleQuickBanUser = async () => {
+        const id = reportRowId(report);
+        const userId = report?.targetId;
+        if (!id || !userId) return;
+        const ok = window.confirm(`Bạn có chắc muốn ban user #${userId}?`);
+        if (!ok) return;
+
+        try {
+            setQuickActionLoading(true);
+            await processReport(id, {
+                action: 'BAN_USER_APPROVE',
+                note: adminNote.trim() || `Admin đã ban user #${userId} do vi phạm.`,
+            });
+            setAutoClosedByQuickAction(true);
+            showToast(`Đã ban user #${userId} và đóng báo cáo.`, 'success');
+            await loadReport();
+        } catch (error) {
+            showToast(error?.message || 'Không thể ban user.', 'error');
+        } finally {
+            setQuickActionLoading(false);
+        }
+    };
+
     const timestampParts = useMemo(() => {
         const raw = report?.createdAt;
         if (!raw) return { time: '—', date: '—' };
@@ -317,6 +365,7 @@ export default function ReportDetailPage() {
 
     const rid = reportRowId(report);
     const canAct = isPendingRow(report);
+    const isActionLocked = submitting || quickActionLoading || !canAct;
     const subjectLabel = targetSubjectLabel(report.targetType);
     const typeLabel = targetTypeLabel(report.targetType);
     const displayTitle = reportedDisplay(report);
@@ -696,7 +745,7 @@ export default function ReportDetailPage() {
                                 multiline
                                 minRows={3}
                                 placeholder="Ghi chú cho hồ sơ xử lý (chỉ admin)…"
-                                disabled={submitting || !canAct}
+                                disabled={isActionLocked}
                                 sx={{
                                     '& .MuiOutlinedInput-root': {
                                         color: '#f8fafc',
@@ -761,13 +810,74 @@ export default function ReportDetailPage() {
                                 ? `Hoàn tất điều tra cho báo cáo${rid != null ? ` #${rid}` : ''}. Duyệt: ghi nhận vi phạm. Từ chối: báo cáo không được chấp nhận.`
                                 : 'Báo cáo này đã được xử lý. Bạn có thể xem lại thông tin phía trên.'}
                         </Typography>
+                        {autoClosedByQuickAction && (
+                            <Chip
+                                size="small"
+                                label="Đã đóng tự động sau thao tác quản trị"
+                                sx={{
+                                    mt: 1,
+                                    height: 24,
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    bgcolor: 'rgba(34, 197, 94, 0.14)',
+                                    color: '#86efac',
+                                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                                }}
+                            />
+                        )}
                     </Box>
                 </Stack>
                 <Stack direction="row" spacing={1.25} justifyContent="flex-end" flexWrap="wrap" useFlexGap sx={{ flexShrink: 0 }}>
+                    {canAct && (tt === 'LISTING' || tt === 'POST') && (
+                        <Button
+                            variant="outlined"
+                            onClick={handleQuickHideListing}
+                            disabled={isActionLocked}
+                            sx={{
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                borderRadius: 999,
+                                px: 2.5,
+                                borderColor: 'rgba(248, 113, 113, 0.65)',
+                                color: '#fecaca',
+                                bgcolor: 'rgba(127, 29, 29, 0.2)',
+                                '&:hover': {
+                                    borderColor: 'rgba(248, 113, 113, 0.9)',
+                                    bgcolor: 'rgba(127, 29, 29, 0.32)',
+                                },
+                            }}
+                        >
+                            {quickActionLoading ? 'Đang xử lý…' : 'Ẩn bài'}
+                        </Button>
+                    )}
+
+                    {canAct && tt === 'USER' && (
+                        <Button
+                            variant="outlined"
+                            onClick={handleQuickBanUser}
+                            disabled={submitting || quickActionLoading}
+                            sx={{
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                borderRadius: 999,
+                                px: 2.5,
+                                borderColor: 'rgba(251, 191, 36, 0.7)',
+                                color: '#fde68a',
+                                bgcolor: 'rgba(120, 53, 15, 0.2)',
+                                '&:hover': {
+                                    borderColor: 'rgba(251, 191, 36, 0.95)',
+                                    bgcolor: 'rgba(120, 53, 15, 0.34)',
+                                },
+                            }}
+                        >
+                            {quickActionLoading ? 'Đang xử lý…' : 'Ban user'}
+                        </Button>
+                    )}
+
                     <Button
                         variant="outlined"
                         onClick={() => submitProcess('REJECT')}
-                        disabled={submitting || !canAct}
+                        disabled={submitting || quickActionLoading || !canAct}
                         sx={{
                             textTransform: 'none',
                             fontWeight: 800,
@@ -792,7 +902,7 @@ export default function ReportDetailPage() {
                     <Button
                         variant="contained"
                         onClick={() => submitProcess('APPROVE')}
-                        disabled={submitting || !canAct}
+                        disabled={submitting || quickActionLoading || !canAct}
                         sx={{
                             textTransform: 'none',
                             fontWeight: 800,

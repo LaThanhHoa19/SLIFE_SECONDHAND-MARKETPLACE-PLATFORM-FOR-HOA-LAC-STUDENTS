@@ -45,6 +45,7 @@ public class ReportService {
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "POST", "USER", "COMMENT", "MESSAGE");
     private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "REJECTED", "DISMISSED");
+    private static final Set<String> VALID_MODERATION_ACTIONS = Set.of("HIDE_LISTING_APPROVE", "BAN_USER_APPROVE");
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
     private static final int DEFAULT_AUTO_HIDE_THRESHOLD = 3;
 
@@ -193,22 +194,27 @@ public class ReportService {
 
         ensurePendingBeforeProcess(report);
 
-        report.setAdminNote(note);
-        report.setHandledBy(admin);
-        report.setUpdatedAt(Instant.now());
-
-        if ("APPROVE".equals(normalizedAction)) {
-            report.setStatus("RESOLVED");
-        } else {
-            report.setStatus("REJECTED");
+        if ("HIDE_LISTING_APPROVE".equals(normalizedAction)) {
+            if (!"LISTING".equalsIgnoreCase(String.valueOf(report.getTargetType()))) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "HIDE_LISTING_APPROVE only supports LISTING reports");
+            }
+            hideListingByAdmin(report.getTargetId());
+            return closeReportAfterModeration(report, admin, note, true);
         }
 
-        Report savedReport = reportRepository.save(report);
-        if ("APPROVE".equals(normalizedAction)) {
-            applyApproveSideEffects(savedReport);
+        if ("BAN_USER_APPROVE".equals(normalizedAction)) {
+            if (!"USER".equalsIgnoreCase(String.valueOf(report.getTargetType()))) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "BAN_USER_APPROVE only supports USER reports");
+            }
+            banUserByAdmin(report.getTargetId());
+            return closeReportAfterModeration(report, admin, note, true);
         }
-        auditLogService.logReportProcessed(admin, savedReport, "APPROVE".equals(normalizedAction));
-        return "Report processed successfully";
+
+        if ("APPROVE".equals(normalizedAction)) {
+            return closeReportAfterModeration(report, admin, note, true);
+        }
+
+        return closeReportAfterModeration(report, admin, note, false);
     }
 
     private ReportResponse createListingReport(User reporter, ReportRequest request, String targetType) {
@@ -332,8 +338,9 @@ public class ReportService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "action is required");
         }
         String normalized = action.trim().toUpperCase(Locale.ROOT);
-        if (!"APPROVE".equals(normalized) && !"REJECT".equals(normalized)) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT, "action must be APPROVE or REJECT");
+        if (!"APPROVE".equals(normalized) && !"REJECT".equals(normalized) && !VALID_MODERATION_ACTIONS.contains(normalized)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT,
+                    "action must be APPROVE, REJECT, HIDE_LISTING_APPROVE, or BAN_USER_APPROVE");
         }
         return normalized;
     }
@@ -343,6 +350,44 @@ public class ReportService {
         if (!"PENDING".equals(status)) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Report has already been processed");
         }
+    }
+
+    private String closeReportAfterModeration(Report report, User admin, String note, boolean approved) {
+        report.setAdminNote(note);
+        report.setHandledBy(admin);
+        report.setUpdatedAt(Instant.now());
+        report.setStatus(approved ? "RESOLVED" : "REJECTED");
+
+        Report savedReport = reportRepository.save(report);
+        if (approved) {
+            applyApproveSideEffects(savedReport);
+        }
+        auditLogService.logReportProcessed(admin, savedReport, approved);
+        return "Report processed successfully";
+    }
+
+    private void hideListingByAdmin(Long listingId) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        listing.setStatus("MOD_HIDDEN");
+        listing.setUpdatedAt(Instant.now());
+        listingRepository.save(listing);
+
+        User owner = listing.getSeller();
+        if (owner != null) {
+            notificationService.notifyAdminHiddenListing(owner, listing.getId(), listing.getTitle());
+        }
+    }
+
+    private void banUserByAdmin(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
+        user.setStatus("BANNED");
+        bumpTokenRevision(user);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
+
+        notificationService.notifyAdminBannedUser(user);
     }
 
     private void applyApproveSideEffects(Report report) {

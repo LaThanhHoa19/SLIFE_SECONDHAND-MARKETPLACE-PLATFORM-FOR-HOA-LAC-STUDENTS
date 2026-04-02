@@ -57,4 +57,11 @@ public class AdminController {
         String message = adminService.updateUserStatus(id, request.status(), admin);
         return ResponseEntity.ok(BaseResponse.success(message, message));
     }
+
+    @PatchMapping("/api/admin/listings/{id}/hide")
+    public ResponseEntity<BaseResponse<String>> hideListingByAdmin(@PathVariable Long id) {
+        User admin = userService.getCurrentUser();
+        String message = adminService.adminHideListing(id, admin);
+        return ResponseEntity.ok(BaseResponse.success(message, message));
+    }
 }
