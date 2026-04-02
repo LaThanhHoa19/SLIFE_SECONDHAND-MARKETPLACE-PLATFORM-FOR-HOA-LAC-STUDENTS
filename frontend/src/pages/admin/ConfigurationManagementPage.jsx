@@ -32,7 +32,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS, DARK_DIALOG_TEXTFIELD_SX } from '../../components/common/dialogStyles';
-import { getAdminConfigurations, updateAdminConfigurations } from '../../api/configApi';
+import {
+    getAdminConfigurations,
+    updateAdminConfigurationById,
+    updateAdminConfigurations,
+} from '../../api/configApi';
 
 const TABLE_SURFACE = '#19191B';
 const TABLE_BORDER = '#3E3E42';
@@ -194,6 +198,15 @@ function formatDateTime(iso) {
 function extractConfigurationList(response) {
     const payload = response?.data?.data;
     return Array.isArray(payload) ? payload : [];
+}
+
+function extractApiErrorMessage(error, fallback) {
+    return (
+        error?.raw?.response?.data?.message ||
+        error?.raw?.response?.data?.error ||
+        error?.message ||
+        fallback
+    );
 }
 
 function mapDtoToRow(dto, index) {
@@ -367,14 +380,23 @@ export default function ConfigurationManagementPage() {
         }
         try {
             setIsSaving(true);
-            await updateAdminConfigurations([
-                { key, value: result.value, description: draftDescription.trim() },
-            ]);
+            const trimmedDescription = draftDescription.trim();
+            if (editing.id != null) {
+                await updateAdminConfigurationById(editing.id, {
+                    value: result.value,
+                    description: trimmedDescription,
+                });
+            } else {
+                // Fallback for legacy records without numeric id.
+                await updateAdminConfigurations([
+                    { key, value: result.value, description: trimmedDescription },
+                ]);
+            }
             showToast('Đã cập nhật cấu hình.', 'success');
             closeEdit();
             await loadConfigs();
         } catch (error) {
-            showToast(error?.message || 'Không lưu được cấu hình.', 'error');
+            showToast(extractApiErrorMessage(error, 'Không lưu được cấu hình.'), 'error');
         } finally {
             setIsSaving(false);
         }
