@@ -90,6 +90,13 @@ public class OfferService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer price must be lower than original price");
         }
 
+        long pendingOffers = offerRepository.countByBuyer_IdAndListing_IdAndStatus(
+                buyer.getId(), listingId, STATUS_PENDING);
+        if (pendingOffers > 0) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT,
+                    "Bạn đã có một lượt trả giá đang chờ người bán phản hồi. Vui lòng đợi được chấp nhận hoặc từ chối rồi mới gửi lượt mới.");
+        }
+
         Offer offer = new Offer();
         offer.setListing(listing);
         offer.setBuyer(buyer);
@@ -231,6 +238,12 @@ public class OfferService {
         }
         if (listing.getSeller().getId().equals(current.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Người bán không thể trả giá cho bài đăng của chính mình");
+        }
+        long pendingOffers = offerRepository.countByBuyer_IdAndListing_IdAndStatus(
+                current.getId(), listing.getId(), STATUS_PENDING);
+        if (pendingOffers > 0) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT,
+                    "Bạn đã có một lượt trả giá đang chờ người bán phản hồi. Vui lòng đợi được chấp nhận hoặc từ chối rồi mới gửi lượt mới.");
         }
         Offer offer = new Offer();
         offer.setConversation(conv);

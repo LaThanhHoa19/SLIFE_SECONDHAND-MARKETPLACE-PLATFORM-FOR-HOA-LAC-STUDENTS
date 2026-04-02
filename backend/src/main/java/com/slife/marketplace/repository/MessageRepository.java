@@ -22,8 +22,4 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     @Modifying
     @Query("UPDATE Message m SET m.isRead = true WHERE m.conversation.id = :convId AND m.isRead = false AND m.sender.id <> :readerId")
     int markAllReadInConversation(@Param("convId") Long convId, @Param("readerId") Long readerId);
-
-    /** Count OFFER_PROPOSAL messages from a specific buyer in a conversation (for spam guard BR-35 at message level). */
-    @Query("SELECT COUNT(m) FROM Message m WHERE m.conversation.id = :convId AND m.sender.id = :senderId AND m.messageType = com.slife.marketplace.entity.MessageType.OFFER_PROPOSAL")
-    long countOfferProposalsBySenderInConversation(@Param("convId") Long convId, @Param("senderId") Long senderId);
 }
