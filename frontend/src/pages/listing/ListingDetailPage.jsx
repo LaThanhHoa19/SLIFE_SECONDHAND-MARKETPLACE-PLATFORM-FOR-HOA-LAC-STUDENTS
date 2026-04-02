@@ -141,6 +141,7 @@ export default function ListingDetailPage() {
     const [similarListings, setSimilarListings] = useState([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
+    const [saveSubmittingSimilarId, setSaveSubmittingSimilarId] = useState(null);
     const [sellerFollowed, setSellerFollowed] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
 
@@ -383,6 +384,44 @@ export default function ListingDetailPage() {
             showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
         } finally {
             setSaveSubmitting(false);
+        }
+    };
+
+    const handleToggleSaveSimilar = async (targetListing) => {
+        const targetId = targetListing?.id ?? targetListing?.listingId;
+        if (!targetId || saveSubmittingSimilarId) return;
+        if (!isAuthenticated) {
+            showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        const wasSaved = !!(targetListing?.isSaved ?? targetListing?.saved);
+        setSaveSubmittingSimilarId(targetId);
+        setSimilarListings((prev) =>
+            prev.map((item) =>
+                String(item?.id ?? item?.listingId) === String(targetId)
+                    ? { ...item, isSaved: !wasSaved }
+                    : item
+            )
+        );
+        try {
+            if (wasSaved) {
+                await unsaveListing(targetId);
+            } else {
+                await saveListing(targetId);
+            }
+            showToast(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
+        } catch {
+            setSimilarListings((prev) =>
+                prev.map((item) =>
+                    String(item?.id ?? item?.listingId) === String(targetId)
+                        ? { ...item, isSaved: wasSaved }
+                        : item
+                )
+            );
+            showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
+        } finally {
+            setSaveSubmittingSimilarId(null);
         }
     };
 
@@ -696,6 +735,8 @@ export default function ListingDetailPage() {
 
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
+                onToggleSave={handleToggleSaveSimilar}
+                saveSubmittingId={saveSubmittingSimilarId}
             />
 
             <ReportDialog

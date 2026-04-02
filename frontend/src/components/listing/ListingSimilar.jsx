@@ -8,7 +8,12 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const PURPLE = '#9D6EED';
 
-export default function ListingSimilar({ similarListings, loadingRelated }) {
+export default function ListingSimilar({
+  similarListings,
+  loadingRelated,
+  onToggleSave,
+  saveSubmittingId,
+}) {
   const navigate = useNavigate();
 
   const displayListings = Array.isArray(similarListings) ? similarListings : [];
@@ -69,7 +74,12 @@ export default function ListingSimilar({ similarListings, loadingRelated }) {
           }}
         >
           {displayListings.map((l) => (
-            <MiniListingCard key={l.id ?? l.listingId} listing={l} />
+            <MiniListingCard
+              key={l.id ?? l.listingId}
+              listing={l}
+              onToggleSave={onToggleSave}
+              saveDisabled={String(saveSubmittingId) === String(l.id ?? l.listingId)}
+            />
           ))}
         </Box>
       )}
