@@ -390,6 +390,7 @@ public class ReportService {
                 report.getId(),
                 reporterName,
                 reporterAvatarUrl,
+                ctx.reportedUserAvatarUrl(),
                 report.getTargetType(),
                 report.getTargetId(),
                 ctx.preview(),
@@ -404,12 +405,12 @@ public class ReportService {
     private TargetContext resolveTargetContext(Report report) {
         String targetType = report.getTargetType() != null ? report.getTargetType().toUpperCase(Locale.ROOT) : "";
         Long targetId = report.getTargetId();
-        if (targetId == null) return new TargetContext(null, null, null);
+        if (targetId == null) return new TargetContext(null, null, null, null);
         try {
             if ("LISTING".equals(targetType)) {
                 return listingRepository.findById(targetId)
-                        .map(l -> new TargetContext(truncate(l.getTitle(), 120), l.getId(), null))
-                        .orElse(new TargetContext("[Listing not found]", null, null));
+                        .map(l -> new TargetContext(truncate(l.getTitle(), 120), l.getId(), null, null))
+                        .orElse(new TargetContext("[Listing not found]", null, null, null));
             }
             if ("COMMENT".equals(targetType)) {
                 return commentRepository.findById(targetId)
@@ -418,9 +419,9 @@ public class ReportService {
                             String preview = (c.getContent() == null || c.getContent().isBlank())
                                     ? "[Image-only comment]"
                                     : truncate(c.getContent(), 120);
-                            return new TargetContext(preview, listingId, null);
+                            return new TargetContext(preview, listingId, null, null);
                         })
-                        .orElse(new TargetContext("[Comment not found]", null, null));
+                        .orElse(new TargetContext("[Comment not found]", null, null, null));
             }
             if ("MESSAGE".equals(targetType)) {
                 return messageRepository.findById(targetId)
@@ -435,20 +436,20 @@ public class ReportService {
                             } else {
                                 preview = truncate(m.getContent(), 120);
                             }
-                            return new TargetContext(preview, listingId, convId);
+                            return new TargetContext(preview, listingId, convId, null);
                         })
-                        .orElse(new TargetContext("[Message not found]", null, null));
+                        .orElse(new TargetContext("[Message not found]", null, null, null));
             }
             if ("USER".equals(targetType)) {
                 return userRepository.findById(targetId)
-                        .map(u -> new TargetContext(u.getFullName(), null, null))
-                        .orElse(new TargetContext("[User not found]", null, null));
+                        .map(u -> new TargetContext(u.getFullName(), null, null, u.getAvatarUrl()))
+                        .orElse(new TargetContext("[User not found]", null, null, null));
             }
         } catch (Exception ex) {
             log.warn("resolveTargetContext failed reportId={} type={} targetId={}: {}",
                     report.getId(), targetType, targetId, ex.getMessage());
         }
-        return new TargetContext(null, null, null);
+        return new TargetContext(null, null, null, null);
     }
 
     private String truncate(String s, int max) {
@@ -468,7 +469,7 @@ public class ReportService {
         };
     }
 
-    private record TargetContext(String preview, Long listingId, Long conversationId) {}
+    private record TargetContext(String preview, Long listingId, Long conversationId, String reportedUserAvatarUrl) {}
 
     /**
      * When PENDING reports for the same target reach the configured threshold, hide listing or comment.

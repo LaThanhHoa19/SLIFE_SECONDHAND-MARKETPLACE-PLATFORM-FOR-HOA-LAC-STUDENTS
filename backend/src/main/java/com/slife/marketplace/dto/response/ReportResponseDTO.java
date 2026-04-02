@@ -6,6 +6,7 @@ public record ReportResponseDTO(
         Long reportId,
         String reporterName,
         String reporterAvatarUrl,
+        String reportedUserAvatarUrl,
         String targetType,
         Long targetId,
         String targetPreview,
