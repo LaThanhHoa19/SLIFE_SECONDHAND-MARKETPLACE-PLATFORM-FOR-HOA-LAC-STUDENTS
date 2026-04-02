@@ -348,7 +348,8 @@ function ChatPageInner() {
         const res = await getListing(activeSession.listingId);
         const body = res?.data;
         const data = body?.data ?? body;
-        const status = data?.status ?? null;
+        const raw = data?.status ?? null;
+        const status = raw != null ? String(raw).toUpperCase() : null;
         if (!cancelled) setActiveListingStatus(status);
       } catch {
         if (!cancelled) setActiveListingStatus(null);
@@ -395,6 +396,14 @@ function ChatPageInner() {
     setPostSaleBannerBusy(false);
   }, [activeSessionId]);
 
+  /** Sau F5, postSaleBannerOutcome mất; đồng bộ với GET listing (HIDDEN) để vẫn hiện "Tin đã ẩn". */
+  const resolvedPostSaleBannerOutcome = useMemo(() => {
+    if (postSaleBannerOutcome === 'hidden') return 'hidden';
+    const st = String(activeListingStatus || '').toUpperCase();
+    if (st === 'HIDDEN') return 'hidden';
+    return null;
+  }, [postSaleBannerOutcome, activeListingStatus]);
+
   /** Nút "Đã bán / ẩn tin": chỉ chuyển tin sang HIDDEN (không gọi markSold). */
   const handlePostSaleBannerAction = useCallback(async () => {
     const id = activeSession?.listingId;
@@ -404,6 +413,7 @@ function ChatPageInner() {
       await hideListing(id);
       showToast('Đã ẩn tin.', 'success');
       setPostSaleBannerOutcome('hidden');
+      setActiveListingStatus('HIDDEN');
       fetchSessions();
       setSessionsVersion((v) => v + 1);
     } catch (e) {
@@ -1250,7 +1260,7 @@ function ChatPageInner() {
                       showPostSaleActions={showPostSaleActions}
                       hideViewListing={listingClosedForBuyer}
                       onPostSaleAction={handlePostSaleBannerAction}
-                      postSaleOutcome={postSaleBannerOutcome}
+                      postSaleOutcome={resolvedPostSaleBannerOutcome}
                       postSaleBusy={postSaleBannerBusy}
                       finalizeDisabled={!latestPendingOfferIdForSeller}
                       onFinalizeOrder={() => {
