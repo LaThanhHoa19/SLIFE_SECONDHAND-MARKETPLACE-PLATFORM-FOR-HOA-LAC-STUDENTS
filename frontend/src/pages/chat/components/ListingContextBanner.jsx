@@ -11,6 +11,7 @@ export default function ListingContextBanner({
     isSellerInActiveChat = false,
     onFinalizeOrder,
     finalizeDisabled = false,
+    showPostSaleActions = false,
 }) {
     if (activeSession?.listingId == null) return null;
 
@@ -67,7 +68,7 @@ export default function ListingContextBanner({
                     {activeSession.listingTitle || `Tin #${activeSession.listingId}`}
                 </Typography>
             </Box>
-            {isSellerInActiveChat && (
+            {isSellerInActiveChat && !showPostSaleActions && (
                 <Chip
                     size="small"
                     label="Chốt đơn"
@@ -90,6 +91,49 @@ export default function ListingContextBanner({
                         },
                     }}
                 />
+            )}
+
+            {isSellerInActiveChat && showPostSaleActions && (
+                <>
+                    <Chip
+                        size="small"
+                        label="Đã bán"
+                        variant="outlined"
+                        component={Link}
+                        to={`/listings/${activeSession.listingId}`}
+                        clickable
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{
+                            fontWeight: 900,
+                            borderColor: alpha(theme.palette.success.main, 0.55),
+                            color: theme.palette.success.main,
+                            bgcolor: alpha(theme.palette.success.main, 0.08),
+                            '&:hover': {
+                                bgcolor: alpha(theme.palette.success.main, 0.12),
+                                borderColor: alpha(theme.palette.success.main, 0.75),
+                            },
+                        }}
+                    />
+                    <Chip
+                        size="small"
+                        label="Ẩn tin"
+                        variant="outlined"
+                        component={Link}
+                        to={`/listings/${activeSession.listingId}`}
+                        clickable
+                        onClick={(e) => e.stopPropagation()}
+                        sx={{
+                            fontWeight: 900,
+                            borderColor: alpha(theme.palette.warning.main, 0.55),
+                            color: theme.palette.warning.main,
+                            bgcolor: alpha(theme.palette.warning.main, 0.08),
+                            '&:hover': {
+                                bgcolor: alpha(theme.palette.warning.main, 0.12),
+                                borderColor: alpha(theme.palette.warning.main, 0.75),
+                            },
+                        }}
+                    />
+                </>
             )}
             <Chip
                 size="small"

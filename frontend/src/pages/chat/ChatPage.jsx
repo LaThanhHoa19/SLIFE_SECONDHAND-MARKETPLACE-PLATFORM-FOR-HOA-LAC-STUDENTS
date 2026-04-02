@@ -326,6 +326,23 @@ function ChatPageInner() {
     sessionsVersion,
   });
 
+  // Seller UI: once buyer accepts the "XÁC NHẬN GIAO DỊCH" message, hide "Chốt đơn"
+  // and show post-sale actions. Must run after useChatSessions (isSellerInActiveChat).
+  const showPostSaleActions = useMemo(() => {
+    if (!isSellerInActiveChat) return false;
+    for (let i = displayMessages.length - 1; i >= 0; i -= 1) {
+      const m = displayMessages[i];
+      if (!m) continue;
+      if (m.messageType !== 'DEAL_CONFIRMATION') continue;
+      if (!isMessageFromCurrentUser(m, currentUserId)) continue; // confirmation request is sent by seller
+      const isDealConfirmationRequest =
+        typeof m.content === 'string' && m.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
+      if (!isDealConfirmationRequest) continue;
+      if (m.dealDecision) return true;
+    }
+    return false;
+  }, [displayMessages, currentUserId, isSellerInActiveChat]);
+
   // ── Fetch message history ─────────────────────────────────────────────────
   const fetchHistory = useCallback(() => {
     if (!activeSessionId) return Promise.resolve();
@@ -1144,6 +1161,7 @@ function ChatPageInner() {
                       activeSession={activeSession}
                       activeListingThumb={activeListingThumb}
                       isSellerInActiveChat={isSellerInActiveChat}
+                      showPostSaleActions={showPostSaleActions}
                       finalizeDisabled={!latestPendingOfferIdForSeller}
                       onFinalizeOrder={() => {
                         setFinalizeOpen(true);

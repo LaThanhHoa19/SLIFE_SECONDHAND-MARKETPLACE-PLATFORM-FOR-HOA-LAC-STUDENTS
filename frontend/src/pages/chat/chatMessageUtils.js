@@ -194,9 +194,23 @@ export function getMessageRowKey(msg, indexIfNoId = 0) {
 /** Điền replyTo / quote từ messages trong phiên khi BE/WS chỉ trả id (đủ cho tin của chính mình). */
 export function enrichMessagesForDisplay(msgs) {
   const byId = new Map();
+  const repliesByTargetId = new Map();
   for (const m of msgs) {
     const key = m?.id != null ? String(m.id) : null;
     if (key && !key.startsWith('tmp_')) byId.set(key, m);
+
+    // Reply linkage can come as replyToMessageId (id only) or replyTo object (hydrated).
+    const rid =
+      m?.replyToMessageId != null
+        ? String(m.replyToMessageId)
+        : m?.replyTo?.id != null
+          ? String(m.replyTo.id)
+          : null;
+    if (rid) {
+      const list = repliesByTargetId.get(rid) ?? [];
+      list.push(m);
+      repliesByTargetId.set(rid, list);
+    }
   }
   return msgs.map((m) => {
     let replyTo = m.replyTo;
@@ -238,7 +252,47 @@ export function enrichMessagesForDisplay(msgs) {
       }
     }
 
-    return { ...m, replyTo, quote };
+    // Derive deal confirmation decision from existing replies so action buttons
+    // don't reappear after refresh (BE doesn't persist a "decision" field).
+    let dealDecision = m.dealDecision;
+    if (
+      dealDecision == null &&
+      m?.messageType === 'DEAL_CONFIRMATION' &&
+      m?.id != null &&
+      !String(m.id).startsWith('tmp_')
+    ) {
+      const candidates = repliesByTargetId.get(String(m.id)) ?? [];
+      const texts = candidates
+        .map((x) => (x?.content != null ? String(x.content) : ''))
+        .filter((t) => t.trim() !== '');
+      const joined = texts.join('\n').toLowerCase();
+      if (joined) {
+        if (
+          joined.includes('đồng ý') ||
+          joined.includes('chap nhan') ||
+          joined.includes('chấp nhận') ||
+          joined.includes('✅')
+        ) {
+          dealDecision = 'ACCEPT';
+        } else if (
+          joined.includes('hủy') ||
+          joined.includes('huy') ||
+          joined.includes('không đồng ý') ||
+          joined.includes('khong dong y') ||
+          joined.includes('❌')
+        ) {
+          dealDecision = 'CANCEL';
+        } else if (candidates.length > 0) {
+          // Any reply referencing the confirmation counts as "decided" (disable buttons),
+          // even if the text doesn't match our heuristics.
+          dealDecision = 'DONE';
+        }
+      } else if (candidates.length > 0) {
+        dealDecision = 'DONE';
+      }
+    }
+
+    return { ...m, replyTo, quote, dealDecision };
   });
 }
 

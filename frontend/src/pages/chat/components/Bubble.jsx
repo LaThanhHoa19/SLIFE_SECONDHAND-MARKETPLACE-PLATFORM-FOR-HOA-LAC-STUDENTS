@@ -104,6 +104,9 @@ export default function Bubble({ msg, onAccept, onReject, onDealConfirmDecision,
 
     if (isSystem) {
         const decided = msg?.dealDecision === 'ACCEPT' || msg?.dealDecision === 'CANCEL';
+        const isDealConfirmationRequest =
+            typeof msg?.content === 'string' &&
+            msg.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
                 <Paper
@@ -134,7 +137,10 @@ export default function Bubble({ msg, onAccept, onReject, onDealConfirmDecision,
                     >
                         {msg.content}
                     </Typography>
-                    {!isMe && typeof onDealConfirmDecision === 'function' && !decided && (
+                    {!isMe &&
+                        isDealConfirmationRequest &&
+                        typeof onDealConfirmDecision === 'function' &&
+                        !decided && (
                         <Box sx={{ display: 'flex', gap: 1, mt: 1.25, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                             <Button
                                 size="small"
