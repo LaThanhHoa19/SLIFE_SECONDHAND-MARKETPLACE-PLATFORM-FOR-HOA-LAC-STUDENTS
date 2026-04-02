@@ -825,6 +825,11 @@ public class ListingService {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
 
+        String status = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
+        if (!"HIDDEN".equals(status)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể bỏ ẩn tin do chính bạn đã ẩn");
+        }
+
         listing.setStatus("ACTIVE");
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
