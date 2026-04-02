@@ -2,8 +2,8 @@
  * Helpers dùng chung cho Quản lý báo cáo (admin).
  * Khớp backend ReportResponseDTO: targetPreview, status, targetType, ...
  *
- * Mock: bật khi import.meta.env.DEV và VITE_ADMIN_REPORTS_MOCK !== 'false',
- * hoặc ép bật VITE_ADMIN_REPORTS_MOCK=true (production build).
+ * Mock: mặc định TẮT — luôn gọi API thật. Chỉ bật mock khi VITE_ADMIN_REPORTS_MOCK=true
+ * (ví dụ chỉnh UI không cần backend).
  */
 
 const REPORT_MOCK_PATCH_KEY = 'slife_admin_report_mock_v1';
@@ -13,6 +13,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
     {
         reportId: 99001,
         reporterName: 'Nguyễn Văn An',
+        reporterAvatarUrl: null,
         targetType: 'USER',
         targetId: 1001,
         targetPreview: 'Trần Thị Bình',
@@ -27,6 +28,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
     {
         reportId: 99002,
         reporterName: 'Lê Minh Tuấn',
+        reporterAvatarUrl: null,
         targetType: 'LISTING',
         targetId: 2002,
         targetPreview: 'MacBook Air M1 cũ — còn bảo hành',
@@ -41,6 +43,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
     {
         reportId: 99003,
         reporterName: 'Phạm Thu Hà',
+        reporterAvatarUrl: null,
         targetType: 'USER',
         targetId: 1003,
         targetPreview: 'Đỗ Quốc Huy',
@@ -55,6 +58,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
     {
         reportId: 99004,
         reporterName: 'Hoàng Nam',
+        reporterAvatarUrl: null,
         targetType: 'LISTING',
         targetId: 2004,
         targetPreview: 'iPhone 13 — pin chai',
@@ -69,6 +73,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
     {
         reportId: 99005,
         reporterName: 'Vũ Khánh Linh',
+        reporterAvatarUrl: null,
         targetType: 'COMMENT',
         targetId: 5005,
         targetPreview: 'Bình luận xúc phạm người mua…',
@@ -83,6 +88,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
     {
         reportId: 99006,
         reporterName: 'Bùi Gia Bảo',
+        reporterAvatarUrl: null,
         targetType: 'MESSAGE',
         targetId: 6006,
         targetPreview: 'Chuyển khoản trước mới giao hàng…',
@@ -97,9 +103,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
 ];
 
 export function isReportAdminMockEnabled() {
-    if (import.meta.env.VITE_ADMIN_REPORTS_MOCK === 'true') return true;
-    if (import.meta.env.VITE_ADMIN_REPORTS_MOCK === 'false') return false;
-    return Boolean(import.meta.env.DEV);
+    return import.meta.env.VITE_ADMIN_REPORTS_MOCK === 'true';
 }
 
 export function isMockReportRow(row) {
@@ -226,14 +230,41 @@ export function reportCategoryTab(row) {
     return 'OTHER';
 }
 
-/** Nhãn cột / mô tả theo loại đích API. */
-export function targetSubjectLabel(targetType) {
+/** Nhãn hiển thị theo loại đích API (thân thiện cho admin). */
+export function targetTypeLabel(targetType) {
     const t = String(targetType || '').toUpperCase();
-    if (t === 'LISTING' || t === 'POST') return 'Bài đăng bị báo cáo';
-    if (t === 'USER') return 'Người bị báo cáo';
+    if (t === 'LISTING' || t === 'POST') return 'Tin đăng';
+    if (t === 'USER') return 'Người dùng';
     if (t === 'COMMENT') return 'Bình luận';
     if (t === 'MESSAGE') return 'Tin nhắn';
     return 'Đối tượng';
+}
+
+/** Nhãn cột / mô tả theo loại đích API. */
+export function targetSubjectLabel(targetType) {
+    const t = String(targetType || '').toUpperCase();
+    if (t === 'LISTING' || t === 'POST') return 'Tin đăng bị báo cáo';
+    if (t === 'USER') return 'Người bị báo cáo';
+    if (t === 'COMMENT') return 'Bình luận bị báo cáo';
+    if (t === 'MESSAGE') return 'Tin nhắn bị báo cáo';
+    return 'Đối tượng bị báo cáo';
+}
+
+import { fullImageUrl } from '../../utils/constants';
+
+export function reporterAvatarUrl(row) {
+    const raw =
+        row?.reporterAvatarUrl ??
+        row?.reporter_avatar_url ??
+        row?.reporterAvatar ??
+        row?.reporter_avatar ??
+        row?.avatarUrl ??
+        row?.avatar_url ??
+        row?.reporter?.avatarUrl ??
+        row?.reporter?.avatar_url ??
+        row?.reporter?.avatar ??
+        null;
+    return fullImageUrl(raw);
 }
 
 /** Parse Spring Data Page từ BaseResponse. */
