@@ -183,6 +183,7 @@ export default function ReportDetailPage() {
     }, [reportIdParam]);
 
     useEffect(() => {
+        setAutoClosedByQuickAction(false);
         loadReport();
     }, [loadReport]);
 
