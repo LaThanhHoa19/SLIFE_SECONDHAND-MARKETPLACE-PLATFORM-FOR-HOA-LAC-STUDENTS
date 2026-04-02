@@ -128,6 +128,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     Page<Listing> findBySellerAndStatus(User seller, String status, Pageable pageable);
 
+    Page<Listing> findBySellerAndStatusIn(User seller, List<String> statuses, Pageable pageable);
+
     @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
             "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
             "ORDER BY l.expirationDate DESC")

@@ -9,7 +9,6 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.ReportRequest;
-import com.slife.marketplace.dto.request.ResolveReportRequest;
 import com.slife.marketplace.dto.response.ReportResponse;
 import com.slife.marketplace.dto.response.ReportResponseDTO;
 import com.slife.marketplace.entity.Comment;
@@ -44,8 +43,8 @@ public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "POST", "USER", "COMMENT", "MESSAGE");
-    private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "REJECTED", "DISMISSED");
     private static final Set<String> VALID_MODERATION_ACTIONS = Set.of("HIDE_LISTING_APPROVE", "BAN_USER_APPROVE");
+    private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
     private static final int DEFAULT_AUTO_HIDE_THRESHOLD = 3;
 
@@ -160,33 +159,6 @@ public class ReportService {
     }
 
     @Transactional
-    public ReportResponse resolveReport(Long reportId, User admin, ResolveReportRequest request) {
-        String resolveStatus = request.getStatus().toUpperCase(Locale.ROOT);
-        if ("DISMISSED".equals(resolveStatus)) {
-            resolveStatus = "REJECTED";
-        }
-        if (!VALID_RESOLVE_STATUSES.contains(resolveStatus)) {
-            throw new SlifeException(ErrorCode.REPORT_INVALID_STATUS);
-        }
-
-        Report report = reportRepository.findById(reportId)
-                .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
-
-        ensurePendingBeforeProcess(report);
-
-        report.setStatus(resolveStatus);
-        report.setAdminNote(request.getAdminNote());
-        report.setHandledBy(admin);
-        report.setUpdatedAt(Instant.now());
-
-        Report saved = reportRepository.save(report);
-        log.info("Report id={} resolved as {} by admin={}", reportId, resolveStatus, admin.getId());
-        boolean approved = "RESOLVED".equals(resolveStatus);
-        auditLogService.logReportProcessed(admin, saved, approved);
-        return ReportResponse.from(saved);
-    }
-
-    @Transactional
     public String processReport(Long reportId, String action, String note, User admin) {
         String normalizedAction = normalizeAction(action);
         Report report = reportRepository.findById(reportId)
@@ -198,7 +170,7 @@ public class ReportService {
             if (!"LISTING".equalsIgnoreCase(String.valueOf(report.getTargetType()))) {
                 throw new SlifeException(ErrorCode.INVALID_INPUT, "HIDE_LISTING_APPROVE only supports LISTING reports");
             }
-            hideListingByAdmin(report.getTargetId());
+            hideListingByAdmin(report);
             return closeReportAfterModeration(report, admin, note, true);
         }
 
@@ -206,7 +178,7 @@ public class ReportService {
             if (!"USER".equalsIgnoreCase(String.valueOf(report.getTargetType()))) {
                 throw new SlifeException(ErrorCode.INVALID_INPUT, "BAN_USER_APPROVE only supports USER reports");
             }
-            banUserByAdmin(report.getTargetId());
+            banUserByAdmin(report);
             return closeReportAfterModeration(report, admin, note, true);
         }
 
@@ -366,20 +338,22 @@ public class ReportService {
         return "Report processed successfully";
     }
 
-    private void hideListingByAdmin(Long listingId) {
+    private void hideListingByAdmin(Report report) {
+        Long listingId = report.getTargetId();
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-        listing.setStatus("MOD_HIDDEN");
+        listing.setStatus(LISTING_STATUS_MOD_HIDDEN);
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
 
         User owner = listing.getSeller();
         if (owner != null) {
-            notificationService.notifyAdminHiddenListing(owner, listing.getId(), listing.getTitle());
+            notificationService.notifyAdminHiddenListing(owner, listing.getId(), listing.getTitle(), report.getId(), report.getReason());
         }
     }
 
-    private void banUserByAdmin(Long userId) {
+    private void banUserByAdmin(Report report) {
+        Long userId = report.getTargetId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
         user.setStatus("BANNED");
@@ -387,7 +361,7 @@ public class ReportService {
         user.setUpdatedAt(java.time.LocalDateTime.now());
         userRepository.save(user);
 
-        notificationService.notifyAdminBannedUser(user);
+        notificationService.notifyAdminBannedUser(user, report.getId(), report.getReason());
     }
 
     private void applyApproveSideEffects(Report report) {
