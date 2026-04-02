@@ -1,7 +1,8 @@
 /**
  * Mục đích: API quản lý bài đăng của người dùng (My Listings).
  * API dùng: GET /api/listings/my?status=&page=&size=
- * status: ACTIVE | DRAFT | HIDDEN | SOLD | GIVEN_AWAY | BANNED | EXPIRED | REPORTED
+ * status: ACTIVE | DRAFT | HIDDEN | SOLD | … | EXPIRED | REPORTED
+ * HIDDEN (my): BE chỉ trả tin HIDDEN chưa quá expirationDate; tin HIDDEN đã hết hạn nằm ở EXPIRED.
  *         Không truyền → lấy tất cả.
  */
 import axiosClient from './axiosClient';

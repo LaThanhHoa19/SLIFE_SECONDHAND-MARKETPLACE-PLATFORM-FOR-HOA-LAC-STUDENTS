@@ -103,7 +103,13 @@ public class UserService {
             user.setFullName(user.getEmail() != null ? user.getEmail() : "User");
         }
         if (request.getPhoneNumber() != null) {
-            user.setPhoneNumber(request.getPhoneNumber().trim().isEmpty() ? null : request.getPhoneNumber().trim());
+            String normalizedPhone = request.getPhoneNumber().trim().isEmpty() ? null : request.getPhoneNumber().trim();
+            boolean changed = (user.getPhoneNumber() == null && normalizedPhone != null)
+                    || (user.getPhoneNumber() != null && !user.getPhoneNumber().equals(normalizedPhone));
+            user.setPhoneNumber(normalizedPhone);
+            if (changed) {
+                user.setPhoneVerifiedAt(null);
+            }
         }
         if (request.getBio() != null) {
             user.setBio(request.getBio().trim().isEmpty() ? null : request.getBio().trim());

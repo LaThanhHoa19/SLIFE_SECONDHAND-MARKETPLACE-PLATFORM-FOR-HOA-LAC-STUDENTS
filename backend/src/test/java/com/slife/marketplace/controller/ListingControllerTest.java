@@ -9,6 +9,8 @@ import com.slife.marketplace.dto.response.ListingCardResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.service.BlockService;
+import com.slife.marketplace.service.ListingLikeService;
 import com.slife.marketplace.service.ListingService;
 import com.slife.marketplace.service.ListingImageService;
 import com.slife.marketplace.service.SavedListingService;
@@ -43,6 +45,12 @@ class ListingControllerTest {
 
     @MockBean
     private ListingService listingService;
+
+    @MockBean
+    private BlockService blockService;
+
+    @MockBean
+    private ListingLikeService listingLikeService;
 
     @MockBean
     private UserService userService;

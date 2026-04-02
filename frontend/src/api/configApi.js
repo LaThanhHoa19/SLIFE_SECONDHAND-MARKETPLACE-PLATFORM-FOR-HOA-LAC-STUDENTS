@@ -12,3 +12,10 @@ export const getAdminConfigurations = () => axiosClient.get('/api/admin/configur
  */
 export const updateAdminConfigurations = (items) =>
   axiosClient.put('/api/admin/configurations', items);
+
+/**
+ * @param {number|string} id
+ * @param {{ value: string, description?: string | null }} payload
+ */
+export const updateAdminConfigurationById = (id, payload) =>
+  axiosClient.put(`/api/admin/configurations/${id}`, payload);

@@ -4,11 +4,10 @@ import { STITCH_CARD, STITCH_CARD_BORDER, STITCH_PURPLE } from './myListingsConf
 export default function MyListingsEmptyState({ tab }) {
     const messages = {
         ACTIVE:   { icon: '📭', title: 'Chưa có tin đăng',       text: 'Bạn chưa có tin đăng nào đang hoạt động.' },
-        HIDDEN:   { icon: '👁️', title: 'Không có tin đã ẩn',      text: 'Bạn chưa ẩn bài đăng nào.' },
+        HIDDEN:   { icon: '👁️', title: 'Không có tin đã ẩn',      text: 'Chỉ hiện tin ẩn mà chưa quá hạn — tin ẩn đã hết hạn nằm ở tab Hết hạn.' },
         DRAFT:    { icon: '📝', title: 'Không có bản nháp',       text: 'Chưa có bản nháp nào được lưu lại.' },
         EXPIRED:  { icon: '⏳', title: 'Không có tin hết hạn',    text: 'Tất cả tin đăng của bạn vẫn còn hiệu lực.' },
-        PENDING:  { icon: '⏰', title: 'Không có tin chờ duyệt',  text: 'Không có bài đăng nào đang chờ được duyệt.' },
-        REJECTED: { icon: '🚫', title: 'Không có tin bị từ chối', text: 'Không có bài đăng nào bị từ chối đăng.' },
+        SOLD:     { icon: '✅', title: 'Chưa có tin đã bán',      text: 'Các tin bạn đánh dấu đã bán sẽ hiển thị ở đây.' },
         REPORTED: { icon: '🛡️', title: 'Không bị báo cáo',        text: 'Tin đăng của bạn chưa bị báo cáo nào.' },
     };
     const { icon, title, text } = messages[tab] || { icon: '📭', title: 'Trống', text: 'Không có dữ liệu.' };

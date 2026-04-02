@@ -59,7 +59,9 @@ public class ListingImageService {
         }
 
         int existingCount = listingImageRepository.countByListing_Id(listingId);
-        int maxImagesPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        int maxPerPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        int systemCap = Math.max(1, configService.getIntConfigValue("MAX_IMAGES", maxPerPost));
+        int maxImagesPerPost = Math.min(maxPerPost, systemCap);
         if (existingCount + files.size() > maxImagesPerPost) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
         }

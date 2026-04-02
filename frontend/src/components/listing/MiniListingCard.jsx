@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Box, Card, IconButton, Typography } from '@mui/material';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import { fullImageUrl } from '../../utils/constants';
 
@@ -13,9 +14,10 @@ export const RED = '#FF4757';
 export const toCurrency = (value) =>
   value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
 
-export default function MiniListingCard({ listing, compact = false }) {
+export default function MiniListingCard({ listing, compact = false, onToggleSave, saveDisabled = false }) {
   const navigate = useNavigate();
   const id = listing?.id ?? listing?.listingId;
+  const isSaved = !!(listing?.isSaved ?? listing?.saved);
 
   // Handle various image field formats from backend.
   const rawImages =
@@ -96,15 +98,21 @@ export default function MiniListingCard({ listing, compact = false }) {
         )}
         <IconButton
           size="small"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!saveDisabled && typeof onToggleSave === 'function') {
+              onToggleSave(listing);
+            }
+          }}
+          disabled={saveDisabled}
           sx={{
             position: 'absolute', top: 6, right: 6,
-            bgcolor: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.7)',
+            bgcolor: 'rgba(0,0,0,0.45)', color: isSaved ? RED : 'rgba(255,255,255,0.7)',
             width: 28, height: 28,
             '&:hover': { bgcolor: 'rgba(255,71,87,0.8)', color: '#fff' },
           }}
         >
-          <FavoriteBorderIcon sx={{ fontSize: 15 }} />
+          {isSaved ? <FavoriteIcon sx={{ fontSize: 15 }} /> : <FavoriteBorderIcon sx={{ fontSize: 15 }} />}
         </IconButton>
       </Box>
 
