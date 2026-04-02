@@ -448,6 +448,7 @@ export default function ProfilePage() {
               {editing ? editForm.bio : bio}
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              {isMe && <Box id="firebase-phone-recaptcha" sx={{ display: 'none' }} />}
               {phoneVerified
                 ? <CheckCircleIcon fontSize="small" sx={{ color: '#4ade80' }} />
                 : <WarningAmberIcon fontSize="small" sx={{ color: '#fbbf24' }} />}
@@ -468,7 +469,6 @@ export default function ProfilePage() {
             </Box>
             {isMe && otpSent && (
               <Box sx={{ display: 'flex', gap: 1, mt: 1.2, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Box id="firebase-phone-recaptcha" />
                 <TextField
                   size="small"
                   value={otpCode}
