@@ -39,6 +39,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
 import { getListingShareInfo, saveListing, toggleListingLike, unsaveListing } from '../../api/listingApi';
+import * as chatApi from '../../api/chatApi';
 import CommentModal from './CommentModal';
 import ReportDialog from '../report/ReportDialog';
 
@@ -136,13 +137,13 @@ const formatRelativeShort = (value) => {
 
 
 export default function ListingCard({
-    listing,
-    onClick,
-    cardVariant = 'default',
-    layout = 'list',
-    imageAspect,
-    onPatchListing,
-}) {
+                                        listing,
+                                        onClick,
+                                        cardVariant = 'default',
+                                        layout = 'list',
+                                        imageAspect,
+                                        onPatchListing,
+                                    }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -160,6 +161,7 @@ export default function ListingCard({
     const [isSaved, setIsSaved] = useState(() => !!(listing?.isSaved ?? listing?.is_saved));
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
+    const [startingChat, setStartingChat] = useState(false);
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
@@ -323,6 +325,27 @@ export default function ListingCard({
         }
     };
 
+    const handleMessageClick = async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!id || startingChat) return;
+        if (!token) {
+            showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        setStartingChat(true);
+        try {
+            const res = await chatApi.getSession(id);
+            const sessionId = res?.data?.data ?? res?.data;
+            if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
+        } catch {
+            showToast('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
+        } finally {
+            setStartingChat(false);
+        }
+    };
+
     const handleMoreOpen = (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -445,15 +468,17 @@ export default function ListingCard({
                                 {formatRelativeShort(listing?.createdAt) || 'Vừa đăng'}
                             </Typography>
                         </Stack>
-                        <Tooltip title="Tùy chọn">
-                            <IconButton
-                                size="small"
-                                sx={{ color: 'rgba(255,255,255,0.5)', mt: -0.5, mr: -1 }}
-                                onClick={handleMoreOpen}
-                            >
-                                <MoreIcon />
-                            </IconButton>
-                        </Tooltip>
+                        {!isMe && (
+                            <Tooltip title="Tùy chọn">
+                                <IconButton
+                                    size="small"
+                                    sx={{ color: 'rgba(255,255,255,0.5)', mt: -0.5, mr: -1 }}
+                                    onClick={handleMoreOpen}
+                                >
+                                    <MoreIcon />
+                                </IconButton>
+                            </Tooltip>
+                        )}
                     </Box>
 
                     {/* Text Content */}
@@ -698,22 +723,21 @@ export default function ListingCard({
                             </Box>
                         </Tooltip>
 
-                        {/* Message Seller */}
-                        <Tooltip title="Tin nhắn">
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        if (sellerId) navigate(`/profile/${sellerId}?chat=true`);
-                                    }}
-                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#00BA7C', bgcolor: 'rgba(0,186,124,0.1)' } }}
-                                >
-                                    <MessageIcon sx={{ fontSize: 18 }} />
-                                </IconButton>
-                            </Box>
-                        </Tooltip>
+                        {/* Message Seller - hide for own listing */}
+                        {!isMe && (
+                            <Tooltip title="Tin nhắn">
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={startingChat}
+                                        onClick={handleMessageClick}
+                                        sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#00BA7C', bgcolor: 'rgba(0,186,124,0.1)' } }}
+                                    >
+                                        <MessageIcon sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                </Box>
+                            </Tooltip>
+                        )}
 
                         {/* Share */}
                         <Tooltip title="Chia sẻ">
@@ -755,36 +779,40 @@ export default function ListingCard({
                 listing={listing}
             />
 
-            <Menu
-                anchorEl={moreAnchorEl}
-                open={Boolean(moreAnchorEl)}
-                onClose={handleMoreClose}
-                onClick={(e) => e.stopPropagation()}
-                PaperProps={{
-                    sx: {
-                        bgcolor: '#25232C',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        color: '#fff',
-                        minWidth: 160,
-                        boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
-                    }
-                }}
-            >
-                <MenuItem onClick={handleReportClick}>
-                    <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
-                        <ReportIcon fontSize="small" />
-                    </ListItemIcon>
-                    <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
-                </MenuItem>
-            </Menu>
+            {!isMe && (
+                <>
+                    <Menu
+                        anchorEl={moreAnchorEl}
+                        open={Boolean(moreAnchorEl)}
+                        onClose={handleMoreClose}
+                        onClick={(e) => e.stopPropagation()}
+                        PaperProps={{
+                            sx: {
+                                bgcolor: '#25232C',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                color: '#fff',
+                                minWidth: 160,
+                                boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                            }
+                        }}
+                    >
+                        <MenuItem onClick={handleReportClick}>
+                            <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
+                                <ReportIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
+                        </MenuItem>
+                    </Menu>
 
-            <ReportDialog
-                open={reportOpen}
-                onClose={() => setReportOpen(false)}
-                targetType="LISTING"
-                targetId={id}
-                targetTitle={listing?.title}
-            />
+                    <ReportDialog
+                        open={reportOpen}
+                        onClose={() => setReportOpen(false)}
+                        targetType="LISTING"
+                        targetId={id}
+                        targetTitle={listing?.title}
+                    />
+                </>
+            )}
         </Card>
     );
 }

@@ -113,6 +113,34 @@ public class NotificationService {
         }
     }
 
+    /** Notify listing owner when admin hides their listing due to violation/report. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyAdminHiddenListing(User listingOwner, Long listingId, String listingTitle) {
+        try {
+            Notification n = buildNotification(listingOwner, TYPE_SYSTEM,
+                    "LISTING", listingId,
+                    "Quản trị viên đã ẩn tin đăng \"" + truncate(listingTitle, 40) + "\" do vi phạm quy định.");
+            notificationRepository.save(n);
+            pushNotificationCount(listingOwner);
+        } catch (Exception ex) {
+            log.error("notifyAdminHiddenListing failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify user when admin bans account due to violation/report. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyAdminBannedUser(User user) {
+        try {
+            Notification n = buildNotification(user, TYPE_SYSTEM,
+                    "USER", user.getId(),
+                    "Tài khoản của bạn đã bị khóa do vi phạm quy định cộng đồng.");
+            notificationRepository.save(n);
+            pushNotificationCount(user);
+        } catch (Exception ex) {
+            log.error("notifyAdminBannedUser failed userId={}", user.getId(), ex);
+        }
+    }
+
     /** Notify user when someone starts following them. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyNewFollower(User followed, User follower) {
