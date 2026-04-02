@@ -139,10 +139,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
 
     /**
-     * Tab "Đã ẩn": chỉ HIDDEN và chưa quá hạn (null expiration hoặc expirationDate &gt;= hiện tại).
-     * Tin HIDDEN nhưng expirationDate đã qua chỉ hiển thị ở tab hết hạn.
+     * Tab "Đã ẩn": HIDDEN (seller tự ẩn) hoặc MOD_HIDDEN (admin ẩn), và chưa quá hạn
+     * (expirationDate null hoặc &gt;= hiện tại). Tin đã quá hạn chỉ hiển thị ở tab EXPIRED.
      */
-    @Query("SELECT l FROM Listing l WHERE l.seller = :seller AND l.status = 'HIDDEN' " +
+    @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND l.status IN ('HIDDEN', 'MOD_HIDDEN') " +
             "AND (l.expirationDate IS NULL OR l.expirationDate >= CURRENT_TIMESTAMP)")
     Page<Listing> findHiddenNotExpiredBySeller(@Param("seller") User seller, Pageable pageable);
 

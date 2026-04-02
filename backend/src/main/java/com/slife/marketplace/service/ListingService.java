@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 public class ListingService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
-    private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
     /** Đồng bộ với frontend (tối đa 10 ảnh/tin). */
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
     /** Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION. */
@@ -780,7 +779,6 @@ public class ListingService {
             pageResult = listingRepository.findExpiredListingsBySeller(currentUser, pageable);
         } else if ("HIDDEN".equalsIgnoreCase(status)) {
             pageResult = listingRepository.findHiddenNotExpiredBySeller(currentUser, pageable);
-            pageResult = listingRepository.findBySellerAndStatusIn(currentUser, List.of("HIDDEN", LISTING_STATUS_MOD_HIDDEN), pageable);
         } else if (status != null && !status.isBlank()) {
             pageResult = listingRepository.findBySellerAndStatus(currentUser, status.toUpperCase(), pageable);
         } else {
