@@ -1,0 +1,1152 @@
+﻿Summary,Issue key,Issue id,Issue Type,Status,Project key,Project name,Project type,Project lead,Project lead id,Project description,Priority,Resolution,Assignee,Assignee Id,Reporter,Reporter Id,Creator,Creator Id,Created,Updated,Last Viewed,Resolved,Due date,Votes,Labels,Labels,Labels,Labels,Description,Environment,Watchers,Watchers Id,Original estimate,Remaining Estimate,Time Spent,Work Ratio,Σ Original Estimate,Σ Remaining Estimate,Σ Time Spent,Security Level,Custom field (Development),Custom field (Issue color),Custom field (Rank),Sprint,Custom field (Start date),Custom field (Story point estimate),Custom field (Team),Custom field (Vulnerability),Parent,Parent key,Parent summary,Status Category,Status Category Changed
+Phone verification via SMS,SCRUM-241,10533,Task,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,02/Apr/26 11:09 AM,02/Apr/26 11:09 AM,,,,0,,,,,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,,,,,,,,,,,0|i001gf:,SCRUM Sprint 5,,,,,,,,In Progress,02/Apr/26 11:09 AM
+[LEGAL] Privacy Policy Page,SCRUM-240,10532,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,01/Apr/26 7:23 PM,02/Apr/26 12:22 AM,,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001g7:,SCRUM Sprint 5,,,,,,,,In Progress,02/Apr/26 12:22 AM
+[LEGAL] Terms of Service Page,SCRUM-239,10531,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,01/Apr/26 7:23 PM,02/Apr/26 12:22 AM,,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001fz:,SCRUM Sprint 5,,,,,,,,In Progress,02/Apr/26 12:22 AM
+Review user UI/GET API/BE,SCRUM-238,10530,Story,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Low,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,27/Mar/26 10:27 PM,28/Mar/26 8:52 PM,,,,0,,,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i001fr:,SCRUM Sprint 5,,,,,10496,SCRUM-208,[EPIC] Community & Social Post,To Do,27/Mar/26 10:27 PM
+Change Password,SCRUM-237,10529,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,25/Mar/26 6:23 PM,02/Apr/26 11:33 AM,02/Apr/26 12:41 AM,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001fj:,SCRUM Sprint 4,,,,,10521,SCRUM-233,[PROFILE] Admin Profile,In Progress,02/Apr/26 11:33 AM
+Edit Admin Profile,SCRUM-236,10527,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,25/Mar/26 6:23 PM,02/Apr/26 11:32 AM,01/Apr/26 11:15 PM,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001fb:,SCRUM Sprint 4,,,,,10521,SCRUM-233,[PROFILE] Admin Profile,In Progress,02/Apr/26 11:32 AM
+View Admin Profile Data,SCRUM-235,10525,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,25/Mar/26 6:23 PM,02/Apr/26 11:32 AM,,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001f3:,SCRUM Sprint 4,,,,,10521,SCRUM-233,[PROFILE] Admin Profile,In Progress,02/Apr/26 11:32 AM
+Admin Profile UI & Layout,SCRUM-234,10523,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,25/Mar/26 6:22 PM,02/Apr/26 11:32 AM,,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001ev:,SCRUM Sprint 4,,,,,10521,SCRUM-233,[PROFILE] Admin Profile,In Progress,02/Apr/26 11:32 AM
+[PROFILE] Admin Profile,SCRUM-233,10521,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,24/Mar/26 11:21 PM,24/Mar/26 11:24 PM,,,,0,,,,,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,,,,,,,,,,,0|i001en:,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 11:24 PM
+Auto Hide Content & Audit Log,SCRUM-232,10520,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+Triển khai logic tự động ẩn nội dung nhạy cảm và ghi vết hệ thống (Audit Log).
+
+h2. Acceptance Criteria
+* Tự động Hide (ẩn) bài viết/comment nếu nhận > X lượt report.
+* Mọi thao tác xử lý của Admin (Xóa, Ban, Unban) đều được ghi lại vào bảng Audit Log.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001ef:,SCRUM Sprint 5,,,,,,,,In Progress,30/Mar/26 2:11 AM
+Manage Users (Ban/Unban) UI & API,SCRUM-231,10519,Story,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,24/Mar/26 7:35 PM,24/Mar/26 1:43 AM,,,0,,,,,"h2. Objective
+Xây dựng giao diện và API quản lý danh sách người dùng toàn hệ thống.
+
+h2. Acceptance Criteria
+* Admin có thể tìm kiếm user theo email, tên, số điện thoại.
+* Nút gạt (Toggle) Ban/Unban user nhanh chóng.
+* Đồng bộ hệ thống Auth để block phiên đăng nhập hiện tại của user bị ban.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001e7:,SCRUM Sprint 5,,,,,,,,To Do,24/Mar/26 12:34 AM
+Admin Report Management UI_FE,SCRUM-230,10518,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,02/Apr/26 11:38 AM,,,,0,,,,,"h2. Objective
+Xây dựng giao diện bảng điều khiển cho Admin quản lý các báo cáo.
+
+h2. Acceptance Criteria
+* Bảng dữ liệu (Data table) có khả năng lọc theo: Trạng thái, Loại Report.
+* Có nút bấm thao tác nhanh để xử lý (Xóa bài, Ban user).",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001dz:,SCRUM Sprint 5,,,,,,,,In Progress,02/Apr/26 11:38 AM
+Resolve Report & Ban User API_BE,SCRUM-229,10517,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+Xây dựng API cho Admin để xử lý report và ban user.
+
+h2. Acceptance Criteria
+* Chuyển trạng thái User sang Banned, tự động thu hồi (revoke) các token đang active.
+* Endpoint được bảo vệ nghiêm ngặt, chỉ Role ADMIN mới được gọi.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001dr:,SCRUM Sprint 5,,,,,,,,In Progress,30/Mar/26 1:46 AM
+Report Comment/Message/Post API_BE,SCRUM-228,10516,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+Xây dựng API cho phép báo cáo các nội dung vi phạm (Comment, Message, Post).
+
+h2. Acceptance Criteria
+* Lưu thông tin người report, đối tượng bị report (ID, Loại), và lý do.
+* Cấu trúc DB thiết kế Polymorphic để hỗ trợ report nhiều loại Entity.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001dj:,SCRUM Sprint 5,,,,,,,,In Progress,27/Mar/26 9:34 PM
+Init Chat from Profile/Listing UI,SCRUM-227,10515,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 7:20 PM,,,,0,,,,,"h2. Objective
+Cho phép bắt đầu đoạn chat ngay từ màn hình xem sản phẩm hoặc xem hồ sơ.
+
+h2. Acceptance Criteria
+* Nút 'Chat với người bán' tự động attach thông tin sản phẩm vào tin nhắn đầu tiên.
+* Khởi tạo hội thoại mới (Conversation) ở Backend nếu 2 người chưa từng chat.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001db:,SCRUM Sprint 5,,,,,,,,In Progress,01/Apr/26 7:20 PM
+Seen & Delivered Status Logic,SCRUM-226,10514,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+Triển khai logic theo dõi trạng thái Đã gửi (Delivered) và Đã xem (Seen) trong Chat.
+
+h2. Acceptance Criteria
+* Cập nhật trạng thái Seen khi user mở cửa sổ chat.
+* Đẩy trạng thái này qua WebSocket hoặc Polling để bên kia thấy 'Đã xem'.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001d3:,SCRUM Sprint 5,,,,,,,,In Progress,27/Mar/26 9:34 PM
+Reply & Quote Message API,SCRUM-225,10513,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+Bổ sung tính năng trích dẫn (Quote) và trả lời một tin nhắn cụ thể trong Chat.
+
+h2. Acceptance Criteria
+* API cho phép lưu ID của tin nhắn cha (ParentMessageId).
+* Trả về dữ liệu tin nhắn bao gồm snippet của tin nhắn được quote.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001cv:,SCRUM Sprint 5,,,,,,,,In Progress,27/Mar/26 9:24 PM
+Review Offer UI_FE (Accept/Reject),SCRUM-224,10512,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 10:44 PM,01/Apr/26 11:02 PM,,,0,,,,,"h2. Objective
+Giao diện hiển thị danh sách Offer và nút duyệt cho Seller.
+
+h2. Acceptance Criteria
+* Seller nhận được notification và xem được list Offer.
+* Nút Accept/Reject rõ ràng.
+* Xác nhận (Confirm popup) tránh ấn nhầm.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001cn:,SCRUM Sprint 5,,,,,,,,In Progress,27/Mar/26 9:19 PM
+Review Offer API_BE (Accept/Reject),SCRUM-223,10511,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+API cho phép Seller duyệt (Accept/Reject) Offer từ Buyer.
+
+h2. Acceptance Criteria
+* Seller có quyền Accept hoặc Reject mức giá.
+* Nếu Accept, trạng thái Offer -> ACCEPTED.
+* Trạng thái bài đăng vẫn giữ là ACTIVE (chờ Buyer confirm).",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001cf:,SCRUM Sprint 5,,,,,,,,In Progress,27/Mar/26 8:21 PM
+Like/Share/Save Post Logic,SCRUM-222,10510,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,29/Mar/26 6:45 PM,24/Mar/26 9:43 AM,,,0,,,,,"h2. Objective
+Triển khai logic thả tim (Like), chia sẻ (Share) và lưu (Save) bài đăng.
+
+h2. Acceptance Criteria
+* API cho phép Toggle (Like/Unlike) bằng 1 endpoint duy nhất.
+* UI cập nhật counter (+1/-1) ngay lập tức (Optimistic UI update).",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001er:,SCRUM Sprint 4,,,,,,,,In Progress,29/Mar/26 6:45 PM
+Comment & Reply Thread/UI,SCRUM-221,10509,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:10 PM,01/Apr/26 11:10 PM,,,0,,,,,"h2. Objective
+Xây dựng luồng bình luận (Comment) cho bài đăng cộng đồng và bài đăng sản phẩm.
+
+h2. Acceptance Criteria
+* API hỗ trợ cấu trúc cha-con (Reply to comment).
+* UI hiển thị comment theo luồng (Threaded view) thụt lề rõ ràng.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qe:v,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 9:42 AM
+Community Feed & Create Post UI_FE,SCRUM-220,10508,Story,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,24/Mar/26 7:35 PM,01/Apr/26 9:40 PM,,,0,,,,,"h2. Objective
+Xây dựng giao diện bảng tin cộng đồng (Community Feed).
+
+h2. Acceptance Criteria
+* Tính năng cuộn vô tận (Infinite Scroll) khi xem feed.
+* Thẻ bài viết (Post Card) hiển thị đủ thông tin người đăng, thời gian, nội dung.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001br:,SCRUM Sprint 5,,,,,,,,To Do,24/Mar/26 12:34 AM
+Create & Get Community Post API_BE,SCRUM-219,10507,Story,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,24/Mar/26 7:35 PM,,,,0,,,,,"h2. Objective
+Xây dựng API tạo và lấy dữ liệu cho bài đăng trong cộng đồng (Community Post).
+
+h2. Acceptance Criteria
+* Hỗ trợ text và mảng hình ảnh đính kèm.
+* Phân loại bài viết (Hỏi đáp, Pass đồ, Cảnh báo lừa đảo...).",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001bj:,SCRUM Sprint 5,,,,,,,,To Do,24/Mar/26 12:34 AM
+Block User API & UI,SCRUM-218,10506,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:56 PM,,,,0,,,,,"h2. Objective
+Cho phép người dùng chặn (Block) người dùng khác để tránh bị làm phiền.
+
+h2. Acceptance Criteria
+* API: Lưu trạng thái block vào DB, ngăn chặn nhắn tin từ người bị block.
+* Ẩn bài đăng của người bị block khỏi feed của người dùng.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i001bb:,SCRUM Sprint 5,,,,,,,,In Progress,27/Mar/26 8:21 PM
+User Public Profile UI Page,SCRUM-217,10505,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:09 PM,01/Apr/26 11:09 PM,,,0,,,,,"h2. Objective
+Thiết kế và code giao diện trang User Public Profile.
+
+h2. Acceptance Criteria
+* Hiển thị Avatar, Name và Stats rõ ràng ở header.
+* Có lưới (Grid) hiển thị danh sách sản phẩm họ đang bán/tặng.
+* Tích hợp các nút thao tác nhanh: Follow, Message, Report.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qe:r,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 9:32 AM
+User Public Profile API (Stats & Listings),SCRUM-216,10504,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 11:09 PM,01/Apr/26 11:09 PM,,,0,,,,,"h2. Objective
+Xây dựng API trả về dữ liệu cho trang hồ sơ công khai của người dùng.
+
+h2. Acceptance Criteria
+* Trả về các chỉ số (Stats): Tổng số bài đăng, Điểm uy tín, Số người theo dõi.
+* Trả về danh sách các bài đăng (Listings) đang Active của user đó.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qe:i,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 9:42 AM
+Follow Button & List UI_FE,SCRUM-215,10503,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 10:43 PM,,,,0,,,,,"h2. Objective
+Xây dựng giao diện hiển thị nút Follow và danh sách người theo dõi.
+
+h2. Acceptance Criteria
+* Nút chuyển đổi trạng thái Follow/Unfollow mượt mà không cần reload trang.
+* Cập nhật ngay lập tức con số thống kê trên UI khi thao tác.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qe:,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 12:37 PM
+Get Follower/Following List API_BE,SCRUM-214,10502,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 10:43 PM,24/Mar/26 1:42 AM,,,0,,,,,"h2. Objective
+Xây dựng API lấy danh sách Followers và Following.
+
+h2. Acceptance Criteria
+* Hỗ trợ phân trang (Pagination) để tối ưu hiệu năng.
+* Trả về thông tin cơ bản: Avatar, Name, Reputation Score.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qd:,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 12:37 PM
+Follow/Unfollow User API_BE,SCRUM-213,10501,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,24/Mar/26 12:34 AM,01/Apr/26 10:44 PM,24/Mar/26 2:28 AM,,,0,,,,,"h2. Objective
+Xây dựng API cho phép người dùng Follow và Unfollow lẫn nhau.
+
+h2. Acceptance Criteria
+* Trả về HTTP 200/201 khi thao tác thành công.
+* Xử lý lỗi (HTTP 400) nếu người dùng cố tình tự follow chính mình.
+* Cập nhật chính xác số lượng follower/following trong Database.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qe:x,SCRUM Sprint 4,,,,,,,,In Progress,24/Mar/26 12:37 PM
+[EPIC] Admin Moderation,SCRUM-212,10500,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:33 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0019z:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] Report System,SCRUM-211,10499,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:33 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0019r:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] Advanced Chat,SCRUM-210,10498,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:33 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0019j:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] Deal & Offer Flow,SCRUM-209,10497,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:33 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0019b:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] Community & Social Post,SCRUM-208,10496,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:33 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i00193:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] User Public Profile,SCRUM-207,10495,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:33 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0018v:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] Follow System & Social Graph,SCRUM-206,10494,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:32 PM,01/Apr/26 11:29 PM,01/Apr/26 11:29 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0018n:,,,,,,,,,In Progress,01/Apr/26 11:29 PM
+[EPIC] Discovery & Landing Page,SCRUM-205,10493,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:32 PM,01/Apr/26 11:30 PM,01/Apr/26 11:30 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0018f:,,,,,,,,,In Progress,01/Apr/26 11:30 PM
+[EPIC] Smart Listing & Inventory,SCRUM-204,10492,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:32 PM,01/Apr/26 11:30 PM,01/Apr/26 11:30 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i00187:,,,,,,,,,In Progress,01/Apr/26 11:30 PM
+[EPIC] Core Architecture & Security,SCRUM-203,10491,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,23/Mar/26 11:32 PM,01/Apr/26 11:30 PM,01/Apr/26 11:30 PM,,,0,notification,profile,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,teal,0|i0017z:,,,,,,,,,In Progress,01/Apr/26 11:30 PM
+Location suggest,SCRUM-202,10461,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,19/Mar/26 10:49 PM,24/Mar/26 2:53 AM,,,,0,,,,,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,,,,,,,,,,,0|i0017r:,,,,,,,,,Done,19/Mar/26 10:49 PM
+Get user location BE,SCRUM-201,10459,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,19/Mar/26 10:49 PM,24/Mar/26 2:53 AM,,,,0,,,,,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,,,,,,,,,,,0|i0017j:,,,,,,,,,Done,19/Mar/26 10:49 PM
+Vietmap location api,SCRUM-200,10457,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,18/Mar/26 12:07 AM,24/Mar/26 2:53 AM,,,,0,,,,,,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,,,,,,,,,,,0|i0017b:,,,,,,,,,Done,18/Mar/26 12:07 AM
+[UI] Smart Location Input Component,SCRUM-199,10426,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,13/Mar/26 12:37 AM,02/Apr/26 11:42 AM,,,,0,,,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i00173:,,,,,,,,,In Progress,02/Apr/26 11:42 AM
+[API] Unified User Location Service via Vietmap,SCRUM-198,10424,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,13/Mar/26 12:36 AM,24/Mar/26 2:53 AM,,,,0,,,,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0016v:,,,,,,,,,In Progress,14/Mar/26 8:35 PM
+Implement Landing Page Footer,SCRUM-197,10422,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:03 PM,24/Mar/26 2:53 AM,,,,0,,,,,"Footer contains:
+
+* About SLife
+* Contact
+* Social links",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0016n:,SCRUM Sprint 2,,,,,10321,SCRUM-146,LISTING MANAGEMENT,To Do,09/Mar/26 11:03 PM
+Implement Landing Page CTA Section,SCRUM-196,10420,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:03 PM,24/Mar/26 2:59 AM,,,,0,,,,,"Encourage users to start using SLife.
+
+h3. Buttons
+
+* Post listing
+* Browse listings
+
+h3. Acceptance Criteria
+
+* CTA section visible above footer
+* Buttons redirect correctly",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0016f:,SCRUM Sprint 5,,,,,10506,SCRUM-218,Block User API & UI,To Do,09/Mar/26 11:03 PM
+Create Latest News Section,SCRUM-195,10418,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:03 PM,24/Mar/26 2:59 AM,,,,0,,,,,"Display latest news or platform updates.
+
+h3. Acceptance Criteria
+
+* Show 3–4 news cards
+* Each card includes title + preview + link",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i00167:,SCRUM Sprint 5,,,,,10506,SCRUM-218,Block User API & UI,To Do,09/Mar/26 11:03 PM
+Display Top Giveaway Contributors,SCRUM-194,10416,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:03 PM,24/Mar/26 2:59 AM,,,,0,,,,,"Show users who donated the most giveaway items.
+
+h3. Data
+
+* Avatar
+* Name
+* Number of giveaway listings
+
+h3. Acceptance Criteria
+
+* Top 10 contributors
+* Ranking order displayed",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0015z:,SCRUM Sprint 5,,,,,10506,SCRUM-218,Block User API & UI,To Do,09/Mar/26 11:03 PM
+Display Platform Statistics Section,SCRUM-193,10414,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:02 PM,01/Apr/26 11:54 PM,,,,0,,,,,"Show overall platform statistics.
+
+h3. API
+
+{noformat}GET /api/admin/dashboard{noformat}
+
+h3. Metrics
+
+* Total users
+* Total listings
+* Total deals
+* Total giveaway items
+
+h3. Acceptance Criteria
+
+* Data loads dynamically
+* Animated counter when visible",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0015r:,SCRUM Sprint 2,,,,,10402,SCRUM-187,Landing Page – SLife Homepage,In Progress,01/Apr/26 11:54 PM
+Display Trusted Users Section,SCRUM-192,10412,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:02 PM,01/Apr/26 11:54 PM,,,,0,,,,,"Show top trusted sellers based on reputation score.
+
+h3. Data
+
+* Avatar
+* Name
+* Reputation score
+* Number of deals
+
+h3. Acceptance Criteria
+
+* Show top 6 users
+* Clicking opens user profile",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0015j:,SCRUM Sprint 2,,,,,10402,SCRUM-187,Landing Page – SLife Homepage,In Progress,01/Apr/26 11:54 PM
+Display Giveaway Items Section,SCRUM-191,10410,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:02 PM,01/Apr/26 11:54 PM,,,,0,,,,,"Display listings where price = 0.
+
+h3. API
+
+{noformat}GET /api/search?price=0{noformat}
+
+h3. Acceptance Criteria
+
+* Display giveaway badge
+* Show maximum 6 items
+* Redirect to listing detail",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0015b:,SCRUM Sprint 2,,,,,10402,SCRUM-187,Landing Page – SLife Homepage,In Progress,01/Apr/26 11:54 PM
+Display Highlight Listings Grid,SCRUM-190,10408,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:02 PM,01/Apr/26 11:54 PM,,,,0,,,,,"Fetch and display highlighted listings from backend.
+
+h3. API
+
+{noformat}GET /api/listings{noformat}
+
+h3. UI
+
+Listing card includes:
+
+* Image
+* Title
+* Price
+* Seller
+* Condition
+
+h3. Acceptance Criteria
+
+* Display 8 listings
+* Grid responsive
+* Click redirects to listing detail",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i00153:,SCRUM Sprint 2,,,,,10402,SCRUM-187,Landing Page – SLife Homepage,In Progress,01/Apr/26 11:54 PM
+Implement Hero Slideshow Section,SCRUM-189,10406,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:01 PM,01/Apr/26 11:54 PM,,,,0,,,,,"Create slideshow section introducing SLife platform.
+
+Slides include:
+
+# SLife introduction
+# Browse listings
+# Giveaway community
+# Chat with sellers
+
+h3. Acceptance Criteria
+
+* Auto slide every 5 seconds
+* Manual navigation arrows
+* Mobile responsive
+* CTA buttons redirect to listing page",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0014v:,SCRUM Sprint 2,,,,,10402,SCRUM-187,Landing Page – SLife Homepage,In Progress,01/Apr/26 11:54 PM
+Create Landing Page Layout,SCRUM-188,10404,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 11:01 PM,01/Apr/26 11:54 PM,,,,0,,,,,"Implement the basic layout structure for the SLife landing page including all sections.
+
+Sections include:
+
+* Hero slideshow
+* Highlight listings
+* Giveaway items
+* Trusted users
+* Platform statistics
+* Top contributors
+* Latest news
+* CTA section
+* Footer
+
+h3. Acceptance Criteria
+
+* Landing page is accessible at {{/}}
+* Responsive layout (desktop + tablet)
+* Each section has placeholder data
+* Page loads within 3 seconds",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0014n:,SCRUM Sprint 2,,,,,10402,SCRUM-187,Landing Page – SLife Homepage,In Progress,01/Apr/26 11:54 PM
+Landing Page – SLife Homepage,SCRUM-187,10402,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,09/Mar/26 10:56 PM,24/Mar/26 12:34 AM,,,,0,,,,,"Implement the public landing page of SLife to introduce the platform and highlight listings, trusted users, platform statistics, and community contributions.",,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,,,,,,,,,,,0|i0008m:v,SCRUM Sprint 2,,,,,,,,In Progress,10/Mar/26 1:47 AM
+Configuration Integration Testing,SCRUM-186,10400,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:36 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00147:,,,,,,,,,Done,08/Mar/26 12:36 PM
+Configuration Validation_FE,SCRUM-185,10398,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:35 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0013z:,,,,,,,,,Done,08/Mar/26 12:35 PM
+Configuration Edit UI_FE,SCRUM-184,10396,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:35 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0013r:,,,,,,,,,Done,08/Mar/26 12:35 PM
+[UI] Configuration Management Dashboard,SCRUM-183,10394,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:34 PM,02/Apr/26 11:40 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0013j:,,,,,,,,,In Progress,02/Apr/26 11:40 AM
+Apply Config To Business Logic_BE,SCRUM-182,10392,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:33 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0013b:,,,,,,,,,Done,23/Mar/26 11:37 PM
+Configuration Cache Handling_BE,SCRUM-181,10390,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:33 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00133:,,,,,,,,,Done,23/Mar/26 11:37 PM
+Configuration API - Create Config_BE,SCRUM-180,10388,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:33 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0012v:,,,,,,,,,Done,23/Mar/26 11:37 PM
+Configuration API - Update Config_BE,SCRUM-179,10386,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:33 PM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0012n:,,,,,,,,,Done,23/Mar/26 11:37 PM
+[API] Configuration Service Gateway,SCRUM-178,10384,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:33 PM,24/Mar/26 2:53 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0012f:,,,,,,,,,To Do,23/Mar/26 11:37 PM
+Configuation system,SCRUM-177,10382,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:32 PM,24/Mar/26 12:34 AM,23/Mar/26 11:41 PM,,,0,,,,,"Module configuration cho phép admin quản lý các cấu hình hệ thống như:
+
+* listing expiration
+* max images
+* report threshold
+* deal timeout
+
+Admin có thể cập nhật cấu hình và hệ thống sẽ áp dụng cho toàn bộ business logic.
+
+h2. Tasks
+
+Backend
+
+* API get config
+* API update config
+* Config caching
+* Apply config to services
+
+Frontend
+
+* Admin config dashboard
+* Edit config UI
+* Validation config
+
+h2. Acceptance Criteria
+
+Admin có thể:
+
+* Xem tất cả config
+* Update config
+* Config được áp dụng realtime
+* Config cache hoạt động",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000kd:,SCRUM Sprint 4,,9.0,,,,,,In Progress,14/Mar/26 5:30 PM
+Report Listing UI_FE,SCRUM-176,10380,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:30 PM,01/Apr/26 11:10 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0011z:,SCRUM Sprint 4,,,,,10368,SCRUM-170,[NOTIFICATION]Notification system,In Progress,01/Apr/26 11:10 PM
+Report User_UI_FE,SCRUM-175,10378,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:29 PM,01/Apr/26 11:10 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0011r:,SCRUM Sprint 4,,,,,10368,SCRUM-170,[NOTIFICATION]Notification system,In Progress,01/Apr/26 11:10 PM
+Report User_API,SCRUM-174,10376,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:28 PM,13/Mar/26 1:29 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0011j:,SCRUM Sprint 4,,,,,10368,SCRUM-170,[NOTIFICATION]Notification system,To Do,08/Mar/26 12:28 PM
+Report Listing API_BE,SCRUM-173,10374,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:28 PM,13/Mar/26 1:29 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0011b:,SCRUM Sprint 4,,,,,10368,SCRUM-170,[NOTIFICATION]Notification system,To Do,08/Mar/26 12:28 PM
+Notification UI_FE,SCRUM-172,10372,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:27 PM,02/Apr/26 11:40 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00113:,SCRUM Sprint 4,,,,,10368,SCRUM-170,[NOTIFICATION]Notification system,In Progress,02/Apr/26 11:40 AM
+Notification API_BE,SCRUM-171,10370,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:27 PM,13/Mar/26 1:29 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0010v:,SCRUM Sprint 4,,,,,10368,SCRUM-170,[NOTIFICATION]Notification system,To Do,08/Mar/26 12:27 PM
+[NOTIFICATION]Notification system,SCRUM-170,10368,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:27 PM,01/Apr/26 10:43 PM,,,,0,,,,,"Hệ thống notification giúp người dùng nhận thông báo khi có sự kiện quan trọng như:
+
+* Tin nhắn mới
+* Offer mới
+* Listing bị report
+* Deal được xác nhận
+
+h2. Tasks
+
+Backend
+
+* Notification API
+* Create notification event
+* Report listing API
+* Report user API
+
+Frontend
+
+* Notification UI
+* Notification dropdown
+* Notification badge
+
+h2. Acceptance Criteria
+
+User nhận notification khi:
+
+* Có message mới
+* Có offer mới
+* Listing bị report
+* Listing được comment",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008m:x,SCRUM Sprint 4,,7.0,,,10366,SCRUM-169,"[SYSTEM]Notification, configuation, report",In Progress,12/Mar/26 8:25 PM
+"[SYSTEM]Notification, configuation, report",SCRUM-169,10366,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:07 PM,02/Apr/26 11:20 AM,,,,0,notification,profile,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,purple,0|i0010f:,,,,,,,,,In Progress,02/Apr/26 11:20 AM
+Share Listing _API request link to page _BE,SCRUM-168,10365,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:04 PM,14/Mar/26 1:32 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00107:,SCRUM Sprint 2,,,,,10355,SCRUM-163,[LISTING] INTERACTION,In Progress,11/Mar/26 11:21 PM
+Comment UI_FE,SCRUM-167,10363,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:04 PM,08/Mar/26 12:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000zz:,SCRUM Sprint 2,,,,,10355,SCRUM-163,[LISTING] INTERACTION,To Do,08/Mar/26 12:04 PM
+Comment API_BE,SCRUM-166,10361,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:03 PM,14/Mar/26 1:32 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000zr:,SCRUM Sprint 2,,,,,10355,SCRUM-163,[LISTING] INTERACTION,In Progress,11/Mar/26 11:21 PM
+Saved Listings Screen _UI_FE,SCRUM-165,10359,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:03 PM,08/Mar/26 12:05 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000zj:,SCRUM Sprint 2,,,,,10355,SCRUM-163,[LISTING] INTERACTION,To Do,08/Mar/26 12:03 PM
+Save Listing_API_BE,SCRUM-164,10357,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 12:00 PM,14/Mar/26 5:19 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000zb:,SCRUM Sprint 2,,,,,10355,SCRUM-163,[LISTING] INTERACTION,In Progress,14/Mar/26 5:04 PM
+[LISTING] INTERACTION,SCRUM-163,10355,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:59 AM,14/Mar/26 5:29 PM,,,,0,,,,,"Cho phép người dùng tương tác với bài đăng thông qua các chức năng:
+
+* Save listing
+* Comment listing
+* Share listing
+* Chat với seller
+
+Các tương tác này giúp tăng engagement của marketplace.
+
+h2. Tasks
+
+Backend
+
+* Save listing API
+* Comment API
+* Share link generation
+
+Frontend
+
+* Save button
+* Comment UI
+* Share UI
+
+h2. Acceptance Criteria
+
+User có thể:
+
+* Lưu listing
+* Xem saved listing
+* Comment vào listing
+* Share link listing",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008m:r,SCRUM Sprint 2,,6.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,09/Mar/26 11:05 PM
+Deal Status Tracking_UI_FE,SCRUM-162,10353,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:57 AM,13/Mar/26 1:26 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000yv:,SCRUM Sprint 3,,,,,10144,SCRUM-67,Confirm Deal & Auto-Sold API/UI,To Do,08/Mar/26 11:57 AM
+Deal Status Tracking_API_BE,SCRUM-161,10351,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:57 AM,13/Mar/26 1:25 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000yn:,SCRUM Sprint 3,,,,,10144,SCRUM-67,Confirm Deal & Auto-Sold API/UI,To Do,08/Mar/26 11:57 AM
+Offer Negotiation Flow_UI_FE,SCRUM-160,10349,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:56 AM,01/Apr/26 11:07 PM,01/Apr/26 11:07 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000yf:,SCRUM Sprint 3,,,,,10142,SCRUM-66,Offer UI_FE,To Do,08/Mar/26 11:56 AM
+Deal Button in Listing Detail_API_BE,SCRUM-159,10347,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:55 AM,16/Mar/26 12:28 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000y7:,SCRUM Sprint 2,,,,,10068,SCRUM-40,[LISTING] Listing Detail Page,In Progress,15/Mar/26 11:44 PM
+Update Listing_UI_FE,SCRUM-158,10345,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:54 AM,02/Apr/26 11:37 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000xz:,SCRUM Sprint 2,,,,,10321,SCRUM-146,LISTING MANAGEMENT,In Progress,02/Apr/26 11:37 AM
+Update Listing API_BE,SCRUM-157,10343,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:54 AM,02/Apr/26 11:37 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000xr:,SCRUM Sprint 2,,,,,10321,SCRUM-146,LISTING MANAGEMENT,In Progress,02/Apr/26 11:37 AM
+Delete Listing_API_BE,SCRUM-156,10341,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:53 AM,02/Apr/26 11:36 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000xj:,SCRUM Sprint 2,,,,,10321,SCRUM-146,LISTING MANAGEMENT,In Progress,02/Apr/26 11:36 AM
+Reported Listings_API_BE,SCRUM-155,10339,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:52 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000xb:,,,,,,,,,Done,08/Mar/26 11:52 AM
+Reported Listings_UI_FE,SCRUM-154,10337,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:52 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000x3:,,,,,,,,,Done,08/Mar/26 11:52 AM
+Expired Listings_UI_FE,SCRUM-153,10335,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:52 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000wv:,,,,,,,,,Done,08/Mar/26 11:52 AM
+Expired Listings_API_BE,SCRUM-152,10333,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:51 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000wn:,,,,,,,,,Done,08/Mar/26 11:51 AM
+Draft Listings_UI_FE,SCRUM-151,10331,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:51 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000wf:,,,,,,,,,Done,08/Mar/26 11:51 AM
+Draft Listings_API_BE,SCRUM-150,10329,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:51 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000w7:,,,,,,,,,Done,08/Mar/26 11:51 AM
+Draft Listings View_UI_FE,SCRUM-149,10327,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:51 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000vz:,,,,,,,,,Done,08/Mar/26 11:51 AM
+[API] Dynamic Listing Retrieval Gateway,SCRUM-148,10325,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:50 AM,24/Mar/26 2:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000vr:,,,,,,,,,In Progress,08/Mar/26 11:50 AM
+[UI] Consolidated Listing Manager Dashboard,SCRUM-147,10323,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:50 AM,24/Mar/26 2:53 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000vj:,SCRUM Sprint 1,,,,,10012,SCRUM-12,Setup Backend Base Architecture,In Progress,08/Mar/26 11:50 AM
+LISTING MANAGEMENT,SCRUM-146,10321,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:49 AM,24/Mar/26 12:34 AM,23/Mar/26 4:19 PM,,,0,,,,,"Trang quản lý bài đăng cho phép người dùng xem và quản lý tất cả các bài đăng của mình bao gồm:
+
+* Active listings
+* Draft listings
+* Expired listings
+* Reported listings
+
+Người dùng có thể chỉnh sửa, xóa hoặc cập nhật trạng thái bài đăng.
+
+h2. Tasks
+
+Backend
+
+* API lấy danh sách listing của user
+* API listing theo status
+* API update listing
+* API delete listing
+
+Frontend
+
+* UI Manager Listing
+* Tabs: Active / Draft / Expired / Reported
+* Edit listing
+* Delete listing
+
+h2. Acceptance Criteria
+
+User có thể:
+
+* Xem tất cả listing đã đăng
+* Xem listing theo trạng thái
+* Edit listing
+* Delete listing
+* Draft listing được lưu",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0001v:,SCRUM Sprint 2,,13.0,,,,,,In Progress,09/Mar/26 10:25 AM
+Location Filter UI_FE,SCRUM-145,10319,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:47 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000v3:,SCRUM Sprint 2,,,,,10311,SCRUM-141,[LISTING] Category,In Progress,01/Apr/26 11:03 PM
+Location Filter API_BE,SCRUM-144,10317,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:47 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000uv:,SCRUM Sprint 2,,,,,10311,SCRUM-141,[LISTING] Category,In Progress,01/Apr/26 11:03 PM
+Category Filter UI_FE,SCRUM-143,10315,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:47 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000un:,SCRUM Sprint 2,,,,,10311,SCRUM-141,[LISTING] Category,In Progress,01/Apr/26 11:03 PM
+Category API_BE,SCRUM-142,10313,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:46 AM,01/Apr/26 11:02 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000uf:,SCRUM Sprint 2,,,,,10311,SCRUM-141,[LISTING] Category,In Progress,01/Apr/26 11:02 PM
+[LISTING] Category,SCRUM-141,10311,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:46 AM,09/Mar/26 11:08 AM,,,,0,,,,,"Module category cho phép người dùng lọc và tìm kiếm sản phẩm theo danh mục và vị trí địa lý.
+
+h2. Tasks
+
+Backend
+
+* API lấy danh sách category
+* API filter listing theo category
+* API filter listing theo location
+
+Frontend
+
+* Dropdown chọn category
+* Filter location
+* Update listing feed theo filter
+
+h2. Acceptance Criteria
+
+* User có thể chọn category
+* Listing hiển thị theo category
+* Có thể filter theo location
+* Query tối ưu (<500ms)",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002t:,SCRUM Sprint 2,,5.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,09/Mar/26 10:25 AM
+Listing Basic Model & Database,SCRUM-140,10309,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:45 AM,16/Mar/26 12:59 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000tz:,SCRUM Sprint 2,,,,,10301,SCRUM-136,[LISTING] Listing Card Component,In Progress,16/Mar/26 12:30 AM
+Upload Image UI_FE,SCRUM-139,10307,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:43 AM,02/Apr/26 11:38 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000tr:,SCRUM Sprint 2,,,,,10303,SCRUM-137,[LISTING] Upload Image,In Progress,02/Apr/26 11:38 AM
+Upload Image API_BE,SCRUM-138,10305,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:43 AM,02/Apr/26 11:37 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000tj:,SCRUM Sprint 2,,,,,10303,SCRUM-137,[LISTING] Upload Image,In Progress,02/Apr/26 11:37 AM
+[LISTING] Upload Image,SCRUM-137,10303,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:41 AM,21/Mar/26 8:52 PM,22/Mar/26 10:59 AM,,,0,,,,,"Chức năng cho phép người dùng tải ảnh khi đăng bài bán sản phẩm. Người dùng có thể upload nhiều ảnh, preview trước khi đăng và hệ thống sẽ lưu ảnh vào server/cloud storage.
+
+h2. Tasks
+
+Backend
+
+* Tạo API upload ảnh
+* Lưu ảnh vào storage
+* Trả về URL ảnh
+
+Frontend
+
+* UI upload nhiều ảnh
+* Preview ảnh
+* Xóa ảnh trước khi submit
+
+h2. Acceptance Criteria
+
+* Upload tối đa X ảnh cho 1 listing
+* Hỗ trợ drag & drop
+* Preview ảnh trước khi submit
+* Ảnh được lưu và trả về URL",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008l:,SCRUM Sprint 2,,3.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,12/Mar/26 11:17 PM
+[LISTING] Listing Card Component,SCRUM-136,10301,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:41 AM,16/Mar/26 12:59 AM,27/Mar/26 10:15 PM,,,0,,,,,"Component hiển thị thông tin cơ bản của một bài đăng trong danh sách feed. Listing Card bao gồm hình ảnh, tiêu đề, giá, địa điểm, trạng thái bài đăng và các hành động tương tác cơ bản như lưu tin, comment, share và chat với người bán. Component này được sử dụng trong trang Feed, Search Results và Category Listing.
+
+h2. Tasks
+
+* Thiết kế UI component hiển thị listing
+* Hiển thị ảnh thumbnail của listing
+* Hiển thị tiêu đề, giá và địa điểm
+* Hiển thị trạng thái listing (New / Used / Sold / Expired)
+* Kết nối dữ liệu từ API
+* Tái sử dụng component cho nhiều màn hình
+
+h2. Acceptance Criteria (Đạt được)
+
+* Listing card hiển thị:
+** Image
+** Title
+** Price
+** Location
+* Click card mở *Listing Detail Page*
+* Card hiển thị nhanh (< 200ms)
+* Responsive mobile / desktop",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008j:,SCRUM Sprint 2,,2.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,10/Mar/26 9:50 PM
+Logout & Session Handling,SCRUM-135,10299,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:37 AM,10/Mar/26 1:49 AM,,10/Mar/26 1:49 AM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000sv:,SCRUM Sprint 1,,,,,10287,SCRUM-129,User Auth,Done,10/Mar/26 1:49 AM
+Register UI,SCRUM-134,10297,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:37 AM,01/Apr/26 11:53 PM,,01/Apr/26 11:53 PM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000sn:,SCRUM Sprint 1,,,,,10287,SCRUM-129,User Auth,Done,01/Apr/26 11:53 PM
+Login UI,SCRUM-133,10295,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:37 AM,10/Mar/26 1:48 AM,,10/Mar/26 1:48 AM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000sf:,SCRUM Sprint 1,,,,,10287,SCRUM-129,User Auth,Done,10/Mar/26 1:48 AM
+JWT Authentication,SCRUM-132,10293,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:37 AM,24/Mar/26 2:53 AM,,10/Mar/26 1:48 AM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000s7:,,,,,,,,,Done,10/Mar/26 1:48 AM
+User Login API,SCRUM-131,10291,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:36 AM,10/Mar/26 1:48 AM,,10/Mar/26 1:48 AM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000rz:,SCRUM Sprint 1,,,,,10287,SCRUM-129,User Auth,Done,10/Mar/26 1:48 AM
+User Register API,SCRUM-130,10289,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:36 AM,10/Mar/26 1:48 AM,,10/Mar/26 1:48 AM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000rr:,SCRUM Sprint 1,,,,,10287,SCRUM-129,User Auth,Done,10/Mar/26 1:48 AM
+User Auth,SCRUM-129,10287,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:36 AM,24/Mar/26 12:34 AM,,,,0,,,,,"Module authentication cho phép người dùng đăng ký tài khoản, đăng nhập và xác thực bằng JWT để truy cập các chức năng của hệ thống.
+
+h2. Tasks
+
+Backend
+
+* Register API
+* Login API
+* JWT authentication
+* Logout session
+
+Frontend
+
+* Register form
+* Login form
+* Token storage
+* Logout
+
+h2. Acceptance Criteria
+
+* User đăng ký thành công
+* User đăng nhập thành công
+* JWT token được trả về
+* Token được verify ở backend",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002b:,SCRUM Sprint 1,,7.0,,,,,,In Progress,12/Mar/26 10:01 PM
+[AUTH] Authentication,SCRUM-128,10285,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,08/Mar/26 11:23 AM,01/Apr/26 11:30 PM,01/Apr/26 11:30 PM,,,0,notification,profile,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,purple,0|i000rj:,,,,,,,,,In Progress,01/Apr/26 11:30 PM
+Clean code,SCRUM-127,10262,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:37 AM,13/Mar/26 1:45 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000rb:,SCRUM Sprint 4,,,,,10252,SCRUM-122,BONUS STORY – [HARDENING] System Stabilization,To Do,01/Mar/26 2:37 AM
+Final integration test,SCRUM-126,10260,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:37 AM,13/Mar/26 1:45 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000r3:,SCRUM Sprint 4,,,,,10252,SCRUM-122,BONUS STORY – [HARDENING] System Stabilization,To Do,01/Mar/26 2:37 AM
+Performance tuning,SCRUM-125,10258,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:37 AM,13/Mar/26 1:45 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qv:,SCRUM Sprint 4,,,,,10252,SCRUM-122,BONUS STORY – [HARDENING] System Stabilization,To Do,01/Mar/26 2:37 AM
+Security check,SCRUM-124,10256,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:37 AM,13/Mar/26 1:45 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qn:,SCRUM Sprint 4,,,,,10252,SCRUM-122,BONUS STORY – [HARDENING] System Stabilization,To Do,01/Mar/26 2:37 AM
+Fix remaining bugs,SCRUM-123,10254,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:37 AM,01/Apr/26 11:09 PM,01/Apr/26 11:14 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000qf:,SCRUM Sprint 4,,,,,10252,SCRUM-122,BONUS STORY – [HARDENING] System Stabilization,In Progress,24/Mar/26 2:41 AM
+BONUS STORY – [HARDENING] System Stabilization,SCRUM-122,10252,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Highest,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:37 AM,01/Apr/26 11:13 PM,01/Apr/26 11:14 PM,,,0,,,,,"h2. Objective
+
+Ổn định và tối ưu toàn hệ thống trước khi release.
+
+h2. Scope
+
+* Fix remaining bugs
+* Security review
+* Performance tuning
+* Refactor duplicate logic
+* Test end-to-end toàn bộ flow
+
+h2. Acceptance Criteria
+
+* Không có bug major
+* Không lỗi 500
+* Không console error
+* Flow: Register → Listing → Offer → Deal → Chat → Admin hoạt động
+
+h2. Definition of Done
+
+* Demo thành công end-to-end
+* Không crash hệ thống
+* Code được review và clean",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000q7:,SCRUM Sprint 4,,5.0,,,,,,In Progress,24/Mar/26 8:45 PM
+Badge count_FE,SCRUM-121,10251,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:36 AM,13/Mar/26 1:44 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000pz:,SCRUM Sprint 4,,,,,10207,SCRUM-99,[NOTIFICATION] Notification System,To Do,01/Mar/26 2:36 AM
+Mark as read_FE,SCRUM-120,10249,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:36 AM,13/Mar/26 1:44 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000pr:,SCRUM Sprint 4,,,,,10207,SCRUM-99,[NOTIFICATION] Notification System,To Do,01/Mar/26 2:36 AM
+Notification dropdown_FE,SCRUM-119,10247,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:36 AM,13/Mar/26 1:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000pj:,SCRUM Sprint 4,,,,,10207,SCRUM-99,[NOTIFICATION] Notification System,To Do,01/Mar/26 2:36 AM
+PATCH /api/notifications/{id}/read_BE,SCRUM-118,10245,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:36 AM,13/Mar/26 1:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000pb:,SCRUM Sprint 4,,,,,10207,SCRUM-99,[NOTIFICATION] Notification System,To Do,01/Mar/26 2:36 AM
+GET /api/notifications_BE,SCRUM-117,10243,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:36 AM,13/Mar/26 1:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000p3:,SCRUM Sprint 4,,,,,10207,SCRUM-99,[NOTIFICATION] Notification System,To Do,01/Mar/26 2:36 AM
+Call admin API_FE,SCRUM-116,10241,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:35 AM,02/Apr/26 11:39 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000ov:,SCRUM Sprint 4,,,,,10205,SCRUM-98,[ADMIN] Admin Dashboard & Report UI,In Progress,02/Apr/26 11:39 AM
+User management UI_FE,SCRUM-115,10239,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:35 AM,02/Apr/26 11:39 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000on:,SCRUM Sprint 4,,,,,10205,SCRUM-98,[ADMIN] Admin Dashboard & Report UI,In Progress,02/Apr/26 11:39 AM
+Approve / Reject button_FE,SCRUM-114,10237,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:35 AM,02/Apr/26 11:39 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000of:,SCRUM Sprint 4,,,,,10205,SCRUM-98,[ADMIN] Admin Dashboard & Report UI,In Progress,02/Apr/26 11:39 AM
+Report list UI_FE,SCRUM-113,10235,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:35 AM,02/Apr/26 11:38 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000o7:,SCRUM Sprint 4,,,,,10205,SCRUM-98,[ADMIN] Admin Dashboard & Report UI,In Progress,02/Apr/26 11:38 AM
+Update form_FE,SCRUM-112,10233,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:34 AM,01/Apr/26 11:09 PM,01/Apr/26 11:09 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000nz:,SCRUM Sprint 4,,,,,10203,SCRUM-97,[PROFILE] User Profile,In Progress,17/Mar/26 2:39 PM
+Profile page UI_FE,SCRUM-111,10231,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:34 AM,01/Apr/26 11:08 PM,01/Apr/26 11:08 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000nr:,SCRUM Sprint 4,,,,,10203,SCRUM-97,[PROFILE] User Profile,In Progress,17/Mar/26 2:39 PM
+PATCH /api/users/me_BE,SCRUM-110,10229,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:34 AM,01/Apr/26 11:08 PM,01/Apr/26 11:08 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000nj:,SCRUM Sprint 4,,,,,10203,SCRUM-97,[PROFILE] User Profile,In Progress,24/Mar/26 8:46 PM
+GET /api/users/me_BE,SCRUM-109,10227,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:33 AM,01/Apr/26 11:08 PM,01/Apr/26 11:08 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000nb:,SCRUM Sprint 4,,,,,10203,SCRUM-97,[PROFILE] User Profile,In Progress,17/Mar/26 4:04 PM
+Reusable table component_FE,SCRUM-108,10225,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:33 AM,01/Apr/26 11:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000n3:,SCRUM Sprint 3,,,,,10201,SCRUM-96,[ADMIN] Admin Layout & Role Control,In Progress,01/Apr/26 11:04 PM
+Protect admin route_FE,SCRUM-107,10223,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:33 AM,01/Apr/26 11:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000mv:,SCRUM Sprint 3,,,,,10201,SCRUM-96,[ADMIN] Admin Layout & Role Control,In Progress,01/Apr/26 11:04 PM
+Role-based menu_FE,SCRUM-106,10221,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:33 AM,01/Apr/26 11:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000mn:,SCRUM Sprint 3,,,,,10201,SCRUM-96,[ADMIN] Admin Layout & Role Control,In Progress,01/Apr/26 11:04 PM
+Admin sidebar_FE,SCRUM-105,10219,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:33 AM,01/Apr/26 11:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000mf:,SCRUM Sprint 3,,,,,10201,SCRUM-96,[ADMIN] Admin Layout & Role Control,In Progress,01/Apr/26 11:04 PM
+Role check ADMIN_BE,SCRUM-104,10217,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:32 AM,01/Apr/26 11:55 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000m7:,SCRUM Sprint 4,,,,,10199,SCRUM-95,[ADMIN] Admin Management API,In Progress,01/Apr/26 11:55 PM
+PATCH /api/admin/reports/{id}_BE,SCRUM-103,10215,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:32 AM,01/Apr/26 11:55 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000lz:,SCRUM Sprint 4,,,,,10199,SCRUM-95,[ADMIN] Admin Management API,In Progress,01/Apr/26 11:55 PM
+GET /api/admin/reports_BE,SCRUM-102,10213,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:32 AM,01/Apr/26 11:55 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000lr:,SCRUM Sprint 4,,,,,10199,SCRUM-95,[ADMIN] Admin Management API,In Progress,01/Apr/26 11:55 PM
+PATCH /api/admin/users/{id}/status_BE,SCRUM-101,10211,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:32 AM,01/Apr/26 11:55 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000lj:,SCRUM Sprint 4,,,,,10199,SCRUM-95,[ADMIN] Admin Management API,In Progress,01/Apr/26 11:55 PM
+GET /api/admin/users_BE,SCRUM-100,10209,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:31 AM,01/Apr/26 11:55 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000lb:,SCRUM Sprint 4,,,,,10199,SCRUM-95,[ADMIN] Admin Management API,In Progress,01/Apr/26 11:55 PM
+[NOTIFICATION] Notification System,SCRUM-99,10207,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:30 AM,28/Mar/26 1:21 AM,24/Mar/26 1:26 AM,,,0,,,,,"h2. Objective
+
+Triển khai hệ thống thông báo cho người dùng.
+
+h2. Scope
+
+Backend:
+
+* GET /api/notifications
+* PATCH /api/notifications/{id}/read
+
+Frontend:
+
+* Notification dropdown
+* Badge hiển thị số lượng chưa đọc
+* Mark as read
+
+h2. Acceptance Criteria
+
+* User thấy danh sách thông báo
+* Badge hiển thị đúng số lượng
+* Có thể đánh dấu đã đọc
+* Không reload trang
+
+h2. Definition of Done
+
+* API hoạt động ổn định
+* UI cập nhật realtime (basic refresh)
+* Không lỗi major",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000l3:,SCRUM Sprint 4,,5.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,28/Mar/26 1:21 AM
+[ADMIN] Admin Dashboard & Report UI,SCRUM-98,10205,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:30 AM,17/Mar/26 6:04 PM,,,,0,,,,,"h2. Objective
+
+Xây dựng giao diện quản lý report và user cho Admin.
+
+h2. Scope
+
+* Report list UI
+* Approve/Reject button
+* User management table
+* Call admin APIs
+
+h2. Acceptance Criteria
+
+* Admin xem được danh sách report
+* Có thể approve/reject
+* Có thể lock/unlock user
+* Trạng thái cập nhật ngay trên UI
+
+h2. Definition of Done
+
+* API gọi đúng
+* UI đồng bộ trạng thái
+* Không lỗi console",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000kv:,SCRUM Sprint 4,,5.0,,,10009,SCRUM-10,"[ADMIN] Admin, Report & Profile Module",In Progress,17/Mar/26 6:04 PM
+[PROFILE] User Profile,SCRUM-97,10203,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:30 AM,17/Mar/26 11:33 PM,01/Apr/26 11:14 PM,,,0,,,,,"h2. Objective
+
+Cho phép người dùng xem và chỉnh sửa thông tin cá nhân.
+
+h2. Scope
+
+Backend:
+
+* GET /api/users/me
+* PATCH /api/users/me
+
+Frontend:
+
+* Profile page UI
+* Update profile form
+* Validation input
+
+h2. Acceptance Criteria
+
+* User xem được thông tin cá nhân
+* Cập nhật thành công
+* Validation hiển thị đúng
+* Không reload toàn trang
+
+h2. Definition of Done
+
+* API test OK
+* UI cập nhật ngay sau khi save
+* Không lỗi 400/500 không kiểm soát",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000kn:,SCRUM Sprint 4,,5.0,,,10009,SCRUM-10,"[ADMIN] Admin, Report & Profile Module",In Progress,17/Mar/26 11:33 PM
+[ADMIN] Admin Layout & Role Control,SCRUM-96,10201,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:30 AM,01/Apr/26 10:43 PM,,,,0,,,,,"h2. Objective
+
+Thiết lập giao diện Admin và kiểm soát quyền truy cập theo role.
+
+h2. Scope
+
+* Admin Sidebar
+* Admin Layout
+* Role-based menu
+* Protect admin routes
+* Reusable table component
+
+h2. Acceptance Criteria
+
+* User thường không thấy menu admin
+* Route admin được bảo vệ
+* Layout thống nhất với hệ thống
+* Không lỗi responsive
+
+h2. Definition of Done
+
+* Role hoạt động đúng
+* Không console error
+* Component có thể reuse",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000ej:,SCRUM Sprint 3,,5.0,,,10009,SCRUM-10,"[ADMIN] Admin, Report & Profile Module",In Progress,13/Mar/26 3:23 PM
+[ADMIN] Admin Management API,SCRUM-95,10199,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:30 AM,14/Mar/26 5:30 PM,01/Apr/26 11:15 PM,,,0,,,,,"h2. Objective
+
+Triển khai API quản trị cho phép Admin quản lý người dùng và xử lý report.
+
+h2. Scope
+
+* GET /api/admin/users
+* PATCH /api/admin/users/{id}/status (lock/unlock)
+* GET /api/admin/reports
+* PATCH /api/admin/reports/{id} (approve/reject)
+* Role-based authorization (ADMIN only)
+
+h2. Acceptance Criteria
+
+* Admin có thể xem danh sách user
+* Admin có thể lock/unlock user
+* Admin có thể xem và xử lý report
+* USER không thể truy cập endpoint admin
+
+h2. Definition of Done
+
+* Test API bằng Postman thành công
+* Role check chính xác
+* Không có endpoint lộ quyền
+* Response theo chuẩn BaseResponse",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000k7:,SCRUM Sprint 4,,8.0,,,10009,SCRUM-10,"[ADMIN] Admin, Report & Profile Module",In Progress,14/Mar/26 5:30 PM
+Refactor shared component,SCRUM-94,10197,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:23 AM,17/Mar/26 5:32 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000jz:,SCRUM Sprint 3,,,,,10149,SCRUM-70,[REVIEW] UI Consistency & Component Review,In Progress,17/Mar/26 5:32 PM
+Ensure layout consistency,SCRUM-93,10195,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:23 AM,17/Mar/26 5:32 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000jr:,SCRUM Sprint 3,,,,,10149,SCRUM-70,[REVIEW] UI Consistency & Component Review,In Progress,17/Mar/26 5:32 PM
+Review Chat UI,SCRUM-92,10193,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:23 AM,01/Apr/26 11:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000jj:,SCRUM Sprint 3,,,,,10149,SCRUM-70,[REVIEW] UI Consistency & Component Review,In Progress,01/Apr/26 11:04 PM
+Review Offer UI,SCRUM-91,10191,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:23 AM,01/Apr/26 11:04 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000jb:,SCRUM Sprint 3,,,,,10149,SCRUM-70,[REVIEW] UI Consistency & Component Review,In Progress,01/Apr/26 11:04 PM
+Polling / Refresh logic (basic)_FE,SCRUM-90,10189,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:22 AM,13/Mar/26 1:27 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000j3:,SCRUM Sprint 3,,,,,10148,SCRUM-69,[CHAT] Chat UI,To Do,01/Mar/26 2:22 AM
+Call API send message_FE,SCRUM-89,10187,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:22 AM,13/Mar/26 1:27 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000iv:,SCRUM Sprint 3,,,,,10148,SCRUM-69,[CHAT] Chat UI,To Do,01/Mar/26 2:22 AM
+Message Input Component_FE,SCRUM-88,10185,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:22 AM,13/Mar/26 1:27 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000in:,SCRUM Sprint 3,,,,,10148,SCRUM-69,[CHAT] Chat UI,To Do,01/Mar/26 2:22 AM
+Message List UI_FE,SCRUM-87,10183,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:22 AM,13/Mar/26 1:27 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000if:,SCRUM Sprint 3,,,,,10148,SCRUM-69,[CHAT] Chat UI,To Do,01/Mar/26 2:22 AM
+GET /api/conversations/{id}/messages_BE,SCRUM-86,10181,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:22 AM,01/Apr/26 11:55 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000i7:,SCRUM Sprint 3,,,,,10146,SCRUM-68,[CHAT] Basic Chat API,In Progress,01/Apr/26 11:55 PM
+POST /api/conversations/{id}/messages_BE,SCRUM-85,10179,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:22 AM,01/Apr/26 11:54 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000hz:,SCRUM Sprint 3,,,,,10146,SCRUM-68,[CHAT] Basic Chat API,In Progress,01/Apr/26 11:54 PM
+Message Entity_BE,SCRUM-84,10177,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:21 AM,01/Apr/26 11:54 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000hr:,SCRUM Sprint 3,,,,,10146,SCRUM-68,[CHAT] Basic Chat API,In Progress,01/Apr/26 11:54 PM
+Conversation Entity_BE,SCRUM-83,10175,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:21 AM,01/Apr/26 11:54 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000hj:,SCRUM Sprint 3,,,,,10146,SCRUM-68,[CHAT] Basic Chat API,In Progress,01/Apr/26 11:54 PM
+Status Badge Component_FE,SCRUM-82,10173,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:20 AM,13/Mar/26 1:25 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000hb:,SCRUM Sprint 3,,,,,10144,SCRUM-67,Confirm Deal & Auto-Sold API/UI,To Do,01/Mar/26 2:20 AM
+Confirm Button UI_FE,SCRUM-81,10171,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:20 AM,13/Mar/26 1:24 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000h3:,SCRUM Sprint 3,,,,,10144,SCRUM-67,Confirm Deal & Auto-Sold API/UI,To Do,01/Mar/26 2:20 AM
+POST /api/deals/{dealId}/confirm_BE,SCRUM-80,10169,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:20 AM,13/Mar/26 1:24 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000gv:,SCRUM Sprint 3,,,,,10144,SCRUM-67,Confirm Deal & Auto-Sold API/UI,To Do,01/Mar/26 2:20 AM
+Create Deal Entity_BE,SCRUM-79,10167,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:20 AM,13/Mar/26 1:24 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000gn:,SCRUM Sprint 3,,,,,10144,SCRUM-67,Confirm Deal & Auto-Sold API/UI,To Do,01/Mar/26 2:20 AM
+Loading & Error State_FE,SCRUM-78,10165,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:20 AM,01/Apr/26 11:08 PM,01/Apr/26 11:08 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000gf:,SCRUM Sprint 3,,,,,10142,SCRUM-66,Offer UI_FE,In Progress,16/Mar/26 6:39 PM
+API Integration_FE,SCRUM-77,10163,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:19 AM,01/Apr/26 11:08 PM,01/Apr/26 11:08 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000g7:,SCRUM Sprint 3,,,,,10142,SCRUM-66,Offer UI_FE,In Progress,16/Mar/26 7:33 PM
+Offer History Component_FE,SCRUM-76,10161,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:19 AM,01/Apr/26 11:07 PM,01/Apr/26 11:07 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000fz:,SCRUM Sprint 3,,,,,10142,SCRUM-66,Offer UI_FE,To Do,01/Apr/26 11:06 PM
+Offer Input Component_FE,SCRUM-75,10159,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:19 AM,01/Apr/26 11:13 PM,01/Apr/26 11:13 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000fr:,SCRUM Sprint 3,,,,,10142,SCRUM-66,Offer UI_FE,To Do,01/Apr/26 11:13 PM
+Add Validation & Exception Handling_BE,SCRUM-74,10157,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:19 AM,20/Mar/26 8:53 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000fj:,SCRUM Sprint 3,,,,,10140,SCRUM-65,Create Offer API_BE,In Progress,16/Mar/26 9:06 AM
+Implement GET Offer History API_BE,SCRUM-73,10155,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:18 AM,20/Mar/26 8:53 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000fb:,SCRUM Sprint 3,,,,,10140,SCRUM-65,Create Offer API_BE,In Progress,16/Mar/26 9:06 AM
+Implement POST /api/listings/{id}/offers_BE,SCRUM-72,10153,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:18 AM,20/Mar/26 8:53 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000f3:,SCRUM Sprint 3,,,,,10140,SCRUM-65,Create Offer API_BE,In Progress,16/Mar/26 9:05 AM
+Create Offer Entity + Migration_BE,SCRUM-71,10151,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:18 AM,20/Mar/26 8:53 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000ev:,SCRUM Sprint 3,,,,,10140,SCRUM-65,Create Offer API_BE,In Progress,16/Mar/26 9:05 AM
+[REVIEW] UI Consistency & Component Review,SCRUM-70,10149,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:17 AM,01/Apr/26 10:43 PM,22/Mar/26 10:58 AM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008m:t,SCRUM Sprint 3,,5.0,,,,,,In Progress,14/Mar/26 2:03 PM
+[CHAT] Chat UI,SCRUM-69,10148,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:17 AM,21/Mar/26 1:53 AM,,,,0,,,,,"h2. Objective
+
+Xây dựng giao diện chat cơ bản.
+
+h2. Scope
+
+* Message list UI
+* Input gửi tin nhắn
+* Auto scroll
+* Gọi API send message
+
+h2. Acceptance Criteria
+
+* Gửi tin nhắn thành công
+* Lịch sử hiển thị đúng
+* Không reload trang
+
+h2. Definition of Done
+
+* Chat hoạt động ổn định
+* Không lỗi console",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002s:,SCRUM Sprint 3,,5.0,,,10008,SCRUM-9,"[DEAL] Offer, Deal & Chat Module",In Progress,16/Mar/26 1:13 PM
+[CHAT] Basic Chat API,SCRUM-68,10146,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:17 AM,20/Mar/26 8:53 AM,22/Mar/26 10:57 AM,,,0,,,,,"h2. Objective
+
+Cho phép hai người dùng trao đổi tin nhắn trong context deal.
+
+h2. Scope
+
+* GET /api/conversations/{id}/messages
+* POST /api/conversations/{id}/messages
+* Lưu message DB
+
+h2. Acceptance Criteria
+
+* Tin nhắn được lưu
+* Lấy lại lịch sử được
+* Không mất dữ liệu
+
+h2. Definition of Done
+
+* Test API OK
+* Không lỗi 500",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000e7:,SCRUM Sprint 3,,8.0,,,10008,SCRUM-9,"[DEAL] Offer, Deal & Chat Module",In Progress,14/Mar/26 5:30 PM
+Confirm Deal & Auto-Sold API/UI,SCRUM-67,10144,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:14 AM,24/Mar/26 2:52 AM,,,,0,,,,,"h2. Objective
+Bước cuối: Buyer xác nhận giao dịch để lấy thông tin liên hệ và tự động cập nhật kho.
+
+h2. Acceptance Criteria
+* Khi Buyer bấm Confirm, trạng thái Deal -> CONFIRMED.
+* Hệ thống hiển thị Số điện thoại và Địa chỉ của Seller cho Buyer.
+* Tự động trigger cập nhật trạng thái bài đăng (Listing) sang SOLD.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000dz:,SCRUM Sprint 3,,5.0,,,,,,In Progress,16/Mar/26 3:16 PM
+Offer UI_FE,SCRUM-66,10142,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:14 AM,01/Apr/26 11:09 PM,01/Apr/26 11:09 PM,,,0,,,,,"h2. Objective
+Giao diện gửi Offer cho Buyer.
+
+h2. Acceptance Criteria
+* Nút 'Gửi trả giá' hiển thị trên Listing Detail.
+* Modal nhập giá mong muốn.
+* Nút vô hiệu hóa nếu Listing đã SOLD.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000dr:,SCRUM Sprint 3,,5.0,,,,,,In Progress,16/Mar/26 12:59 AM
+Create Offer API_BE,SCRUM-65,10140,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:14 AM,24/Mar/26 2:52 AM,,,,0,,,,,"h2. Objective
+Xây dựng API cho phép Buyer gửi mức giá mong muốn (Make Offer).
+
+h2. Acceptance Criteria
+* Buyer gửi mức giá (Price) đề xuất.
+* Trạng thái Offer khởi tạo là PENDING.
+* Không có bước thanh toán online.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000dj:,SCRUM Sprint 3,,5.0,,,,,,In Progress,14/Mar/26 5:20 PM
+Write integration test,SCRUM-64,10138,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:04 AM,13/Mar/26 1:18 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000db:,SCRUM Sprint 2,,,,,10071,SCRUM-42,[STABILIZATION] Refactor & Performance Improvement,To Do,01/Mar/26 2:04 AM
+Fix bug phát sinh từ Sprint 1,SCRUM-63,10136,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:04 AM,13/Mar/26 1:18 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000d3:,SCRUM Sprint 2,,,,,10071,SCRUM-42,[STABILIZATION] Refactor & Performance Improvement,To Do,01/Mar/26 2:04 AM
+Improve image loading,SCRUM-62,10134,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:04 AM,13/Mar/26 1:18 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000cv:,SCRUM Sprint 2,,,,,10071,SCRUM-42,[STABILIZATION] Refactor & Performance Improvement,To Do,01/Mar/26 2:04 AM
+Refactor duplicate logic,SCRUM-61,10132,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:04 AM,13/Mar/26 1:18 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000cn:,SCRUM Sprint 2,,,,,10071,SCRUM-42,[STABILIZATION] Refactor & Performance Improvement,To Do,01/Mar/26 2:04 AM
+Call search API_FE,SCRUM-60,10130,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:04 AM,02/Apr/26 11:35 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000cf:,SCRUM Sprint 2,,,,,10070,SCRUM-41,[LISTING] Search UI & Filter,In Progress,02/Apr/26 11:35 AM
+Category select_FE,SCRUM-59,10128,Subtask,To Do,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:03 AM,16/Mar/26 11:08 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000c7:,SCRUM Sprint 2,,,,,10070,SCRUM-41,[LISTING] Search UI & Filter,To Do,01/Mar/26 2:03 AM
+Filter dropdown_FE,SCRUM-58,10126,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:03 AM,02/Apr/26 11:35 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000bz:,SCRUM Sprint 2,,,,,10070,SCRUM-41,[LISTING] Search UI & Filter,In Progress,02/Apr/26 11:35 AM
+Search bar_FE,SCRUM-57,10124,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:03 AM,02/Apr/26 11:34 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000br:,SCRUM Sprint 2,,,,,10070,SCRUM-41,[LISTING] Search UI & Filter,In Progress,02/Apr/26 11:34 AM
+Related listing_FE,SCRUM-56,10122,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:02 AM,15/Mar/26 11:44 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000bj:,SCRUM Sprint 2,,,,,10068,SCRUM-40,[LISTING] Listing Detail Page,In Progress,15/Mar/26 2:32 PM
+Seller info section_FE,SCRUM-55,10120,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:02 AM,15/Mar/26 11:44 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000bb:,SCRUM Sprint 2,,,,,10068,SCRUM-40,[LISTING] Listing Detail Page,In Progress,15/Mar/26 11:43 PM
+GET /api/listings/{id}_FE,SCRUM-54,10118,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:02 AM,15/Mar/26 11:44 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000b3:,SCRUM Sprint 2,,,,,10068,SCRUM-40,[LISTING] Listing Detail Page,In Progress,15/Mar/26 2:31 PM
+GET /api/listings/{id} BE,SCRUM-53,10116,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 2:02 AM,15/Mar/26 11:43 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000av:,SCRUM Sprint 2,,,,,10068,SCRUM-40,[LISTING] Listing Detail Page,In Progress,15/Mar/26 2:31 PM
+Toast notification system,SCRUM-52,10091,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:06 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000an:,SCRUM Sprint 2,,,,,10066,SCRUM-39,[CORE] Shared Component Enhancement,In Progress,01/Apr/26 11:03 PM
+Confirm dialog,SCRUM-51,10089,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:06 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000af:,SCRUM Sprint 2,,,,,10066,SCRUM-39,[CORE] Shared Component Enhancement,In Progress,01/Apr/26 11:03 PM
+Error state component,SCRUM-50,10087,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:06 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i000a7:,SCRUM Sprint 2,,,,,10066,SCRUM-39,[CORE] Shared Component Enhancement,In Progress,01/Apr/26 11:03 PM
+Loading skeleton,SCRUM-49,10085,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:06 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0009z:,SCRUM Sprint 2,,,,,10066,SCRUM-39,[CORE] Shared Component Enhancement,In Progress,01/Apr/26 11:03 PM
+Pagination reusable component,SCRUM-48,10083,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:06 AM,01/Apr/26 11:03 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0009r:,SCRUM Sprint 2,,,,,10066,SCRUM-39,[CORE] Shared Component Enhancement,In Progress,01/Apr/26 11:03 PM
+Validate request,SCRUM-47,10081,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:03 AM,01/Apr/26 11:54 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0009j:,SCRUM Sprint 2,,,,,10064,SCRUM-38,[LISTING] Search & Filter API,In Progress,01/Apr/26 11:54 PM
+Add index nếu cần,SCRUM-46,10079,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:03 AM,01/Apr/26 11:54 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0009b:,SCRUM Sprint 2,,,,,10064,SCRUM-38,[LISTING] Search & Filter API,In Progress,01/Apr/26 11:54 PM
+Optimize query,SCRUM-45,10077,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:03 AM,01/Apr/26 11:53 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00093:,SCRUM Sprint 2,,,,,10064,SCRUM-38,[LISTING] Search & Filter API,In Progress,01/Apr/26 11:53 PM
+Filter by category,SCRUM-44,10075,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:03 AM,01/Apr/26 11:53 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008v:,SCRUM Sprint 2,,,,,10064,SCRUM-38,[LISTING] Search & Filter API,In Progress,01/Apr/26 11:53 PM
+Implement GET /api/search,SCRUM-43,10073,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:02 AM,01/Apr/26 11:53 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0008n:,SCRUM Sprint 2,,,,,10064,SCRUM-38,[LISTING] Search & Filter API,In Progress,01/Apr/26 11:53 PM
+[STABILIZATION] Refactor & Performance Improvement,SCRUM-42,10071,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 1:00 AM,17/Mar/26 9:40 PM,,,,0,,,,,"h2. Objective
+
+Ổn định hệ thống và cải thiện hiệu năng sau Sprint 1.
+
+h2. Scope
+
+* Refactor duplicate logic
+* Optimize image loading
+* Fix bug phát sinh từ Sprint 1
+* Viết integration test cơ bản
+* Review PR hỗ trợ team
+
+h2. Acceptance Criteria
+
+* Không còn bug major từ Sprint 1
+* Performance cải thiện
+* Không duplicate code rõ ràng
+* Integration flow chạy end-to-end
+
+h2. Definition of Done
+
+* Test flow Listing hoàn chỉnh
+* Không lỗi 500
+* Không crash FE",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002j:,SCRUM Sprint 2,,5.0,,,,,,In Progress,17/Mar/26 9:40 PM
+[LISTING] Search UI & Filter,SCRUM-41,10070,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:58 AM,21/Mar/26 8:52 PM,,,,0,,,,,"h2. Objective
+
+Xây dựng giao diện tìm kiếm và lọc bài đăng.
+
+h2. Scope
+
+* Search bar
+* Category dropdown
+* Filter UI
+* Gọi API search
+* Hiển thị kết quả
+
+h2. Acceptance Criteria
+
+* Search hoạt động realtime hoặc submit
+* Filter theo category hoạt động
+* Reset filter được
+* Không reload toàn trang
+
+h2. Definition of Done
+
+* Gọi đúng API
+* Không lỗi console
+* UI consistent với hệ thống",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00087:,SCRUM Sprint 2,,5.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,12/Mar/26 10:50 PM
+[LISTING] Listing Detail Page,SCRUM-40,10068,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:58 AM,16/Mar/26 12:30 AM,27/Mar/26 8:13 PM,,,0,,,,,"h2. Objective
+
+Triển khai trang chi tiết bài đăng.
+
+h2. Scope
+
+Backend:
+
+* GET /api/listings/{id}
+
+Frontend:
+
+* Hiển thị đầy đủ thông tin bài đăng
+* Thông tin người bán
+* Hình ảnh
+* Related listings (optional nếu còn thời gian)
+
+h2. Acceptance Criteria
+
+* Click từ Listing Feed → vào trang Detail
+* Hiển thị đúng dữ liệu
+* Không crash khi id không tồn tại
+* Loading state & error state đầy đủ
+
+h2. Definition of Done
+
+* API test OK
+* FE hiển thị đúng dữ liệu
+* Được review bởi Leader",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0007z:,SCRUM Sprint 2,,5.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,10/Mar/26 9:50 PM
+[CORE] Shared Component Enhancement,SCRUM-39,10066,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:58 AM,10/Mar/26 12:02 PM,,,,0,,,,,"h2. Objective
+
+Xây dựng các component dùng chung cho toàn hệ thống để đảm bảo UI consistency.
+
+h2. Scope
+
+* Pagination reusable component
+* Loading skeleton
+* Error state component
+* Confirm dialog
+* Toast notification
+
+h2. Acceptance Criteria
+
+* Component có thể reuse ở Listing và các module sau
+* Không hardcode logic riêng lẻ
+* Thiết kế đồng bộ
+
+h2. Definition of Done
+
+* Component hoạt động ổn định
+* Được sử dụng trong Listing
+* Không lỗi UI major",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002u:,SCRUM Sprint 2,,5.0,,,10010,SCRUM-11,[CORE] Base Architecture & Shared Modules,In Progress,09/Mar/26 11:00 AM
+[LISTING] Search & Filter API,SCRUM-38,10064,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:57 AM,13/Mar/26 10:14 AM,,,,0,,,,,"h2. Objective
+
+Triển khai API tìm kiếm và lọc bài đăng để hỗ trợ chức năng Search & Filter ở Frontend.
+
+h2. Scope
+
+* GET /api/search
+* Tìm theo keyword (title, description)
+* Filter theo category
+* Pagination
+* Validate request
+* Optimize query (index nếu cần)
+
+h2. Acceptance Criteria
+
+* Có thể search theo keyword
+* Có thể filter theo category
+* Pagination hoạt động chính xác
+* Response theo đúng BaseResponse format
+* Không lỗi performance khi >100 records
+
+h2. Definition of Done
+
+* API test bằng Postman thành công
+* FE gọi được API
+* Không có lỗi 500",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0007j:,SCRUM Sprint 2,,8.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,13/Mar/26 10:14 AM
+[INTEGRATION] FE-BE Integration & Stabilization,SCRUM-37,10062,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,vietldhe180008,712020:577e8e31-26eb-411c-9d5c-32f9f5b1c2ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:32 AM,08/Mar/26 4:56 PM,,,,0,,,,,"Scope:
+
+* Fix lỗi mapping FE-BE
+* Refactor DTO nếu cần
+* Hỗ trợ team xử lý bug phát sinh
+* Test end-to-end flow Listing
+
+h3. 🔹 Unit test cơ bản cho Listing
+
+* Hỗ trợ Hoa & Ánh
+
+Definition of Done:
+
+* Listing chạy ổn định
+* Không có lỗi integration nghiêm trọng
+* Các API trả đúng format
+
+
+h3. ",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002r:,SCRUM Sprint 1,,5.0,,,10010,SCRUM-11,[CORE] Base Architecture & Shared Modules,In Progress,08/Mar/26 4:56 PM
+Submit flow_FE,SCRUM-36,10060,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:29 AM,02/Apr/26 11:36 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0007b:,SCRUM Sprint 1,,,,,10018,SCRUM-15,Create New Listing,In Progress,02/Apr/26 11:36 AM
+Image upload_FE,SCRUM-35,10058,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:29 AM,02/Apr/26 11:36 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00073:,SCRUM Sprint 1,,,,,10018,SCRUM-15,Create New Listing,In Progress,02/Apr/26 11:36 AM
+Create form__FE,SCRUM-34,10056,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:29 AM,02/Apr/26 11:36 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0006v:,SCRUM Sprint 1,,,,,10018,SCRUM-15,Create New Listing,In Progress,02/Apr/26 11:36 AM
+Upload image_BE,SCRUM-33,10054,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:29 AM,16/Mar/26 1:47 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0006n:,SCRUM Sprint 1,,,,,10018,SCRUM-15,Create New Listing,In Progress,16/Mar/26 1:47 PM
+Validation_BE,SCRUM-32,10052,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:29 AM,14/Mar/26 8:34 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0006f:,SCRUM Sprint 1,,,,,10018,SCRUM-15,Create New Listing,In Progress,14/Mar/26 8:34 PM
+POST /api/listings_BE,SCRUM-31,10050,Subtask,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:28 AM,14/Mar/26 8:34 PM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00067:,SCRUM Sprint 1,,,,,10018,SCRUM-15,Create New Listing,In Progress,14/Mar/26 8:34 PM
+Loading + error state_FE,SCRUM-30,10048,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:26 AM,13/Mar/26 12:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0005z:,SCRUM Sprint 1,,,,,10016,SCRUM-14,[LISTING] View Listing Feed,In Progress,06/Mar/26 12:43 AM
+Call API_FE,SCRUM-29,10046,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:26 AM,13/Mar/26 12:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0005r:,SCRUM Sprint 1,,,,,10016,SCRUM-14,[LISTING] View Listing Feed,In Progress,06/Mar/26 12:43 AM
+Listing UI_FE,SCRUM-28,10044,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:25 AM,13/Mar/26 12:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0005j:,SCRUM Sprint 1,,,,,10016,SCRUM-14,[LISTING] View Listing Feed,In Progress,06/Mar/26 12:43 AM
+Pagination logic_BE,SCRUM-27,10042,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:25 AM,13/Mar/26 12:43 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0005b:,SCRUM Sprint 1,,,,,10016,SCRUM-14,[LISTING] View Listing Feed,In Progress,04/Mar/26 10:58 PM
+GET /api/listings _BE,SCRUM-26,10040,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:25 AM,13/Mar/26 12:43 AM,01/Apr/26 11:10 PM,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00053:,SCRUM Sprint 1,,,,,10016,SCRUM-14,[LISTING] View Listing Feed,In Progress,04/Mar/26 10:58 PM
+Routing base,SCRUM-25,10038,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:25 AM,13/Mar/26 12:41 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0004v:,SCRUM Sprint 1,,,,,10014,SCRUM-13,[CORE] Setup Frontend Layout & Routing,In Progress,04/Mar/26 11:56 AM
+AuthContext,SCRUM-24,10036,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:25 AM,13/Mar/26 12:41 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0004n:,SCRUM Sprint 1,,,,,10014,SCRUM-13,[CORE] Setup Frontend Layout & Routing,In Progress,04/Mar/26 11:56 AM
+ProtectedRoute,SCRUM-23,10034,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:24 AM,13/Mar/26 12:41 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0004f:,SCRUM Sprint 1,,,,,10014,SCRUM-13,[CORE] Setup Frontend Layout & Routing,In Progress,04/Mar/26 11:56 AM
+Header + Sidebar,SCRUM-22,10032,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:24 AM,13/Mar/26 12:40 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00047:,SCRUM Sprint 1,,,,,10014,SCRUM-13,[CORE] Setup Frontend Layout & Routing,In Progress,04/Mar/26 11:56 AM
+MainLayout,SCRUM-21,10030,Subtask,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:24 AM,13/Mar/26 12:40 AM,,,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0003z:,SCRUM Sprint 1,,,,,10014,SCRUM-13,[CORE] Setup Frontend Layout & Routing,In Progress,04/Mar/26 11:56 AM
+Security Config,SCRUM-20,10028,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:23 AM,13/Mar/26 12:40 AM,,05/Mar/26 7:35 PM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0003r:,SCRUM Sprint 1,,,,,10012,SCRUM-12,Setup Backend Base Architecture,Done,05/Mar/26 7:35 PM
+Role-based Authorization,SCRUM-19,10026,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:23 AM,13/Mar/26 12:40 AM,,05/Mar/26 7:35 PM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0003j:,SCRUM Sprint 1,,,,,10012,SCRUM-12,Setup Backend Base Architecture,Done,05/Mar/26 7:35 PM
+JWT Authentication & Security Context,SCRUM-18,10024,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:23 AM,24/Mar/26 2:53 AM,,05/Mar/26 7:35 PM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0003b:,SCRUM Sprint 1,,,,,10287,SCRUM-129,User Auth,Done,05/Mar/26 7:35 PM
+Base Response Wrapper,SCRUM-17,10022,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:23 AM,13/Mar/26 12:39 AM,,05/Mar/26 7:35 PM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00033:,SCRUM Sprint 1,,,,,10012,SCRUM-12,Setup Backend Base Architecture,Done,05/Mar/26 7:35 PM
+Global Exception Handler,SCRUM-16,10020,Subtask,Done,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,Done,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:23 AM,13/Mar/26 12:39 AM,,05/Mar/26 7:35 PM,,0,,,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002v:,SCRUM Sprint 1,,,,,10012,SCRUM-12,Setup Backend Base Architecture,Done,05/Mar/26 7:35 PM
+Create New Listing,SCRUM-15,10018,Story,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,Trần Thị Ngọc Ánh,712020:5c90eb0a-4cfa-4441-9c76-f62e1c793862,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:03 AM,24/Mar/26 12:34 AM,,,,0,,,,,"h2. Objective
+
+Cho phép user tạo bài đăng mới.
+
+h2. Scope
+
+Backend:
+
+* POST /api/listings
+* Upload image
+* Validation input
+
+Frontend:
+
+* Form create listing
+* Upload image component
+* Submit logic
+
+h2. Acceptance Criteria
+
+* User tạo listing thành công
+* Validation hiển thị đúng
+* Listing xuất hiện ngay trong feed
+
+h2. Definition of Done
+
+* Không lỗi 400/500 không kiểm soát
+* Image upload hoạt động
+* End-to-end flow thành công",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002n:,SCRUM Sprint 1,,8.0,,,,,,In Progress,06/Mar/26 1:07 AM
+[LISTING] View Listing Feed,SCRUM-14,10016,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,High,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:02 AM,12/Mar/26 9:59 PM,24/Mar/26 12:29 AM,,,0,,,,,"h2. Objective
+
+Triển khai trang hiển thị danh sách bài đăng.
+
+h2. Scope
+
+Backend:
+
+* GET /api/listings
+* Pagination
+
+Frontend:
+
+* Listing card UI
+* Loading & error state
+* Pagination UI
+
+h2. Acceptance Criteria
+
+* Hiển thị danh sách bài đăng
+* Pagination hoạt động đúng
+* Không crash khi không có dữ liệu
+
+h2. Definition of Done
+
+* API trả đúng format
+* FE hiển thị đúng dữ liệu
+* End-to-end flow hoạt động",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0002f:,SCRUM Sprint 1,,5.0,,,10007,SCRUM-8,[LISTING] Listing & Category Management,In Progress,02/Mar/26 8:13 PM
+[CORE] Setup Frontend Layout & Routing,SCRUM-13,10014,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Highest,,Hoang Anh Tu K17,712020:e4221955-20d9-470a-b5b7-ba802288eb83,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:01 AM,12/Mar/26 10:01 PM,,,,0,,,,,"h2. Objective
+
+Thiết lập cấu trúc frontend chuẩn và layout dùng chung cho toàn hệ thống.
+
+h2. Scope
+
+* MainLayout
+* Header + Sidebar
+* ProtectedRoute
+* AuthContext
+* Routing structure
+
+h2. Acceptance Criteria
+
+* Route private được bảo vệ
+* Layout responsive
+* Header hiển thị đúng trạng thái login
+* Không reload toàn trang khi chuyển route
+
+h2. Definition of Done
+
+* Tất cả page sử dụng MainLayout
+* Không lỗi console
+* Code tuân theo guideline UI",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i00027:,SCRUM Sprint 1,,5.0,,,10010,SCRUM-11,[CORE] Base Architecture & Shared Modules,In Progress,12/Mar/26 10:01 PM
+Setup Backend Base Architecture,SCRUM-12,10012,Story,In Review,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Highest,,Do Thanh An (K18 HL),712020:45becf8d-14c2-471b-8b22-679e5db174ec,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,01/Mar/26 12:00 AM,24/Mar/26 12:34 AM,,,,0,,,,,"h2. Objective
+
+Xây dựng nền tảng backend chuẩn để đảm bảo hệ thống có thể mở rộng và phát triển các module tiếp theo.
+
+h2. Scope
+
+* Global Exception Handler
+* Base Response Wrapper (code, message, data)
+* JWT Authentication
+* Role-based Authorization
+* Security configuration
+* Validation chuẩn (Bean Validation)
+
+h2. Acceptance Criteria
+
+* Tất cả API trả về format thống nhất
+* JWT hoạt động đúng (login → token → authorize)
+* Role được kiểm soát đúng (USER / ADMIN)
+* Không có endpoint public trái phép
+
+h2. Definition of Done
+
+* Test bằng Postman thành công
+* Không lỗi 500 không kiểm soát
+* Code được review bởi team
+* Document API cập nhật",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,,0|i0001z:,SCRUM Sprint 1,,8.0,,,,,,In Progress,12/Mar/26 10:01 PM
+[CORE] Base Architecture & Shared Modules,SCRUM-11,10010,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,28/Feb/26 11:57 PM,01/Apr/26 11:30 PM,01/Apr/26 11:30 PM,,,0,core,epic,,,,,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,purple,0|i0001r:,,,,,,,,,In Progress,01/Apr/26 11:30 PM
+"[ADMIN] Admin, Report & Profile Module",SCRUM-10,10009,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,28/Feb/26 11:51 PM,01/Apr/26 11:31 PM,01/Apr/26 11:31 PM,,,0,admin,epic,notification,profile,"Mục tiêu:
+Xây dựng hệ thống quản trị và quản lý người dùng.
+
+Bao gồm:
+
+* Report management
+* User management (lock/unlock)
+* Profile management
+* Notification system
+
+Kết quả mong đợi:
+Admin có thể kiểm soát hệ thống và user có thể quản lý profile.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,purple,0|i0001j:,,,,,,,,,In Progress,01/Apr/26 11:31 PM
+"[DEAL] Offer, Deal & Chat Module",SCRUM-9,10008,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,28/Feb/26 11:50 PM,01/Apr/26 11:31 PM,01/Apr/26 11:31 PM,,,0,chat,deal,epic,,"Mục tiêu:
+Xây dựng hệ thống đàm phán và chốt giao dịch.
+
+Bao gồm:
+
+* Create offer
+* Accept / Reject offer
+* Confirm deal
+* Chat cơ bản giữa 2 user
+* Lưu lịch sử đàm phán
+
+Kết quả mong đợi:
+User có thể gửi offer và hoàn tất deal thành công.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,orange,0|i0001b:,,,,,,,,,In Progress,01/Apr/26 11:31 PM
+[LISTING] Listing & Category Management,SCRUM-8,10007,Epic,In Progress,SCRUM,My Software Team SEP490_G18,software,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,Your first project,Medium,,,,lã thị thanh hoa,712020:b06719a7-ea91-4902-b932-14ce4adab49a,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,28/Feb/26 11:48 PM,01/Apr/26 11:31 PM,01/Apr/26 11:31 PM,,,0,epic,listing,,,"Mục tiêu:
+Xây dựng module Listing cho hệ thống SLife.
+
+Bao gồm:
+
+* Listing feed
+* Create new listing
+* Listing detail page
+* Upload image
+* Category tree
+* Search functionality
+
+Kết quả mong đợi:
+User có thể tạo, xem và tìm kiếm bài đăng hoàn chỉnh end-to-end.",,Đức Long Phạm,712020:f8310f05-361e-485f-94ba-b0fb285d31a4,,,,,,,,,,dark_teal,0|i00013:,,,,,,,,,In Progress,01/Apr/26 11:31 PM
