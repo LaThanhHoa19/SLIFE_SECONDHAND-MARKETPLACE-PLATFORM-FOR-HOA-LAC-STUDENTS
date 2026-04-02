@@ -446,8 +446,13 @@ public class ListingService {
 
         if (isDraft) {
             listing.setStatus("DRAFT");
+            listing.setExpirationDate(null);
         } else if ("DRAFT".equals(listing.getStatus())) {
             listing.setStatus("ACTIVE");
+            listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
+        } else if ("ACTIVE".equals(listing.getStatus()) && listing.getExpirationDate() == null) {
+            // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION was enforced.
+            listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
         }
 
         listing.setUpdatedAt(Instant.now());
