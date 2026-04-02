@@ -46,8 +46,11 @@ import java.util.stream.Collectors;
 public class ListingService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
+    private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
     /** Đồng bộ với frontend (tối đa 10 ảnh/tin). */
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
+    /** Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION. */
+    private static final int DEFAULT_LISTING_EXPIRATION_DAYS = 30;
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
@@ -309,10 +312,18 @@ public class ListingService {
     }
 
     /**
-     * Giới hạn ảnh mỗi tin (cấu hình MAX_IMAGES_PER_POST + default) — dùng cho API form-config và validate upload.
+     * Giới hạn ảnh mỗi tin:
+     * - MAX_IMAGES_PER_POST: giới hạn theo từng bài
+     * - MAX_IMAGES: trần hệ thống (nếu có) để tránh vượt quá ngưỡng toàn cục
      */
     public int getMaxImagesPerPost() {
-        return Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        int perPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
+        int systemCap = Math.max(1, configService.getIntConfigValue("MAX_IMAGES", perPost));
+        return Math.min(perPost, systemCap);
+    }
+
+    public int getListingExpirationDays() {
+        return Math.max(1, configService.getIntConfigValue("LISTING_EXPIRATION", DEFAULT_LISTING_EXPIRATION_DAYS));
     }
 
     private static List<MultipartFile> nonEmptyImageParts(List<MultipartFile> images) {
@@ -365,6 +376,7 @@ public class ListingService {
         listing.setViewCount(0L);
         listing.setCreatedAt(Instant.now());
         listing.setUpdatedAt(Instant.now());
+        listing.setExpirationDate(isDraft ? null : Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
 
         return listingRepository.save(listing);
     }
@@ -434,8 +446,13 @@ public class ListingService {
 
         if (isDraft) {
             listing.setStatus("DRAFT");
+            listing.setExpirationDate(null);
         } else if ("DRAFT".equals(listing.getStatus())) {
             listing.setStatus("ACTIVE");
+            listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
+        } else if ("ACTIVE".equals(listing.getStatus()) && listing.getExpirationDate() == null) {
+            // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION was enforced.
+            listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
         }
 
         listing.setUpdatedAt(Instant.now());
@@ -490,6 +507,8 @@ public class ListingService {
         response.setItemCondition(listing.getItemCondition());
         response.setPurpose(listing.getPurpose());
         response.setLocation(resolveLocation(listing));
+        response.setStatus(listing.getStatus());
+        response.setItemStatus(listing.getStatus());
         response.setCreatedAt(listing.getCreatedAt());
         attachListingImages(response, listing.getId());
         response.setSellerSummary(buildSellerSummary(listing));
@@ -761,6 +780,7 @@ public class ListingService {
             pageResult = listingRepository.findExpiredListingsBySeller(currentUser, pageable);
         } else if ("HIDDEN".equalsIgnoreCase(status)) {
             pageResult = listingRepository.findHiddenNotExpiredBySeller(currentUser, pageable);
+            pageResult = listingRepository.findBySellerAndStatusIn(currentUser, List.of("HIDDEN", LISTING_STATUS_MOD_HIDDEN), pageable);
         } else if (status != null && !status.isBlank()) {
             pageResult = listingRepository.findBySellerAndStatus(currentUser, status.toUpperCase(), pageable);
         } else {
@@ -827,6 +847,11 @@ public class ListingService {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
 
+        String status = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
+        if (!"HIDDEN".equals(status)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể bỏ ẩn tin do chính bạn đã ẩn");
+        }
+
         listing.setStatus("ACTIVE");
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
@@ -878,7 +903,7 @@ public class ListingService {
             throw new SlifeException(ErrorCode.LISTING_NOT_RENEWABLE);
         }
 
-        listing.setExpirationDate(now.plus(15, ChronoUnit.DAYS));
+        listing.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
         listing.setUpdatedAt(now);
         listingRepository.save(listing);
     }
@@ -910,7 +935,7 @@ public class ListingService {
         }
 
         listing.setStatus("ACTIVE");
-        listing.setExpirationDate(now.plus(30, ChronoUnit.DAYS));
+        listing.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
         listing.setUpdatedAt(now);
         listingRepository.save(listing);
     }

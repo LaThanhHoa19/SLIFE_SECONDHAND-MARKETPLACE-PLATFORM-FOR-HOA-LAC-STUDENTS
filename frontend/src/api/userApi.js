@@ -4,6 +4,8 @@ import axiosClient from './axiosClient';
 export const getUser = () => axiosClient.get('/api/users/me');
 export const getUserById = (id) => axiosClient.get(`/api/users/${id}`);
 export const updateUser = (payload) => axiosClient.put('/api/users/me', payload);
+export const verifyPhoneWithFirebase = (payload) =>
+  axiosClient.post('/api/users/me/phone-verification/firebase', payload);
 
 /** Upload avatar: FormData với key "file". Không set Content-Type để browser tự gửi boundary. */
 export const uploadAvatar = (file) => {
@@ -25,3 +27,7 @@ export const getBlockStatus = (userId) => axiosClient.get(`/api/users/${userId}/
 export const getMyBlockedUsers = (params = {}) => axiosClient.get('/api/users/me/blocks', { params });
 /** @param {Record<string, string|number>} [params] — sortBy, sortDir; status: ACTIVE|BANNED|RESTRICTED (bỏ qua khi lọc tất cả) */
 export const getAdminUsers = (params = {}) => axiosClient.get('/api/admin/users', { params });
+
+/** Admin cập nhật trạng thái user: ACTIVE | BANNED | RESTRICTED */
+export const updateAdminUserStatus = (id, status) =>
+    axiosClient.patch(`/api/admin/users/${id}/status`, { status });

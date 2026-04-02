@@ -8,11 +8,10 @@ import {
   Typography,
   Button,
   IconButton,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import ListIcon from '@mui/icons-material/List';
 import StarOutlineIcon from '@mui/icons-material/StarOutline';
@@ -29,6 +28,7 @@ import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
+import { firebaseAuth } from '../../lib/firebase';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -40,6 +40,8 @@ import ReportDialog from '../../components/report/ReportDialog';
 
 // Mock Data
 import { MOCK_REVIEWS } from './mockData';
+
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 
 function getPayload(res) {
   return unwrapApiData(res);
@@ -79,10 +81,19 @@ export default function ProfilePage() {
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
+  const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
+  const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [lastOtpPhone, setLastOtpPhone] = useState('');
+  const [otpCooldownUntil, setOtpCooldownUntil] = useState(0);
+  const [otpCooldownNow, setOtpCooldownNow] = useState(Date.now());
   const [viewMode, setViewMode] = useState('grid');
   const { showToast } = useToast();
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
+  const recaptchaVerifierRef = useRef(null);
   const { followLoading, toggleFollow } = useFollowActions({
     user: currentUser,
     updateAuthUser,
@@ -175,6 +186,35 @@ export default function ProfilePage() {
       });
     }
   }, [profileUser]);
+  useEffect(() => () => {
+    if (recaptchaVerifierRef.current) {
+      try { recaptchaVerifierRef.current.clear(); } catch (_) { /* noop */ }
+      recaptchaVerifierRef.current = null;
+    }
+  }, []);
+  useEffect(() => {
+    if (!otpCooldownUntil) return undefined;
+    const timer = window.setInterval(() => {
+      setOtpCooldownNow(Date.now());
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpCooldownUntil]);
+
+  const sourcePhoneForOtp = (editing ? editForm.phoneNumber : (profileUser?.phoneNumber ?? profileUser?.phone_number ?? '')).trim();
+  const normalizePhoneNumber = useCallback((phone) => (
+    phone.startsWith('+') ? phone : phone.replace(/^0/, '+84')
+  ), []);
+
+  useEffect(() => {
+    if (!lastOtpPhone) return;
+    const normalizedCurrent = sourcePhoneForOtp ? normalizePhoneNumber(sourcePhoneForOtp) : '';
+    if (normalizedCurrent && normalizedCurrent === lastOtpPhone) return;
+    // Phone changed after OTP request: invalidate old OTP session.
+    setOtpSent(false);
+    setOtpCode('');
+    setConfirmationResult(null);
+    setOtpCooldownUntil(0);
+  }, [sourcePhoneForOtp, lastOtpPhone, normalizePhoneNumber]);
 
   const handleSave = async () => {
     if (!isMe) return;
@@ -191,6 +231,122 @@ export default function ProfilePage() {
     } catch (err) {
       setError(err?.message || err?.response?.data?.message || 'Cập nhật thất bại.');
     } finally { setSaving(false); }
+  };
+
+  const handleRequestPhoneOtp = async () => {
+    if (!sourcePhoneForOtp) {
+      showToast('Vui lòng nhập số điện thoại trước khi xác thực.', 'warning');
+      return;
+    }
+    const cooldownLeftMs = otpCooldownUntil - Date.now();
+    if (cooldownLeftMs > 0) {
+      const secondsLeft = Math.ceil(cooldownLeftMs / 1000);
+      showToast(`Vui lòng đợi ${secondsLeft}s trước khi gửi lại OTP.`, 'warning');
+      return;
+    }
+    setSendingPhoneOtp(true);
+    try {
+      const normalizedPhone = normalizePhoneNumber(sourcePhoneForOtp);
+
+      // Create verifier once while this page is mounted.
+      if (!recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(firebaseAuth, 'firebase-phone-recaptcha', {
+          // Invisible reCAPTCHA: user does not need to click checkbox in normal flow.
+          size: 'invisible',
+        });
+        await recaptchaVerifierRef.current.render();
+      }
+
+      const result = await signInWithPhoneNumber(firebaseAuth, normalizedPhone, recaptchaVerifierRef.current);
+      console.info('[PhoneVerify] send OTP success', {
+        phone: normalizedPhone,
+        origin: window.location.origin,
+        host: window.location.host,
+        firebaseProjectId: firebaseAuth?.app?.options?.projectId,
+      });
+      setConfirmationResult(result);
+      setOtpSent(true);
+      setLastOtpPhone(normalizedPhone);
+      setOtpCooldownUntil(Date.now() + OTP_RESEND_COOLDOWN_MS);
+      showToast('Đã gửi mã OTP. Vui lòng kiểm tra điện thoại.', 'success');
+    } catch (err) {
+      const code = err?.code || '';
+      console.error('[PhoneVerify] send OTP failed', {
+        code,
+        message: err?.message,
+        name: err?.name,
+        origin: window.location.origin,
+        host: window.location.host,
+        phoneInput: sourcePhoneForOtp,
+        normalizedPhone: normalizePhoneNumber(sourcePhoneForOtp),
+        firebaseProjectId: firebaseAuth?.app?.options?.projectId,
+        recaptchaExists: !!recaptchaVerifierRef.current,
+      });
+      if (code === 'auth/invalid-app-credential') {
+        showToast('Không thể gửi OTP lúc này. Vui lòng thử lại sau ít phút.', 'error');
+      } else if (code === 'auth/invalid-phone-number') {
+        showToast('Số điện thoại chưa đúng định dạng. Vui lòng kiểm tra lại.', 'warning');
+      } else if (code === 'auth/too-many-requests') {
+        showToast('Bạn thao tác quá nhanh. Vui lòng thử lại sau.', 'warning');
+      } else {
+        showToast('Gửi OTP thất bại. Vui lòng thử lại.', 'error');
+      }
+    } finally {
+      setSendingPhoneOtp(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!confirmationResult) {
+      showToast('Bạn cần gửi OTP trước.', 'warning');
+      return;
+    }
+    if (!otpCode || otpCode.trim().length !== 6) {
+      showToast('OTP phải gồm 6 chữ số.', 'warning');
+      return;
+    }
+    setVerifyingPhoneOtp(true);
+    try {
+      const credential = await confirmationResult.confirm(otpCode.trim());
+      const idToken = await credential.user.getIdToken();
+      const res = await userApi.verifyPhoneWithFirebase({ idToken });
+      console.info('[PhoneVerify] confirm OTP success', {
+        origin: window.location.origin,
+        host: window.location.host,
+        firebaseProjectId: firebaseAuth?.app?.options?.projectId,
+      });
+      const updated = getPayload(res);
+      if (updated) {
+        setProfileUser((prev) => ({ ...prev, ...updated, phoneVerified: true }));
+        if (updateAuthUser) updateAuthUser(updated);
+      } else {
+        setProfileUser((prev) => ({ ...prev, phoneVerified: true }));
+      }
+      setOtpCode('');
+      setOtpSent(false);
+      setConfirmationResult(null);
+      setLastOtpPhone('');
+      setOtpCooldownUntil(0);
+      showToast('Xác thực số điện thoại thành công.', 'success');
+    } catch (err) {
+      const code = err?.code || '';
+      console.error('[PhoneVerify] confirm OTP failed', {
+        code,
+        message: err?.message,
+        name: err?.name,
+      });
+      if (code === 'auth/invalid-verification-code') {
+        showToast('Mã OTP không đúng. Vui lòng kiểm tra và nhập lại.', 'warning');
+      } else if (code === 'auth/code-expired' || code === 'auth/session-expired') {
+        showToast('Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.', 'warning');
+      } else if (code === 'auth/too-many-requests') {
+        showToast('Bạn thử quá nhiều lần. Vui lòng chờ một chút rồi thử lại.', 'warning');
+      } else {
+        showToast('Xác thực OTP thất bại. Vui lòng thử lại.', 'error');
+      }
+    } finally {
+      setVerifyingPhoneOtp(false);
+    }
   };
 
   const handleFileChange = async (file, type) => {
@@ -291,7 +447,9 @@ export default function ProfilePage() {
   const reputationScore = user.reputationScore ?? user.reputation_score ?? 0;
   const ratingCount = user.ratingCount ?? user.rating_count ?? 0;
   const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!(user.phoneNumber ?? user.phone_number) || !isMe;
+  const phoneVerified = !!user.phoneVerified || !!user.phone_verified || !!user.phoneVerifiedAt || !!user.phone_verified_at;
+  const otpCooldownLeftSeconds = Math.max(0, Math.ceil((otpCooldownUntil - otpCooldownNow) / 1000));
+  const otpCooldownActive = otpCooldownLeftSeconds > 0;
 
   return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: 6 }}>
@@ -314,6 +472,16 @@ export default function ProfilePage() {
             followListUserId={followListUserId}
             onOpenFollowList={handleOpenFollowList}
             listingCount={listings.length}
+            phoneVerified={phoneVerified}
+            sendingPhoneOtp={sendingPhoneOtp}
+            verifyingPhoneOtp={verifyingPhoneOtp}
+            otpSent={otpSent}
+            otpCode={otpCode}
+            setOtpCode={setOtpCode}
+            onRequestPhoneOtp={handleRequestPhoneOtp}
+            onVerifyPhoneOtp={handleVerifyPhoneOtp}
+            otpCooldownActive={otpCooldownActive}
+            otpCooldownLeftSeconds={otpCooldownLeftSeconds}
         />
 
         <FollowListDialog
@@ -324,6 +492,13 @@ export default function ProfilePage() {
         />
 
         <Box sx={{ maxWidth: 1000, width: { xs: '100%', sm: '86%' }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
+          <Box sx={{ px: { xs: 1.5, sm: 0 }, mb: 2 }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>
+              {editing ? editForm.bio : bio}
+            </Typography>
+            {isMe && <Box id="firebase-phone-recaptcha" sx={{ display: 'none' }} />}
+          </Box>
+
           {/* Main Content: Tabs + Content */}
           <Box sx={{
             display: 'flex',

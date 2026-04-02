@@ -131,6 +131,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     /**
      * Tin hết hạn theo ngày (kể cả HIDDEN nếu đã quá expirationDate) — tránh trùng tab với {@link #findHiddenNotExpiredBySeller}.
      */
+    Page<Listing> findBySellerAndStatusIn(User seller, List<String> statuses, Pageable pageable);
+
     @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
             "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
             "ORDER BY l.expirationDate DESC")

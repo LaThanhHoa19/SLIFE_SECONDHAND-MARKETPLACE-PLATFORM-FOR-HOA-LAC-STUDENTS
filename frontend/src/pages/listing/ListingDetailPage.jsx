@@ -141,6 +141,7 @@ export default function ListingDetailPage() {
     const [similarListings, setSimilarListings] = useState([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
+    const [saveSubmittingSimilarId, setSaveSubmittingSimilarId] = useState(null);
     const [sellerFollowed, setSellerFollowed] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
 
@@ -386,6 +387,44 @@ export default function ListingDetailPage() {
         }
     };
 
+    const handleToggleSaveSimilar = async (targetListing) => {
+        const targetId = targetListing?.id ?? targetListing?.listingId;
+        if (!targetId || saveSubmittingSimilarId) return;
+        if (!isAuthenticated) {
+            showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        const wasSaved = !!(targetListing?.isSaved ?? targetListing?.saved);
+        setSaveSubmittingSimilarId(targetId);
+        setSimilarListings((prev) =>
+            prev.map((item) =>
+                String(item?.id ?? item?.listingId) === String(targetId)
+                    ? { ...item, isSaved: !wasSaved }
+                    : item
+            )
+        );
+        try {
+            if (wasSaved) {
+                await unsaveListing(targetId);
+            } else {
+                await saveListing(targetId);
+            }
+            showToast(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
+        } catch {
+            setSimilarListings((prev) =>
+                prev.map((item) =>
+                    String(item?.id ?? item?.listingId) === String(targetId)
+                        ? { ...item, isSaved: wasSaved }
+                        : item
+                )
+            );
+            showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
+        } finally {
+            setSaveSubmittingSimilarId(null);
+        }
+    };
+
     // Render loading / error
     if (loading) {
         return (
@@ -396,7 +435,7 @@ export default function ListingDetailPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {[1, 2, 3, 4].map((n) => (
                             <Skeleton key={n} variant="rectangular" height={n === 1 ? 32 : n === 2 ? 44 : 24}
-                                sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
+                                      sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
                         ))}
                     </Box>
                 </Box>
@@ -430,19 +469,23 @@ export default function ListingDetailPage() {
         : null;
     const pickupAddress = listing?.pickupAddress;
     const s = String(listing?.status || listing?.itemStatus || '').toUpperCase();
-    const isSoldOrHidden = s === 'SOLD' || s === 'HIDDEN';
+    const isSoldOrHidden = s === 'SOLD' || s === 'HIDDEN' || s === 'MOD_HIDDEN';
 
-    // If SOLD or HIDDEN, show as a Card (Feed style) instead of detail page
+    // If SOLD or HIDDEN/MOD_HIDDEN, show as a Card (Feed style) instead of detail page
     if (isSoldOrHidden) {
         return (
             <Box sx={{ maxWidth: 600, mx: 'auto', px: 2, py: 6, textAlign: 'center' }}>
                 <Box sx={{ mb: 4, display: 'inline-flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(46, 213, 115, 0.1)', px: 3, py: 1.2, borderRadius: '30px', border: `1px solid ${GREEN}` }}>
                     <VerifiedIcon sx={{ color: GREEN, fontSize: 20 }} />
                     <Typography color={GREEN} fontWeight={700} fontSize={15}>
-                        {listing.status === 'HIDDEN' ? 'Bài đăng này đã bị ẩn' : 'Sản phẩm này đã được bán thành công'}
+                        {s === 'SOLD'
+                            ? 'Sản phẩm này đã được bán thành công'
+                            : s === 'MOD_HIDDEN'
+                                ? 'Bài đăng này đã bị ẩn do vi phạm'
+                                : 'Bài đăng này đã bị ẩn'}
                     </Typography>
                 </Box>
-                
+
                 <Box sx={{ mb: 4, transform: 'scale(1.05)', transition: 'transform 0.3s' }}>
                     <ListingCard listing={listing} />
                 </Box>
@@ -452,7 +495,7 @@ export default function ListingDetailPage() {
                     startIcon={<ArrowBackIosNewIcon />}
                     onClick={() => navigate('/feed')}
                     sx={{
-                        borderRadius: '12px', border: `1px solid ${BORDER}`, 
+                        borderRadius: '12px', border: `1px solid ${BORDER}`,
                         bgcolor: CARD_BG, color: TEXT_PRI, px: 4, py: 1.5,
                         '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE }
                     }}
@@ -533,7 +576,7 @@ export default function ListingDetailPage() {
                 sx={{
                     display: 'grid',
                     gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' },
-                    gap: { xs: 3, md: 4 }, 
+                    gap: { xs: 3, md: 4 },
                     mb: 4,
                     alignItems: 'start' // Critical: content stays at top, doesn't stretch
                 }}
@@ -579,7 +622,7 @@ export default function ListingDetailPage() {
                 {/* Row 2: Description & Comments (Left) | Sidebar Stack (Right: Map -> Other Listings -> Ad) */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: { md: 'span 6' } }}>
                     <ListingDescription description={listing.description} />
-                    
+
                     <Card
                         sx={{
                             bgcolor: CARD_BG, border: `1px solid ${BORDER}`,
@@ -617,19 +660,19 @@ export default function ListingDetailPage() {
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between',
-                                        px: 2.5,
-                                        py: 2,
+                                        px: 2.25,
+                                        py: 1.75,
                                         borderBottom: `1px solid ${BORDER}`,
-                                        background: `linear-gradient(135deg, rgba(157,110,237,0.08) 0%, rgba(32,29,38,0) 100%)`,
+                                        background: `linear-gradient(135deg, rgba(157,110,237,0.04) 0%, rgba(32,29,38,0) 100%)`,
                                     }}
                                 >
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                         <Box
                                             sx={{
-                                                width: 36, height: 36, borderRadius: '10px',
-                                                background: 'linear-gradient(135deg, #9D6EED 0%, #6B3FBF 100%)',
+                                                width: 34, height: 34, borderRadius: '10px',
+                                                background: 'linear-gradient(135deg, rgba(157,110,237,0.78) 0%, rgba(107,63,191,0.78) 100%)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                boxShadow: '0 4px 12px rgba(157,110,237,0.35)',
+                                                boxShadow: '0 3px 10px rgba(157,110,237,0.24)',
                                             }}
                                         >
                                             <MyLocationIcon sx={{ fontSize: 18, color: '#fff' }} />
@@ -639,7 +682,7 @@ export default function ListingDetailPage() {
                                                 Vị trí điểm hẹn
                                             </Typography>
                                             {locationText && (
-                                                <Typography sx={{ color: TEXT_SEC, fontSize: 12, mt: 0.3 }}>
+                                                <Typography sx={{ color: 'rgba(255,255,255,0.68)', fontSize: 13, mt: 0.35, lineHeight: 1.3 }}>
                                                     📍 {locationText}
                                                 </Typography>
                                             )}
@@ -692,6 +735,8 @@ export default function ListingDetailPage() {
 
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
+                onToggleSave={handleToggleSaveSimilar}
+                saveSubmittingId={saveSubmittingSimilarId}
             />
 
             <ReportDialog

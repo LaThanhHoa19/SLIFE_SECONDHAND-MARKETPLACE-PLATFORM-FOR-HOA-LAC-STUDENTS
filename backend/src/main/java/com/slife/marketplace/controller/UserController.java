@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.UpdateUserRequest;
+import com.slife.marketplace.dto.request.FirebasePhoneVerifyRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.UserProfileResponse;
 import com.slife.marketplace.entity.User;
@@ -8,8 +9,10 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.service.BlockService;
+import com.slife.marketplace.service.FirebasePhoneVerificationService;
 import com.slife.marketplace.service.FollowService;
 import com.slife.marketplace.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -22,15 +25,18 @@ public class UserController {
     private final FollowService followService;
     private final BlockService blockService;
     private final UserService userService;
+    private final FirebasePhoneVerificationService firebasePhoneVerificationService;
 
     public UserController(UserRepository userRepository,
                           FollowService followService,
                           BlockService blockService,
-                          UserService userService) {
+                          UserService userService,
+                          FirebasePhoneVerificationService firebasePhoneVerificationService) {
         this.userRepository = userRepository;
         this.followService = followService;
         this.blockService = blockService;
         this.userService = userService;
+        this.firebasePhoneVerificationService = firebasePhoneVerificationService;
     }
 
     @GetMapping("/api/users/me")
@@ -86,6 +92,14 @@ public class UserController {
     @PutMapping("/api/users/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody Object r) {
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/users/me/phone-verification/firebase")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> verifyPhoneWithFirebase(
+            @Valid @RequestBody FirebasePhoneVerifyRequest request) {
+        User user = firebasePhoneVerificationService.verifyIdTokenAndMarkPhone(request.getIdToken());
+        UserProfileResponse body = followService.buildProfileForViewer(user, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("Phone number verified", body));
     }
 
 }

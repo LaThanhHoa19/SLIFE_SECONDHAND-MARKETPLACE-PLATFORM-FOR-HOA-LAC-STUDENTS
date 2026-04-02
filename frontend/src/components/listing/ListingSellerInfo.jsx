@@ -21,7 +21,7 @@ export default function ListingSellerInfo({
     const navigate = useNavigate();
 
     return (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, width: '100%' }}>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, width: '100%', p: 1.2, borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', bgcolor: 'rgba(255,255,255,0.02)' }}>
             {/* Left: Avatar with Follow Badge */}
             <Box sx={{ position: 'relative', flexShrink: 0 }}>
                 <Tooltip title="Xem hồ sơ người bán">
@@ -85,10 +85,10 @@ export default function ListingSellerInfo({
             </Box>
 
             {/* Right: Name + Stats - ALL IN THE SAME LINE GROUP */}
-            <Box sx={{ flex: 1, minWidth: 0, pt: 0.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap', gap: 2 }}>
+            <Box sx={{ flex: 1, minWidth: 0, pt: 0.3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'nowrap', gap: 1.6 }}>
                     <Typography
-                        fontSize={17}
+                        fontSize={18}
                         fontWeight={900}
                         color={TEXT_PRI}
                         sx={{

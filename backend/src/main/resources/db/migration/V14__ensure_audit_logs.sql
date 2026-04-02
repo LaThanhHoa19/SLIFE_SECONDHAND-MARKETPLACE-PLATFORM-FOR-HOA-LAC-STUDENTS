@@ -1,4 +1,6 @@
--- SCRUM-232: audit trail + comment moderation (hidden_at)
+-- Bảng audit_logs nằm trong V12 cùng ALTER comments; nếu V12 lỗi giữa chừng hoặc DB cũ chưa migrate,
+-- xử lý báo cáo (từ chối/chấp nhận) sẽ gọi AuditLogService và crash với "audit_logs doesn't exist".
+-- Migration này idempotent: chỉ tạo bảng khi chưa có.
 
 CREATE TABLE IF NOT EXISTS audit_logs (
                                           audit_id      BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -14,15 +16,3 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX idx_audit_entity (entity_type, entity_id),
     CONSTRAINT fk_audit_actor FOREIGN KEY (actor_user_id) REFERENCES users (user_id) ON DELETE SET NULL
     );
-
-ALTER TABLE comments
-    ADD COLUMN hidden_at TIMESTAMP(6) NULL DEFAULT NULL;
-
--- Default threshold: auto-hide when pending report count >= 3 (same family as REPORT_THRESHOLD)
-INSERT INTO configurations (config_name, config_value, description)
-VALUES (
-           'AUTO_HIDE_REPORT_THRESHOLD',
-           '3',
-           'Auto-hide listing (HIDDEN) or comment (hidden_at) when PENDING report count reaches this value'
-       )
-    ON DUPLICATE KEY UPDATE config_name = config_name;
