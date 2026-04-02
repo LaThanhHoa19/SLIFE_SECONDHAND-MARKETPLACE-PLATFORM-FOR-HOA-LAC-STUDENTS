@@ -779,6 +779,7 @@ public class ListingService {
         } else if ("EXPIRED".equalsIgnoreCase(status)) {
             pageResult = listingRepository.findExpiredListingsBySeller(currentUser, pageable);
         } else if ("HIDDEN".equalsIgnoreCase(status)) {
+            pageResult = listingRepository.findHiddenNotExpiredBySeller(currentUser, pageable);
             pageResult = listingRepository.findBySellerAndStatusIn(currentUser, List.of("HIDDEN", LISTING_STATUS_MOD_HIDDEN), pageable);
         } else if (status != null && !status.isBlank()) {
             pageResult = listingRepository.findBySellerAndStatus(currentUser, status.toUpperCase(), pageable);

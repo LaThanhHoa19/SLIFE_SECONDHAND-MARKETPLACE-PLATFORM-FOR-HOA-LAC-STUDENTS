@@ -6,8 +6,7 @@ export const TABS = [
     { value: 'HIDDEN',   label: 'Đã ẩn' },
     { value: 'DRAFT',    label: 'Bản nháp' },
     { value: 'EXPIRED',  label: 'Hết hạn' },
-    { value: 'PENDING',  label: 'Chờ duyệt' },
-    { value: 'REJECTED', label: 'Bị từ chối' },
+    { value: 'SOLD',     label: 'Đã bán' },
     { value: 'REPORTED', label: 'Bị báo cáo' },
 ];
 
