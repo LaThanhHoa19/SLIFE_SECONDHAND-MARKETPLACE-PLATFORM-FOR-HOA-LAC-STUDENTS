@@ -29,6 +29,7 @@ import {
     isPendingRow,
     isReportAdminMockEnabled,
     reportedDisplay,
+    reportedUserAvatarUrl,
     reportRowId,
     reporterAvatarUrl,
     statusLabel,
@@ -323,6 +324,7 @@ export default function ReportDetailPage() {
     const tt = String(report.targetType || '').toUpperCase();
     const listingId =
         report.listingId ?? (tt === 'LISTING' || tt === 'POST' ? report.targetId : null);
+    const reportedAvatar = reportedUserAvatarUrl(report);
 
     return (
         <Box
@@ -648,9 +650,26 @@ export default function ReportDetailPage() {
                                         overflow: 'hidden',
                                     }}
                                 >
-                                    <Typography variant="h6" sx={{ color: STITCH_INDIGO, fontWeight: 900 }}>
-                                        {(displayTitle || '?').slice(0, 1).toUpperCase()}
-                                    </Typography>
+                                    {tt === 'USER' ? (
+                                        <Avatar
+                                            src={reportedAvatar || undefined}
+                                            imgProps={{ referrerPolicy: 'no-referrer' }}
+                                            sx={{
+                                                width: '100%',
+                                                height: '100%',
+                                                borderRadius: 2,
+                                                bgcolor: 'rgba(34, 211, 238, 0.22)',
+                                                color: '#cffafe',
+                                                fontWeight: 900,
+                                            }}
+                                        >
+                                            {reporterInitials(displayTitle)}
+                                        </Avatar>
+                                    ) : (
+                                        <Typography variant="h6" sx={{ color: STITCH_INDIGO, fontWeight: 900 }}>
+                                            {(displayTitle || '?').slice(0, 1).toUpperCase()}
+                                        </Typography>
+                                    )}
                                 </Box>
                                 <Box sx={{ minWidth: 0 }}>
                                     <Typography variant="subtitle2" sx={{ color: '#f1f5f9', fontWeight: 700 }} noWrap>

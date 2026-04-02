@@ -33,6 +33,7 @@ import {
     paginateReportAdminMocks,
     reportedDisplay,
     reportRowId,
+    reportedUserAvatarUrl,
     reporterAvatarUrl,
     statusChipSx,
     statusLabel,
@@ -317,21 +318,55 @@ export default function ReportManagementPage() {
                     const text = String(reportedDisplay(row));
                     const hint = targetSubjectLabel(row.targetType);
                     const listingId = row.listingId;
+                    const isUserTarget = String(row.targetType || '').toUpperCase() === 'USER';
+                    const targetAvatar = reportedUserAvatarUrl(row);
                     return (
                         <Tooltip title={`${hint}: ${text}`} placement="top-start">
                             <Box>
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        fontWeight: 600,
-                                        color: '#f8fafc',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    {text}
-                                </Typography>
+                                {isUserTarget ? (
+                                    <Stack direction="row" alignItems="center" spacing={1.25}>
+                                        <Avatar
+                                            src={targetAvatar || undefined}
+                                            imgProps={{ referrerPolicy: 'no-referrer' }}
+                                            sx={{
+                                                width: 32,
+                                                height: 32,
+                                                fontSize: 12,
+                                                fontWeight: 800,
+                                                bgcolor: 'rgba(56, 189, 248, 0.28)',
+                                                color: '#cffafe',
+                                                border: '1px solid rgba(34, 211, 238, 0.35)',
+                                            }}
+                                        >
+                                            {reporterInitials(text)}
+                                        </Avatar>
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                fontWeight: 600,
+                                                color: '#f8fafc',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >
+                                            {text}
+                                        </Typography>
+                                    </Stack>
+                                ) : (
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontWeight: 600,
+                                            color: '#f8fafc',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    >
+                                        {text}
+                                    </Typography>
+                                )}
                                 {listingId != null && (
                                     <Typography variant="caption" sx={{ color: 'rgba(148, 163, 184, 0.95)', display: 'block', mt: 0.25 }}>
                                         ID tin: #{listingId}

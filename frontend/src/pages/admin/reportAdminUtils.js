@@ -267,6 +267,19 @@ export function reporterAvatarUrl(row) {
     return fullImageUrl(raw);
 }
 
+export function reportedUserAvatarUrl(row) {
+    const raw =
+        row?.reportedUserAvatarUrl ??
+        row?.reported_user_avatar_url ??
+        row?.targetAvatarUrl ??
+        row?.target_avatar_url ??
+        row?.reported?.avatarUrl ??
+        row?.reported?.avatar_url ??
+        row?.reported?.avatar ??
+        null;
+    return fullImageUrl(raw);
+}
+
 /** Parse Spring Data Page từ BaseResponse. */
 export function extractSpringPage(response) {
     const payload = response?.data?.data ?? response?.data;
