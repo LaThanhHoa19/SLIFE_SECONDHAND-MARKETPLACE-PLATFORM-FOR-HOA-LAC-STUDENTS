@@ -22,16 +22,23 @@ import {
   DialogTitle,
   Divider,
   Paper,
+  Stack,
+  TextField,
+  InputAdornment,
   ThemeProvider,
   Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { chatDarkTheme } from '../../theme/chatDarkTheme';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import StoreOutlinedIcon from '@mui/icons-material/StoreOutlined';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
 import { getListing } from '../../api/listingApi';
-import { fullImageUrl } from '../../utils/constants';
 import { useToast } from '../../context/ToastContext';
 import ChatSidebar from './components/ChatSidebar';
 import ListingContextBanner from './components/ListingContextBanner';
@@ -89,6 +96,9 @@ function ChatPageInner() {
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [finalizeListing, setFinalizeListing] = useState(null);
   const [finalizeListingLoading, setFinalizeListingLoading] = useState(false);
+  const [finalizePriceText, setFinalizePriceText] = useState('');
+  const [finalizePickupTimeLocal, setFinalizePickupTimeLocal] = useState('');
+  const [finalizePickupLocationText, setFinalizePickupLocationText] = useState('');
 
   // UI tokens (tham khảo DealDetailPage)
   const DEAL_UI = useMemo(
@@ -97,6 +107,7 @@ function ChatPageInner() {
       surface: '#312F37',
       surfaceHover: '#3a3845',
       accent: theme.palette.primary.main,
+      accentHover: alpha(theme.palette.primary.main, 0.85),
       text: theme.palette.common.white,
       textMuted: 'rgba(255,255,255,0.62)',
       border: 'rgba(255,255,255,0.10)',
@@ -104,11 +115,46 @@ function ChatPageInner() {
     [theme.palette.common.white, theme.palette.primary.main],
   );
 
+  const DEAL_FONT = useMemo(
+    () => ({
+      input: '14px',
+      label: '12px',
+      title: '14px',
+      help: '13px',
+    }),
+    [],
+  );
+
   const fmtPrice = useCallback((val) => {
     if (val == null || val === '') return '—';
     const n = Number(val);
     if (!Number.isFinite(n)) return '—';
     return `${n.toLocaleString('vi-VN')} ₫`;
+  }, []);
+
+  const toDatetimeLocal = useCallback((val) => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d)) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
+
+  const fmtDatetime = useCallback((val) => {
+    if (!val) return '—';
+    try {
+      const d = new Date(val);
+      if (isNaN(d)) return '—';
+      return d.toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '—';
+    }
   }, []);
 
   const fmtAddress = useCallback((pickupAddress) => {
@@ -712,6 +758,98 @@ function ChatPageInner() {
     };
   }, [finalizeOpen, activeSession?.listingId]);
 
+  // Seed default fields when opening finalize dialog (used for display only)
+  useEffect(() => {
+    if (!finalizeOpen) return;
+    if (!finalizePriceText) {
+      const offerText = pendingOfferForFinalize?.content;
+      const offerNum = offerText ? Number(String(offerText).replace(/[^\d]/g, '')) : NaN;
+      if (Number.isFinite(offerNum) && offerNum >= 0) {
+        setFinalizePriceText(String(offerNum));
+      } else if (Number.isFinite(activeListingPrice) && activeListingPrice >= 0) {
+        setFinalizePriceText(String(Math.round(activeListingPrice)));
+      }
+    }
+    if (!finalizePickupTimeLocal) {
+      setFinalizePickupTimeLocal(toDatetimeLocal(new Date().toISOString()));
+    }
+    if (!finalizePickupLocationText) {
+      const fromListing = fmtAddress(finalizeListing?.pickupAddress);
+      setFinalizePickupLocationText(fromListing && fromListing !== '—' ? fromListing : '');
+    }
+  }, [
+    finalizeOpen,
+    finalizePriceText,
+    finalizePickupTimeLocal,
+    finalizePickupLocationText,
+    pendingOfferForFinalize?.content,
+    activeListingPrice,
+    toDatetimeLocal,
+    finalizeListing?.pickupAddress,
+    fmtAddress,
+  ]);
+
+  const listingTitleForFinalize =
+    finalizeListing?.title || activeSession?.listingTitle || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : '—');
+  const listingPriceForFinalize = finalizeListing?.price ?? activeListingPrice;
+  const pickupAddressForFinalize = finalizeListing?.pickupAddress ?? null;
+
+  function FormField({ label, value, icon, multiline = false, inputProps = {}, type }) {
+    return (
+      <TextField
+        label={label}
+        value={value ?? '—'}
+        size="small"
+        fullWidth
+        multiline={multiline}
+        minRows={multiline ? 2 : undefined}
+        type={type}
+        slotProps={{
+          input: {
+            readOnly: true,
+            startAdornment: icon ? (
+              <InputAdornment position="start">
+                <Box sx={{ color: DEAL_UI.textMuted }}>{icon}</Box>
+              </InputAdornment>
+            ) : undefined,
+            ...inputProps,
+          },
+          inputLabel: { shrink: true },
+        }}
+        sx={{
+          '& .MuiInputBase-root': {
+            backgroundColor: DEAL_UI.surface,
+            color: DEAL_UI.text,
+            fontSize: DEAL_FONT.input,
+            borderRadius: '10px',
+            cursor: 'default',
+          },
+          '& .MuiInputBase-input': {
+            color: DEAL_UI.text,
+            cursor: 'default',
+            fontSize: DEAL_FONT.input,
+            caretColor: 'transparent',
+          },
+          '& .MuiInputLabel-root': {
+            color: DEAL_UI.textMuted,
+            fontSize: DEAL_FONT.label,
+          },
+          '& .MuiInputLabel-root.Mui-focused': { color: DEAL_UI.accent },
+          '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+          '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: DEAL_UI.accent,
+          },
+          '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: DEAL_UI.accent,
+            borderWidth: 1,
+          },
+        }}
+      />
+    );
+  }
+
+  // Note: popup only previews info; no editing in this screen.
+
   const priceOfferDisabled =
       Boolean(activeSessionId) && (isSellerInActiveChat || hasOpenOfferAwaitingSeller);
   const priceOfferTooltip = !activeSessionId
@@ -936,7 +1074,7 @@ function ChatPageInner() {
         <Dialog
             open={finalizeOpen}
             onClose={() => setFinalizeOpen(false)}
-            maxWidth="xs"
+            maxWidth="sm"
             fullWidth
             PaperProps={{
               sx: {
@@ -947,14 +1085,14 @@ function ChatPageInner() {
               },
             }}
         >
-          <DialogTitle sx={{ color: DEAL_UI.text, fontWeight: 800, letterSpacing: 0.2 }}>
+          <DialogTitle sx={{ color: DEAL_UI.text, fontWeight: 800, letterSpacing: 0.2, pb: 0.75 }}>
             Xác nhận giao dịch
           </DialogTitle>
-          <DialogContent sx={{ pt: 0.5 }}>
-            <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0.25 }}>
+          <DialogContent sx={{ pt: 0 }}>
+            <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0 }}>
               Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi hoàn tất.
             </Typography>
-            <Divider sx={{ borderColor: DEAL_UI.border, mt: 1.5, mb: 1.75 }} />
+            <Divider sx={{ borderColor: DEAL_UI.border, mt: 1.0, mb: 1.5 }} />
 
             {/* Section: Tin đăng */}
             <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
@@ -969,18 +1107,16 @@ function ChatPageInner() {
                 p: 1.5,
                 borderRadius: 2,
                 bgcolor: DEAL_UI.surface,
-                cursor: activeSession?.listingId ? 'pointer' : 'default',
-                '&:hover': activeSession?.listingId ? { bgcolor: DEAL_UI.surfaceHover } : {},
+                cursor: 'default',
                 transition: 'background 0.15s',
                 border: `1px solid ${DEAL_UI.border}`,
               }}
-              onClick={() => activeSession?.listingId && navigate(`/listings/${activeSession.listingId}`)}
             >
               {activeListingThumb ? (
                 <Box
                   component="img"
                   src={activeListingThumb}
-                  alt={activeSession?.listingTitle || 'Ảnh tin đăng'}
+                  alt={listingTitleForFinalize || 'Ảnh tin đăng'}
                   sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1.5, flexShrink: 0 }}
                 />
               ) : (
@@ -996,17 +1132,17 @@ function ChatPageInner() {
                     border: `1px dashed ${alpha(DEAL_UI.accent, 0.35)}`,
                   }}
                 >
-                  <StorefrontOutlinedIcon sx={{ color: DEAL_UI.textMuted, fontSize: 28 }} />
+                  <StoreOutlinedIcon sx={{ color: DEAL_UI.textMuted, fontSize: 28 }} />
                 </Box>
               )}
               <Box sx={{ minWidth: 0 }}>
                 <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text }} noWrap>
-                  {activeSession?.listingTitle || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : '—')}
+                  {listingTitleForFinalize}
                 </Typography>
                 <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0.35 }}>
                   Giá niêm yết:{' '}
                   <Box component="span" sx={{ color: alpha(DEAL_UI.accent, 0.95), fontWeight: 800 }}>
-                    {fmtPrice(finalizeListing?.price ?? activeListingPrice)}
+                    {fmtPrice(listingPriceForFinalize)}
                   </Box>
                 </Typography>
               </Box>
@@ -1018,43 +1154,28 @@ function ChatPageInner() {
             <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
               Thông tin giao dịch
             </Typography>
-            <Box
-              sx={{
-                p: 1.5,
-                borderRadius: 2,
-                bgcolor: DEAL_UI.surface,
-                border: `1px solid ${DEAL_UI.border}`,
-                mb: 2,
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
-                  Người mua
-                </Typography>
-                <Typography variant="caption" sx={{ color: DEAL_UI.text, fontWeight: 800 }} noWrap>
-                  {activeSession?.otherParticipantName || '—'}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 0.75 }}>
-                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
-                  Người bán
-                </Typography>
-                <Typography variant="caption" sx={{ color: DEAL_UI.text, fontWeight: 800 }} noWrap>
-                  {currentUser?.fullName || '—'}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 0.75 }}>
-                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
-                  Giá thỏa thuận
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{ color: DEAL_UI.text, fontWeight: 900, textAlign: 'right' }}
-                >
-                  {pendingOfferForFinalize?.content || 'Chưa có offer (thỏa thuận qua chat)'}
-                </Typography>
-              </Box>
-            </Box>
+            <Stack spacing={2.5} mb={2}>
+              <FormField
+                label="Giá thỏa thuận"
+                value={
+                  pendingOfferForFinalize?.content ||
+                  (finalizePriceText ? fmtPrice(finalizePriceText) : fmtPrice(listingPriceForFinalize))
+                }
+                icon={<AttachMoneyIcon />}
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
+                <FormField
+                  label="Người mua"
+                  value={activeSession?.otherParticipantName || '—'}
+                  icon={<PersonOutlineIcon />}
+                />
+                <FormField
+                  label="Người bán"
+                  value={currentUser?.fullName || '—'}
+                  icon={<StoreOutlinedIcon />}
+                />
+              </Stack>
+            </Stack>
 
             <Divider sx={{ borderColor: DEAL_UI.border, mb: 1.75 }} />
 
@@ -1062,34 +1183,163 @@ function ChatPageInner() {
             <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
               Thời gian &amp; Địa điểm
             </Typography>
-            <Box
+            <Stack spacing={2.5} mb={0.5}>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 2,
+                    bgcolor: alpha(DEAL_UI.accent, 0.22),
+                    border: `1px solid ${alpha(DEAL_UI.accent, 0.28)}`,
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    mt: 0.5,
+                  }}
+                >
+                  <AccessTimeIcon sx={{ color: DEAL_UI.text }} fontSize="small" />
+                </Box>
+                <TextField
+                  label="Thời gian nhận hàng"
+                  value={finalizePickupTimeLocal}
+                  onChange={(e) => setFinalizePickupTimeLocal(e.target.value)}
+                  size="small"
+                  fullWidth
+                  type="datetime-local"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      backgroundColor: DEAL_UI.surface,
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                      borderRadius: '10px',
+                    },
+                    '& .MuiInputBase-input': {
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: DEAL_UI.textMuted,
+                      fontSize: DEAL_FONT.label,
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': { color: DEAL_UI.accent },
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                    '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                      borderWidth: 1,
+                    },
+                    // Make native calendar icon white + pointer cursor
+                    '& input::-webkit-calendar-picker-indicator': {
+                      filter: 'invert(1)',
+                      opacity: 0.9,
+                      cursor: 'pointer',
+                    },
+                    '& input::-webkit-calendar-picker-indicator:hover': {
+                      opacity: 1,
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 2,
+                    bgcolor: alpha(DEAL_UI.accent, 0.22),
+                    border: `1px solid ${alpha(DEAL_UI.accent, 0.28)}`,
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    mt: 0.5,
+                  }}
+                >
+                  <LocationOnOutlinedIcon sx={{ color: DEAL_UI.text }} fontSize="small" />
+                </Box>
+                <TextField
+                  label="Địa điểm nhận hàng"
+                  value={finalizePickupLocationText}
+                  onChange={(e) => setFinalizePickupLocationText(e.target.value)}
+                  size="small"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  placeholder={finalizeListingLoading ? 'Đang tải…' : fmtAddress(pickupAddressForFinalize)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      backgroundColor: DEAL_UI.surface,
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                      borderRadius: '10px',
+                    },
+                    '& .MuiInputBase-input': {
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: DEAL_UI.textMuted,
+                      fontSize: DEAL_FONT.label,
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': { color: DEAL_UI.accent },
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                    '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                      borderWidth: 1,
+                    },
+                  }}
+                />
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 2.25, pb: 2, pt: 1.25 }}>
+            <Button
+              variant="outlined"
+              onClick={() => setFinalizeOpen(false)}
               sx={{
-                p: 1.5,
-                borderRadius: 2,
-                bgcolor: DEAL_UI.surface,
-                border: `1px solid ${DEAL_UI.border}`,
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2.5,
+                px: 2,
+                py: 0.9,
+                color: DEAL_UI.text,
+                borderColor: alpha(DEAL_UI.text, 0.16),
+                bgcolor: alpha(DEAL_UI.text, 0.04),
+                '&:hover': {
+                  borderColor: alpha(DEAL_UI.text, 0.22),
+                  bgcolor: alpha(DEAL_UI.text, 0.07),
+                },
               }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                <Typography variant="caption" sx={{ color: DEAL_UI.textMuted }}>
-                  Địa điểm giao dịch
-                </Typography>
-                <Typography variant="caption" sx={{ color: DEAL_UI.text, fontWeight: 800, textAlign: 'right' }}>
-                  {finalizeListingLoading ? 'Đang tải…' : fmtAddress(finalizeListing?.pickupAddress)}
-                </Typography>
-              </Box>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setFinalizeOpen(false)} sx={{ color: DEAL_UI.textMuted }}>
               Hủy
             </Button>
             <Button
                 variant="contained"
                 sx={{
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  px: 2.5,
+                  py: 0.9,
+                  fontWeight: 900,
                   bgcolor: DEAL_UI.accent,
-                  fontWeight: 800,
-                  '&:hover': { bgcolor: alpha(DEAL_UI.accent, 0.85) },
+                  color: '#fff',
+                  boxShadow: `0 10px 22px ${alpha(DEAL_UI.accent, 0.18)}`,
+                  '&:hover': {
+                    bgcolor: alpha(DEAL_UI.accent, 0.9),
+                    color: '#fff',
+                    boxShadow: `0 12px 26px ${alpha(DEAL_UI.accent, 0.24)}`,
+                  },
+                  '&:active': {
+                    transform: 'translateY(1px)',
+                  },
                 }}
                 onClick={async () => {
                   const oid = latestPendingOfferIdForSeller;
