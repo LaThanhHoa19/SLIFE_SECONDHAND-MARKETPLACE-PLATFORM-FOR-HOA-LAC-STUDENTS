@@ -50,14 +50,15 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
         }
     };
 
-    const isSoldOrHidden = status === 'SOLD' || status === 'HIDDEN';
+    const normalizedStatus = String(status || '').toUpperCase();
+    const isSoldOrHidden = normalizedStatus === 'SOLD' || normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN';
 
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             {/* Split Button Status Group */}
-            <Box sx={{ 
-                display: 'flex', width: '100%', borderRadius: '14px', 
-                overflow: 'hidden', border: `1px solid ${BORDER}`, bgcolor: CARD_BG 
+            <Box sx={{
+                display: 'flex', width: '100%', borderRadius: '14px',
+                overflow: 'hidden', border: `1px solid ${BORDER}`, bgcolor: CARD_BG
             }}>
                 <Tooltip title={isSoldOrHidden ? "Đã đóng" : "Đánh dấu đã bán"}>
                     <Button
@@ -65,16 +66,26 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
                         onClick={handleMarkSold}
                         disabled={submitting || isSoldOrHidden}
                         sx={{
-                            py: 2.5, borderRadius: 0, border: 'none',
-                            bgcolor: status === 'SOLD' ? 'rgba(46, 213, 115, 0.1)' : 'transparent',
-                            color: status === 'SOLD' ? GREEN : TEXT_PRI,
+                            py: 1.5, borderRadius: 0, border: 'none',
+                            bgcolor: normalizedStatus === 'SOLD' ? 'rgba(46, 213, 115, 0.1)' : 'transparent',
+                            color: normalizedStatus === 'SOLD' ? GREEN : TEXT_PRI,
                             borderRight: `1px solid ${BORDER}`,
                             transition: 'all 0.2s',
                             '&:hover': { bgcolor: CARD_BG2, color: GREEN },
                             '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.1)' }
                         }}
                     >
-                        {submitting ? <CircularProgress size={24} color="inherit" /> : <CheckCircleIcon sx={{ fontSize: 36 }} />}
+                        {submitting ? (
+                            <CircularProgress size={20} color="inherit" />
+                        ) : (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CheckCircleIcon sx={{ fontSize: 22 }} />
+                                <Box sx={{ textAlign: 'left' }}>
+                                    <Box component="span" sx={{ display: 'block', fontSize: 12, opacity: 0.78, lineHeight: 1.1 }}>Trạng thái</Box>
+                                    <Box component="span" sx={{ display: 'block', fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>Đã bán</Box>
+                                </Box>
+                            </Box>
+                        )}
                     </Button>
                 </Tooltip>
 
@@ -84,15 +95,25 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
                         onClick={handleHide}
                         disabled={submitting || isSoldOrHidden}
                         sx={{
-                            py: 2.5, borderRadius: 0, border: 'none',
-                            bgcolor: status === 'HIDDEN' ? 'rgba(255, 165, 2, 0.1)' : 'transparent',
-                            color: status === 'HIDDEN' ? '#FFA502' : TEXT_PRI,
+                            py: 1.5, borderRadius: 0, border: 'none',
+                            bgcolor: (normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? 'rgba(255, 165, 2, 0.1)' : 'transparent',
+                            color: (normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? '#FFA502' : TEXT_PRI,
                             transition: 'all 0.2s',
                             '&:hover': { bgcolor: CARD_BG2, color: '#FFA502' },
                             '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.1)' }
                         }}
                     >
-                        {submitting ? <CircularProgress size={24} color="inherit" /> : <VisibilityOffIcon sx={{ fontSize: 36 }} />}
+                        {submitting ? (
+                            <CircularProgress size={20} color="inherit" />
+                        ) : (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <VisibilityOffIcon sx={{ fontSize: 22 }} />
+                                <Box sx={{ textAlign: 'left' }}>
+                                    <Box component="span" sx={{ display: 'block', fontSize: 12, opacity: 0.78, lineHeight: 1.1 }}>Hiển thị</Box>
+                                    <Box component="span" sx={{ display: 'block', fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>Ẩn tin</Box>
+                                </Box>
+                            </Box>
+                        )}
                     </Button>
                 </Tooltip>
             </Box>
@@ -103,13 +124,18 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
                     variant="outlined"
                     onClick={handleEdit}
                     sx={{
-                        py: 2.5, borderRadius: '14px', border: `1px solid ${BORDER}`, bgcolor: CARD_BG,
-                        color: TEXT_PRI, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        py: 1.5, borderRadius: '14px', border: `1px solid ${BORDER}`, bgcolor: CARD_BG,
+                        color: TEXT_PRI, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
+                        textTransform: 'none',
                         transition: 'all 0.2s',
                         '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE, color: PURPLE }
                     }}
                 >
-                    <EditIcon sx={{ fontSize: 36 }} />
+                    <EditIcon sx={{ fontSize: 22 }} />
+                    <Box sx={{ textAlign: 'left' }}>
+                        <Box component="span" sx={{ display: 'block', fontSize: 12, opacity: 0.78, lineHeight: 1.1 }}>Nội dung</Box>
+                        <Box component="span" sx={{ display: 'block', fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>Chỉnh sửa</Box>
+                    </Box>
                 </Button>
             </Tooltip>
         </Box>

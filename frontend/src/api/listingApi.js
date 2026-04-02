@@ -41,6 +41,8 @@ export const createListingWithImages = (payload, imageFiles = []) => {
 };
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
+/** Admin ẩn tin từ moderation/report flow. */
+export const adminHideListing = (id) => axiosClient.patch(`/api/admin/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
 export const uploadImages = (id, formData, onUploadProgress) =>
     axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});

@@ -280,7 +280,7 @@ export default function Header({ onToggleSidebar }) {
                         </SearchIconWrapper>
                         <form onSubmit={handleSearch} style={{ width: '100%', height: '100%' }}>
                             <StyledInputBase
-                                placeholder="Tìm sản phẩm, danh mục..."
+                                placeholder="Tìm sản phẩm..."
                                 inputProps={{ 'aria-label': 'search' }}
                                 value={searchValue}
                                 onChange={(e) => setSearchValue(e.target.value)}

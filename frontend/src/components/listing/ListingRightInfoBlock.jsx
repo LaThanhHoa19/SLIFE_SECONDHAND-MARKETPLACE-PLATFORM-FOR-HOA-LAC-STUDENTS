@@ -21,14 +21,15 @@ export default function ListingRightInfoBlock({
                                                   sellerFollowLoading,
                                                   onSellerFollowClick,
                                               }) {
+    const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
+    const isUnavailable = normalizedStatus === 'SOLD' || normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN';
+
     return (
         <Box
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 3,
-                // height: '100%', // Remove to prevent stretching
-                // justifyContent: 'space-between' 
             }}
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
@@ -44,7 +45,7 @@ export default function ListingRightInfoBlock({
 
                 {/* Action Buttons */}
                 {!isOwnListing ? (
-                    !(listing.status === 'SOLD' || listing.status === 'HIDDEN') && (
+                    !isUnavailable && (
                         <ListingActions
                             phoneNumber={phoneNumber}
                             startingChat={startingChat}
@@ -53,14 +54,14 @@ export default function ListingRightInfoBlock({
                         />
                     )
                 ) : (
-                    <ListingOwnerActions 
+                    <ListingOwnerActions
                         listingId={listing.id}
                         onNotify={onNotify}
                         status={listing.status}
                     />
                 )}
 
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.07)' }} />
+                <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 0.25 }} />
 
                 {/* Seller Info */}
                 <ListingSellerInfo
@@ -74,8 +75,8 @@ export default function ListingRightInfoBlock({
             </Box>
 
             {/* Offer Block - Pushed to bottom if there is space */}
-            <Box>
-                {!isOwnListing && !listing.isGiveaway && !(listing.status === 'SOLD' || listing.status === 'HIDDEN') && (
+            <Box sx={{ mt: 0.25 }}>
+                {!isOwnListing && !listing.isGiveaway && !isUnavailable && (
                     <ListingOffer
                         listing={listing}
                         onNotify={onNotify}

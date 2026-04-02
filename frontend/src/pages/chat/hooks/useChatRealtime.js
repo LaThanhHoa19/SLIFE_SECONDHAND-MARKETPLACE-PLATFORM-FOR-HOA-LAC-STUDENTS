@@ -56,6 +56,22 @@ export function useChatRealtime({
                             scheduleFetchSessions();
                             return;
                         }
+                        if (msg?.event === 'OFFER_STATUS' || msg?.type === 'OFFER_STATUS') {
+                            const oid = msg.offerId;
+                            const st = msg.status;
+                            if (oid != null && st) {
+                                setMessages((prev) =>
+                                    prev.map((m) =>
+                                        m.messageType === 'OFFER_PROPOSAL' &&
+                                        Number(m.offerId) === Number(oid)
+                                            ? { ...m, offerStatus: st }
+                                            : m,
+                                    ),
+                                );
+                            }
+                            scheduleFetchSessions();
+                            return;
+                        }
                         setMessages((prev) => upsertMessages(prev, msg, { dropPending: true }));
                         scheduleFetchSessions();
                     } catch {

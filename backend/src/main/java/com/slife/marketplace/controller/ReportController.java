@@ -2,7 +2,6 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.AdminProcessReportRequest;
 import com.slife.marketplace.dto.request.ReportRequest;
-import com.slife.marketplace.dto.request.ResolveReportRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.BaseResponse;
 import com.slife.marketplace.dto.response.ReportResponse;
@@ -75,13 +74,4 @@ public class ReportController {
         return ResponseEntity.ok(BaseResponse.success(message, message));
     }
 
-    @PutMapping("/api/admin/reports/{id}/resolve")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ReportResponse>> resolveReport(
-            @PathVariable Long id,
-            @Valid @RequestBody ResolveReportRequest request) {
-        User admin = userService.getCurrentUser();
-        ReportResponse response = reportService.resolveReport(id, admin, request);
-        return ResponseEntity.ok(ApiResponse.success("Report resolved", response));
-    }
 }
