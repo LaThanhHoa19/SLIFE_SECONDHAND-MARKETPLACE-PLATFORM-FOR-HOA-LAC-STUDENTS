@@ -44,7 +44,7 @@ public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "POST", "USER", "COMMENT", "MESSAGE");
-    private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "DISMISSED");
+    private static final Set<String> VALID_RESOLVE_STATUSES = Set.of("RESOLVED", "REJECTED", "DISMISSED");
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
     private static final int DEFAULT_AUTO_HIDE_THRESHOLD = 3;
 
@@ -153,19 +153,25 @@ public class ReportService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
         if (report.getReporter() != null) {
             report.getReporter().getFullName();
+            report.getReporter().getAvatarUrl();
         }
         return toReportResponseDTO(report);
     }
 
     @Transactional
     public ReportResponse resolveReport(Long reportId, User admin, ResolveReportRequest request) {
-        String resolveStatus = request.getStatus().toUpperCase();
+        String resolveStatus = request.getStatus().toUpperCase(Locale.ROOT);
+        if ("DISMISSED".equals(resolveStatus)) {
+            resolveStatus = "REJECTED";
+        }
         if (!VALID_RESOLVE_STATUSES.contains(resolveStatus)) {
             throw new SlifeException(ErrorCode.REPORT_INVALID_STATUS);
         }
 
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
+
+        ensurePendingBeforeProcess(report);
 
         report.setStatus(resolveStatus);
         report.setAdminNote(request.getAdminNote());
@@ -184,6 +190,8 @@ public class ReportService {
         String normalizedAction = normalizeAction(action);
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.REPORT_NOT_FOUND));
+
+        ensurePendingBeforeProcess(report);
 
         report.setAdminNote(note);
         report.setHandledBy(admin);
@@ -330,6 +338,13 @@ public class ReportService {
         return normalized;
     }
 
+    private void ensurePendingBeforeProcess(Report report) {
+        String status = report.getStatus() != null ? report.getStatus().trim().toUpperCase(Locale.ROOT) : "";
+        if (!"PENDING".equals(status)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Report has already been processed");
+        }
+    }
+
     private void applyApproveSideEffects(Report report) {
         if ("LISTING".equals(report.getTargetType())) {
             Listing listing = listingRepository.findById(report.getTargetId())
@@ -369,10 +384,12 @@ public class ReportService {
 
     private ReportResponseDTO toReportResponseDTO(Report report) {
         String reporterName = report.getReporter() != null ? report.getReporter().getFullName() : null;
+        String reporterAvatarUrl = report.getReporter() != null ? report.getReporter().getAvatarUrl() : null;
         TargetContext ctx = resolveTargetContext(report);
         return new ReportResponseDTO(
                 report.getId(),
                 reporterName,
+                reporterAvatarUrl,
                 report.getTargetType(),
                 report.getTargetId(),
                 ctx.preview(),

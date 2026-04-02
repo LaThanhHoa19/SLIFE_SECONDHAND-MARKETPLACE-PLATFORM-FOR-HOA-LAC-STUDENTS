@@ -5,6 +5,7 @@ import java.time.Instant;
 public record ReportResponseDTO(
         Long reportId,
         String reporterName,
+        String reporterAvatarUrl,
         String targetType,
         Long targetId,
         String targetPreview,
