@@ -392,6 +392,10 @@ export default function ImageUploader({
                                             right: 8,
                                             background: 'rgba(0,0,0,0.55)',
                                             color: '#fff',
+                                            border: '1px solid rgba(255,255,255,0.24)',
+                                            zIndex: 2,
+                                            opacity: 1,
+                                            '&:hover': { background: 'rgba(0,0,0,0.75)' },
                                         }}
                                     >
                                         <CloseIcon fontSize="small" />
@@ -415,6 +419,10 @@ export default function ImageUploader({
                                             right: 8,
                                             background: 'rgba(0,0,0,0.55)',
                                             color: '#fff',
+                                            border: '1px solid rgba(255,255,255,0.24)',
+                                            zIndex: 2,
+                                            opacity: 1,
+                                            '&:hover': { background: 'rgba(0,0,0,0.75)' },
                                         }}
                                     >
                                         <CloseIcon fontSize="small" />
@@ -469,6 +477,9 @@ export default function ImageUploader({
                                             right: 4,
                                             background: 'rgba(0,0,0,0.5)',
                                             color: '#fff',
+                                            border: '1px solid rgba(255,255,255,0.24)',
+                                            zIndex: 2,
+                                            opacity: 1,
                                             '&:hover': { background: 'rgba(0,0,0,0.7)' },
                                         }}
                                     >
@@ -491,6 +502,9 @@ export default function ImageUploader({
                                             right: 4,
                                             background: 'rgba(0,0,0,0.5)',
                                             color: '#fff',
+                                            border: '1px solid rgba(255,255,255,0.24)',
+                                            zIndex: 2,
+                                            opacity: 1,
                                             '&:hover': { background: 'rgba(0,0,0,0.7)' },
                                         }}
                                     >

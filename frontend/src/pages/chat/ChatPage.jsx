@@ -20,15 +20,26 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Paper,
+  Stack,
+  TextField,
+  InputAdornment,
   ThemeProvider,
   Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { chatDarkTheme } from '../../theme/chatDarkTheme';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import StoreOutlinedIcon from '@mui/icons-material/StoreOutlined';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
+import { getListing, hideListing } from '../../api/listingApi';
+import { createDealForListing, updatePickupTime } from '../../api/dealApi';
 import { useToast } from '../../context/ToastContext';
 import ChatSidebar from './components/ChatSidebar';
 import ListingContextBanner from './components/ListingContextBanner';
@@ -71,6 +82,7 @@ function ChatPageInner() {
   const [sessionsVersion, setSessionsVersion] = useState(0);
   const [imageUploading, setImageUploading] = useState(false);
   const [composerRef, setComposerRef] = useState(null);
+  const [activeListingStatus, setActiveListingStatus] = useState(null);
 
   // Offer dialog
   const [offerOpen, setOfferOpen] = useState(false);
@@ -83,6 +95,75 @@ function ChatPageInner() {
   const [uploadError, setUploadError] = useState('');
   /** Anchor Popover gợi ý — null = đóng (dùng state để Popover mở đúng sau khi nút mount) */
   const [suggestAnchorEl, setSuggestAnchorEl] = useState(null);
+  const [finalizeOpen, setFinalizeOpen] = useState(false);
+  const [finalizeListing, setFinalizeListing] = useState(null);
+  const [finalizeListingLoading, setFinalizeListingLoading] = useState(false);
+  const [finalizePriceText, setFinalizePriceText] = useState('');
+  const [finalizePickupTimeLocal, setFinalizePickupTimeLocal] = useState('');
+  const [finalizePickupLocationText, setFinalizePickupLocationText] = useState('');
+
+  // UI tokens (tham khảo DealDetailPage)
+  const DEAL_UI = useMemo(
+    () => ({
+      bg: '#201D26',
+      surface: '#312F37',
+      surfaceHover: '#3a3845',
+      accent: theme.palette.primary.main,
+      accentHover: alpha(theme.palette.primary.main, 0.85),
+      text: theme.palette.common.white,
+      textMuted: 'rgba(255,255,255,0.62)',
+      border: 'rgba(255,255,255,0.10)',
+    }),
+    [theme.palette.common.white, theme.palette.primary.main],
+  );
+
+  const DEAL_FONT = useMemo(
+    () => ({
+      input: '14px',
+      label: '12px',
+      title: '14px',
+      help: '13px',
+    }),
+    [],
+  );
+
+  const fmtPrice = useCallback((val) => {
+    if (val == null || val === '') return '—';
+    const n = Number(val);
+    if (!Number.isFinite(n)) return '—';
+    return `${n.toLocaleString('vi-VN')} ₫`;
+  }, []);
+
+  const toDatetimeLocal = useCallback((val) => {
+    if (!val) return '';
+    const d = new Date(val);
+    if (isNaN(d)) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
+
+  const fmtDatetime = useCallback((val) => {
+    if (!val) return '—';
+    try {
+      const d = new Date(val);
+      if (isNaN(d)) return '—';
+      return d.toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '—';
+    }
+  }, []);
+
+  const fmtAddress = useCallback((pickupAddress) => {
+    if (!pickupAddress) return '—';
+    const parts = [pickupAddress.locationName, pickupAddress.addressText].filter(Boolean);
+    return parts.join(' — ') || '—';
+  }, []);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef(null);
@@ -91,6 +172,7 @@ function ChatPageInner() {
   const bottomRef = useRef(null);
   const messagesScrollRef = useRef(null);
   const messagesRef = useRef(messages);
+  const activeListingStatusRef = useRef(null);
   /** Snapshot danh sách tin để diff tin mới từ đối phương khi không ở đáy */
   const prevMessagesForDiffRef = useRef([]);
   /** Bỏ qua một lần diff sau khi mình vừa gửi (fetchHistory / setMessages) để không cộng nhầm */
@@ -245,6 +327,103 @@ function ChatPageInner() {
     currentUserId,
     sessionsVersion,
   });
+
+  useEffect(() => {
+    activeListingStatusRef.current = activeListingStatus;
+  }, [activeListingStatus]);
+
+  // UI gating: when listing becomes SOLD or HIDDEN, disable buyer bidding icon.
+  // Poll periodically while chatting; stop polling once SOLD or HIDDEN.
+  useEffect(() => {
+    if (!activeSession?.listingId) {
+      setActiveListingStatus(null);
+      return;
+    }
+
+    let cancelled = false;
+    let timerId = null;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await getListing(activeSession.listingId);
+        const body = res?.data;
+        const data = body?.data ?? body;
+        const raw = data?.status ?? null;
+        const status = raw != null ? String(raw).toUpperCase() : null;
+        if (!cancelled) setActiveListingStatus(status);
+      } catch {
+        if (!cancelled) setActiveListingStatus(null);
+      }
+    };
+
+    const tick = () => {
+      const s = activeListingStatusRef.current;
+      if (s === 'SOLD' || s === 'HIDDEN') return;
+      void fetchStatus();
+    };
+
+    void fetchStatus();
+    timerId = window.setInterval(tick, 7000);
+
+    return () => {
+      cancelled = true;
+      if (timerId) window.clearInterval(timerId);
+    };
+  }, [activeSession?.listingId]);
+
+  // Seller UI: once buyer accepts the "XÁC NHẬN GIAO DỊCH" message, hide "Chốt đơn"
+  // and show post-sale actions. Must run after useChatSessions (isSellerInActiveChat).
+  const showPostSaleActions = useMemo(() => {
+    if (!isSellerInActiveChat) return false;
+    for (let i = displayMessages.length - 1; i >= 0; i -= 1) {
+      const m = displayMessages[i];
+      if (!m) continue;
+      if (m.messageType !== 'DEAL_CONFIRMATION') continue;
+      if (!isMessageFromCurrentUser(m, currentUserId)) continue; // confirmation request is sent by seller
+      const isDealConfirmationRequest =
+        typeof m.content === 'string' && m.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
+      if (!isDealConfirmationRequest) continue;
+      if (m.dealDecision) return true;
+    }
+    return false;
+  }, [displayMessages, currentUserId, isSellerInActiveChat]);
+
+  const [postSaleBannerOutcome, setPostSaleBannerOutcome] = useState(null);
+  const [postSaleBannerBusy, setPostSaleBannerBusy] = useState(false);
+
+  useEffect(() => {
+    setPostSaleBannerOutcome(null);
+    setPostSaleBannerBusy(false);
+  }, [activeSessionId]);
+
+  /** Sau F5, postSaleBannerOutcome mất; đồng bộ với GET listing (HIDDEN) để vẫn hiện "Tin đã ẩn". */
+  const resolvedPostSaleBannerOutcome = useMemo(() => {
+    if (postSaleBannerOutcome === 'hidden') return 'hidden';
+    const st = String(activeListingStatus || '').toUpperCase();
+    if (st === 'HIDDEN') return 'hidden';
+    return null;
+  }, [postSaleBannerOutcome, activeListingStatus]);
+
+  /** Nút "Đã bán / ẩn tin": chỉ chuyển tin sang HIDDEN (không gọi markSold). */
+  const handlePostSaleBannerAction = useCallback(async () => {
+    const id = activeSession?.listingId;
+    if (id == null || postSaleBannerBusy) return;
+    setPostSaleBannerBusy(true);
+    try {
+      await hideListing(id);
+      showToast('Đã ẩn tin.', 'success');
+      setPostSaleBannerOutcome('hidden');
+      setActiveListingStatus('HIDDEN');
+      fetchSessions();
+      setSessionsVersion((v) => v + 1);
+    } catch (e) {
+      const detail =
+        e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Không thể ẩn tin';
+      showToast(detail, 'error');
+    } finally {
+      setPostSaleBannerBusy(false);
+    }
+  }, [activeSession?.listingId, fetchSessions, postSaleBannerBusy, showToast]);
 
   // ── Fetch message history ─────────────────────────────────────────────────
   const fetchHistory = useCallback(() => {
@@ -630,10 +809,346 @@ function ChatPageInner() {
     );
   }, [messages, currentUserId, isSellerInActiveChat]);
 
+  const latestPendingOfferIdForSeller = useMemo(() => {
+    if (!isSellerInActiveChat) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m) continue;
+      if (m.messageType !== 'OFFER_PROPOSAL') continue;
+      if (m.offerId == null) continue;
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      if (m.offerStatus === 'ACCEPTED' || m.offerStatus === 'REJECTED') continue;
+      return m.offerId;
+    }
+    return null;
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const pendingOfferForFinalize = useMemo(() => {
+    const oid = latestPendingOfferIdForSeller;
+    if (!oid) return null;
+    return messages.find((m) => m?.messageType === 'OFFER_PROPOSAL' && Number(m.offerId) === Number(oid)) ?? null;
+  }, [messages, latestPendingOfferIdForSeller]);
+
+  // If seller already accepted an offer, show that accepted price in the confirm popup.
+  const latestAcceptedOfferForFinalize = useMemo(() => {
+    if (!isSellerInActiveChat) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m) continue;
+      if (m.messageType !== 'OFFER_PROPOSAL') continue;
+      if (m.offerStatus !== 'ACCEPTED') continue;
+      // Offer proposals come from buyer; guard against picking my own messages.
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      return m;
+    }
+    return null;
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const offerContentToPriceText = useCallback(
+    (text) => {
+      if (!text) return null;
+      const raw = String(text);
+      const digits = raw.replace(/[^\d]/g, '');
+      if (!digits) return raw;
+      const n = Number(digits);
+      if (!Number.isFinite(n)) return raw;
+      return fmtPrice(n);
+    },
+    [fmtPrice],
+  );
+
+  useEffect(() => {
+    if (!finalizeOpen) return;
+    const lid = activeSession?.listingId;
+    if (!lid) {
+      setFinalizeListing(null);
+      return;
+    }
+    let alive = true;
+    setFinalizeListingLoading(true);
+    getListing(lid)
+      .then((res) => {
+        if (!alive) return;
+        const body = res?.data;
+        const data = body?.data ?? body;
+        setFinalizeListing(data ?? null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setFinalizeListing(null);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setFinalizeListingLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [finalizeOpen, activeSession?.listingId]);
+
+  // Seed default fields when opening finalize dialog (used for display only)
+  useEffect(() => {
+    if (!finalizeOpen) return;
+    if (!finalizePriceText) {
+      const offerText = pendingOfferForFinalize?.content;
+      const offerNum = offerText ? Number(String(offerText).replace(/[^\d]/g, '')) : NaN;
+      if (Number.isFinite(offerNum) && offerNum >= 0) {
+        setFinalizePriceText(String(offerNum));
+      } else if (Number.isFinite(activeListingPrice) && activeListingPrice >= 0) {
+        setFinalizePriceText(String(Math.round(activeListingPrice)));
+      }
+    }
+    if (!finalizePickupTimeLocal) {
+      setFinalizePickupTimeLocal(toDatetimeLocal(new Date().toISOString()));
+    }
+    if (!finalizePickupLocationText) {
+      const fromListing = fmtAddress(finalizeListing?.pickupAddress);
+      setFinalizePickupLocationText(fromListing && fromListing !== '—' ? fromListing : '');
+    }
+  }, [
+    finalizeOpen,
+    finalizePriceText,
+    finalizePickupTimeLocal,
+    finalizePickupLocationText,
+    pendingOfferForFinalize?.content,
+    activeListingPrice,
+    toDatetimeLocal,
+    finalizeListing?.pickupAddress,
+    fmtAddress,
+  ]);
+
+  const listingTitleForFinalize =
+    finalizeListing?.title || activeSession?.listingTitle || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : '—');
+  const listingPriceForFinalize = finalizeListing?.price ?? activeListingPrice;
+  const pickupAddressForFinalize = finalizeListing?.pickupAddress ?? null;
+
+  const latestAcceptedOfferForConfirm = useMemo(() => {
+    if (!isSellerInActiveChat) return null;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m) continue;
+      if (m.messageType !== 'OFFER_PROPOSAL') continue;
+      if (m.offerStatus !== 'ACCEPTED') continue;
+      if (isMessageFromCurrentUser(m, currentUserId)) continue;
+      return m;
+    }
+    return null;
+  }, [messages, currentUserId, isSellerInActiveChat]);
+
+  const dealPriceTextForConfirm = useMemo(() => {
+    const accepted = latestAcceptedOfferForConfirm?.content;
+    if (accepted && String(accepted).trim()) {
+      return offerContentToPriceText(accepted);
+    }
+    return fmtPrice(listingPriceForFinalize);
+  }, [latestAcceptedOfferForConfirm?.content, fmtPrice, listingPriceForFinalize, offerContentToPriceText]);
+
+  const parseDealPriceNumber = useCallback(
+    (priceText) => {
+      if (!priceText) return NaN;
+      const digits = String(priceText).replace(/[^\d]/g, '');
+      if (!digits) return NaN;
+      const n = Number(digits);
+      return Number.isFinite(n) ? n : NaN;
+    },
+    [],
+  );
+
+  const toIsoFromDatetimeLocal = useCallback((dtLocal) => {
+    if (!dtLocal) return null;
+    // datetime-local format: YYYY-MM-DDTHH:mm
+    const d = new Date(dtLocal);
+    if (isNaN(d)) return null;
+    return d.toISOString();
+  }, []);
+
+  const sendDealConfirmation = useCallback(async () => {
+    if (!activeSessionId) return;
+    const title = listingTitleForFinalize || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : 'Tin đăng');
+    const when = finalizePickupTimeLocal ? fmtDatetime(finalizePickupTimeLocal) : '—';
+    const where =
+      (finalizePickupLocationText && String(finalizePickupLocationText).trim()) ||
+      fmtAddress(pickupAddressForFinalize) ||
+      '—';
+
+    const content = [
+      '🧾 XÁC NHẬN GIAO DỊCH',
+      '',
+      `- Tin đăng: ${title}`,
+      `- Giá thỏa thuận: ${dealPriceTextForConfirm}`,
+      `- Thời gian nhận hàng: ${when}`,
+      `- Địa điểm nhận hàng: ${where}`,
+      '',
+      'Vui lòng chọn: Chấp nhận hoặc Hủy.',
+    ].join('\n');
+
+    try {
+      suppressOpponentDiffRef.current = true;
+      const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');
+      const msg = getData(res);
+      if (msg?.id) setMessages((prev) => upsertMessages(prev, msg, { dropPending: true }));
+      fetchSessions();
+      scrollToBottom('smooth');
+      setNewOpponentMsgCount(0);
+    } catch (err) {
+      const detail = err?.response?.data?.message || err?.message || 'Lỗi không xác định';
+      showToast(`Chốt đơn thất bại: ${detail}`, 'error');
+    }
+  }, [
+    activeSession?.listingId,
+    activeSessionId,
+    dealPriceTextForConfirm,
+    fetchSessions,
+    finalizePickupLocationText,
+    finalizePickupTimeLocal,
+    fmtAddress,
+    fmtDatetime,
+    getData,
+    listingTitleForFinalize,
+    pickupAddressForFinalize,
+    scrollToBottom,
+    showToast,
+  ]);
+
+  const handleDealConfirmDecision = useCallback(
+    async (confirmMsg, decision) => {
+      if (!activeSessionId) return;
+      const confirmId = confirmMsg?.id ?? null;
+
+      // Frontend-only: disable actions after choosing once.
+      if (confirmId != null) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m?.id) === String(confirmId) ? { ...m, dealDecision: decision } : m,
+          ),
+        );
+      }
+
+      const replyText =
+        decision === 'ACCEPT'
+          ? '✅ Mình đồng ý với thông tin giao dịch trên.'
+          : '❌ Mình không đồng ý / hủy giao dịch này.';
+
+      try {
+        if (decision === 'ACCEPT') {
+          const listingId = activeSession?.listingId;
+          const price = parseDealPriceNumber(dealPriceTextForConfirm);
+          if (listingId != null && Number.isFinite(price)) {
+            const created = await createDealForListing(listingId, price);
+            const body = created?.data;
+            const data = body?.data ?? body;
+            const dealId = data?.dealId ?? data?.id;
+
+            const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
+            if (dealId && pickupIso) {
+              try {
+                await updatePickupTime(dealId, pickupIso);
+              } catch {
+                // ignore pickup time update errors (deal still created)
+              }
+            }
+          }
+        }
+        suppressOpponentDiffRef.current = true;
+        const res = await chatApi.sendMessage(activeSessionId, replyText, 'TEXT', null, {
+          replyToMessageId: confirmId,
+        });
+        const msg = getData(res);
+        if (msg?.id) setMessages((prev) => upsertMessages(prev, msg, { dropPending: true }));
+        fetchSessions();
+        scrollToBottom('smooth');
+      } catch (err) {
+        const detail = err?.response?.data?.message || err?.message || 'Lỗi không xác định';
+        showToast(`Gửi phản hồi thất bại: ${detail}`, 'error');
+      }
+    },
+    [
+      activeSession?.listingId,
+      activeSessionId,
+      createDealForListing,
+      dealPriceTextForConfirm,
+      fetchSessions,
+      finalizePickupTimeLocal,
+      parseDealPriceNumber,
+      scrollToBottom,
+      showToast,
+      toIsoFromDatetimeLocal,
+      updatePickupTime,
+    ],
+  );
+
+  function FormField({ label, value, icon, multiline = false, inputProps = {}, type }) {
+    return (
+      <TextField
+        label={label}
+        value={value ?? '—'}
+        size="small"
+        fullWidth
+        multiline={multiline}
+        minRows={multiline ? 2 : undefined}
+        type={type}
+        slotProps={{
+          input: {
+            readOnly: true,
+            startAdornment: icon ? (
+              <InputAdornment position="start">
+                <Box sx={{ color: DEAL_UI.textMuted }}>{icon}</Box>
+              </InputAdornment>
+            ) : undefined,
+            ...inputProps,
+          },
+          inputLabel: { shrink: true },
+        }}
+        sx={{
+          '& .MuiInputBase-root': {
+            backgroundColor: DEAL_UI.surface,
+            color: DEAL_UI.text,
+            fontSize: DEAL_FONT.input,
+            borderRadius: '10px',
+            cursor: 'default',
+          },
+          '& .MuiInputBase-input': {
+            color: DEAL_UI.text,
+            cursor: 'default',
+            fontSize: DEAL_FONT.input,
+            caretColor: 'transparent',
+          },
+          '& .MuiInputLabel-root': {
+            color: DEAL_UI.textMuted,
+            fontSize: DEAL_FONT.label,
+          },
+          '& .MuiInputLabel-root.Mui-focused': { color: DEAL_UI.accent },
+          '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+          '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: DEAL_UI.accent,
+          },
+          '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+            borderColor: DEAL_UI.accent,
+            borderWidth: 1,
+          },
+        }}
+      />
+    );
+  }
+
+  // Note: popup only previews info; no editing in this screen.
+
+  const listingClosedForBuyer =
+      activeListingStatus === 'SOLD' || activeListingStatus === 'HIDDEN';
+
+  useEffect(() => {
+    if (listingClosedForBuyer) setOfferOpen(false);
+  }, [listingClosedForBuyer]);
+
   const priceOfferDisabled =
-      Boolean(activeSessionId) && (isSellerInActiveChat || hasOpenOfferAwaitingSeller);
+      Boolean(activeSessionId) &&
+      (isSellerInActiveChat || hasOpenOfferAwaitingSeller || listingClosedForBuyer);
   const priceOfferTooltip = !activeSessionId
       ? 'Trả giá / đề xuất giá'
+      : listingClosedForBuyer
+          ? activeListingStatus === 'HIDDEN'
+              ? 'Tin đã được ẩn'
+              : 'Tin đăng đã được bán'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
           : hasOpenOfferAwaitingSeller
@@ -741,6 +1256,16 @@ function ChatPageInner() {
                       theme={theme}
                       activeSession={activeSession}
                       activeListingThumb={activeListingThumb}
+                      isSellerInActiveChat={isSellerInActiveChat}
+                      showPostSaleActions={showPostSaleActions}
+                      hideViewListing={listingClosedForBuyer}
+                      onPostSaleAction={handlePostSaleBannerAction}
+                      postSaleOutcome={resolvedPostSaleBannerOutcome}
+                      postSaleBusy={postSaleBannerBusy}
+                      finalizeDisabled={!latestPendingOfferIdForSeller}
+                      onFinalizeOrder={() => {
+                        setFinalizeOpen(true);
+                      }}
                   />
 
                   <ChatMessagesPanel
@@ -753,6 +1278,7 @@ function ChatPageInner() {
                       highlightedMessageId={highlightedMessageId}
                       handleAccept={handleAccept}
                       handleReject={handleReject}
+                      handleDealConfirmDecision={handleDealConfirmDecision}
                       handleReplyMessage={handleReplyMessage}
                       handleJumpToMessage={handleJumpToMessage}
                       handleReportMessage={handleReportMessage}
@@ -845,6 +1371,287 @@ function ChatPageInner() {
             activeListingThumb={activeListingThumb}
             activeSession={activeSession}
         />
+
+        <Dialog
+            open={finalizeOpen}
+            onClose={() => setFinalizeOpen(false)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{
+              sx: {
+                bgcolor: DEAL_UI.bg,
+                border: `1px solid ${DEAL_UI.border}`,
+                borderRadius: 3,
+                overflow: 'hidden',
+              },
+            }}
+        >
+          <DialogTitle sx={{ color: DEAL_UI.text, fontWeight: 800, letterSpacing: 0.2, pb: 0.75 }}>
+            Xác nhận giao dịch
+          </DialogTitle>
+          <DialogContent sx={{ pt: 0 }}>
+            <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0 }}>
+              Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi hoàn tất.
+            </Typography>
+            <Divider sx={{ borderColor: DEAL_UI.border, mt: 1.0, mb: 1.5 }} />
+
+            {/* Section: Tin đăng */}
+            <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
+              Tin đăng
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 1.5,
+                alignItems: 'center',
+                mb: 2,
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: DEAL_UI.surface,
+                cursor: 'default',
+                transition: 'background 0.15s',
+                border: `1px solid ${DEAL_UI.border}`,
+              }}
+            >
+              {activeListingThumb ? (
+                <Box
+                  component="img"
+                  src={activeListingThumb}
+                  alt={listingTitleForFinalize || 'Ảnh tin đăng'}
+                  sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 1.5, flexShrink: 0 }}
+                />
+              ) : (
+                <Box
+                  sx={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 1.5,
+                    bgcolor: 'rgba(255,255,255,0.06)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    border: `1px dashed ${alpha(DEAL_UI.accent, 0.35)}`,
+                  }}
+                >
+                  <StoreOutlinedIcon sx={{ color: DEAL_UI.textMuted, fontSize: 28 }} />
+                </Box>
+              )}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text }} noWrap>
+                  {listingTitleForFinalize}
+                </Typography>
+                <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0.35 }}>
+                  Giá niêm yết:{' '}
+                  <Box component="span" sx={{ color: alpha(DEAL_UI.accent, 0.95), fontWeight: 800 }}>
+                    {fmtPrice(listingPriceForFinalize)}
+                  </Box>
+                </Typography>
+              </Box>
+            </Box>
+
+            <Divider sx={{ borderColor: DEAL_UI.border, mb: 1.75 }} />
+
+            {/* Section: Thông tin giao dịch */}
+            <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
+              Thông tin giao dịch
+            </Typography>
+            <Stack spacing={2.5} mb={2}>
+              <FormField
+                label="Giá thỏa thuận"
+                value={
+                  offerContentToPriceText(latestAcceptedOfferForFinalize?.content) ||
+                  offerContentToPriceText(pendingOfferForFinalize?.content) ||
+                  fmtPrice(listingPriceForFinalize)
+                }
+                icon={<AttachMoneyIcon />}
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5}>
+                <FormField
+                  label="Người mua"
+                  value={activeSession?.otherParticipantName || '—'}
+                  icon={<PersonOutlineIcon />}
+                />
+                <FormField
+                  label="Người bán"
+                  value={currentUser?.fullName || '—'}
+                  icon={<StoreOutlinedIcon />}
+                />
+              </Stack>
+            </Stack>
+
+            <Divider sx={{ borderColor: DEAL_UI.border, mb: 1.75 }} />
+
+            {/* Section: Thời gian & Địa điểm */}
+            <Typography fontWeight={700} fontSize="14px" sx={{ color: DEAL_UI.text, mb: 1.25 }}>
+              Thời gian &amp; Địa điểm
+            </Typography>
+            <Stack spacing={2.5} mb={0.5}>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 2,
+                    bgcolor: alpha(DEAL_UI.accent, 0.22),
+                    border: `1px solid ${alpha(DEAL_UI.accent, 0.28)}`,
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    mt: 0.5,
+                  }}
+                >
+                  <AccessTimeIcon sx={{ color: DEAL_UI.text }} fontSize="small" />
+                </Box>
+                <TextField
+                  label="Thời gian nhận hàng"
+                  value={finalizePickupTimeLocal}
+                  onChange={(e) => setFinalizePickupTimeLocal(e.target.value)}
+                  size="small"
+                  fullWidth
+                  type="datetime-local"
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      backgroundColor: DEAL_UI.surface,
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                      borderRadius: '10px',
+                    },
+                    '& .MuiInputBase-input': {
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: DEAL_UI.textMuted,
+                      fontSize: DEAL_FONT.label,
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': { color: DEAL_UI.accent },
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                    '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                      borderWidth: 1,
+                    },
+                    // Make native calendar icon white + pointer cursor
+                    '& input::-webkit-calendar-picker-indicator': {
+                      filter: 'invert(1)',
+                      opacity: 0.9,
+                      cursor: 'pointer',
+                    },
+                    '& input::-webkit-calendar-picker-indicator:hover': {
+                      opacity: 1,
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 2,
+                    bgcolor: alpha(DEAL_UI.accent, 0.22),
+                    border: `1px solid ${alpha(DEAL_UI.accent, 0.28)}`,
+                    display: 'grid',
+                    placeItems: 'center',
+                    flexShrink: 0,
+                    mt: 0.5,
+                  }}
+                >
+                  <LocationOnOutlinedIcon sx={{ color: DEAL_UI.text }} fontSize="small" />
+                </Box>
+                <TextField
+                  label="Địa điểm nhận hàng"
+                  value={finalizePickupLocationText}
+                  onChange={(e) => setFinalizePickupLocationText(e.target.value)}
+                  size="small"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  placeholder={finalizeListingLoading ? 'Đang tải…' : fmtAddress(pickupAddressForFinalize)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      backgroundColor: DEAL_UI.surface,
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                      borderRadius: '10px',
+                    },
+                    '& .MuiInputBase-input': {
+                      color: DEAL_UI.text,
+                      fontSize: DEAL_FONT.input,
+                    },
+                    '& .MuiInputLabel-root': {
+                      color: DEAL_UI.textMuted,
+                      fontSize: DEAL_FONT.label,
+                    },
+                    '& .MuiInputLabel-root.Mui-focused': { color: DEAL_UI.accent },
+                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'transparent' },
+                    '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                    },
+                    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: DEAL_UI.accent,
+                      borderWidth: 1,
+                    },
+                  }}
+                />
+              </Box>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 2.25, pb: 2, pt: 1.25 }}>
+            <Button
+              variant="outlined"
+              onClick={() => setFinalizeOpen(false)}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2.5,
+                px: 2,
+                py: 0.9,
+                color: DEAL_UI.text,
+                borderColor: alpha(DEAL_UI.text, 0.16),
+                bgcolor: alpha(DEAL_UI.text, 0.04),
+                '&:hover': {
+                  borderColor: alpha(DEAL_UI.text, 0.22),
+                  bgcolor: alpha(DEAL_UI.text, 0.07),
+                },
+              }}
+            >
+              Hủy
+            </Button>
+            <Button
+                variant="contained"
+                sx={{
+                  textTransform: 'none',
+                  borderRadius: 2.5,
+                  px: 2.5,
+                  py: 0.9,
+                  fontWeight: 900,
+                  bgcolor: DEAL_UI.accent,
+                  color: '#fff',
+                  boxShadow: `0 10px 22px ${alpha(DEAL_UI.accent, 0.18)}`,
+                  '&:hover': {
+                    bgcolor: alpha(DEAL_UI.accent, 0.9),
+                    color: '#fff',
+                    boxShadow: `0 12px 26px ${alpha(DEAL_UI.accent, 0.24)}`,
+                  },
+                  '&:active': {
+                    transform: 'translateY(1px)',
+                  },
+                }}
+                onClick={async () => {
+                  setFinalizeOpen(false);
+                  await sendDealConfirmation();
+                }}
+            >
+              Chốt đơn
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
   );
 }

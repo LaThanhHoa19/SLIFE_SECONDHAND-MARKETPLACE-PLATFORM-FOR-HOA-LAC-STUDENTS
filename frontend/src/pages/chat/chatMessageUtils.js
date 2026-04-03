@@ -168,7 +168,17 @@ export function getReferencePreview(ref, fallbackId) {
     if (fallbackId != null) return `[Tin nhắn #${fallbackId}]`;
     return '[Tin nhắn]';
   }
-  if (ref.content && String(ref.content).trim()) return String(ref.content).trim();
+  if (ref.content && String(ref.content).trim()) {
+    let text = String(ref.content).trim();
+    if (
+      ref.messageType === 'DEAL_CONFIRMATION' ||
+      /\bXÁC NHẬN GIAO DỊCH\b/i.test(text) ||
+      text.includes('Giá thỏa thuận')
+    ) {
+      text = formatDealConfirmationDisplayContent(text);
+    }
+    return text;
+  }
   if (ref.messageType === 'IMAGE' && ref.fileUrl) return '[Hình ảnh]';
   if (fallbackId != null) return `[Tin nhắn #${fallbackId}]`;
   return '[Tin nhắn]';
@@ -194,9 +204,23 @@ export function getMessageRowKey(msg, indexIfNoId = 0) {
 /** Điền replyTo / quote từ messages trong phiên khi BE/WS chỉ trả id (đủ cho tin của chính mình). */
 export function enrichMessagesForDisplay(msgs) {
   const byId = new Map();
+  const repliesByTargetId = new Map();
   for (const m of msgs) {
     const key = m?.id != null ? String(m.id) : null;
     if (key && !key.startsWith('tmp_')) byId.set(key, m);
+
+    // Reply linkage can come as replyToMessageId (id only) or replyTo object (hydrated).
+    const rid =
+      m?.replyToMessageId != null
+        ? String(m.replyToMessageId)
+        : m?.replyTo?.id != null
+          ? String(m.replyTo.id)
+          : null;
+    if (rid) {
+      const list = repliesByTargetId.get(rid) ?? [];
+      list.push(m);
+      repliesByTargetId.set(rid, list);
+    }
   }
   return msgs.map((m) => {
     let replyTo = m.replyTo;
@@ -238,7 +262,87 @@ export function enrichMessagesForDisplay(msgs) {
       }
     }
 
-    return { ...m, replyTo, quote };
+    // Derive deal confirmation decision from existing replies so action buttons
+    // don't reappear after refresh (BE doesn't persist a "decision" field).
+    let dealDecision = m.dealDecision;
+    if (
+      dealDecision == null &&
+      m?.messageType === 'DEAL_CONFIRMATION' &&
+      m?.id != null &&
+      !String(m.id).startsWith('tmp_')
+    ) {
+      const candidates = repliesByTargetId.get(String(m.id)) ?? [];
+      const texts = candidates
+        .map((x) => (x?.content != null ? String(x.content) : ''))
+        .filter((t) => t.trim() !== '');
+      const joined = texts.join('\n').toLowerCase();
+      if (joined) {
+        if (
+          joined.includes('đồng ý') ||
+          joined.includes('chap nhan') ||
+          joined.includes('chấp nhận') ||
+          joined.includes('✅')
+        ) {
+          dealDecision = 'ACCEPT';
+        } else if (
+          joined.includes('hủy') ||
+          joined.includes('huy') ||
+          joined.includes('không đồng ý') ||
+          joined.includes('khong dong y') ||
+          joined.includes('❌')
+        ) {
+          dealDecision = 'CANCEL';
+        } else if (candidates.length > 0) {
+          // Any reply referencing the confirmation counts as "decided" (disable buttons),
+          // even if the text doesn't match our heuristics.
+          dealDecision = 'DONE';
+        }
+      } else if (candidates.length > 0) {
+        dealDecision = 'DONE';
+      }
+    }
+
+    return { ...m, replyTo, quote, dealDecision };
   });
+}
+
+/** Giá trị sau `Thời gian nhận hàng:` — đổi 2026-04-03T02:11 / ISO → hiển thị vi-VN. */
+export function formatDealConfirmationPickupTimeValue(rest) {
+  const s = String(rest ?? '').trim();
+  if (!s || s === '—') return s;
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/**
+ * Chuẩn hóa hiển thị tin DEAL_CONFIRMATION: giá (1.700.000 ₫) và thời gian (dd/mm/yyyy, giờ).
+ */
+export function formatDealConfirmationDisplayContent(content) {
+  if (typeof content !== 'string') return content;
+  let out = content;
+  if (out.includes('Giá thỏa thuận')) {
+    out = out.replace(/(^-\s*Giá thỏa thuận:\s*)(.+)$/m, (full, prefix, rest) => {
+      const digits = String(rest).replace(/[^\d]/g, '');
+      if (!digits) return full;
+      const n = Number(digits);
+      if (!Number.isFinite(n)) return full;
+      return `${prefix}${n.toLocaleString('vi-VN')} ₫`;
+    });
+  }
+  if (out.includes('Thời gian nhận hàng')) {
+    out = out.replace(/(^-\s*Thời gian nhận hàng:\s*)(.+)$/m, (full, prefix, rest) => {
+      const formatted = formatDealConfirmationPickupTimeValue(rest);
+      return `${prefix}${formatted}`;
+    });
+  }
+  return out;
 }
 

@@ -29,7 +29,7 @@ export default function ListingRightInfoBlock({
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 3,
+                gap: 1.5, // Thu hẹp thêm 0.5 để khít hơn
             }}
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
@@ -46,12 +46,14 @@ export default function ListingRightInfoBlock({
                 {/* Action Buttons */}
                 {!isOwnListing ? (
                     !isUnavailable && (
-                        <ListingActions
-                            phoneNumber={phoneNumber}
-                            startingChat={startingChat}
-                            handleShowPhone={handleShowPhone}
-                            handleChat={handleChat}
-                        />
+                         <Box sx={{ my: 1.6 }}>
+                            <ListingActions
+                                phoneNumber={phoneNumber}
+                                startingChat={startingChat}
+                                handleShowPhone={handleShowPhone}
+                                handleChat={handleChat}
+                            />
+                         </Box>
                     )
                 ) : (
                     <ListingOwnerActions
@@ -61,7 +63,7 @@ export default function ListingRightInfoBlock({
                     />
                 )}
 
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 0.25 }} />
+
 
                 {/* Seller Info */}
                 <ListingSellerInfo

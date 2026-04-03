@@ -134,11 +134,12 @@ public class ListingController {
     public ResponseEntity<ApiResponse<PagedResponse<ListingCardResponse>>> getListings(
             @RequestParam(name = "sellerId", required = false) Long sellerId,
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size) {
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "prioritizeFollowing", defaultValue = "true") boolean prioritizeFollowing) {
 
         User viewer = userService.getCurrentUserOptional().orElse(null);
         PagedResponse<ListingCardResponse> listings =
-                listingService.getActiveListingCards(page, size, viewer, sellerId);
+                listingService.getActiveListingCards(page, size, viewer, sellerId, prioritizeFollowing);
 
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }
@@ -146,6 +147,8 @@ public class ListingController {
     /**
      * GET /api/listings/my — Lấy danh sách tin đăng của user hiện tại.
      * ?status=ACTIVE|DRAFT|HIDDEN|SOLD|GIVEN_AWAY|BANNED|EXPIRED|REPORTED
+     * HIDDEN: tin HIDDEN hoặc MOD_HIDDEN, chưa quá expirationDate (đã hết hạn nằm ở EXPIRED).
+     * EXPIRED: expirationDate &lt; now (mọi status, kể cả HIDDEN đã quá hạn).
      * Không truyền status → trả về tất cả.
      */
     @GetMapping("/my")

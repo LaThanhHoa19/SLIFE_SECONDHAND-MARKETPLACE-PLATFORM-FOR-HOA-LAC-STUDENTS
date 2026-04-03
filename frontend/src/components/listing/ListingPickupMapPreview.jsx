@@ -159,7 +159,13 @@ export default function ListingPickupMapPreview({
   }, [lat, lng, vietmapTileKey]);
 
   return (
-    <div style={{ background: '#0a0a12', color: '#e5e7eb', position: 'relative' }}>
+    <div style={{ 
+        background: '#0a0a12', 
+        color: '#e5e7eb', 
+        position: 'relative',
+        overflow: 'hidden', // Để bo góc hoạt động tốt cho content bên trong
+        borderRadius: '0 0 12px 12px' // Chú ý: Bo góc dưới cho đồng bộ
+    }}>
       {/* Map canvas - no tile key fallback */}
       {vietmapTileKey ? (
         <>
@@ -169,19 +175,20 @@ export default function ListingPickupMapPreview({
                 position: 'absolute', inset: 0, zIndex: 1,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(10,10,18,0.8)',
+                background: 'rgba(14,14,24,0.95)',
                 gap: 12,
               }}
             >
               <div style={{
-                width: 40, height: 40,
-                border: '3px solid rgba(157,110,237,0.2)',
+                width: 36, height: 36,
+                border: '3px solid rgba(157,110,237,0.1)',
                 borderTopColor: '#9D6EED',
                 borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
+                animation: 'spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+                boxShadow: '0 0 15px rgba(157,110,237,0.2)',
               }} />
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-                Đang tải bản đồ...
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500, letterSpacing: '0.02em' }}>
+                Đang chuẩn bị bản đồ...
               </span>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
@@ -192,25 +199,27 @@ export default function ListingPickupMapPreview({
               width: '100%',
               height: 320,
               display: 'block',
+              filter: 'none', // Trở lại trắng nguyên bản
+              opacity: mapReady ? 1 : 0,
+              transition: 'opacity 0.4s ease',
             }}
           />
-          {/* Status bar */}
+          {/* Status bar - Clear & Standard */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            px: 12, padding: '8px 16px',
-            background: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(8px)',
+            padding: '10px 16px',
+            background: 'rgba(0,0,0,0.7)',
             borderTop: '1px solid rgba(255,255,255,0.06)',
           }}>
             <span style={{
               display: 'inline-flex', width: 7, height: 7,
               borderRadius: '50%',
               background: mapReady ? '#2ED573' : '#FFA502',
-              boxShadow: mapReady ? '0 0 6px #2ED573' : '0 0 6px #FFA502',
+              boxShadow: mapReady ? '0 0 8px #2ED573' : '0 0 8px #FFA502',
               flexShrink: 0,
             }} />
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.2 }}>
-              {mapReady ? 'Vietmap · bản đồ số Việt Nam' : 'Đang kết nối bản đồ Vietmap...'}
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.2 }}>
+              {mapReady ? 'Vietmap · Bản đồ số Việt Nam' : 'Đang kết nối bản đồ Vietmap...'}
             </span>
           </div>
         </>

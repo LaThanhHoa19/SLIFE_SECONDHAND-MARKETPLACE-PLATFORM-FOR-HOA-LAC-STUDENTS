@@ -54,90 +54,63 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
     const isSoldOrHidden = normalizedStatus === 'SOLD' || normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN';
 
     return (
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-            {/* Split Button Status Group */}
-            <Box sx={{
-                display: 'flex', width: '100%', borderRadius: '14px',
-                overflow: 'hidden', border: `1px solid ${BORDER}`, bgcolor: CARD_BG
-            }}>
-                <Tooltip title={isSoldOrHidden ? "Đã đóng" : "Đánh dấu đã bán"}>
-                    <Button
-                        fullWidth
-                        onClick={handleMarkSold}
-                        disabled={submitting || isSoldOrHidden}
-                        sx={{
-                            py: 1.5, borderRadius: 0, border: 'none',
-                            bgcolor: normalizedStatus === 'SOLD' ? 'rgba(46, 213, 115, 0.1)' : 'transparent',
-                            color: normalizedStatus === 'SOLD' ? GREEN : TEXT_PRI,
-                            borderRight: `1px solid ${BORDER}`,
-                            transition: 'all 0.2s',
-                            '&:hover': { bgcolor: CARD_BG2, color: GREEN },
-                            '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.1)' }
-                        }}
-                    >
-                        {submitting ? (
-                            <CircularProgress size={20} color="inherit" />
-                        ) : (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <CheckCircleIcon sx={{ fontSize: 22 }} />
-                                <Box sx={{ textAlign: 'left' }}>
-                                    <Box component="span" sx={{ display: 'block', fontSize: 12, opacity: 0.78, lineHeight: 1.1 }}>Trạng thái</Box>
-                                    <Box component="span" sx={{ display: 'block', fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>Đã bán</Box>
-                                </Box>
-                            </Box>
-                        )}
-                    </Button>
-                </Tooltip>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 2, my: 2.5 }}>
+            {/* Single Hide Button with Confirmation */}
+            <Button
+                fullWidth
+                onClick={() => {
+                    if (window.confirm('Bạn có chắc chắn muốn ẩn tin bài này này không? Các bài đăng bị ẩn sẽ không hiển thị trên bảng tin.')) {
+                        handleHide();
+                    }
+                }}
+                disabled={submitting || isSoldOrHidden}
+                sx={{
+                    py: 1.5,
+                    borderRadius: '12px',
+                    border: `1px solid ${(normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? '#FFA502' : BORDER}`,
+                    bgcolor: (normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? 'rgba(255, 165, 2, 0.1)' : '#252230',
+                    color: (normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? '#FFA502' : TEXT_PRI,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    '&:hover': { 
+                        bgcolor: 'rgba(157, 110, 237, 0.05)', 
+                        borderColor: 'rgba(157, 110, 237, 0.8)',
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
+                    },
+                    '&:active': { transform: 'translateY(0)' },
+                    '&.Mui-disabled': { color: 'rgba(255,255,255,0.2)', bgcolor: 'rgba(0,0,0,0.1)', borderColor: 'transparent' }
+                }}
+            >
+                {submitting ? <CircularProgress size={20} color="inherit" /> : 'Ẩn tin / Đã bán'}
+            </Button>
 
-                <Tooltip title={isSoldOrHidden ? "Đã đóng" : "Ẩn bài đăng này"}>
-                    <Button
-                        fullWidth
-                        onClick={handleHide}
-                        disabled={submitting || isSoldOrHidden}
-                        sx={{
-                            py: 1.5, borderRadius: 0, border: 'none',
-                            bgcolor: (normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? 'rgba(255, 165, 2, 0.1)' : 'transparent',
-                            color: (normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN') ? '#FFA502' : TEXT_PRI,
-                            transition: 'all 0.2s',
-                            '&:hover': { bgcolor: CARD_BG2, color: '#FFA502' },
-                            '&.Mui-disabled': { color: 'rgba(255,255,255,0.3)', bgcolor: 'rgba(0,0,0,0.1)' }
-                        }}
-                    >
-                        {submitting ? (
-                            <CircularProgress size={20} color="inherit" />
-                        ) : (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <VisibilityOffIcon sx={{ fontSize: 22 }} />
-                                <Box sx={{ textAlign: 'left' }}>
-                                    <Box component="span" sx={{ display: 'block', fontSize: 12, opacity: 0.78, lineHeight: 1.1 }}>Hiển thị</Box>
-                                    <Box component="span" sx={{ display: 'block', fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>Ẩn tin</Box>
-                                </Box>
-                            </Box>
-                        )}
-                    </Button>
-                </Tooltip>
-            </Box>
-
-            {/* Edit Button */}
-            <Tooltip title="Sửa nội dung tin">
-                <Button
-                    variant="outlined"
-                    onClick={handleEdit}
-                    sx={{
-                        py: 1.5, borderRadius: '14px', border: `1px solid ${BORDER}`, bgcolor: CARD_BG,
-                        color: TEXT_PRI, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1,
-                        textTransform: 'none',
-                        transition: 'all 0.2s',
-                        '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE, color: PURPLE }
-                    }}
-                >
-                    <EditIcon sx={{ fontSize: 22 }} />
-                    <Box sx={{ textAlign: 'left' }}>
-                        <Box component="span" sx={{ display: 'block', fontSize: 12, opacity: 0.78, lineHeight: 1.1 }}>Nội dung</Box>
-                        <Box component="span" sx={{ display: 'block', fontSize: 13, fontWeight: 800, lineHeight: 1.2 }}>Chỉnh sửa</Box>
-                    </Box>
-                </Button>
-            </Tooltip>
+            {/* Edit Button with Premium Glow */}
+            <Button
+                variant="contained"
+                onClick={handleEdit}
+                startIcon={<EditIcon />}
+                sx={{
+                    py: 1.5, 
+                    borderRadius: '12px', 
+                    bgcolor: PURPLE, 
+                    color: '#fff',
+                    fontSize: 15, 
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    '&:hover': { 
+                        bgcolor: '#835cd4',
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px rgba(157, 110, 237, 0.4)`,
+                    },
+                    '&:active': { transform: 'translateY(0)' }
+                }}
+            >
+                Sửa tin
+            </Button>
         </Box>
     );
 }

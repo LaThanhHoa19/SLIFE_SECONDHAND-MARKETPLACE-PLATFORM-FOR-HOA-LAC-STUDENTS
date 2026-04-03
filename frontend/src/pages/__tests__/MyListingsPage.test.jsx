@@ -29,6 +29,7 @@ vi.mock('../../utils/formatDate', () => ({
 // ─── Import after mocks ────────────────────────────────────────────────────
 
 import MyListingsPage from '../listing/MyListingsPage';
+import { TABS } from '../listing/myListings/myListingsConfig';
 
 // ─── Tests ────────────────────────────────────────────────────────────────
 
@@ -42,25 +43,24 @@ describe('MyListingsPage', () => {
 // ─── Tab configuration ─────────────────────────────────────────────────────
 
 describe('MyListingsPage — Cấu hình Tabs', () => {
-    const EXPECTED_TABS = [
-        { value: 'ACTIVE',   label: 'Đang đăng' },
-        { value: 'DRAFT',    label: 'Bản nháp' },
-        { value: 'EXPIRED',  label: 'Hết hạn' },
-        { value: 'REPORTED', label: 'Bị báo cáo' },
-    ];
-
-    it('nên có đủ 4 tabs theo thiết kế', () => {
-        expect(EXPECTED_TABS).toHaveLength(4);
+    it('nên có 6 tabs gồm Đã bán (SOLD), không gồm Chờ duyệt / Bị từ chối', () => {
+        expect(TABS).toHaveLength(6);
+        expect(TABS.map((t) => t.value)).toEqual(['ACTIVE', 'HIDDEN', 'DRAFT', 'EXPIRED', 'SOLD', 'REPORTED']);
     });
 
-    it.each(EXPECTED_TABS)('nên có tab value=$value với label=$label', ({ value, label }) => {
-        const tab = EXPECTED_TABS.find((t) => t.value === value);
+    it.each(TABS)('nên có tab value=$value với label=$label', ({ value, label }) => {
+        const tab = TABS.find((t) => t.value === value);
         expect(tab).toBeDefined();
         expect(tab.label).toBe(label);
     });
 
     it('nên có tab đầu tiên là ACTIVE (mặc định)', () => {
-        expect(EXPECTED_TABS[0].value).toBe('ACTIVE');
+        expect(TABS[0].value).toBe('ACTIVE');
+    });
+
+    it('không hiển thị tab PENDING / REJECTED', () => {
+        expect(TABS.some((t) => t.value === 'PENDING')).toBe(false);
+        expect(TABS.some((t) => t.value === 'REJECTED')).toBe(false);
     });
 });
 
@@ -156,16 +156,18 @@ describe('MyListingsPage — Currency Formatter', () => {
 describe('MyListingsPage — Empty State Messages', () => {
     const EMPTY_MESSAGES = {
         ACTIVE:   { icon: '📭', text: 'Bạn chưa có tin đăng nào đang hoạt động.' },
+        HIDDEN:   { icon: '👁️', text: 'Bạn chưa ẩn bài đăng nào.' },
         DRAFT:    { icon: '📝', text: 'Chưa có bản nháp nào được lưu.' },
         EXPIRED:  { icon: '⏳', text: 'Không có tin đăng nào hết hạn.' },
+        SOLD:     { icon: '✅', text: 'Các tin bạn đánh dấu đã bán sẽ hiển thị ở đây.' },
         REPORTED: { icon: '🛡️', text: 'Không có tin đăng nào bị báo cáo.' },
     };
 
-    it('nên có thông báo trống cho cả 4 tabs', () => {
-        expect(Object.keys(EMPTY_MESSAGES)).toHaveLength(4);
+    it('nên có thông báo trống cho cả 6 tabs', () => {
+        expect(Object.keys(EMPTY_MESSAGES)).toHaveLength(6);
     });
 
-    it.each(['ACTIVE', 'DRAFT', 'EXPIRED', 'REPORTED'])(
+    it.each(['ACTIVE', 'HIDDEN', 'DRAFT', 'EXPIRED', 'SOLD', 'REPORTED'])(
         'nên có icon và text cho tab %s',
         (tab) => {
             expect(EMPTY_MESSAGES[tab].icon).toBeTruthy();
