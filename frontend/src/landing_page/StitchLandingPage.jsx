@@ -4,11 +4,12 @@ import { getLanding } from '../api/landingApi';
 import { unwrapApiData } from '../utils/apiPayload';
 import { fullImageUrl } from '../utils/constants';
 
-/** Ảnh hero cố định — khuôn viên FPT Hòa Lạc (public/hero-campus-fpt.png). */
-const HERO_SECTION_IMAGE = '/hero-campus-fpt.png';
+/** Ảnh hero cố định — khuôn viên FPT Hòa Lạc (public/fpt.jpg). */
+const HERO_SECTION_IMAGE = '/fpt.jpg';
 
 const CAROUSEL_PLACEHOLDER_IMG =
   'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&q=80';
+
 
 const CATEGORY_IMAGES = [
   'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&q=80',
@@ -136,7 +137,7 @@ export default function StitchLandingPage() {
             {/* Hero Section */}
             <section className="relative overflow-hidden px-6 py-16 md:py-24 lg:px-20">
               <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12">
-                <div className="flex-1 text-center lg:text-left space-y-8 z-10">
+                <div className="w-full lg:w-[45%] text-center lg:text-left space-y-8 z-10 shrink-0">
                   <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.1] tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.45)]">
                     <span className="text-white">SLIFE - Chốt đồ cũ,</span><br />
                     <span className="text-violet-300">Đủ đồ dùng</span>, <span className="text-slate-100">Ngay tại Hòa Lạc</span>
@@ -147,33 +148,24 @@ export default function StitchLandingPage() {
                   <div className="flex flex-wrap justify-center lg:justify-start gap-4">
                     <button
                         onClick={() => navigate('/feed')}
-                        className="px-8 py-4 bg-primary text-white rounded-full font-bold text-lg shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all animate-sparkle"
+                        className="px-8 py-4 bg-primary text-white rounded-full font-bold text-lg shadow-xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 animate-sparkle"
                     >
                       Khám phá ngay
                     </button>
                     <button
                         onClick={() => navigate('/listings/new')}
-                        className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 transition-all animate-sparkle"
+                        className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 hover:-translate-y-1 hover:shadow-lg active:translate-y-0 active:scale-95 transition-all duration-300 animate-sparkle"
                     >
                       Đăng tin bán
                     </button>
                   </div>
                 </div>
-                <div className="flex-1 relative w-full aspect-square md:aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl border-8 border-white dark:border-slate-800">
+                <div className="relative w-full lg:w-[55%] aspect-video md:aspect-[16/10] lg:aspect-[4/3] rounded-3xl overflow-hidden shadow-[0_20px_80px_-15px_rgba(124,58,237,0.4)] border border-white/20 ring-1 ring-white/10 group">
                   <img
-                    className="w-full h-full object-cover object-center"
+                    className="w-full h-full object-cover object-[20%_center] transition-transform duration-1000 group-hover:scale-105"
                     alt="Khuôn viên Đại học FPT Hòa Lạc"
                     src={heroImg}
                   />
-                  <div className="absolute bottom-6 left-6 bg-white/90 dark:bg-slate-900/90 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4 max-w-[min(100%,22rem)]">
-                    <div className="size-12 bg-primary/20 rounded-full flex items-center justify-center text-primary shrink-0">
-                      <span className="material-symbols-outlined">local_fire_department</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vừa đăng bán</p>
-                      <p className="font-bold line-clamp-2">{heroLine}</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             </section>

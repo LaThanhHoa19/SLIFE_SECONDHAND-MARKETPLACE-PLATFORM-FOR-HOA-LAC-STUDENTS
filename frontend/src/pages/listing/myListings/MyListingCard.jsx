@@ -305,7 +305,7 @@ export default function MyListingCard({
                         </Tooltip>
                     )}
 
-                    {(activeTab === 'PENDING' || activeTab === 'REJECTED' || activeTab === 'REPORTED') && (
+                    {activeTab === 'REPORTED' && (
                         <Tooltip title="Chỉnh sửa">
                             <IconButton
                                 type="button"

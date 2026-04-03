@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,7 +47,14 @@ import java.util.stream.Collectors;
 public class ListingService {
 
     private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("createdAt", "price", "title");
+    private static final String LISTING_STATUS_ACTIVE = "ACTIVE";
+    private static final String LISTING_STATUS_HIDDEN = "HIDDEN";
     private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
+    private static final String LISTING_STATUS_EXPIRED = "EXPIRED";
+    private static final String LISTING_STATUS_BANNED = "BANNED";
+    private static final String LISTING_STATUS_SOLD = "SOLD";
+    private static final String LISTING_STATUS_GIVEN_AWAY = "GIVEN_AWAY";
+    private static final String LISTING_STATUS_DRAFT = "DRAFT";
     /** Đồng bộ với frontend (tối đa 10 ảnh/tin). */
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
     /** Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION. */
@@ -62,6 +70,7 @@ public class ListingService {
     private final ListingLikeRepository listingLikeRepository;
     private final ListingImageService listingImageService;
     private final ConfigService configService;
+    private final NotificationService notificationService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -72,7 +81,8 @@ public class ListingService {
                           BlockService blockService,
                           ListingLikeRepository listingLikeRepository,
                           ListingImageService listingImageService,
-                          ConfigService configService) {
+                          ConfigService configService,
+                          NotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -83,6 +93,7 @@ public class ListingService {
         this.listingLikeRepository = listingLikeRepository;
         this.listingImageService = listingImageService;
         this.configService = configService;
+        this.notificationService = notificationService;
     }
 
     // ----------------------------------------------------------------
@@ -150,7 +161,8 @@ public class ListingService {
             int page,
             int size,
             User currentUser,
-            Long sellerId) {
+            Long sellerId,
+            boolean prioritizeFollowing) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,
@@ -160,8 +172,12 @@ public class ListingService {
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
                 listingRepository.findAllActiveListingCards(sellerId, pageable);
 
+        List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = prioritizeFollowing
+                ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
+                : pageResult.getContent();
+
         List<com.slife.marketplace.dto.response.ListingCardResponse> content =
-                pageResult.getContent().stream()
+                prioritized.stream()
                         .filter(card -> currentUser == null
                                 || card.getSellerId() == null
                                 || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
@@ -271,6 +287,7 @@ public class ListingService {
         }
 
         Listing saved = persistNewListing(seller, request);
+        notifyFollowersIfNewActiveListing(saved);
         log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
         ListingResponse created = toListingResponse(saved, seller, false, false);
@@ -304,6 +321,7 @@ public class ListingService {
         if (!imageParts.isEmpty()) {
             listingImageService.uploadListingImages(saved.getId(), imageParts, seller);
         }
+        notifyFollowersIfNewActiveListing(saved);
         log.info("createListingWithImages: id={}, status={}, seller={}, images={}", saved.getId(), saved.getStatus(), seller.getId(), imageParts.size());
 
         ListingResponse created = toListingResponse(saved, seller, false, false);
@@ -372,7 +390,7 @@ public class ListingService {
                         : "SALE"
         );
         listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
-        listing.setStatus(isDraft ? "DRAFT" : "ACTIVE");
+        listing.setStatus(isDraft ? LISTING_STATUS_DRAFT : LISTING_STATUS_ACTIVE);
         listing.setViewCount(0L);
         listing.setCreatedAt(Instant.now());
         listing.setUpdatedAt(Instant.now());
@@ -445,12 +463,12 @@ public class ListingService {
         listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
 
         if (isDraft) {
-            listing.setStatus("DRAFT");
+            listing.setStatus(LISTING_STATUS_DRAFT);
             listing.setExpirationDate(null);
-        } else if ("DRAFT".equals(listing.getStatus())) {
-            listing.setStatus("ACTIVE");
+        } else if (LISTING_STATUS_DRAFT.equals(listing.getStatus())) {
+            listing.setStatus(LISTING_STATUS_ACTIVE);
             listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
-        } else if ("ACTIVE".equals(listing.getStatus()) && listing.getExpirationDate() == null) {
+        } else if (LISTING_STATUS_ACTIVE.equals(listing.getStatus()) && listing.getExpirationDate() == null) {
             // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION was enforced.
             listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
         }
@@ -680,6 +698,51 @@ public class ListingService {
         return followService.isFollowing(currentUser.getId(), listing.getSeller().getId());
     }
 
+    private List<com.slife.marketplace.dto.response.ListingCardResponse> prioritizeFollowedListings(
+            List<com.slife.marketplace.dto.response.ListingCardResponse> source,
+            User currentUser,
+            Long sellerId,
+            int page
+    ) {
+        if (source == null || source.isEmpty() || currentUser == null || sellerId != null || page != 0) {
+            return source;
+        }
+
+        Set<Long> followedSellerIds = followService.findAllFollowedIds(currentUser.getId());
+        if (followedSellerIds.isEmpty()) {
+            return source;
+        }
+
+        return source.stream()
+                .sorted(Comparator
+                        .comparing((com.slife.marketplace.dto.response.ListingCardResponse c) -> {
+                            Long sid = c.getSellerId();
+                            return sid == null || !followedSellerIds.contains(sid);
+                        })
+                        .thenComparing(com.slife.marketplace.dto.response.ListingCardResponse::getCreatedAt,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private void notifyFollowersIfNewActiveListing(Listing listing) {
+        if (listing == null || listing.getSeller() == null || listing.getSeller().getId() == null) {
+            return;
+        }
+        if (!LISTING_STATUS_ACTIVE.equalsIgnoreCase(listing.getStatus())) {
+            return;
+        }
+        Set<Long> followerIds = followService.findFollowerIdsOfUser(listing.getSeller().getId());
+        if (followerIds.isEmpty()) {
+            return;
+        }
+        notificationService.notifyFollowersAboutNewListing(
+                listing.getSeller(),
+                listing.getId(),
+                listing.getTitle(),
+                followerIds
+        );
+    }
+
     private boolean isSellerBlockingViewer(User seller, User viewer) {
         if (seller == null || viewer == null || seller.getId() == null || viewer.getId() == null) {
             return false;
@@ -776,10 +839,10 @@ public class ListingService {
         Page<Listing> pageResult;
         if ("REPORTED".equalsIgnoreCase(status)) {
             pageResult = listingRepository.findReportedListingsBySeller(currentUser, pageable);
-        } else if ("EXPIRED".equalsIgnoreCase(status)) {
+        } else if (LISTING_STATUS_EXPIRED.equalsIgnoreCase(status)) {
             pageResult = listingRepository.findExpiredListingsBySeller(currentUser, pageable);
-        } else if ("HIDDEN".equalsIgnoreCase(status)) {
-            pageResult = listingRepository.findBySellerAndStatusIn(currentUser, List.of("HIDDEN", LISTING_STATUS_MOD_HIDDEN), pageable);
+        } else if (LISTING_STATUS_HIDDEN.equalsIgnoreCase(status)) {
+            pageResult = listingRepository.findHiddenNotExpiredBySeller(currentUser, pageable);
         } else if (status != null && !status.isBlank()) {
             pageResult = listingRepository.findBySellerAndStatus(currentUser, status.toUpperCase(), pageable);
         } else {
@@ -832,7 +895,12 @@ public class ListingService {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
 
-        listing.setStatus("HIDDEN");
+        String currentStatus = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
+        if (!LISTING_STATUS_ACTIVE.equals(currentStatus)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể ẩn tin ở trạng thái ACTIVE");
+        }
+
+        listing.setStatus(LISTING_STATUS_HIDDEN);
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
     }
@@ -847,11 +915,11 @@ public class ListingService {
         }
 
         String status = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
-        if (!"HIDDEN".equals(status)) {
+        if (!LISTING_STATUS_HIDDEN.equals(status)) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể bỏ ẩn tin do chính bạn đã ẩn");
         }
 
-        listing.setStatus("ACTIVE");
+        listing.setStatus(LISTING_STATUS_ACTIVE);
         listing.setUpdatedAt(Instant.now());
         listingRepository.save(listing);
     }
@@ -864,12 +932,19 @@ public class ListingService {
         if (!listing.getSeller().getId().equals(currentUser.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        if (!"ACTIVE".equals(listing.getStatus()) && !"HIDDEN".equals(listing.getStatus())) {
+        String status = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
+        if (!LISTING_STATUS_ACTIVE.equals(status) && !LISTING_STATUS_HIDDEN.equals(status)) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh dấu SOLD cho tin ACTIVE/HIDDEN");
         }
 
-        listing.setStatus("SOLD");
-        listing.setUpdatedAt(Instant.now());
+        Instant now = Instant.now();
+        Instant expiry = listing.getExpirationDate();
+        if (expiry != null && expiry.isBefore(now)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Không thể đánh dấu SOLD cho tin đã hết hạn");
+        }
+
+        listing.setStatus(LISTING_STATUS_SOLD);
+        listing.setUpdatedAt(now);
         listingRepository.save(listing);
     }
 
@@ -886,7 +961,7 @@ public class ListingService {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
 
-        if (!"ACTIVE".equals(listing.getStatus())) {
+        if (!LISTING_STATUS_ACTIVE.equals(listing.getStatus())) {
             throw new SlifeException(ErrorCode.LISTING_NOT_RENEWABLE);
         }
 
@@ -922,18 +997,24 @@ public class ListingService {
 
         Instant now = Instant.now();
 
-        boolean isFunctionallyExpired = "EXPIRED".equals(listing.getStatus())
+        String status = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
+
+        boolean isFunctionallyExpired = LISTING_STATUS_EXPIRED.equals(status)
                 || (listing.getExpirationDate() != null && listing.getExpirationDate().isBefore(now));
 
-        boolean isBlockedStatus = "BANNED".equals(listing.getStatus())
-                || "SOLD".equals(listing.getStatus())
-                || "GIVEN_AWAY".equals(listing.getStatus());
+        if (LISTING_STATUS_MOD_HIDDEN.equals(status)) {
+            throw new SlifeException(ErrorCode.LISTING_MOD_HIDDEN_REPOST_FORBIDDEN);
+        }
+
+        boolean isBlockedStatus = LISTING_STATUS_BANNED.equals(status)
+                || LISTING_STATUS_SOLD.equals(status)
+                || LISTING_STATUS_GIVEN_AWAY.equals(status);
 
         if (!isFunctionallyExpired || isBlockedStatus) {
             throw new SlifeException(ErrorCode.LISTING_NOT_EXPIRED);
         }
 
-        listing.setStatus("ACTIVE");
+        listing.setStatus(LISTING_STATUS_ACTIVE);
         listing.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
         listing.setUpdatedAt(now);
         listingRepository.save(listing);
@@ -952,7 +1033,7 @@ public class ListingService {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
 
-        if (!"DRAFT".equals(listing.getStatus())) {
+        if (!LISTING_STATUS_DRAFT.equals(listing.getStatus())) {
             throw new SlifeException(ErrorCode.LISTING_NOT_DRAFT);
         }
 

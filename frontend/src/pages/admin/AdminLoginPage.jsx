@@ -4,9 +4,7 @@ import {
     Alert,
     Box,
     Button,
-    Checkbox,
     CircularProgress,
-    FormControlLabel,
     Paper,
     Stack,
     TextField,
@@ -140,27 +138,6 @@ export default function AdminLoginPage() {
                                 helperText={errors.password?.message}
                                 sx={textFieldSx}
                             />
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <FormControlLabel
-                                    control={
-                                        <Checkbox
-                                            size="small"
-                                            sx={{
-                                                color: 'rgba(255,255,255,0.3)',
-                                                '&.Mui-checked': { color: '#a78bfa' },
-                                            }}
-                                        />
-                                    }
-                                    label="Ghi nhớ"
-                                    sx={{ color: 'rgba(255,255,255,0.6)', '& .MuiFormControlLabel-label': { fontSize: '0.9rem' } }}
-                                />
-                                <Typography
-                                    variant="body2"
-                                    sx={{ color: '#a78bfa', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: '#8b5cf6' } }}
-                                >
-                                    Quên mật khẩu?
-                                </Typography>
-                            </Box>
 
                             <Button
                                 type="submit"
@@ -183,7 +160,7 @@ export default function AdminLoginPage() {
                     </Box>
 
                     <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.25)' }} textAlign="center">
-                        Chỉ dành cho Admin và Moderator
+                        Chỉ dành cho Admin
                     </Typography>
                 </Stack>
             </Paper>

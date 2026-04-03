@@ -14,7 +14,6 @@ import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import GridOnIcon from '@mui/icons-material/GridOn';
 import ListIcon from '@mui/icons-material/List';
-import StarOutlineIcon from '@mui/icons-material/StarOutline';
 
 import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
@@ -33,13 +32,8 @@ import { firebaseAuth } from '../../lib/firebase';
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
 import FollowListDialog from '../../components/profile/FollowListDialog';
-import RatingSection from '../../components/profile/RatingSection';
-import ReviewList from '../../components/profile/ReviewList';
 import ListingSection from '../../components/profile/ListingSection';
 import ReportDialog from '../../components/report/ReportDialog';
-
-// Mock Data
-import { MOCK_REVIEWS } from './mockData';
 
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 
@@ -80,7 +74,6 @@ export default function ProfilePage() {
   const [followListOpen, setFollowListOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
-  const [showAllReviews, setShowAllReviews] = useState(false);
   const [sendingPhoneOtp, setSendingPhoneOtp] = useState(false);
   const [verifyingPhoneOtp, setVerifyingPhoneOtp] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -155,12 +148,12 @@ export default function ProfilePage() {
       if (isMe) {
         try {
           const { getMyListings } = await import('../../api/myListingApi');
-          const soldRes = await getMyListings({ status: 'SOLD', size: 50 });
-          const soldData = getPayload(soldRes);
-          const soldList = Array.isArray(soldData) ? soldData : soldData?.content ?? [];
+          const hiddenRes = await getMyListings({ status: 'HIDDEN', size: 50 });
+          const hiddenData = getPayload(hiddenRes);
+          const hiddenList = Array.isArray(hiddenData) ? hiddenData : hiddenData?.content ?? [];
           
-          // Gộp tin ACTIVE và SOLD vào chung state để render theo Tab
-          list = [...list, ...soldList];
+          // Gộp tin ACTIVE và HIDDEN vào chung state để render theo Tab
+          list = [...list, ...hiddenList];
         } catch (e) {
           console.error("Lỗi khi tải tin đã bán:", e);
         }
@@ -296,18 +289,19 @@ export default function ProfilePage() {
     }
   };
 
-  const handleVerifyPhoneOtp = async () => {
+  const handleVerifyPhoneOtp = async (overrideCode) => {
     if (!confirmationResult) {
       showToast('Bạn cần gửi OTP trước.', 'warning');
-      return;
+      return false;
     }
-    if (!otpCode || otpCode.trim().length !== 6) {
+    const codeToVerify = overrideCode || otpCode;
+    if (!codeToVerify || codeToVerify.trim().length !== 6) {
       showToast('OTP phải gồm 6 chữ số.', 'warning');
-      return;
+      return false;
     }
     setVerifyingPhoneOtp(true);
     try {
-      const credential = await confirmationResult.confirm(otpCode.trim());
+      const credential = await confirmationResult.confirm(codeToVerify.trim());
       const idToken = await credential.user.getIdToken();
       const res = await userApi.verifyPhoneWithFirebase({ idToken });
       console.info('[PhoneVerify] confirm OTP success', {
@@ -328,6 +322,7 @@ export default function ProfilePage() {
       setLastOtpPhone('');
       setOtpCooldownUntil(0);
       showToast('Xác thực số điện thoại thành công.', 'success');
+      return true;
     } catch (err) {
       const code = err?.code || '';
       console.error('[PhoneVerify] confirm OTP failed', {
@@ -344,6 +339,7 @@ export default function ProfilePage() {
       } else {
         showToast('Xác thực OTP thất bại. Vui lòng thử lại.', 'error');
       }
+      return false;
     } finally {
       setVerifyingPhoneOtp(false);
     }
@@ -493,9 +489,6 @@ export default function ProfilePage() {
 
         <Box sx={{ maxWidth: 1000, width: { xs: '100%', sm: '86%' }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
           <Box sx={{ px: { xs: 1.5, sm: 0 }, mb: 2 }}>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', mb: 2, color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.7 }}>
-              {editing ? editForm.bio : bio}
-            </Typography>
             {isMe && <Box id="firebase-phone-recaptcha" sx={{ display: 'none' }} />}
           </Box>
 
@@ -546,7 +539,6 @@ export default function ProfilePage() {
               >
                 <Tab icon={<Tooltip title="Tất cả bài đăng"><GridOnIcon /></Tooltip>} />
                 <Tab icon={<Tooltip title="Bài đăng đã bán"><ShoppingBagIcon /></Tooltip>} />
-                <Tab icon={<Tooltip title="Đánh giá"><StarOutlineIcon /></Tooltip>} />
               </Tabs>
 
               {/* Grid/List View Filter */}
@@ -575,14 +567,8 @@ export default function ProfilePage() {
             </Box>
 
             <Box sx={{ flex: 1, p: { xs: 0.1, sm: 0.5 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
-              {tab === 2 && (
-                <Box sx={{ px: { xs: 1.5, sm: 3 }, py: 3 }}>
-                  {!isMe && <RatingSection reputationScore={reputationScore} ratingCount={137} sx={{ mb: 3 }} />}
-                  <ReviewList reviews={showAllReviews ? MOCK_REVIEWS : MOCK_REVIEWS.slice(0, 12)} showAll={showAllReviews} setShowAll={setShowAllReviews} />
-                </Box>
-              )}
+              {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter(l => l.status === 'HIDDEN' || l.status === 'MOD_HIDDEN')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
             </Box>
           </Box>
         </Box>

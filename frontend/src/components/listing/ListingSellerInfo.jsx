@@ -1,7 +1,8 @@
-import { Avatar, Box, Chip, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, Chip, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
 import StarIcon from '@mui/icons-material/Star';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
+import PersonIcon from '@mui/icons-material/Person';
 import { useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 
@@ -20,8 +21,17 @@ export default function ListingSellerInfo({
                                           }) {
     const navigate = useNavigate();
 
+    const handleNavigateProfile = () => {
+        const targetId = sellerId ?? seller?.id;
+        if (!targetId) return;
+        const currentUserData = localStorage.getItem('user');
+        const currentUser = currentUserData ? JSON.parse(currentUserData) : null;
+        if (String(targetId) === String(currentUser?.id)) navigate('/profile');
+        else navigate(`/profile/${targetId}`);
+    };
+
     return (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, width: '100%', p: 1.2, borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', bgcolor: 'rgba(255,255,255,0.02)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, width: '100%', py: 0.5 }}>
             {/* Left: Avatar with Follow Badge */}
             <Box sx={{ position: 'relative', flexShrink: 0 }}>
                 <Tooltip title="Xem hồ sơ người bán">
@@ -33,17 +43,15 @@ export default function ListingSellerInfo({
                             height: 52,
                             cursor: 'pointer',
                             border: `2px solid ${PURPLE}`,
-                            bgcolor: CARD_BG2,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                            bgcolor: PURPLE, // Đổi sang màu Tím đồng bộ
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            fontSize: '1.2rem',
+                            fontWeight: 700
                         }}
-                        onClick={() => {
-                            const targetId = sellerId ?? seller?.id;
-                            if (!targetId) return;
-                            const currentUser = JSON.parse(localStorage.getItem('user'));
-                            if (String(targetId) === String(currentUser?.id)) navigate('/profile');
-                            else navigate(`/profile/${targetId}`);
-                        }}
-                    />
+                        onClick={handleNavigateProfile}
+                    >
+                        <PersonIcon sx={{ fontSize: 28, color: 'rgba(255,255,255,0.85)' }} />
+                    </Avatar>
                 </Tooltip>
                 {showFollow && (
                     <Tooltip title={isFollowed ? 'Bỏ theo dõi' : 'Theo dõi người bán'}>
@@ -85,61 +93,75 @@ export default function ListingSellerInfo({
             </Box>
 
             {/* Right: Name + Stats - ALL IN THE SAME LINE GROUP */}
-            <Box sx={{ flex: 1, minWidth: 0, pt: 0.3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'nowrap', gap: 1.6 }}>
-                    <Typography
-                        fontSize={18}
-                        fontWeight={900}
-                        color={TEXT_PRI}
-                        sx={{
-                            cursor: 'pointer',
-                            '&:hover': { color: PURPLE },
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: { xs: 150, sm: 300 }
-                        }}
-                        onClick={() => {
-                            const targetId = sellerId ?? seller?.id;
-                            if (targetId) navigate(`/profile/${targetId}`);
-                        }}
-                    >
-                        {seller?.fullName || 'Người bán'}
-                    </Typography>
-
-                    {/* Stats Group - Directly next to the name */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'nowrap' }}>
-                        {/* Followers */}
-                        {(seller?.followerCount != null || seller?.follower_count != null) && (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                <Typography fontSize={14} fontWeight={900} color={TEXT_PRI}>
-                                    {Number(seller?.followerCount ?? seller?.follower_count ?? 0)}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+                    <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                            fontSize={16}
+                            fontWeight={700}
+                            color={TEXT_PRI}
+                            sx={{
+                                cursor: 'pointer',
+                                '&:hover': { color: PURPLE },
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}
+                            onClick={handleNavigateProfile}
+                        >
+                            {seller?.fullName || 'Người bán'}
+                        </Typography>
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
+                            {/* Followers */}
+                            {(seller?.followerCount != null || seller?.follower_count != null) && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Typography fontSize={13} fontWeight={700} color={TEXT_PRI}>
+                                        {Number(seller?.followerCount ?? seller?.follower_count ?? 0)}
+                                    </Typography>
+                                    <Typography fontSize={13} color={TEXT_SEC}>người theo dõi</Typography>
+                                </Box>
+                            )}
+                            
+                            {/* Sold */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Typography fontSize={13} fontWeight={700} color={TEXT_PRI}>
+                                    {Number(seller?.totalSold ?? seller?.total_sold ?? 0)}
                                 </Typography>
-                                <Typography fontSize={10} color={TEXT_SEC} sx={{ whiteSpace: 'nowrap', mt: -0.5 }}>
-                                    người theo dõi
-                                </Typography>
+                                <Typography fontSize={13} color={TEXT_SEC}>đã bán</Typography>
                             </Box>
-                        )}
-                        {/* Sold */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Typography fontSize={14} fontWeight={900} color={TEXT_PRI}>
-                                {Number(seller?.totalSold ?? seller?.total_sold ?? 0)}
-                            </Typography>
-                            <Typography fontSize={10} color={TEXT_SEC} sx={{ whiteSpace: 'nowrap', mt: -0.5 }}>đã bán</Typography>
-                        </Box>
-                        {/* Rating */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
-                                <Typography fontSize={14} fontWeight={900} color={TEXT_PRI}>
-                                    {Number(seller?.reputationScore ?? seller?.reputation_score ?? 0).toFixed(1)}
-                                </Typography>
-                                <StarIcon sx={{ fontSize: 13, color: '#FFC107' }} />
-                            </Box>
-                            <Typography fontSize={10} color={TEXT_SEC} sx={{ whiteSpace: 'nowrap', mt: -0.5 }}>
-                                ({Number(seller?.reviewCount ?? seller?.review_count ?? 0)} đánh giá)
-                            </Typography>
                         </Box>
                     </Box>
+
+                    {/* View Profile Button - Compact pill like Cho Tot */}
+                    <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleNavigateProfile}
+                        sx={{
+                            color: TEXT_PRI,
+                            borderColor: 'rgba(255,255,255,0.15)',
+                            textTransform: 'none',
+                            fontSize: 13,
+                            fontWeight: 800,
+                            borderRadius: '24px',
+                            px: 2.5,
+                            height: 34,
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            '&:hover': {
+                                bgcolor: 'rgba(255,255,255,0.08)',
+                                borderColor: PURPLE,
+                                color: PURPLE,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                transform: 'translateY(-1px)'
+                            },
+                            '&:active': {
+                                transform: 'translateY(0)'
+                            }
+                        }}
+                    >
+                        Xem trang
+                    </Button>
                 </Box>
             </Box>
         </Box>

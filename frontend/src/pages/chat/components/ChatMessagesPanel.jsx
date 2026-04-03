@@ -21,6 +21,7 @@ export default function ChatMessagesPanel({
                                               highlightedMessageId,
                                               handleAccept,
                                               handleReject,
+                                              handleDealConfirmDecision,
                                               handleReplyMessage,
                                               handleJumpToMessage,
                                               handleReportMessage,
@@ -122,6 +123,7 @@ export default function ChatMessagesPanel({
                                         msg={{ ...m, isFromCurrentUser: msgIsMe, _highlighted: isHighlighted }}
                                         onAccept={handleAccept}
                                         onReject={handleReject}
+                                        onDealConfirmDecision={handleDealConfirmDecision}
                                         onReply={handleReplyMessage}
                                         onJumpToMessage={handleJumpToMessage}
                                         onReportMessage={handleReportMessage}

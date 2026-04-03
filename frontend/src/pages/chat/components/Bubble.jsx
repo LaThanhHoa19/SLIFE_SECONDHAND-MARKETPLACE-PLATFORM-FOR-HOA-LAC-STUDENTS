@@ -18,7 +18,12 @@ import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
-import { getDeliveryReceiptInfo, getReferencePreview, resolveChatImageSrc } from '../chatMessageUtils';
+import {
+    formatDealConfirmationDisplayContent,
+    getDeliveryReceiptInfo,
+    getReferencePreview,
+    resolveChatImageSrc,
+} from '../chatMessageUtils';
 
 function ImageBubble({ fileUrl }) {
     const src = resolveChatImageSrc(fileUrl);
@@ -89,7 +94,7 @@ function OfferBubble({ msg, onAccept, onReject }) {
     );
 }
 
-export default function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessage, onReportMessage }) {
+export default function Bubble({ msg, onAccept, onReject, onDealConfirmDecision, onReply, onJumpToMessage, onReportMessage }) {
     const theme = useTheme();
     const [menuAnchor, setMenuAnchor] = useState(null);
     const isMe = msg.isFromCurrentUser === true;
@@ -103,6 +108,10 @@ export default function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessa
     const showBubbleMenu = !isPending && stableMessageId && (Boolean(onReply) || showReport);
 
     if (isSystem) {
+        const decided = msg?.dealDecision === 'ACCEPT' || msg?.dealDecision === 'CANCEL';
+        const isDealConfirmationRequest =
+            typeof msg?.content === 'string' &&
+            msg.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
                 <Paper
@@ -117,6 +126,7 @@ export default function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessa
                             theme.palette.mode === 'dark' ? 0.14 : 0.12
                         ),
                         boxShadow: 'none',
+                        maxWidth: 560,
                     }}
                 >
                     <Typography
@@ -127,10 +137,34 @@ export default function Bubble({ msg, onAccept, onReject, onReply, onJumpToMessa
                                 theme.palette.mode === 'dark'
                                     ? theme.palette.success.light
                                     : theme.palette.success.dark,
+                            whiteSpace: 'pre-wrap',
                         }}
                     >
-                        {msg.content}
+                        {formatDealConfirmationDisplayContent(msg.content)}
                     </Typography>
+                    {!isMe &&
+                        isDealConfirmationRequest &&
+                        typeof onDealConfirmDecision === 'function' &&
+                        !decided && (
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1.25, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => onDealConfirmDecision(msg, 'CANCEL')}
+                                sx={{ fontWeight: 800, textTransform: 'none' }}
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() => onDealConfirmDecision(msg, 'ACCEPT')}
+                                sx={{ fontWeight: 900, textTransform: 'none' }}
+                            >
+                                Chấp nhận
+                            </Button>
+                        </Box>
+                    )}
                 </Paper>
             </Box>
         );
