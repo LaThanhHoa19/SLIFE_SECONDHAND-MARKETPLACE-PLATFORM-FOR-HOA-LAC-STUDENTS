@@ -147,7 +147,7 @@ public class ListingController {
      * GET /api/listings/my — Lấy danh sách tin đăng của user hiện tại.
      * ?status=ACTIVE|DRAFT|HIDDEN|SOLD|GIVEN_AWAY|BANNED|EXPIRED|REPORTED
      * HIDDEN: tin HIDDEN hoặc MOD_HIDDEN, chưa quá expirationDate (đã hết hạn nằm ở EXPIRED).
-     * EXPIRED: expirationDate &lt; now (mọi status, kể cả HIDDEN đã quá hạn).
+     * EXPIRED: expirationDate &lt; now và deletedAt null (tin đã repost → DELETED + soft-delete, không còn ở đây).
      * Không truyền status → trả về tất cả.
      */
     @GetMapping("/my")
@@ -226,13 +226,13 @@ public class ListingController {
     }
 
     /**
-     * PATCH /api/listings/{id}/repost — Đăng lại tin đã hết hạn (status EXPIRED → ACTIVE, gia hạn 30 ngày).
+     * PATCH /api/listings/{id}/repost — Hết hạn: tạo tin ACTIVE mới (clone), tin cũ → DELETED + deletedAt.
      */
     @PatchMapping("/{id}/repost")
-    public ResponseEntity<ApiResponse<Void>> repostListing(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<Long>> repostListing(@PathVariable("id") Long id) {
         User currentUser = userService.getCurrentUser();
-        listingService.repostListing(id, currentUser);
-        return ResponseEntity.ok(ApiResponse.success("OK", null));
+        Long newId = listingService.repostListing(id, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("OK", newId));
     }
 
     /**

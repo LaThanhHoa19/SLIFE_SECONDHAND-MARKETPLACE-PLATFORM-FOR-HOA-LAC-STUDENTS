@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,6 +55,7 @@ public class ListingService {
     private static final String LISTING_STATUS_SOLD = "SOLD";
     private static final String LISTING_STATUS_GIVEN_AWAY = "GIVEN_AWAY";
     private static final String LISTING_STATUS_DRAFT = "DRAFT";
+    private static final String LISTING_STATUS_DELETED = "DELETED";
     /** Đồng bộ với frontend (tối đa 10 ảnh/tin). */
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
     /** Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION. */
@@ -927,24 +929,24 @@ public class ListingService {
     }
 
     // ----------------------------------------------------------------
-    // Repost Listing (EXPIRED → ACTIVE)
+    // Repost — tạo tin ACTIVE mới (clone + ảnh); tin nguồn → DELETED + soft-delete
     // ----------------------------------------------------------------
 
     @Transactional
-    public void repostListing(Long id, User currentUser) {
-        Listing listing = listingRepository.findById(id)
+    public Long repostListing(Long id, User currentUser) {
+        Listing source = listingRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 
-        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+        if (!source.getSeller().getId().equals(currentUser.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
 
         Instant now = Instant.now();
 
-        String status = listing.getStatus() != null ? listing.getStatus().trim().toUpperCase() : "";
+        String status = source.getStatus() != null ? source.getStatus().trim().toUpperCase() : "";
 
         boolean isFunctionallyExpired = LISTING_STATUS_EXPIRED.equals(status)
-                || (listing.getExpirationDate() != null && listing.getExpirationDate().isBefore(now));
+                || (source.getExpirationDate() != null && source.getExpirationDate().isBefore(now));
 
         if (LISTING_STATUS_MOD_HIDDEN.equals(status)) {
             throw new SlifeException(ErrorCode.LISTING_MOD_HIDDEN_REPOST_FORBIDDEN);
@@ -952,16 +954,67 @@ public class ListingService {
 
         boolean isBlockedStatus = LISTING_STATUS_BANNED.equals(status)
                 || LISTING_STATUS_SOLD.equals(status)
-                || LISTING_STATUS_GIVEN_AWAY.equals(status);
+                || LISTING_STATUS_GIVEN_AWAY.equals(status)
+                || LISTING_STATUS_DELETED.equals(status)
+                || LISTING_STATUS_DRAFT.equals(status);
 
         if (!isFunctionallyExpired || isBlockedStatus) {
             throw new SlifeException(ErrorCode.LISTING_NOT_EXPIRED);
         }
 
-        listing.setStatus(LISTING_STATUS_ACTIVE);
-        listing.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
-        listing.setUpdatedAt(now);
-        listingRepository.save(listing);
+        Listing fresh = new Listing();
+        fresh.setSeller(source.getSeller());
+        fresh.setCategory(source.getCategory());
+        fresh.setPickupAddress(source.getPickupAddress());
+        fresh.setTitle(source.getTitle());
+        fresh.setDescription(source.getDescription());
+        fresh.setPrice(source.getPrice());
+        fresh.setItemCondition(source.getItemCondition());
+        fresh.setPurpose(
+                source.getPurpose() != null && !source.getPurpose().isBlank()
+                        ? source.getPurpose()
+                        : "SALE"
+        );
+        fresh.setIsGiveaway(Boolean.TRUE.equals(source.getIsGiveaway()));
+        fresh.setStatus(LISTING_STATUS_ACTIVE);
+        fresh.setViewCount(0L);
+        fresh.setCreatedAt(now);
+        fresh.setUpdatedAt(now);
+        fresh.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
+        fresh.setDeletedAt(null);
+
+        Listing savedNew = listingRepository.save(fresh);
+
+        List<ListingImage> sourceImages = listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(source.getId());
+        List<ListingImage> newImages = new ArrayList<>();
+        for (ListingImage srcImg : sourceImages) {
+            if (srcImg.getDeletedAt() != null) {
+                continue;
+            }
+            ListingImage ni = new ListingImage();
+            ni.setListing(savedNew);
+            ni.setImageUrl(srcImg.getImageUrl());
+            ni.setDisplayOrder(srcImg.getDisplayOrder());
+            ni.setCreatedAt(now);
+            ni.setUpdatedAt(now);
+            ni.setDeletedAt(null);
+            newImages.add(ni);
+        }
+        if (!newImages.isEmpty()) {
+            listingImageRepository.saveAll(newImages);
+        }
+
+        source.setStatus(LISTING_STATUS_DELETED);
+        source.setDeletedAt(now);
+        source.setUpdatedAt(now);
+        listingRepository.save(source);
+
+        log.info(
+                "repostListing: newListingId={} sourceId={} sellerId={}",
+                savedNew.getId(),
+                id,
+                currentUser.getId());
+        return savedNew.getId();
     }
 
     // ----------------------------------------------------------------
