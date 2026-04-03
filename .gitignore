@@ -11,3 +11,5 @@ frontend/dist/
 *.log
 
 cleanup_data.sql
+
+AGENTS.md

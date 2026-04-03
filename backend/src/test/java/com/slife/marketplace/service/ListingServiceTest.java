@@ -74,9 +74,6 @@ class ListingServiceTest {
     private NotificationService notificationService;
 
     @Mock
-    private NotificationService notificationService;
-
-    @Mock
     private ListingExpiryBatchService listingExpiryBatchService;
 
     private ListingService listingService;
@@ -93,8 +90,6 @@ class ListingServiceTest {
                 blockService,
                 listingLikeRepository,
                 listingImageService,
-                configService,
-                notificationService
                 configService,
                 notificationService,
                 listingExpiryBatchService

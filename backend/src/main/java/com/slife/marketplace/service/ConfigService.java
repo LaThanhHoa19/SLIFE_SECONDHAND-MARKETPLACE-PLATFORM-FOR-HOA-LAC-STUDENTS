@@ -188,7 +188,8 @@ public class ConfigService {
                 configuration.getConfigName(),
                 configuration.getConfigValue(),
                 configuration.getDescription(),
-                configuration.getUpdatedAt());
+                configuration.getUpdatedAt(),
+                VALIDATION_RULES.get(configuration.getConfigName()));
     }
 
     private String normalizeKey(String key) {
