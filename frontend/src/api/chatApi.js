@@ -20,7 +20,8 @@ export const sendMessage = (
   options = {}
 ) =>
   axiosClient.post('/api/v1/chats/send', {
-    sessionId,
+    sessionId: sessionId ?? null,
+    listingId: options?.listingId ?? null,
     content,
     messageType,
     fileUrl,
@@ -32,9 +33,10 @@ export const getQuickReplies = () =>
   axiosClient.get('/api/v1/chats/quick-replies');
 
 /** Upload a chat image (max 5 MB, JPG/PNG/WebP). Returns public URL. */
-export const uploadChatImage = (sessionId, file) => {
+export const uploadChatImage = (sessionId, file, listingId = null) => {
   const form = new FormData();
-  form.append('sessionId', sessionId);
+  if (sessionId) form.append('sessionId', sessionId);
+  if (listingId != null) form.append('listingId', String(listingId));
   form.append('file', file);
   return axiosClient.post('/api/v1/chats/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -44,6 +46,10 @@ export const uploadChatImage = (sessionId, file) => {
 /** Make a price offer (UC-30). amount is a number in VND. */
 export const makeOffer = (sessionId, amount) =>
   axiosClient.post(`/api/v1/chats/${sessionId}/offer`, { amount });
+
+/** Buyer trả giá khi chưa có session UUID (BE tự mở hội thoại theo tin). */
+export const makeOfferByListing = (listingId, amount) =>
+  axiosClient.post('/api/v1/chats/offers', { listingId, amount });
 
 /** Seller responds to an offer: action = 'ACCEPTED' | 'REJECTED'. */
 export const respondToOffer = (offerId, action) =>

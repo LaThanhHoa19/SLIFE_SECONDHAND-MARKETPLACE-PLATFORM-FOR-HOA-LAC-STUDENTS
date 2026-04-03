@@ -5,39 +5,31 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
-import com.slife.marketplace.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 
 @Service
 public class FirebasePhoneVerificationService {
     private static final String LOOKUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=";
 
     private final UserService userService;
-    private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @Value("${firebase.web-api-key:}")
     private String firebaseWebApiKey;
 
-    public FirebasePhoneVerificationService(UserService userService,
-                                            UserRepository userRepository,
-                                            ObjectMapper objectMapper) {
+    public FirebasePhoneVerificationService(UserService userService, ObjectMapper objectMapper) {
         this.userService = userService;
-        this.userRepository = userRepository;
         this.objectMapper = objectMapper;
     }
 
-    @Transactional
     public User verifyIdTokenAndMarkPhone(String idToken) {
         if (firebaseWebApiKey == null || firebaseWebApiKey.isBlank()) {
             throw new SlifeException(ErrorCode.INTERNAL_ERROR, "Firebase web api key is not configured");
@@ -46,12 +38,7 @@ public class FirebasePhoneVerificationService {
         if (phoneNumber == null || phoneNumber.isBlank()) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Firebase token does not contain a verified phone number");
         }
-
-        User user = userService.getCurrentUser();
-        user.setPhoneNumber(phoneNumber);
-        user.setPhoneVerifiedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
-        return userRepository.save(user);
+        return userService.markPhoneVerifiedWithFirebase(phoneNumber);
     }
 
     private String resolvePhoneNumber(String idToken) {

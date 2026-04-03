@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -79,19 +80,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 
+    /** JSON sai định dạng / thiếu field — tránh 500 chung chung. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Bad request body: {}", ex.getMessage());
+        String hint = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        ApiResponse<Object> body = ApiResponse.error(ErrorCode.INVALID_INPUT.getCode(),
+                "Dữ liệu gửi lên không hợp lệ (JSON). " + (hint != null ? hint : ""));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleUnexpected(Exception ex) {
-        log.error("Unexpected exception: " + ex.getMessage(), ex);
-        
-        // Print stack trace to a string for debugging
-        java.io.StringWriter sw = new java.io.StringWriter();
-        java.io.PrintWriter pw = new java.io.PrintWriter(sw);
-        ex.printStackTrace(pw);
-        String stackTrace = sw.toString();
-
+        log.error("Unexpected exception", ex);
         ApiResponse<Object> body = ApiResponse.error(
                 ErrorCode.INTERNAL_ERROR.getCode(),
-                "Internal server error: " + ex.getMessage() + "\n" + stackTrace);
+                "Internal server error: " + ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
