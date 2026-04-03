@@ -32,7 +32,7 @@ export default function ListingRightInfoBlock({
                 gap: 3,
             }}
         >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
                 {/* Title, Price, Meta */}
                 <ListingSummary
                     title={listing.title}
@@ -61,7 +61,7 @@ export default function ListingRightInfoBlock({
                     />
                 )}
 
-                <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', my: 0.25 }} />
+
 
                 {/* Seller Info */}
                 <ListingSellerInfo

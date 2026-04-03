@@ -42,25 +42,9 @@ export default function ListingSummary({ title, price, isGiveaway, locationText,
                 {title}
             </Typography>
 
-            <Box
-                sx={{
-                    mb: 2.75,
-                    px: 2,
-                    py: 1.5,
-                    borderRadius: '12px',
-                    border: `1px solid ${isGiveaway ? 'rgba(46,213,115,0.35)' : 'rgba(255,71,87,0.35)'}`,
-                    bgcolor: isGiveaway ? 'rgba(46,213,115,0.08)' : 'rgba(255,71,87,0.08)',
-                    display: 'inline-flex',
-                    flexDirection: 'column',
-                    width: 'fit-content',
-                    maxWidth: '100%',
-                }}
-            >
-                <Typography fontSize={12} fontWeight={700} color={TEXT_SEC} sx={{ mb: 0.4 }}>
-                    Giá bán
-                </Typography>
+            <Box sx={{ mb: 2.75 }}>
                 <Typography
-                    fontSize={{ xs: 24, sm: 30 }}
+                    fontSize={{ xs: 26, sm: 32 }}
                     fontWeight={900}
                     color={isGiveaway ? GREEN : RED}
                     sx={{ lineHeight: 1.15 }}

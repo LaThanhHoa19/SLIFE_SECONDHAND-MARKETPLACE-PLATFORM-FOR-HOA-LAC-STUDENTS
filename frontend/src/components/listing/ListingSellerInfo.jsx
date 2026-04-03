@@ -21,7 +21,7 @@ export default function ListingSellerInfo({
     const navigate = useNavigate();
 
     return (
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, width: '100%', p: 1.2, borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)', bgcolor: 'rgba(255,255,255,0.02)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, width: '100%', py: 0.5 }}>
             {/* Left: Avatar with Follow Badge */}
             <Box sx={{ position: 'relative', flexShrink: 0 }}>
                 <Tooltip title="Xem hồ sơ người bán">
@@ -86,10 +86,10 @@ export default function ListingSellerInfo({
 
             {/* Right: Name + Stats - ALL IN THE SAME LINE GROUP */}
             <Box sx={{ flex: 1, minWidth: 0, pt: 0.3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'nowrap', gap: 1.6 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap', gap: 2 }}>
                     <Typography
-                        fontSize={18}
-                        fontWeight={900}
+                        fontSize={16}
+                        fontWeight={800}
                         color={TEXT_PRI}
                         sx={{
                             cursor: 'pointer',
@@ -127,18 +127,7 @@ export default function ListingSellerInfo({
                             </Typography>
                             <Typography fontSize={10} color={TEXT_SEC} sx={{ whiteSpace: 'nowrap', mt: -0.5 }}>đã bán</Typography>
                         </Box>
-                        {/* Rating */}
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.3 }}>
-                                <Typography fontSize={14} fontWeight={900} color={TEXT_PRI}>
-                                    {Number(seller?.reputationScore ?? seller?.reputation_score ?? 0).toFixed(1)}
-                                </Typography>
-                                <StarIcon sx={{ fontSize: 13, color: '#FFC107' }} />
-                            </Box>
-                            <Typography fontSize={10} color={TEXT_SEC} sx={{ whiteSpace: 'nowrap', mt: -0.5 }}>
-                                ({Number(seller?.reviewCount ?? seller?.review_count ?? 0)} đánh giá)
-                            </Typography>
-                        </Box>
+
                     </Box>
                 </Box>
             </Box>

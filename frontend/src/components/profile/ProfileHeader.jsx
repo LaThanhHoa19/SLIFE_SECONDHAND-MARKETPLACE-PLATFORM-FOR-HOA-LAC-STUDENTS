@@ -16,7 +16,6 @@ import {
     InputAdornment,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import StarIcon from '@mui/icons-material/Star';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
@@ -75,6 +74,7 @@ export default function ProfileHeader({
     const [anchorEl, setAnchorEl] = useState(null);
     const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
     const [viewAvatarOpen, setViewAvatarOpen] = useState(false);
+    const [otpVerificationOpen, setOtpVerificationOpen] = useState(false);
 
     const canOpenFollowList = followListUserId != null && typeof onOpenFollowList === 'function';
     const hasPhoneNumber = !!(user.phoneNumber || user.phone_number);
@@ -127,6 +127,23 @@ export default function ProfileHeader({
         setFieldErrors(errors);
 
         if (isValid) {
+            const oldPhone = String(user.phoneNumber || user.phone_number || '').trim();
+            const newPhone = editForm.phoneNumber?.trim();
+            if (newPhone && newPhone !== oldPhone) {
+                setOtpVerificationOpen(true);
+                if (!otpSent && !sendingPhoneOtp) {
+                    onRequestPhoneOtp();
+                }
+            } else {
+                handleSave();
+            }
+        }
+    };
+
+    const handleConfirmOtpAndSave = async () => {
+        const success = await onVerifyPhoneOtp();
+        if (success) {
+            setOtpVerificationOpen(false);
             handleSave();
         }
     };
@@ -334,13 +351,6 @@ export default function ProfileHeader({
                         >
                             Đang theo dõi <span style={{ fontWeight: 600 }}>{user.followingCount ?? 0}</span> người dùng
                         </Typography>
-                        
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <StarIcon sx={{ fontSize: 19, color: '#FFC107' }} />
-                            <Typography variant="body2" fontWeight={300} sx={{ color: 'white', fontSize: '1rem' }}>
-                                <span style={{ fontWeight: 600 }}>{reputationScore > 0 ? Number(reputationScore).toFixed(1) : '5.0'}</span>
-                            </Typography>
-                        </Box>
                     </Box>
 
                     {/* Bio / Verification / Join Date */}
@@ -398,11 +408,11 @@ export default function ProfileHeader({
                 fullWidth
                 PaperProps={{
                     sx: {
-                        bgcolor: '#121212',
+                        bgcolor: '#242526',
                         backgroundImage: 'none',
                         borderRadius: 4,
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        boxShadow: '0 24px 48px rgba(0,0,0,0.8)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
                     }
                 }}
                 BackdropProps={{
@@ -439,97 +449,6 @@ export default function ProfileHeader({
                             sx={textFieldStyle}
                             size="small"
                         />
-                        {!phoneVerified && (
-                            <Box sx={{
-                                mb: 2.2,
-                                p: 1.8,
-                                borderRadius: 2.5,
-                                border: '1px solid rgba(157, 110, 237, 0.28)',
-                                bgcolor: 'rgba(157, 110, 237, 0.08)',
-                            }}>
-                                <Typography sx={{ color: 'white', fontWeight: 600, mb: 0.5, fontSize: '0.88rem' }}>
-                                    Xác thực số điện thoại
-                                </Typography>
-                                <Typography sx={{ color: 'rgba(255,255,255,0.62)', mb: 1.4, fontSize: '0.78rem' }}>
-                                    Xác thực để tăng độ tin cậy hồ sơ và bảo mật tài khoản.
-                                </Typography>
-                                <Button
-                                    variant="outlined"
-                                    fullWidth
-                                    size="small"
-                                    disabled={sendingPhoneOtp || otpCooldownActive}
-                                    onClick={onRequestPhoneOtp}
-                                    sx={{
-                                        textTransform: 'none',
-                                        borderColor: 'rgba(157, 110, 237, 0.55)',
-                                        color: '#e9ddff',
-                                        mb: otpSent ? 1.4 : 0,
-                                        '&:hover': { borderColor: '#b996ff', bgcolor: 'rgba(157,110,237,0.1)' },
-                                    }}
-                                >
-                                    {sendingPhoneOtp
-                                        ? 'Đang gửi OTP...'
-                                        : (otpCooldownActive ? `Gửi lại sau ${otpCooldownLeftSeconds}s` : 'Gửi mã xác thực')}
-                                </Button>
-
-                                {otpSent && (
-                                    <>
-                                        <TextField
-                                            fullWidth
-                                            size="small"
-                                            value={otpCode}
-                                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                            placeholder="Nhập mã OTP gồm 6 số"
-                                            inputProps={{
-                                                maxLength: 6,
-                                                inputMode: 'numeric',
-                                                style: {
-                                                    letterSpacing: '0.42em',
-                                                    textAlign: 'center',
-                                                    fontWeight: 700,
-                                                    fontSize: '1.1rem',
-                                                },
-                                            }}
-                                            InputProps={{
-                                                endAdornment: (
-                                                    <InputAdornment position="end">
-                                                        <Typography sx={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.72rem' }}>
-                                                            6 số
-                                                        </Typography>
-                                                    </InputAdornment>
-                                                ),
-                                            }}
-                                            sx={{
-                                                mb: 1.2,
-                                                '& .MuiInputBase-root': {
-                                                    color: 'white',
-                                                    borderRadius: 2,
-                                                    bgcolor: 'rgba(255,255,255,0.03)',
-                                                },
-                                                '& .MuiOutlinedInput-root fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                                                '& .MuiOutlinedInput-root:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' },
-                                                '& .MuiOutlinedInput-root.Mui-focused fieldset': { borderColor: '#b996ff' },
-                                            }}
-                                        />
-                                        <Button
-                                            variant="contained"
-                                            fullWidth
-                                            size="small"
-                                            disabled={verifyingPhoneOtp || (otpCode?.trim()?.length !== 6)}
-                                            onClick={onVerifyPhoneOtp}
-                                            sx={{
-                                                textTransform: 'none',
-                                                bgcolor: '#8b5cf6',
-                                                '&:hover': { bgcolor: '#7c3aed' },
-                                                fontWeight: 700,
-                                            }}
-                                        >
-                                            {verifyingPhoneOtp ? 'Đang xác thực...' : 'Xác thực OTP'}
-                                        </Button>
-                                    </>
-                                )}
-                            </Box>
-                        )}
                         <TextField 
                             fullWidth multiline rows={3} label="Giới thiệu" value={editForm.bio}
                             onChange={(e) => {
@@ -572,7 +491,7 @@ export default function ProfileHeader({
                                 fullWidth
                                 variant="text" 
                                 onClick={handleCloseEdit}
-                                sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', fontSize: '0.9rem' }}
+                                sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', fontSize: '0.9rem', '&:hover': { background: 'transparent' } }}
                             >
                                 Hủy
                             </Button>
@@ -581,6 +500,135 @@ export default function ProfileHeader({
                 </DialogContent>
             </Dialog>
 
+
+            {/* ─── OTP Verification Popup Dialog ─────────────── */}
+            <Dialog
+                open={otpVerificationOpen}
+                onClose={() => setOtpVerificationOpen(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        bgcolor: '#242526',
+                        borderRadius: 4,
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: '0 24px 48px rgba(0,0,0,0.6)',
+                    }
+                }}
+            >
+                <DialogTitle sx={{ color: 'white', textAlign: 'center', fontWeight: 700, mt: 1 }}>
+                    <IconButton
+                        onClick={() => setOtpVerificationOpen(false)}
+                        sx={{ position: 'absolute', right: 12, top: 12, color: 'rgba(255,255,255,0.5)' }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                    Xác thực OTP
+                </DialogTitle>
+                <DialogContent sx={{ px: 4, pb: 4, textAlign: 'center' }}>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', mb: 1, textAlign: 'left' }}>
+                        Nhập mã OTP được gửi đến số điện thoại:
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-end', gap: 1.5, mb: 3 }}>
+                        <Typography sx={{ color: 'white', fontSize: '1.2rem', fontWeight: 700 }}>
+                            {editForm.phoneNumber}
+                        </Typography>
+                        <Button 
+                            variant="text" 
+                            onClick={() => setOtpVerificationOpen(false)} 
+                            sx={{ textTransform: 'none', color: '#a374f9', p: 0, minWidth: 'auto', '&:hover': { background: 'transparent' } }}
+                        >
+                            Đổi số điện thoại khác
+                        </Button>
+                    </Box>
+
+                    <Box sx={{ position: 'relative', width: '100%', maxWidth: 360, mx: 'auto', mb: 4 }}>
+                        <input
+                            autoFocus
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            style={{
+                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                                opacity: 0, cursor: 'text', zIndex: 2
+                            }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center' }}>
+                            {[0, 1, 2, 3, 4, 5].map((index) => {
+                                const char = otpCode[index] || '';
+                                return (
+                                    <Box
+                                        key={index}
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            borderRadius: '10px',
+                                            bgcolor: 'rgba(255,255,255,0.05)',
+                                            border: '2px solid',
+                                            borderColor: char 
+                                                ? '#b996ff' 
+                                                : (otpCode.length === index ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'),
+                                            color: 'white',
+                                            fontSize: '1.5rem',
+                                            fontWeight: 700,
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                    >
+                                        {char}
+                                    </Box>
+                                );
+                            })}
+                        </Box>
+                    </Box>
+
+                    <Button
+                        variant="contained"
+                        fullWidth
+                        disabled={verifyingPhoneOtp || (otpCode?.trim()?.length !== 6)}
+                        onClick={handleConfirmOtpAndSave}
+                        sx={{
+                            textTransform: 'none',
+                            bgcolor: '#a374f9',
+                            color: 'white',
+                            mb: 2,
+                            height: 48,
+                            borderRadius: '10px',
+                            fontSize: '1rem',
+                            fontWeight: 700,
+                            '&:hover': { bgcolor: '#8b5cf6' },
+                            '&.Mui-disabled': { 
+                                bgcolor: 'rgba(255,255,255,0.1)', 
+                                color: 'rgba(255,255,255,0.3)' 
+                            }
+                        }}
+                    >
+                        {verifyingPhoneOtp ? <CircularProgress size={24} color="inherit" /> : 'Tiếp tục'}
+                    </Button>
+
+                    <Box sx={{ mt: 1 }}>
+                        {sendingPhoneOtp ? (
+                            <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+                                Đang gửi mã...
+                            </Typography>
+                        ) : otpCooldownActive ? (
+                            <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+                                Gửi lại mã sau {otpCooldownLeftSeconds}s
+                            </Typography>
+                        ) : (
+                            <Button
+                                variant="text"
+                                onClick={onRequestPhoneOtp}
+                                sx={{ textTransform: 'none', color: '#a374f9', fontWeight: 600, '&:hover': { background: 'transparent' } }}
+                            >
+                                Gửi lại mã
+                            </Button>
+                        )}
+                    </Box>
+                </DialogContent>
+            </Dialog>
 
             {/* ─── Floating Chat button – bottom-right of page ── */}
             {!isMe && (
