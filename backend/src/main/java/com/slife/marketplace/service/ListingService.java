@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Service
@@ -69,6 +70,7 @@ public class ListingService {
     private final ListingLikeRepository listingLikeRepository;
     private final ListingImageService listingImageService;
     private final ConfigService configService;
+    private final NotificationService notificationService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -79,7 +81,8 @@ public class ListingService {
                           BlockService blockService,
                           ListingLikeRepository listingLikeRepository,
                           ListingImageService listingImageService,
-                          ConfigService configService) {
+                          ConfigService configService,
+                          NotificationService notificationService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -90,6 +93,7 @@ public class ListingService {
         this.listingLikeRepository = listingLikeRepository;
         this.listingImageService = listingImageService;
         this.configService = configService;
+        this.notificationService = notificationService;
     }
 
     // ----------------------------------------------------------------
@@ -157,7 +161,8 @@ public class ListingService {
             int page,
             int size,
             User currentUser,
-            Long sellerId) {
+            Long sellerId,
+            boolean prioritizeFollowing) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,
@@ -167,8 +172,12 @@ public class ListingService {
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
                 listingRepository.findAllActiveListingCards(sellerId, pageable);
 
+        List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = prioritizeFollowing
+                ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
+                : pageResult.getContent();
+
         List<com.slife.marketplace.dto.response.ListingCardResponse> content =
-                pageResult.getContent().stream()
+                prioritized.stream()
                         .filter(card -> currentUser == null
                                 || card.getSellerId() == null
                                 || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
@@ -278,6 +287,7 @@ public class ListingService {
         }
 
         Listing saved = persistNewListing(seller, request);
+        notifyFollowersIfNewActiveListing(saved);
         log.info("createListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
 
         ListingResponse created = toListingResponse(saved, seller, false, false);
@@ -311,6 +321,7 @@ public class ListingService {
         if (!imageParts.isEmpty()) {
             listingImageService.uploadListingImages(saved.getId(), imageParts, seller);
         }
+        notifyFollowersIfNewActiveListing(saved);
         log.info("createListingWithImages: id={}, status={}, seller={}, images={}", saved.getId(), saved.getStatus(), seller.getId(), imageParts.size());
 
         ListingResponse created = toListingResponse(saved, seller, false, false);
@@ -685,6 +696,51 @@ public class ListingService {
             return false;
         }
         return followService.isFollowing(currentUser.getId(), listing.getSeller().getId());
+    }
+
+    private List<com.slife.marketplace.dto.response.ListingCardResponse> prioritizeFollowedListings(
+            List<com.slife.marketplace.dto.response.ListingCardResponse> source,
+            User currentUser,
+            Long sellerId,
+            int page
+    ) {
+        if (source == null || source.isEmpty() || currentUser == null || sellerId != null || page != 0) {
+            return source;
+        }
+
+        Set<Long> followedSellerIds = followService.findAllFollowedIds(currentUser.getId());
+        if (followedSellerIds.isEmpty()) {
+            return source;
+        }
+
+        return source.stream()
+                .sorted(Comparator
+                        .comparing((com.slife.marketplace.dto.response.ListingCardResponse c) -> {
+                            Long sid = c.getSellerId();
+                            return sid == null || !followedSellerIds.contains(sid);
+                        })
+                        .thenComparing(com.slife.marketplace.dto.response.ListingCardResponse::getCreatedAt,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private void notifyFollowersIfNewActiveListing(Listing listing) {
+        if (listing == null || listing.getSeller() == null || listing.getSeller().getId() == null) {
+            return;
+        }
+        if (!LISTING_STATUS_ACTIVE.equalsIgnoreCase(listing.getStatus())) {
+            return;
+        }
+        Set<Long> followerIds = followService.findFollowerIdsOfUser(listing.getSeller().getId());
+        if (followerIds.isEmpty()) {
+            return;
+        }
+        notificationService.notifyFollowersAboutNewListing(
+                listing.getSeller(),
+                listing.getId(),
+                listing.getTitle(),
+                followerIds
+        );
     }
 
     private boolean isSellerBlockingViewer(User seller, User viewer) {

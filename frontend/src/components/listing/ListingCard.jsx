@@ -4,7 +4,6 @@ import {
     Avatar,
     Box,
     Card,
-    CardContent,
     CircularProgress,
     IconButton,
     Stack,
@@ -14,6 +13,7 @@ import {
     MenuItem,
     ListItemIcon,
     ListItemText,
+    Chip,
 } from '@mui/material';
 import {
     BookmarkBorder as BookmarkBorderIcon,
@@ -21,12 +21,9 @@ import {
     FavoriteBorder,
     Favorite as FavoriteFilledIcon,
     MoreHoriz as MoreIcon,
-    Share as ShareIcon,
     Flag as ReportIcon,
     Add as AddIcon,
     Check as CheckIcon,
-    ChevronLeft as ChevronLeftIcon,
-    ChevronRight as ChevronRightIcon,
     ChatOutlined as MessageIcon,
     ShareOutlined as ShareIconOutlined,
     ModeCommentOutlined as CommentIconOutlined,
@@ -140,8 +137,6 @@ export default function ListingCard({
                                         listing,
                                         onClick,
                                         cardVariant = 'default',
-                                        layout = 'list',
-                                        imageAspect,
                                         onPatchListing,
                                     }) {
     const navigate = useNavigate();
@@ -178,8 +173,6 @@ export default function ListingCard({
 
     const { showToast } = useToast();
 
-    const sellerFollowed = listing?.seller?.isFollowed ?? listing?.isFollowed ?? followed;
-
     useEffect(() => {
         setFollowed(!!listing?.isFollowed);
     }, [listing?.id, listing?.isFollowed]);
@@ -194,11 +187,14 @@ export default function ListingCard({
     }, [listing?.id, listing?.isSaved, listing?.is_saved]);
 
     const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
-    const isSoldOrHidden = normalizedStatus === 'SOLD' || normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN';
+    const unavailableStatuses = new Set(['SOLD', 'HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
+    const isUnavailable = unavailableStatuses.has(normalizedStatus) || listing?.isUnavailable === true;
 
     const handleClick = () => {
-        // Neu da ban hoac an, khong cho phep bam vao trang chi tiet
-        if (isSoldOrHidden) return;
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
 
         if (onClick) onClick(listing);
         else if (id) navigate(`/listings/${id}`);
@@ -403,7 +399,7 @@ export default function ListingCard({
                                 to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                                 src={fullImageUrl(seller?.avatarUrl)}
                                 alt={seller?.fullName || 'seller'}
-                                sx={{ width: 44, height: 44, cursor: isSoldOrHidden ? 'default' : 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
+                                sx={{ width: 44, height: 44, cursor: isUnavailable ? 'default' : 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
                                 onClick={(e) => { e.stopPropagation(); }}
                             >
                                 {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
@@ -488,11 +484,27 @@ export default function ListingCard({
                         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick()}
                         role="button"
                         tabIndex={0}
-                        sx={{ cursor: isSoldOrHidden ? 'default' : 'pointer', outline: 'none', mb: images.length ? 1.5 : 0 }}
+                        sx={{ cursor: isUnavailable ? 'default' : 'pointer', outline: 'none', mb: images.length ? 1.5 : 0 }}
                     >
                         <Typography fontSize={15} fontWeight={400} color="rgba(255,255,255,0.95)" sx={{ lineHeight: 1.4, mb: 0.5 }}>
                             {listing?.title || 'Không có tiêu đề'}
                         </Typography>
+
+                        {isUnavailable && (
+                            <Chip
+                                label={listing?.unavailableMessage || 'Không còn khả dụng'}
+                                size="small"
+                                sx={{
+                                    mb: 1,
+                                    alignSelf: 'flex-start',
+                                    bgcolor: 'rgba(239,68,68,0.16)',
+                                    border: '1px solid rgba(248,113,113,0.5)',
+                                    color: '#FECACA',
+                                    fontWeight: 700,
+                                    '& .MuiChip-label': { px: 1.1 },
+                                }}
+                            />
+                        )}
 
                         <Typography fontSize={16} fontWeight={700} color="#FF4757" sx={{ mb: 1 }}>
                             {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}

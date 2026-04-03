@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 @Repository
@@ -26,6 +27,12 @@ public interface FollowRepository extends JpaRepository<Follow, FollowId> {
 
     @Query("SELECT f.followed.id FROM Follow f WHERE f.follower.id = :followerId AND f.followed.id IN :ids")
     Set<Long> findFollowedIdsAmong(@Param("followerId") Long followerId, @Param("ids") Collection<Long> ids);
+
+    @Query("SELECT f.followed.id FROM Follow f WHERE f.follower.id = :followerId")
+    List<Long> findFollowedIdsByFollowerId(@Param("followerId") Long followerId);
+
+    @Query("SELECT f.follower.id FROM Follow f WHERE f.followed.id = :followedId")
+    List<Long> findFollowerIdsByFollowedId(@Param("followedId") Long followedId);
 
     @Query(
             value = """

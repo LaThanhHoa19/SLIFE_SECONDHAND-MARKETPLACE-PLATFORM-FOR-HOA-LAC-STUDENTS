@@ -134,11 +134,12 @@ public class ListingController {
     public ResponseEntity<ApiResponse<PagedResponse<ListingCardResponse>>> getListings(
             @RequestParam(name = "sellerId", required = false) Long sellerId,
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size) {
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "prioritizeFollowing", defaultValue = "true") boolean prioritizeFollowing) {
 
         User viewer = userService.getCurrentUserOptional().orElse(null);
         PagedResponse<ListingCardResponse> listings =
-                listingService.getActiveListingCards(page, size, viewer, sellerId);
+                listingService.getActiveListingCards(page, size, viewer, sellerId, prioritizeFollowing);
 
         return ResponseEntity.ok(ApiResponse.success("OK", listings));
     }

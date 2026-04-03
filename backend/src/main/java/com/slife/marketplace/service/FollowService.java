@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -106,6 +108,30 @@ public class FollowService {
             return Collections.emptySet();
         }
         return followRepository.findFollowedIdsAmong(followerId, candidateFollowedIds);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Long> findAllFollowedIds(Long followerId) {
+        if (followerId == null) {
+            return Collections.emptySet();
+        }
+        List<Long> ids = followRepository.findFollowedIdsByFollowerId(followerId);
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(ids);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Long> findFollowerIdsOfUser(Long followedId) {
+        if (followedId == null) {
+            return Collections.emptySet();
+        }
+        List<Long> ids = followRepository.findFollowerIdsByFollowedId(followedId);
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(ids);
     }
 
     private void assertNotBlocked(Long followerId, Long followedId) {
