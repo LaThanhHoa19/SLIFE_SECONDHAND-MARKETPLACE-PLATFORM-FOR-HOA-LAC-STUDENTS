@@ -830,6 +830,21 @@ public class ListingService {
     // My Listings Management
     // ----------------------------------------------------------------
 
+    /**
+     * Chuyển tin ACTIVE đã quá hạn ({@code expirationDate} &lt; now) sang HIDDEN.
+     * Hợp với My Listings: tin nằm tab "Hết hạn" (theo ngày), không nằm tab "Đã ẩn" (chỉ ẩn chưa hết hạn).
+     * Gọi bởi {@link com.slife.marketplace.scheduler.ExpireListingsScheduler}.
+     */
+    @Transactional
+    public int hideExpiredActiveListings() {
+        Instant now = Instant.now();
+        int updated = listingRepository.hideExpiredActiveListings(now);
+        if (updated > 0) {
+            log.info("hideExpiredActiveListings: set HIDDEN for {} ACTIVE listing(s) past expiration", updated);
+        }
+        return updated;
+    }
+
     @Transactional(readOnly = true)
     public PagedResponse<MyListingResponse> getMyListings(String status, int page, int size, User currentUser) {
         Pageable pageable = PageRequest.of(

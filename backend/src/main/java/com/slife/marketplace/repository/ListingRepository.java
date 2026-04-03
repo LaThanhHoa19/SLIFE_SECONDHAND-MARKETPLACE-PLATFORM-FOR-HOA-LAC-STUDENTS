@@ -5,11 +5,13 @@ import com.slife.marketplace.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -153,6 +155,15 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             "AND l.deletedAt IS NULL " +
             "ORDER BY l.expirationDate DESC")
     Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
+
+    /**
+     * Job định kỳ: tin {@code ACTIVE} đã quá {@code expirationDate} → {@code HIDDEN} (tránh vẫn hiện trên feed
+     * vì query chợ chỉ lấy ACTIVE). Không đụng MOD_HIDDEN, SOLD, DRAFT; bỏ qua hàng thiếu {@code expirationDate}.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Listing l SET l.status = 'HIDDEN', l.updatedAt = :now WHERE l.status = 'ACTIVE' "
+            + "AND l.expirationDate IS NOT NULL AND l.expirationDate < :now")
+    int hideExpiredActiveListings(@Param("now") Instant now);
 
     /**
      * Tab "Đã ẩn": HIDDEN + MOD_HIDDEN và chưa quá hạn — uỷ quyền cho

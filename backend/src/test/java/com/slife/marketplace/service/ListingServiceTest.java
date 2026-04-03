@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -36,7 +37,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
-
 
 @ExtendWith(MockitoExtension.class)
 class ListingServiceTest {
@@ -88,6 +88,15 @@ class ListingServiceTest {
         );
     }
 
+    @Test
+    @DisplayName("hideExpiredActiveListings runs bulk update with current instant")
+    void hideExpiredActiveListings_delegatesToRepository() {
+        when(listingRepository.hideExpiredActiveListings(any(Instant.class))).thenReturn(2);
+        assertEquals(2, listingService.hideExpiredActiveListings());
+        ArgumentCaptor<Instant> instantCaptor = ArgumentCaptor.forClass(Instant.class);
+        verify(listingRepository).hideExpiredActiveListings(instantCaptor.capture());
+        assertNotNull(instantCaptor.getValue());
+    }
 
     @Test
     void getFilteredListings_shouldReturnPagedListingResponses() {
