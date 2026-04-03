@@ -6,10 +6,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OfferRepository extends JpaRepository<Offer, Long> {
+
+    /**
+     * Khớp giá thỏa thuận với lượt trả giá gần nhất (PENDING hoặc đã ACCEPTED — ví dụ sau accept offer vẫn chốt lại trong chat).
+     */
+    Optional<Offer> findFirstByListing_IdAndBuyer_IdAndAmountAndStatusInOrderByCreatedAtDesc(
+            Long listingId, Long buyerId, BigDecimal amount, List<String> statuses);
 
     Page<Offer> findByListing_IdOrderByCreatedAtDesc(Long listingId, Pageable pageable);
 

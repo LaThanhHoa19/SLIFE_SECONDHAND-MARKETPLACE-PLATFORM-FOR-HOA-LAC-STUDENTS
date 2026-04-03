@@ -6,6 +6,7 @@ import com.slife.marketplace.dto.request.OfferResponseRequest;
 import com.slife.marketplace.dto.request.SendMessageRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ChatMessageResponse;
+import com.slife.marketplace.dto.response.ChatSessionPageResponse;
 import com.slife.marketplace.dto.response.ChatSessionResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.UserRepository;
@@ -21,12 +22,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +37,8 @@ import java.util.Map;
 /**
  * REST API + WebSocket handlers for the chat system (FE-05).
  * * REST endpoints:
- * GET  /api/v1/chats                          – list sessions
+ * GET  /api/v1/chats                          – list sessions (q: tiêu đề tin + tên; page trong data)
+ * GET  /api/v1/chats/{sessionId}/messages/search?q= – search text in session
  * POST /api/v1/chats/session                  – get-or-create session
  * POST /api/v1/chats/send                     – send message (REST fallback)
  * GET  /api/v1/chats/{sessionId}/history      – paginated history
@@ -66,12 +70,22 @@ public class ChatController {
     // ── SESSION MANAGEMENT ────────────────────────────────────────────────────
 
     @GetMapping("/chats")
-    public ResponseEntity<ApiResponse<List<ChatSessionResponse>>> listChats(
-            @RequestParam(defaultValue = "ALL") String filter) {
+    public ResponseEntity<ApiResponse<ChatSessionPageResponse>> listChats(
+            @RequestParam(defaultValue = "ALL") String filter,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long listingId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant updatedAfter,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant updatedBefore,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         User user = userService.getCurrentUser();
-        List<ChatSessionResponse> list = chatService.listSessions(user, filter);
-        log.info("GET /chats userId={} filter={} count={}", user.getId(), filter, list.size());
-        return ResponseEntity.ok(ApiResponse.success(list.isEmpty() ? Constants.MSG01 : "OK", list));
+        int p = page != null ? page : 0;
+        int s = size != null ? size : 2000;
+        ChatSessionPageResponse data = chatService.listSessionsFiltered(
+                user, filter, q, listingId, updatedAfter, updatedBefore, p, s);
+        log.info("GET /chats userId={} filter={} totalElements={}", user.getId(), filter, data.getTotalElements());
+        boolean empty = data.getContent() == null || data.getContent().isEmpty();
+        return ResponseEntity.ok(ApiResponse.success(empty ? Constants.MSG01 : "OK", data));
     }
 
     @PostMapping("/chats/session")
@@ -106,6 +120,17 @@ public class ChatController {
             @RequestParam(defaultValue = "15") int size) {
         int safeSize = Math.min(20, Math.max(10, size));
         Page<ChatMessageResponse> data = chatService.getHistory(sessionId, page, safeSize);
+        return ResponseEntity.ok(ApiResponse.success("OK", data));
+    }
+
+    /** Tìm tin nhắn theo nội dung trong phiên (q tối thiểu 2 ký tự). */
+    @GetMapping("/chats/{sessionId}/messages/search")
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> searchSessionMessages(
+            @PathVariable String sessionId,
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+        Page<ChatMessageResponse> data = chatService.searchMessagesInSession(sessionId, q, page, size);
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 

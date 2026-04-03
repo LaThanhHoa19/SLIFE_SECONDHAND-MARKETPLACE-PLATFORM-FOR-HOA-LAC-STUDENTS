@@ -5,26 +5,37 @@ import {
     CircularProgress,
     Divider,
     IconButton,
+    InputAdornment,
     List,
     ListItemButton,
     ListItemText,
     Paper,
+    TextField,
     Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import SearchIcon from '@mui/icons-material/Search';
+import { SearchHighlight } from '../chatSearchHighlight';
 
 export default function ChatSidebar({
-                                        theme,
-                                        listDisplay,
-                                        sessionsLoading,
-                                        sessions,
-                                        activeSessionId,
-                                        setActiveSessionId,
-                                        navigate,
-                                        formatSessionTimeShort,
-                                    }) {
+    theme,
+    listDisplay,
+    sessionsLoading,
+    sessions,
+    sessionsTotalElements = 0,
+    sidebarSearch = '',
+    onSidebarSearchChange,
+    /** Chuỗi đã debounce — tô vàng trên dòng tiêu đề (tin / tên), khớp lọc API */
+    highlightSearchQuery = '',
+    activeSessionId,
+    setActiveSessionId,
+    navigate,
+    formatSessionTimeShort,
+}) {
+    const hasSearch = Boolean(String(sidebarSearch || '').trim());
+
     return (
         <Paper
             elevation={0}
@@ -63,9 +74,31 @@ export default function ChatSidebar({
                     Tin nhắn
                 </Typography>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 1, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.75, display: 'block' }}>
                 Trao đổi nhanh — gửi ảnh, trả giá, hẹn xem hàng.
             </Typography>
+            <Box sx={{ px: 1.5, pb: 1 }}>
+                <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Tìm theo tiêu đề tin hoặc tên…"
+                    value={sidebarSearch}
+                    onChange={(e) => onSidebarSearchChange?.(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon fontSize="small" color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            bgcolor: alpha(theme.palette.action.hover, 0.06),
+                        },
+                    }}
+                />
+            </Box>
             <Divider />
             {sessionsLoading ? (
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
@@ -97,9 +130,19 @@ export default function ChatSidebar({
                         },
                     }}
                 >
-                    {sessions.length === 0 && (
+                    {!hasSearch && sessions.length === 0 && (
                         <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 2 }}>
                             Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
+                        </Typography>
+                    )}
+                    {hasSearch && sessions.length === 0 && (
+                        <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 2 }}>
+                            Không có hội thoại khớp. Thử tìm theo tiêu đề tin hoặc tên người trong chat.
+                        </Typography>
+                    )}
+                    {sessions.length > 0 && hasSearch && sessionsTotalElements > sessions.length && (
+                        <Typography variant="caption" color="text.disabled" sx={{ px: 2, py: 0.5, display: 'block' }}>
+                            Hiển thị {sessions.length}/{sessionsTotalElements} — thu hẹp từ khóa để lọc chính xác hơn.
                         </Typography>
                     )}
                     {sessions.map((s) => {
@@ -111,12 +154,14 @@ export default function ChatSidebar({
                             : (otherName || 'Chat');
                         const avatarInitialSource = hasListing ? listingTitle : (otherName || 'C');
                         const avatarInitial = avatarInitialSource[0]?.toUpperCase();
+                        const rowKey = s.sessionId || `row-${s.listingId}-${otherName}`;
 
                         return (
                         <ListItemButton
-                            key={s.sessionId}
+                            key={rowKey}
                             selected={s.sessionId === activeSessionId}
-                            onClick={() => setActiveSessionId(s.sessionId)}
+                            onClick={() => s.sessionId && setActiveSessionId(s.sessionId)}
+                            disabled={!s.sessionId}
                             sx={{
                                 py: 1.1,
                                 alignItems: 'flex-start',
@@ -150,13 +195,22 @@ export default function ChatSidebar({
                                 {avatarInitial}
                             </Avatar>
                             <ListItemText
-                                primary={title}
+                                primary={
+                                    <SearchHighlight
+                                        text={title}
+                                        query={highlightSearchQuery}
+                                        component="div"
+                                        sx={{
+                                            fontWeight: s.unreadCount > 0 ? 700 : 600,
+                                            fontSize: '0.9rem',
+                                            lineHeight: 1.35,
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                        }}
+                                    />
+                                }
                                 secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
-                                primaryTypographyProps={{
-                                    noWrap: true,
-                                    fontWeight: s.unreadCount > 0 ? 700 : 600,
-                                    fontSize: '0.9rem',
-                                }}
                                 secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
                                 sx={{ mr: 0.5, minWidth: 0 }}
                             />
@@ -173,4 +227,3 @@ export default function ChatSidebar({
         </Paper>
     );
 }
-

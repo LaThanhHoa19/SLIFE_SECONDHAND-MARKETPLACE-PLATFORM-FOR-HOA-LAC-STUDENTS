@@ -44,6 +44,12 @@ public class Deal {
     @JoinColumn(name = "offer_id")
     private Offer offer;
 
+    /** Điểm giao / địa chỉ liên quan deal (thường trùng {@code listings.pickup_address_id}). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @OnDelete(action = OnDeleteAction.SET_NULL)
+    @JoinColumn(name = "address_id")
+    private Address address;
+
     @NotNull
     @Column(name = "deal_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal dealPrice;

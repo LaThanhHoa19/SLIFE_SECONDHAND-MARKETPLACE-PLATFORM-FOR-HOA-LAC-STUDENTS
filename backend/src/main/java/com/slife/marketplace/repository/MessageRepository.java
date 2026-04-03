@@ -14,6 +14,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     Page<Message> findByConversation_IdOrderBySentAtDesc(Long conversationId, Pageable pageable);
 
+    /** Tìm tin theo nội dung trong phiên (bỏ deleted_at). */
+    Page<Message> findByConversation_IdAndDeletedAtIsNullAndContentContainingIgnoreCaseOrderBySentAtDesc(
+            Long conversationId, String q, Pageable pageable);
+
     java.util.Optional<Message> findByIdAndConversation_IdAndDeletedAtIsNull(Long id, Long conversationId);
 
     void deleteByConversation_Id(Long conversationId);

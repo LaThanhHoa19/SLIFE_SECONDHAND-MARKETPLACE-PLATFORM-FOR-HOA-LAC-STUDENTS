@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.ChatMessageResponse;
+import com.slife.marketplace.dto.response.ChatSessionPageResponse;
 import com.slife.marketplace.dto.response.ChatSessionResponse;
 import com.slife.marketplace.dto.response.MessageReferenceResponse;
 import com.slife.marketplace.entity.*;
@@ -23,11 +24,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.*;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -117,8 +120,74 @@ public class ChatService {
 
     // ── Session list ──────────────────────────────────────────────────────────
 
+    /**
+     * Danh sách hội thoại (tương thích cũ): không phân trang, tối đa {@value #MAX_SESSIONS_UNPAGED}.
+     */
     @Transactional(readOnly = true)
     public List<ChatSessionResponse> listSessions(User user, String statusFilter) {
+        ChatSessionPageResponse page = listSessionsFiltered(
+                user, statusFilter, null, null, null, null, 0, MAX_SESSIONS_UNPAGED);
+        return page.getContent() != null ? page.getContent() : List.of();
+    }
+
+    private static final int MAX_SESSIONS_UNPAGED = 2000;
+    /** Giới hạn một request (FE mặc định 2000; có thể truyền page/size nhỏ hơn khi lọc). */
+    private static final int MAX_SESSION_PAGE_SIZE = 2000;
+
+    /**
+     * Tìm / lọc danh sách hội thoại: {@code q} khớp (bỏ dấu) tiêu đề tin, tên đối phương, mã listing (chuỗi).
+     * Tìm trong nội dung tin nhắn thực hiện trong phiên qua {@link #searchMessagesInSession}.
+     */
+    @Transactional(readOnly = true)
+    public ChatSessionPageResponse listSessionsFiltered(User user, String statusFilter,
+                                                        String q, Long listingId,
+                                                        Instant updatedAfter, Instant updatedBefore,
+                                                        int page, int size) {
+        List<Conversation> convs = loadAccessibleConversations(user, statusFilter);
+        List<ChatSessionResponse> rows = convs.stream()
+                .map(c -> toSessionResponse(c, user))
+                .collect(Collectors.toList());
+
+        String trimmed = q != null ? q.trim() : "";
+        final String qFolded = trimmed.isEmpty() ? "" : foldSearchText(trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed);
+
+        List<ChatSessionResponse> filtered = new ArrayList<>();
+        for (int i = 0; i < convs.size(); i++) {
+            ChatSessionResponse s = rows.get(i);
+            if (listingId != null && !Objects.equals(s.getListingId(), listingId)) {
+                continue;
+            }
+            if (!matchesSessionTimeWindow(s, updatedAfter, updatedBefore)) {
+                continue;
+            }
+            if (qFolded.isEmpty()) {
+                filtered.add(s);
+                continue;
+            }
+            if (matchesSessionMetaFolded(s, qFolded)) {
+                filtered.add(s);
+            }
+        }
+
+        long total = filtered.size();
+        int safeSize = Math.min(MAX_SESSION_PAGE_SIZE, Math.max(1, size));
+        int safePage = Math.max(0, page);
+        int from = (int) Math.min((long) safePage * safeSize, total);
+        int to = (int) Math.min(from + safeSize, total);
+        List<ChatSessionResponse> pageContent = from < to ? filtered.subList(from, to) : List.of();
+        int totalPages = safeSize == 0 ? 0 : (int) ((total + safeSize - 1) / safeSize);
+
+        log.info("listSessionsFiltered userId={} totalFiltered={} page={} size={}", user.getId(), total, safePage, safeSize);
+        return ChatSessionPageResponse.builder()
+                .content(pageContent)
+                .totalElements(total)
+                .totalPages(totalPages)
+                .number(safePage)
+                .size(safeSize)
+                .build();
+    }
+
+    private List<Conversation> loadAccessibleConversations(User user, String statusFilter) {
         Long userId = user.getId();
         String email = user.getEmail() != null ? user.getEmail().trim().toLowerCase() : null;
         List<Conversation> byId = statusFilter == null || statusFilter.isBlank() || "ALL".equalsIgnoreCase(statusFilter)
@@ -138,8 +207,8 @@ public class ChatService {
             }
             list.sort((a, b) -> {
                 Instant la = a.getLastMessageAt() != null ? a.getLastMessageAt() : a.getCreatedAt();
-                Instant ra = b.getLastMessageAt() != null ? b.getLastMessageAt() : b.getCreatedAt();
-                return ra.compareTo(la);
+                Instant lb = b.getLastMessageAt() != null ? b.getLastMessageAt() : b.getCreatedAt();
+                return lb.compareTo(la);
             });
         }
         int bySellerEmailCount = 0;
@@ -148,7 +217,9 @@ public class ChatService {
             bySellerEmailCount = bySellerEmail.size();
             Set<Long> ids = list.stream().map(Conversation::getId).collect(Collectors.toSet());
             for (Conversation c : bySellerEmail) {
-                if (!ids.contains(c.getId())) list.add(c);
+                if (!ids.contains(c.getId())) {
+                    list.add(c);
+                }
             }
         }
         {
@@ -162,27 +233,68 @@ public class ChatService {
                     extra++;
                 }
             }
-            if (extra > 0) log.info("listSessions userId={} byListingSellerId extra={}", userId, extra);
+            if (extra > 0) {
+                log.info("loadAccessibleConversations userId={} byListingSellerId extra={}", userId, extra);
+            }
         }
-        log.info("listSessions userId={} email={} byId={} byEmail={} bySellerEmail={} total={}",
+        log.info("loadAccessibleConversations userId={} email={} byId={} byEmail={} bySellerEmail={} total={}",
                 userId, email, byId.size(), byEmailCount, bySellerEmailCount, list.size());
         String currentEmail = email;
-        List<ChatSessionResponse> result = list.stream()
+        return list.stream()
                 .filter(c -> {
                     User u1 = c.getUserId1();
                     User u2 = c.getUserId2();
                     String e1 = u1 != null && u1.getEmail() != null ? u1.getEmail().trim().toLowerCase() : "";
                     String e2 = u2 != null && u2.getEmail() != null ? u2.getEmail().trim().toLowerCase() : "";
-                    if (!e1.isEmpty() && e1.equals(e2)) return false;
+                    if (!e1.isEmpty() && e1.equals(e2)) {
+                        return false;
+                    }
                     User other = isCurrentParticipant(u1, user) ? u2 : u1;
-                    if (other == null || currentEmail == null) return true;
+                    if (other == null || currentEmail == null) {
+                        return true;
+                    }
                     String oe = other.getEmail() != null ? other.getEmail().trim().toLowerCase() : "";
                     return oe.isEmpty() || !oe.equals(currentEmail);
                 })
-                .map(c -> toSessionResponse(c, user))
                 .collect(Collectors.toList());
-        log.info("listSessions userId={} after filter count={}", userId, result.size());
-        return result;
+    }
+
+    private static boolean matchesSessionTimeWindow(ChatSessionResponse s, Instant after, Instant before) {
+        Instant t = s.getLastMessageAt() != null ? s.getLastMessageAt() : Instant.EPOCH;
+        if (after != null && t.isBefore(after)) {
+            return false;
+        }
+        if (before != null && t.isAfter(before)) {
+            return false;
+        }
+        return true;
+    }
+
+    /** Chuẩn hóa chuỗi tìm kiếm: thường + bỏ dấu kết hợp (tiếng Việt). */
+    private static String foldSearchText(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+        String lower = input.toLowerCase(Locale.ROOT);
+        return Normalizer.normalize(lower, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+    }
+
+    private static boolean matchesSessionMetaFolded(ChatSessionResponse s, String qFolded) {
+        if (qFolded.isEmpty()) {
+            return true;
+        }
+        String title = foldSearchText(s.getListingTitle());
+        String name = foldSearchText(s.getOtherParticipantName());
+        if (title.contains(qFolded) || name.contains(qFolded)) {
+            return true;
+        }
+        if (s.getListingId() != null) {
+            String idStr = String.valueOf(s.getListingId());
+            if (foldSearchText(idStr).contains(qFolded)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ── Message history ───────────────────────────────────────────────────────
@@ -195,6 +307,38 @@ public class ChatService {
         ensureParticipant(conv, current);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sentAt"));
         Page<Message> msgPage = messageRepository.findByConversation_IdOrderBySentAtDesc(conv.getId(), pageable);
+        Map<Long, Offer> offerByMessageId = mapOfferProposalsToOffers(msgPage.getContent(), conv);
+        Map<Long, Message> refs = mapReferencedMessages(msgPage.getContent());
+        List<ChatMessageResponse> rows = msgPage.getContent().stream()
+                .map(m -> toMessageResponse(m, conv.getSessionUuid(), current, offerByMessageId.get(m.getId()), refs))
+                .toList();
+        return new PageImpl<>(rows, pageable, msgPage.getTotalElements());
+    }
+
+    /**
+     * Tìm tin nhắn theo nội dung trong một phiên (LIKE, không full-text).
+     */
+    @Transactional(readOnly = true)
+    public Page<ChatMessageResponse> searchMessagesInSession(String sessionId, String q, int page, int size) {
+        if (q == null || q.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Tham số q là bắt buộc");
+        }
+        String trimmed = q.trim();
+        if (trimmed.length() < 2) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "q phải có ít nhất 2 ký tự");
+        }
+        if (trimmed.length() > 200) {
+            trimmed = trimmed.substring(0, 200);
+        }
+        Conversation conv = conversationRepository.findBySessionUuid(sessionId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
+        User current = userService.getCurrentUser();
+        ensureParticipant(conv, current);
+        int safeSize = Math.min(30, Math.max(5, size));
+        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "sentAt"));
+        Page<Message> msgPage = messageRepository
+                .findByConversation_IdAndDeletedAtIsNullAndContentContainingIgnoreCaseOrderBySentAtDesc(
+                        conv.getId(), trimmed, pageable);
         Map<Long, Offer> offerByMessageId = mapOfferProposalsToOffers(msgPage.getContent(), conv);
         Map<Long, Message> refs = mapReferencedMessages(msgPage.getContent());
         List<ChatMessageResponse> rows = msgPage.getContent().stream()

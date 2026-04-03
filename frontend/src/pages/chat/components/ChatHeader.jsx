@@ -1,6 +1,7 @@
-import { Avatar, Box, Chip, IconButton, Typography } from '@mui/material';
+import { Avatar, Box, Chip, IconButton, Tooltip, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SearchIcon from '@mui/icons-material/Search';
 
 export default function ChatHeader({
                                        theme,
@@ -9,6 +10,8 @@ export default function ChatHeader({
                                        activeSession,
                                        isSellerInActiveChat,
                                        wsConnected,
+                                       onOpenInChatSearch,
+                                       showInChatSearch,
                                    }) {
     const listingTitle = activeSession?.listingTitle || '';
     const otherName = activeSession?.otherParticipantName || '';
@@ -58,6 +61,17 @@ export default function ChatHeader({
                         : 'Nhắn trực tiếp với người bán — an toàn hơn khi giao dịch trong app'}
                 </Typography>
             </Box>
+            {showInChatSearch && (
+                <Tooltip title="Tìm trong cuộc trò chuyện">
+                    <IconButton
+                        size="small"
+                        aria-label="Tìm trong cuộc trò chuyện"
+                        onClick={() => onOpenInChatSearch?.()}
+                    >
+                        <SearchIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            )}
             {wsConnected && (
                 <Chip
                     size="small"
