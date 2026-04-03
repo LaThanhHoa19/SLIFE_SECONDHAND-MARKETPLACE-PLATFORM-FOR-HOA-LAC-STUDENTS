@@ -134,64 +134,39 @@ const CONFIG_LABELS = {
 
 const SUPPORTED_CONFIG_KEYS = new Set(Object.keys(CONFIG_LABELS));
 
-/** Khóa backend yêu cầu giá trị số nguyên (khớp ConfigService.NUMERIC_CONFIG_KEYS). */
-const BACKEND_NUMERIC_KEYS = new Set([
-    'MAX_IMAGES',
-    'LISTING_EXPIRATION',
-    'MAX_IMAGES_PER_POST',
-    'DEAL_TIMEOUT_DAYS',
-    'REPORT_THRESHOLD',
-    'AUTO_HIDE_REPORT_THRESHOLD',
-]);
+function isIntegerValidation(meta) {
+    return String(meta?.type ?? '').toLowerCase() === 'integer';
+}
 
-/** Số nguyên ≥ 0, trong [min, max]; không cho số âm (kể cả chuỗi "-1"). */
-function validateConfigInt(raw, min, max, rangeHint) {
+/** Validate theo metadata backend để FE/BE luôn đồng bộ. */
+function validateConfigByMeta(meta, raw) {
     const s = String(raw ?? '').trim();
     if (s === '') return { ok: false, message: 'Vui lòng nhập giá trị.' };
+
+    if (!isIntegerValidation(meta)) {
+        return { ok: true, value: s };
+    }
+
     if (/^-/.test(s)) return { ok: false, message: 'Không được nhập số âm.' };
+
     const n = Number.parseInt(s, 10);
     if (Number.isNaN(n)) return { ok: false, message: 'Chỉ nhập số nguyên.' };
-    if (n < 0) return { ok: false, message: 'Không được nhập số âm.' };
-    if (n < min || n > max) return { ok: false, message: rangeHint };
+
+    const min = Number.isFinite(Number(meta?.min)) ? Number(meta.min) : null;
+    const max = Number.isFinite(Number(meta?.max)) ? Number(meta.max) : null;
+
+    if ((min != null && n < min) || (max != null && n > max)) {
+        if (meta?.hint) return { ok: false, message: meta.hint };
+        if (min != null && max != null) return { ok: false, message: `Giá trị hợp lệ: ${min}–${max}.` };
+        if (min != null) return { ok: false, message: `Giá trị phải >= ${min}.` };
+        if (max != null) return { ok: false, message: `Giá trị phải <= ${max}.` };
+    }
+
     return { ok: true, value: String(n) };
 }
 
-const VALIDATORS = {
-    LISTING_EXPIRATION: {
-        validate: (raw) =>
-            validateConfigInt(raw, 1, 365, 'Giá trị hợp lệ: 1–365 ngày.'),
-    },
-    MAX_IMAGES: {
-        validate: (raw) => validateConfigInt(raw, 1, 30, 'Giá trị hợp lệ: 1–30 ảnh.'),
-    },
-    MAX_IMAGES_PER_POST: {
-        validate: (raw) => validateConfigInt(raw, 1, 30, 'Giá trị hợp lệ: 1–30 ảnh.'),
-    },
-    REPORT_THRESHOLD: {
-        validate: (raw) => validateConfigInt(raw, 1, 100, 'Giá trị hợp lệ: 1–100.'),
-    },
-    DEAL_TIMEOUT_DAYS: {
-        validate: (raw) =>
-            validateConfigInt(raw, 1, 365, 'Giá trị hợp lệ: 1–365 ngày (theo DEAL_TIMEOUT_DAYS).'),
-    },
-    AUTO_HIDE_REPORT_THRESHOLD: {
-        validate: (raw) => validateConfigInt(raw, 1, 100, 'Giá trị hợp lệ: 1–100.'),
-    },
-};
-
-function validateConfigValue(key, raw) {
-    const specific = VALIDATORS[key];
-    if (specific) return specific.validate(raw);
-    if (BACKEND_NUMERIC_KEYS.has(key)) {
-        const s = String(raw ?? '').trim();
-        if (s === '') return { ok: false, message: 'Vui lòng nhập giá trị.' };
-        const n = Number.parseInt(s, 10);
-        if (Number.isNaN(n)) return { ok: false, message: 'Chỉ nhập số nguyên.' };
-        return { ok: true, value: String(n) };
-    }
-    const s = String(raw ?? '').trim();
-    if (!s) return { ok: false, message: 'Không được để trống.' };
-    return { ok: true, value: s };
+function sanitizeUnsignedIntegerInput(raw) {
+    return String(raw ?? '').replace(/\D+/g, '');
 }
 
 function formatDateTime(iso) {
@@ -215,6 +190,53 @@ function extractApiErrorMessage(error, fallback) {
     );
 }
 
+function mapApiValidationErrors(error, editingKey) {
+    const payload = error?.raw?.response?.data;
+    const details = payload?.errors;
+    const topMessage = String(payload?.message || payload?.error || error?.message || '').trim();
+    const keyLower = String(editingKey ?? '').toLowerCase();
+
+    let valueError = '';
+    let descriptionError = '';
+
+    if (details && typeof details === 'object') {
+        for (const [field, rawMsg] of Object.entries(details)) {
+            const fieldName = String(field || '').toLowerCase();
+            const msg = String(rawMsg ?? '').trim();
+            if (!msg) continue;
+
+            if (fieldName.includes('description')) {
+                descriptionError = descriptionError || msg;
+                continue;
+            }
+
+            if (
+                fieldName.includes('value') ||
+                fieldName.includes('configvalue') ||
+                fieldName.includes('config_value') ||
+                fieldName === keyLower
+            ) {
+                valueError = valueError || msg;
+            }
+        }
+    }
+
+    const fullText = [topMessage, JSON.stringify(details || {})].join(' ').toLowerCase();
+    if (!descriptionError && (fullText.includes('description') || fullText.includes('mô tả'))) {
+        descriptionError = topMessage || 'Mô tả không hợp lệ.';
+    }
+    if (
+        !valueError &&
+        (fullText.includes('value') ||
+            fullText.includes('giá trị') ||
+            (keyLower && fullText.includes(keyLower)))
+    ) {
+        valueError = topMessage || 'Giá trị không hợp lệ.';
+    }
+
+    return { valueError, descriptionError, topMessage };
+}
+
 function mapDtoToRow(dto, index) {
     const key = dto.configKey ?? dto.config_key ?? `row-${index}`;
     const rawId = dto.id;
@@ -226,6 +248,7 @@ function mapDtoToRow(dto, index) {
         config_value: dto.configValue ?? dto.config_value ?? '',
         description: dto.description ?? '',
         updated_at: dto.lastUpdated ?? dto.last_updated ?? null,
+        validation: dto.validation ?? null,
         updated_by: null,
     };
 }
@@ -276,6 +299,7 @@ export default function ConfigurationManagementPage() {
     const [draftValue, setDraftValue] = useState('');
     const [draftDescription, setDraftDescription] = useState('');
     const [fieldError, setFieldError] = useState('');
+    const [descriptionError, setDescriptionError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     /** `default` = theo ID tăng dần (như DB); `desc` / `asc` = theo cập nhật lúc */
@@ -308,6 +332,7 @@ export default function ConfigurationManagementPage() {
         setDraftValue(row.config_value ?? '');
         setDraftDescription(row.description ?? '');
         setFieldError('');
+        setDescriptionError('');
         setEditOpen(true);
     }, []);
 
@@ -317,19 +342,29 @@ export default function ConfigurationManagementPage() {
         setDraftValue('');
         setDraftDescription('');
         setFieldError('');
+        setDescriptionError('');
     }, []);
 
     const handleSave = useCallback(async () => {
         if (!editing) return;
         const key = editing.config_name;
-        const result = validateConfigValue(key, draftValue);
+        const result = validateConfigByMeta(editing.validation, draftValue);
         if (!result.ok) {
             setFieldError(result.message);
             return;
         }
+
+        const trimmedDescription = draftDescription.trim();
+        if (trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
+            setDescriptionError(`Mô tả tối đa ${DESCRIPTION_MAX_LENGTH} ký tự.`);
+            return;
+        }
+
         try {
             setIsSaving(true);
-            const trimmedDescription = draftDescription.trim();
+            setFieldError('');
+            setDescriptionError('');
+
             if (editing.id != null) {
                 await updateAdminConfigurationById(editing.id, {
                     value: result.value,
@@ -345,6 +380,15 @@ export default function ConfigurationManagementPage() {
             closeEdit();
             await loadConfigs();
         } catch (error) {
+            const mapped = mapApiValidationErrors(error, key);
+            if (mapped.valueError || mapped.descriptionError) {
+                if (mapped.valueError) setFieldError(mapped.valueError);
+                if (mapped.descriptionError) setDescriptionError(mapped.descriptionError);
+                if (!mapped.valueError && !mapped.descriptionError && mapped.topMessage) {
+                    showToast(mapped.topMessage, 'error');
+                }
+                return;
+            }
             showToast(extractApiErrorMessage(error, 'Không lưu được cấu hình.'), 'error');
         } finally {
             setIsSaving(false);
@@ -353,8 +397,26 @@ export default function ConfigurationManagementPage() {
 
     const editingMeta = useMemo(() => {
         if (!editing) return null;
-        return VALIDATORS[editing.config_name];
+        return editing.validation ?? null;
     }, [editing]);
+
+    const hasDraftChanges = useMemo(() => {
+        if (!editing) return false;
+
+        const currentDescription = String(editing.description ?? '').trim();
+        const nextDescription = String(draftDescription ?? '').trim();
+        const descriptionChanged = currentDescription !== nextDescription;
+
+        if (isIntegerValidation(editing.validation)) {
+            const currentValue = String(editing.config_value ?? '').trim();
+            const nextValue = sanitizeUnsignedIntegerInput(draftValue).trim();
+            return descriptionChanged || currentValue !== nextValue;
+        }
+
+        const currentValue = String(editing.config_value ?? '').trim();
+        const nextValue = String(draftValue ?? '').trim();
+        return descriptionChanged || currentValue !== nextValue;
+    }, [editing, draftValue, draftDescription]);
 
     const sortedFilteredRows = useMemo(() => {
         const filtered = rows.filter((r) => configMatchesSearch(r, searchQuery));
@@ -482,103 +544,103 @@ export default function ConfigurationManagementPage() {
                 </Box>
             ) : (
                 <>
-                <TableContainer sx={tableContainerSx}>
-                    <Table size="medium" sx={tableSx}>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell width={72}>ID</TableCell>
-                                <TableCell>Tên hiển thị</TableCell>
-                                <TableCell align="right">Giá trị</TableCell>
-                                <TableCell>Mô tả</TableCell>
-                                <TableCell>Cập nhật lúc</TableCell>
-                                <TableCell align="center" width={100}>
-                                    Thao tác
-                                </TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {rows.length === 0 ? (
+                    <TableContainer sx={tableContainerSx}>
+                        <Table size="medium" sx={tableSx}>
+                            <TableHead>
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
-                                        Chưa có bản ghi cấu hình hỗ trợ trên server.
+                                    <TableCell width={72}>ID</TableCell>
+                                    <TableCell>Tên hiển thị</TableCell>
+                                    <TableCell align="right">Giá trị</TableCell>
+                                    <TableCell>Mô tả</TableCell>
+                                    <TableCell>Cập nhật lúc</TableCell>
+                                    <TableCell align="center" width={100}>
+                                        Thao tác
                                     </TableCell>
                                 </TableRow>
-                            ) : sortedFilteredRows.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
-                                        Không có dòng nào khớp tìm kiếm.
-                                    </TableCell>
-                                </TableRow>
-                            ) : null}
-                            {pagedRows.map((row) => (
-                                <TableRow key={row.id != null ? `cfg-${row.id}` : row.config_id}>
-                                    <TableCell
-                                        sx={{
-                                            color: 'rgba(255,255,255,0.55)',
-                                            fontVariantNumeric: 'tabular-nums',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
-                                        {row.id != null ? row.id : '—'}
-                                    </TableCell>
-                                    <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
-                                        {CONFIG_LABELS[row.config_name] ?? row.config_name}
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>
-                                        {row.config_value}
-                                    </TableCell>
-                                    <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
-                                        {row.description || '—'}
-                                    </TableCell>
-                                    <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
-                                        {formatDateTime(row.updated_at)}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Tooltip title={isSupportedKey(row) ? 'Chỉnh sửa giá trị' : 'Khóa này chưa được backend hỗ trợ thao tác'}>
-                                            <IconButton
-                                                size="small"
-                                                disabled={!isSupportedKey(row)}
-                                                onClick={() => openEdit(row)}
-                                                sx={{ color: '#a78bfa' }}
-                                                aria-label="Sửa cấu hình"
-                                            >
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <Box
-                    sx={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                        mt: 2,
-                        py: 1,
-                    }}
-                >
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
-                        {totalCount === 0
-                            ? '0 kết quả'
-                            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} / ${totalCount}`}
-                    </Typography>
-                    <Pagination
-                        count={totalPages}
-                        page={page + 1}
-                        onChange={(_, value) => setPage(value - 1)}
-                        disabled={isLoading || totalCount === 0}
-                        color="primary"
-                        size="small"
+                            </TableHead>
+                            <TableBody>
+                                {rows.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
+                                            Chưa có bản ghi cấu hình hỗ trợ trên server.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : sortedFilteredRows.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
+                                            Không có dòng nào khớp tìm kiếm.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : null}
+                                {pagedRows.map((row) => (
+                                    <TableRow key={row.id != null ? `cfg-${row.id}` : row.config_id}>
+                                        <TableCell
+                                            sx={{
+                                                color: 'rgba(255,255,255,0.55)',
+                                                fontVariantNumeric: 'tabular-nums',
+                                                whiteSpace: 'nowrap',
+                                            }}
+                                        >
+                                            {row.id != null ? row.id : '—'}
+                                        </TableCell>
+                                        <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
+                                            {CONFIG_LABELS[row.config_name] ?? row.config_name}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                                            {row.config_value}
+                                        </TableCell>
+                                        <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
+                                            {row.description || '—'}
+                                        </TableCell>
+                                        <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
+                                            {formatDateTime(row.updated_at)}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Tooltip title={isSupportedKey(row) ? 'Chỉnh sửa giá trị' : 'Khóa này chưa được backend hỗ trợ thao tác'}>
+                                                <IconButton
+                                                    size="small"
+                                                    disabled={!isSupportedKey(row)}
+                                                    onClick={() => openEdit(row)}
+                                                    sx={{ color: '#a78bfa' }}
+                                                    aria-label="Sửa cấu hình"
+                                                >
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    <Box
                         sx={{
-                            '& .MuiPaginationItem-root': { color: 'rgba(255,255,255,0.88)' },
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 2,
+                            mt: 2,
+                            py: 1,
                         }}
-                    />
-                </Box>
+                    >
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+                            {totalCount === 0
+                                ? '0 kết quả'
+                                : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} / ${totalCount}`}
+                        </Typography>
+                        <Pagination
+                            count={totalPages}
+                            page={page + 1}
+                            onChange={(_, value) => setPage(value - 1)}
+                            disabled={isLoading || totalCount === 0}
+                            color="primary"
+                            size="small"
+                            sx={{
+                                '& .MuiPaginationItem-root': { color: 'rgba(255,255,255,0.88)' },
+                            }}
+                        />
+                    </Box>
                 </>
             )}
 
@@ -607,7 +669,11 @@ export default function ConfigurationManagementPage() {
                                 label="Giá trị mới"
                                 value={draftValue}
                                 onChange={(e) => {
-                                    setDraftValue(e.target.value);
+                                    const raw = e.target.value;
+                                    const nextValue = isIntegerValidation(editing.validation)
+                                        ? sanitizeUnsignedIntegerInput(raw)
+                                        : raw;
+                                    setDraftValue(nextValue);
                                     if (fieldError) setFieldError('');
                                 }}
                                 error={Boolean(fieldError)}
@@ -615,40 +681,54 @@ export default function ConfigurationManagementPage() {
                                 fullWidth
                                 autoFocus
                                 disabled={isSaving}
-                                inputProps={{
-                                    inputMode: 'numeric',
-                                    onKeyDown: (e) => {
-                                        if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
-                                            e.preventDefault();
+                                inputProps={
+                                    isIntegerValidation(editing.validation)
+                                        ? {
+                                            inputMode: 'numeric',
+                                            onKeyDown: (e) => {
+                                                if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                                                    e.preventDefault();
+                                                }
+                                            },
                                         }
-                                    },
-                                }}
+                                        : undefined
+                                }
                                 sx={{ ...DARK_DIALOG_TEXTFIELD_SX }}
                             />
                             <TextField
                                 label="Mô tả"
                                 value={draftDescription}
-                                onChange={(e) => setDraftDescription(e.target.value)}
+                                onChange={(e) => {
+                                    setDraftDescription(e.target.value);
+                                    if (descriptionError) setDescriptionError('');
+                                }}
+                                error={Boolean(descriptionError)}
                                 fullWidth
                                 multiline
                                 minRows={2}
                                 disabled={isSaving}
                                 inputProps={{ maxLength: DESCRIPTION_MAX_LENGTH }}
                                 helperText={
-                                    <Box
-                                        component="span"
-                                        sx={{
-                                            display: 'block',
-                                            color: 'rgba(255,255,255,0.55)',
-                                            fontSize: 12,
-                                        }}
-                                    >
-                                        {draftDescription.length}/{DESCRIPTION_MAX_LENGTH} ký tự
-                                    </Box>
+                                    descriptionError ? (
+                                        descriptionError
+                                    ) : (
+                                        <Box
+                                            component="span"
+                                            sx={{
+                                                display: 'block',
+                                                color: 'rgba(255,255,255,0.55)',
+                                                fontSize: 12,
+                                            }}
+                                        >
+                                            {draftDescription.length}/{DESCRIPTION_MAX_LENGTH} ký tự
+                                        </Box>
+                                    )
                                 }
                                 sx={{
                                     ...DARK_DIALOG_TEXTFIELD_SX,
-                                    '& .MuiFormHelperText-root': { color: 'rgba(255,255,255,0.45)' },
+                                    '& .MuiFormHelperText-root': {
+                                        color: descriptionError ? '#fca5a5' : 'rgba(255,255,255,0.45)',
+                                    },
                                 }}
                             />
                         </Stack>
@@ -661,7 +741,7 @@ export default function ConfigurationManagementPage() {
                     <Button
                         variant="contained"
                         onClick={handleSave}
-                        disabled={isSaving}
+                        disabled={isSaving || !hasDraftChanges}
                         sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
                     >
                         {isSaving ? 'Đang lưu…' : 'Lưu'}
