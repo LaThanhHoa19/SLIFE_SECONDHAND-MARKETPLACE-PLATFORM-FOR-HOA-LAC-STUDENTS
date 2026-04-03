@@ -12,10 +12,24 @@ import Pagination from '../../components/common/Pagination';
 import { getSavedListings } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 
+const UNAVAILABLE_STATUSES = new Set(['HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
+
 function normalizeSavedList(payload) {
     const list = Array.isArray(payload?.content) ? payload.content : [];
+    const normalized = list.map((item) => {
+        const status = String(item?.status || item?.itemStatus || '').toUpperCase();
+        const isUnavailable = UNAVAILABLE_STATUSES.has(status);
+        return {
+            ...item,
+            isUnavailable,
+            unavailableMessage: isUnavailable
+                ? 'Tin đã lưu hiện không còn khả dụng.'
+                : undefined,
+        };
+    });
+
     return {
-        data: list,
+        data: normalized,
         totalPages: Number(payload?.totalPages ?? 0),
         totalElements: Number(payload?.totalElements ?? list.length),
     };
@@ -116,6 +130,9 @@ export default function SavedListingsPage() {
                     </Stack>
                     <Typography sx={{ mt: 0.9, color: 'rgba(226,232,240,0.88)', fontSize: 16, lineHeight: 1.55, maxWidth: 620 }}>
                         Quản lý nhanh các bài đăng bạn đã bookmark để xem lại hoặc liên hệ người bán.
+                    </Typography>
+                    <Typography sx={{ mt: 0.75, color: 'rgba(248,113,113,0.9)', fontSize: 13, lineHeight: 1.6, maxWidth: 620 }}>
+                        Tin đã bị ẩn/xóa/không còn khả dụng sẽ được đánh dấu và không thể mở chi tiết.
                     </Typography>
                 </Box>
                 <Stack direction="row" spacing={1}>
