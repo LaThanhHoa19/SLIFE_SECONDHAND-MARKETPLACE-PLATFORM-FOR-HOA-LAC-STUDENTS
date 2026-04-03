@@ -27,5 +27,6 @@ export const unhideListing = (id) =>
 export const deleteDraft = (id) =>
     axiosClient.delete(`/api/listings/${id}/draft`);
 
+/** Response: { data: newListingId } */
 export const repostListing = (id) =>
     axiosClient.patch(`/api/listings/${id}/repost`);
