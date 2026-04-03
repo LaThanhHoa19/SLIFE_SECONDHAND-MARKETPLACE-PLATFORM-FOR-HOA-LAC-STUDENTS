@@ -37,7 +37,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
 import { getListingShareInfo, saveListing, toggleListingLike, unsaveListing } from '../../api/listingApi';
-import * as chatApi from '../../api/chatApi';
 import CommentModal from './CommentModal';
 import ReportDialog from '../report/ReportDialog';
 
@@ -157,7 +156,6 @@ export default function ListingCard({
     const [isSaved, setIsSaved] = useState(() => !!(listing?.isSaved ?? listing?.is_saved));
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
-    const [startingChat, setStartingChat] = useState(false);
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
@@ -323,25 +321,16 @@ export default function ListingCard({
         }
     };
 
-    const handleMessageClick = async (e) => {
+    const handleMessageClick = (e) => {
         e.stopPropagation();
         e.preventDefault();
-        if (!id || startingChat) return;
+        if (!id) return;
         if (!token) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
             navigate('/login', { state: { from: location.pathname } });
             return;
         }
-        setStartingChat(true);
-        try {
-            const res = await chatApi.getSession(id);
-            const sessionId = res?.data?.data ?? res?.data;
-            if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
-        } catch {
-            showToast('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
-        } finally {
-            setStartingChat(false);
-        }
+        navigate(`/chat?listingId=${id}`);
     };
 
     const handleMoreOpen = (e) => {
@@ -750,7 +739,6 @@ export default function ListingCard({
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <IconButton
                                         size="small"
-                                        disabled={startingChat}
                                         onClick={handleMessageClick}
                                         sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#00BA7C', bgcolor: 'rgba(0,186,124,0.1)' } }}
                                     >

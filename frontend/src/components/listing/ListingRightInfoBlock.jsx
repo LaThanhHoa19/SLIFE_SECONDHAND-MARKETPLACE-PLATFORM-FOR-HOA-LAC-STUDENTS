@@ -9,7 +9,7 @@ export default function ListingRightInfoBlock({
                                                   listing,
                                                   locationText,
                                                   phoneNumber,
-                                                  startingChat,
+                                                  startingChat = false,
                                                   handleShowPhone,
                                                   handleChat,
                                                   seller,

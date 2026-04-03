@@ -10,6 +10,16 @@ export default function ChatHeader({
                                        isSellerInActiveChat,
                                        wsConnected,
                                    }) {
+    const listingTitle = activeSession?.listingTitle || '';
+    const otherName = activeSession?.otherParticipantName || '';
+    const hasListing = Boolean(listingTitle);
+    const headerTitle = hasListing
+        ? `${listingTitle} / ${otherName || 'Người dùng'}`
+        : (otherName || 'Chat');
+
+    const avatarInitialSource = hasListing ? listingTitle : (otherName || 'C');
+    const avatarInitial = avatarInitialSource[0]?.toUpperCase();
+
     return (
         <Box
             sx={{
@@ -36,11 +46,11 @@ export default function ChatHeader({
                     fontSize: 18,
                 }}
             >
-                {(activeSession?.otherParticipantName || activeSession?.listingTitle || 'C')[0]?.toUpperCase()}
+                {avatarInitial}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="subtitle1" fontWeight={700} noWrap>
-                    {activeSession?.otherParticipantName || activeSession?.listingTitle || 'Chat'}
+                    {headerTitle}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap display="block">
                     {isSellerInActiveChat

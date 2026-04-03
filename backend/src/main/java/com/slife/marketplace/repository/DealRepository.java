@@ -9,6 +9,9 @@ import java.util.Optional;
 
 @Repository 
 public interface DealRepository extends JpaRepository<Deal, Long> {
+
+    Optional<Deal> findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+            Long listingId, Long proposedById, String status);
     long countByStatusAndDeletedAtIsNull(String status);
 
     Optional<Deal> findByIdAndDeletedAtIsNull(Long id);

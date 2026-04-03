@@ -19,7 +19,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
 import * as userApi from '../../api/userApi';
 import * as followApi from '../../api/followApi';
-import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
 import Loading from '../../components/common/Loading';
 import { fullImageUrl } from '../../utils/constants';
@@ -50,6 +49,42 @@ function formatJoinDate(createdAt) {
   return `Tham gia từ ${String(m).padStart(2, '0')}/${y}`;
 }
 
+/** Gộp payload user từ API — đồng bộ xác thực SĐT chỉ theo phoneVerifiedAt (tránh stale khi BE bỏ field null trong JSON). */
+function applyUserProfilePatch(prev, patch) {
+  if (!patch || typeof patch !== 'object') return prev || {};
+  const prevObj = prev || {};
+  const next = { ...prevObj, ...patch };
+
+  const hasExplicitPhoneInPatch =
+    Object.prototype.hasOwnProperty.call(patch, 'phoneNumber') ||
+    Object.prototype.hasOwnProperty.call(patch, 'phone_number');
+  const patchPhone = patch.phoneNumber ?? patch.phone_number;
+  const prevPhone = prevObj.phoneNumber ?? prevObj.phone_number;
+  const phoneChanged =
+    prev != null &&
+    hasExplicitPhoneInPatch &&
+    String(patchPhone ?? '') !== String(prevPhone ?? '');
+
+  const phoneVerifiedAtInPatch =
+    Object.prototype.hasOwnProperty.call(patch, 'phoneVerifiedAt') ||
+    Object.prototype.hasOwnProperty.call(patch, 'phone_verified_at');
+  const atFromPatch = patch.phoneVerifiedAt ?? patch.phone_verified_at;
+
+  let at = next.phoneVerifiedAt ?? next.phone_verified_at;
+  if (phoneVerifiedAtInPatch) {
+    at = atFromPatch ?? null;
+  } else if (phoneChanged) {
+    at = null;
+  }
+
+  const verified = at != null && at !== '';
+  next.phoneVerified = verified;
+  next.phone_verified = verified;
+  next.phoneVerifiedAt = at ?? null;
+  next.phone_verified_at = at ?? null;
+  return next;
+}
+
 // fullImageUrl imported from utils/constants.
 
 export default function ProfilePage() {
@@ -70,7 +105,6 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [chatLoading, setChatLoading] = useState(false);
   const [followListOpen, setFollowListOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
@@ -86,7 +120,20 @@ export default function ProfilePage() {
   const { showToast } = useToast();
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
+  /** Container DOM cho invisible reCAPTCHA — không dùng display:none (script Google cần node có layout). */
+  const recaptchaContainerRef = useRef(null);
   const recaptchaVerifierRef = useRef(null);
+
+  const clearRecaptchaVerifier = useCallback(() => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (_) {
+        /* noop */
+      }
+      recaptchaVerifierRef.current = null;
+    }
+  }, []);
   const { followLoading, toggleFollow } = useFollowActions({
     user: currentUser,
     updateAuthUser,
@@ -105,7 +152,7 @@ export default function ProfilePage() {
           const res = await userApi.getUser();
           const data = getPayload(res);
           if (data) {
-            setProfileUser(data);
+            setProfileUser(applyUserProfilePatch(null, data));
           }
         } catch (err) {
           console.error("Failed to load current user:", err);
@@ -117,12 +164,13 @@ export default function ProfilePage() {
         }
       } else if (/^\d+$/.test(String(id))) {
         const res = await userApi.getUserById(id);
-        setProfileUser(getPayload(res));
+        const payload = getPayload(res);
+        if (payload) setProfileUser(applyUserProfilePatch(null, payload));
       } else {
         try {
           const res = await userApi.getUserById(id);
           const data = getPayload(res);
-          setProfileUser(data);
+          if (data) setProfileUser(applyUserProfilePatch(null, data));
         } catch(err) {
           setError('Không tải được thông tin người dùng.');
         }
@@ -180,11 +228,8 @@ export default function ProfilePage() {
     }
   }, [profileUser]);
   useEffect(() => () => {
-    if (recaptchaVerifierRef.current) {
-      try { recaptchaVerifierRef.current.clear(); } catch (_) { /* noop */ }
-      recaptchaVerifierRef.current = null;
-    }
-  }, []);
+    clearRecaptchaVerifier();
+  }, [clearRecaptchaVerifier]);
   useEffect(() => {
     if (!otpCooldownUntil) return undefined;
     const timer = window.setInterval(() => {
@@ -215,9 +260,13 @@ export default function ProfilePage() {
     setError(null);
     try {
       const res = await userApi.updateUser(editForm);
-      const updated = getPayload(res) ?? editForm;
-      setProfileUser((prev) => ({ ...prev, ...updated }));
-      if (updateAuthUser) updateAuthUser(updated);
+      const patch = getPayload(res);
+      if (patch == null || typeof patch !== 'object') {
+        showToast('Đã lưu nhưng không nhận được dữ liệu người dùng từ máy chủ.', 'warning');
+        return;
+      }
+      setProfileUser((prev) => applyUserProfilePatch(prev, patch));
+      if (updateAuthUser) updateAuthUser(applyUserProfilePatch(currentUser || {}, patch));
       setEditing(false);
       setSuccessMessage('');
       showToast('Đã lưu thay đổi.', 'success');
@@ -241,10 +290,14 @@ export default function ProfilePage() {
     try {
       const normalizedPhone = normalizePhoneNumber(sourcePhoneForOtp);
 
-      // Create verifier once while this page is mounted.
+      if (!recaptchaContainerRef.current) {
+        showToast('Không tìm thấy vùng xác thực. Vui lòng tải lại trang.', 'error');
+        return;
+      }
+
+      // Create verifier once; dùng HTMLElement thay vì id (tránh race với MUI).
       if (!recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current = new RecaptchaVerifier(firebaseAuth, 'firebase-phone-recaptcha', {
-          // Invisible reCAPTCHA: user does not need to click checkbox in normal flow.
+        recaptchaVerifierRef.current = new RecaptchaVerifier(firebaseAuth, recaptchaContainerRef.current, {
           size: 'invisible',
         });
         await recaptchaVerifierRef.current.render();
@@ -263,6 +316,7 @@ export default function ProfilePage() {
       setOtpCooldownUntil(Date.now() + OTP_RESEND_COOLDOWN_MS);
       showToast('Đã gửi mã OTP. Vui lòng kiểm tra điện thoại.', 'success');
     } catch (err) {
+      clearRecaptchaVerifier();
       const code = err?.code || '';
       console.error('[PhoneVerify] send OTP failed', {
         code,
@@ -303,24 +357,37 @@ export default function ProfilePage() {
     try {
       const credential = await confirmationResult.confirm(codeToVerify.trim());
       const idToken = await credential.user.getIdToken();
-      const res = await userApi.verifyPhoneWithFirebase({ idToken });
+      const verifyRes = await userApi.verifyPhoneWithFirebase({ idToken });
+      const fromVerify = getPayload(verifyRes);
       console.info('[PhoneVerify] confirm OTP success', {
         origin: window.location.origin,
         host: window.location.host,
         firebaseProjectId: firebaseAuth?.app?.options?.projectId,
       });
-      const updated = getPayload(res);
-      if (updated) {
-        setProfileUser((prev) => ({ ...prev, ...updated, phoneVerified: true }));
-        if (updateAuthUser) updateAuthUser(updated);
-      } else {
-        setProfileUser((prev) => ({ ...prev, phoneVerified: true }));
+      // Nguồn đúng: GET /api/users/me sau khi BE đã flush phone_verified_at.
+      try {
+        const meRes = await userApi.getUser();
+        const fresh = getPayload(meRes);
+        if (fresh) {
+          setProfileUser(applyUserProfilePatch(null, fresh));
+          if (updateAuthUser) updateAuthUser(applyUserProfilePatch(currentUser || {}, fresh));
+        } else if (fromVerify) {
+          setProfileUser((prev) => applyUserProfilePatch(prev, fromVerify));
+          if (updateAuthUser) updateAuthUser(applyUserProfilePatch(currentUser || {}, fromVerify));
+        }
+      } catch (refreshErr) {
+        console.warn('[PhoneVerify] refresh profile after verify failed', refreshErr);
+        if (fromVerify) {
+          setProfileUser((prev) => applyUserProfilePatch(prev, fromVerify));
+          if (updateAuthUser) updateAuthUser(applyUserProfilePatch(currentUser || {}, fromVerify));
+        }
       }
       setOtpCode('');
       setOtpSent(false);
       setConfirmationResult(null);
       setLastOtpPhone('');
       setOtpCooldownUntil(0);
+      clearRecaptchaVerifier();
       showToast('Xác thực số điện thoại thành công.', 'success');
       return true;
     } catch (err) {
@@ -393,16 +460,10 @@ export default function ProfilePage() {
     });
   };
 
-  const handleChat = async () => {
+  const handleChat = () => {
     const firstListing = listings[0];
     if (!firstListing?.id) return;
-    setChatLoading(true);
-    try {
-      const res = await chatApi.getSession(firstListing.id);
-      const sessionId = res?.data?.data ?? res?.data;
-      if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
-    } catch (e) { console.error(e); }
-    finally { setChatLoading(false); }
+    navigate(`/chat?listingId=${firstListing.id}`);
   };
 
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
@@ -443,18 +504,34 @@ export default function ProfilePage() {
   const reputationScore = user.reputationScore ?? user.reputation_score ?? 0;
   const ratingCount = user.ratingCount ?? user.rating_count ?? 0;
   const joinDate = formatJoinDate(user.createdAt ?? user.created_at);
-  const phoneVerified = !!user.phoneVerified || !!user.phone_verified || !!user.phoneVerifiedAt || !!user.phone_verified_at;
   const otpCooldownLeftSeconds = Math.max(0, Math.ceil((otpCooldownUntil - otpCooldownNow) / 1000));
   const otpCooldownActive = otpCooldownLeftSeconds > 0;
 
   return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: 6 }}>
+        {isMe && (
+          <Box
+            ref={recaptchaContainerRef}
+            aria-hidden
+            sx={{
+              position: 'fixed',
+              left: 0,
+              bottom: 0,
+              width: 1,
+              height: 1,
+              overflow: 'hidden',
+              opacity: 0,
+              pointerEvents: 'none',
+              zIndex: -1,
+            }}
+          />
+        )}
         <ProfileHeader
             user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
             handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
             avatarUrl={avatarUrl} displayCoverUrl={displayCoverUrl} fullName={fullName}
             joinDate={joinDate} reputationScore={reputationScore} ratingCount={ratingCount}
-            chatLoading={chatLoading} handleOpenReportDialog={() => setReportDialogOpen(true)}
+            handleOpenReportDialog={() => setReportDialogOpen(true)}
             handleCoverChange={(e) => handleFileChange(e.target.files[0], 'cover')}
             handleAvatarChange={(e) => handleFileChange(e.target.files[0], 'avatar')}
             coverInputRef={coverInputRef} avatarInputRef={avatarInputRef}
@@ -468,7 +545,6 @@ export default function ProfilePage() {
             followListUserId={followListUserId}
             onOpenFollowList={handleOpenFollowList}
             listingCount={listings.length}
-            phoneVerified={phoneVerified}
             sendingPhoneOtp={sendingPhoneOtp}
             verifyingPhoneOtp={verifyingPhoneOtp}
             otpSent={otpSent}
@@ -488,17 +564,15 @@ export default function ProfilePage() {
         />
 
         <Box sx={{ maxWidth: 1000, width: { xs: '100%', sm: '86%' }, mx: 'auto', px: { xs: 0, sm: 2 } }}>
-          <Box sx={{ px: { xs: 1.5, sm: 0 }, mb: 2 }}>
-            {isMe && <Box id="firebase-phone-recaptcha" sx={{ display: 'none' }} />}
-          </Box>
-
           {/* Main Content: Tabs + Content */}
           <Box sx={{
             display: 'flex',
             flexDirection: 'column',
             bgcolor: 'transparent',
             borderRadius: 0,
-            overflow: 'hidden'
+            overflow: 'hidden',
+            px: { xs: 1.5, sm: 0 },
+            mb: 2,
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
               <Tabs

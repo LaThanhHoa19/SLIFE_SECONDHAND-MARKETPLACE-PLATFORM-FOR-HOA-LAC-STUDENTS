@@ -52,6 +52,8 @@ class ListingServiceCreateValidationTest {
     private ListingImageService listingImageService;
     @Mock
     private ConfigService configService;
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private NotificationService notificationService;
@@ -73,6 +75,8 @@ class ListingServiceCreateValidationTest {
                 blockService,
                 listingLikeRepository,
                 listingImageService,
+                configService,
+                notificationService
                 configService,
                 notificationService,
                 listingExpiryBatchService

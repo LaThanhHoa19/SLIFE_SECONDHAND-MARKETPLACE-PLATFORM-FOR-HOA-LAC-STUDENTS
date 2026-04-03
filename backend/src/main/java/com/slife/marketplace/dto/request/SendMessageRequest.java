@@ -1,14 +1,28 @@
 package com.slife.marketplace.dto.request;
 
 import com.slife.marketplace.entity.MessageType;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Data;
 
 @Data
 public class SendMessageRequest {
 
-    @NotNull(message = "sessionId required")
+    /**
+     * Existing chat session. Omit when sending the first message via {@link #listingId}
+     * (session is created on send).
+     */
     private String sessionId;
+
+    /**
+     * Listing to open a chat about — used only when {@link #sessionId} is absent (first outbound message).
+     */
+    private Long listingId;
+
+    @AssertTrue(message = "Either sessionId or listingId is required")
+    public boolean isSessionOrListingPresent() {
+        boolean hasSession = sessionId != null && !sessionId.isBlank();
+        return hasSession || listingId != null;
+    }
 
     /** Message body text — required for TEXT messages, optional for IMAGE. */
     private String content;

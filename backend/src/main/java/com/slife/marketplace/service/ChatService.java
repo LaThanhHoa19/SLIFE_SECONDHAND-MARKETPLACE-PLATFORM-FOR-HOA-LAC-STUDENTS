@@ -244,14 +244,23 @@ public class ChatService {
      * Pushes the message to the other participant via WebSocket.
      */
     @Transactional
-    public ChatMessageResponse sendMessage(String sessionId, String content,
+    public ChatMessageResponse sendMessage(String sessionId, Long listingId, String content,
                                            MessageType messageType, String fileUrl,
                                            Long replyToMessageId, Long quoteMessageId,
                                            User sender) {
         checkNotBannedOrRestricted(sender);
         enforceRateLimit(sender);
 
-        Conversation conv = conversationRepository.findBySessionUuid(sessionId)
+        String resolvedSessionId = (sessionId != null && !sessionId.isBlank()) ? sessionId.trim() : null;
+        if (resolvedSessionId == null) {
+            if (listingId == null) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Cần sessionId hoặc listingId.");
+            }
+            Conversation created = getOrCreateSession(listingId, sender);
+            resolvedSessionId = created.getSessionUuid();
+        }
+
+        Conversation conv = conversationRepository.findBySessionUuid(resolvedSessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, sender);
         User other = getOtherParticipant(conv, sender);
@@ -276,12 +285,12 @@ public class ChatService {
 
         // Push real-time to the other participant
         if (other != null) {
-            notificationService.notifyNewMessage(other, response, sessionId);
+            notificationService.notifyNewMessage(other, response, resolvedSessionId);
         }
         // Also broadcast to the session topic so the sender's other tabs update
-        broadcastToSession(sessionId, response);
+        broadcastToSession(resolvedSessionId, response);
 
-        log.debug("sendMessage session={} sender={} type={}", sessionId, sender.getId(), messageType);
+        log.debug("sendMessage session={} sender={} type={}", resolvedSessionId, sender.getId(), messageType);
         return response;
     }
 
@@ -293,8 +302,18 @@ public class ChatService {
      * Returns the public URL path.
      */
     @Transactional(readOnly = true)
-    public String uploadChatImage(String sessionId, MultipartFile file) {
-        Conversation conv = conversationRepository.findBySessionUuid(sessionId)
+    public String uploadChatImage(String sessionId, Long listingId, MultipartFile file) {
+        String resolvedSessionId = (sessionId != null && !sessionId.isBlank()) ? sessionId.trim() : null;
+        if (resolvedSessionId == null) {
+            if (listingId == null) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Cần sessionId hoặc listingId.");
+            }
+            User current = userService.getCurrentUser();
+            Conversation created = getOrCreateSession(listingId, current);
+            resolvedSessionId = created.getSessionUuid();
+        }
+
+        Conversation conv = conversationRepository.findBySessionUuid(resolvedSessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         User current = userService.getCurrentUser();
         ensureParticipant(conv, current);
@@ -313,7 +332,7 @@ public class ChatService {
             default -> ".jpg";
         };
         String fileName = UUID.randomUUID() + ext;
-        Path dir = uploadBasePath.resolve(Constants.CHAT_UPLOAD_DIR).resolve(sessionId);
+        Path dir = uploadBasePath.resolve(Constants.CHAT_UPLOAD_DIR).resolve(resolvedSessionId);
         try {
             Files.createDirectories(dir);
             Path dest = dir.resolve(fileName);
@@ -321,10 +340,10 @@ public class ChatService {
                 Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
-            log.error("Chat image upload failed session={}", sessionId, e);
+            log.error("Chat image upload failed session={}", resolvedSessionId, e);
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
         }
-        return "/uploads/" + Constants.CHAT_UPLOAD_DIR + "/" + sessionId + "/" + fileName;
+        return "/uploads/" + Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
     }
 
     // ── Offer negotiation (UC-30) ─────────────────────────────────────────────
@@ -389,6 +408,15 @@ public class ChatService {
 
         log.info("makeOffer session={} buyerId={} amount={} offerId={}", sessionId, buyer.getId(), amount, offer.getId());
         return response;
+    }
+
+    /**
+     * Opens or reuses the listing chat then places an offer (no separate "open chat" call needed).
+     */
+    @Transactional
+    public ChatMessageResponse makeOffer(Long listingId, BigDecimal amount, User buyer) {
+        Conversation conv = getOrCreateSession(listingId, buyer);
+        return makeOffer(conv.getSessionUuid(), amount, buyer);
     }
 
     // ── Respond to offer (UC-30 accept/reject) ────────────────────────────────
