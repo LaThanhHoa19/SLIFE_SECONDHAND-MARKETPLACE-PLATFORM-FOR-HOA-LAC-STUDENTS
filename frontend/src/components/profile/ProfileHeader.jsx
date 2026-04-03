@@ -60,7 +60,6 @@ export default function ProfileHeader({
     followListUserId,
     onOpenFollowList,
     listingCount,
-    phoneVerified,
     sendingPhoneOtp,
     verifyingPhoneOtp,
     otpSent,
@@ -79,7 +78,7 @@ export default function ProfileHeader({
 
     const canOpenFollowList = followListUserId != null && typeof onOpenFollowList === 'function';
     const hasPhoneNumber = !!(user.phoneNumber || user.phone_number);
-    const isPhoneVerified = !!(user.phoneVerified || user.phone_verified || user.phoneVerifiedAt || user.phone_verified_at);
+    const isPhoneVerified = !!(user.phoneVerifiedAt || user.phone_verified_at);
 
     const textFieldStyle = {
         mb: 2.5,
@@ -97,6 +96,13 @@ export default function ProfileHeader({
     };
 
     const [fieldErrors, setFieldErrors] = useState({ fullName: '', phoneNumber: '', bio: '' });
+
+    const oldPhoneRaw = String(user.phoneNumber || user.phone_number || '').trim();
+    const newPhoneRaw = editForm.phoneNumber?.trim();
+    const phoneChanged = !!newPhoneRaw && newPhoneRaw !== oldPhoneRaw;
+    const phoneOk = /^0\d{9}$/.test(newPhoneRaw || '');
+    /** Hiện nút gửi OTP cho đến khi server báo đã xác thực (không chỉ khi vừa đổi số). */
+    const needsPhoneVerification = isMe && phoneOk && !isPhoneVerified;
 
     const handleLocalSave = (e) => {
         if (e) e.preventDefault();
@@ -128,16 +134,9 @@ export default function ProfileHeader({
         setFieldErrors(errors);
 
         if (isValid) {
-            const oldPhone = String(user.phoneNumber || user.phone_number || '').trim();
-            const newPhone = editForm.phoneNumber?.trim();
-            if (newPhone && newPhone !== oldPhone) {
-                setOtpVerificationOpen(true);
-                if (!otpSent && !sendingPhoneOtp) {
-                    onRequestPhoneOtp();
-                }
-            } else {
-                handleSave();
-            }
+            // Cho phép lưu ngay cả khi chưa xác thực số điện thoại.
+            // Người dùng có thể chủ động bấm "Gửi mã OTP" để xác thực sau.
+            handleSave();
         }
     };
 
@@ -362,32 +361,81 @@ export default function ProfileHeader({
                             </Typography>
                         )}
 
-                        {/* Verified phone status */}
+                        {/* Số điện thoại + trạng thái xác thực */}
                         {(isMe || hasPhoneNumber) && (
-                            <Box 
-                                sx={{ 
-                                    display: 'flex', alignItems: 'center', mb: 0.5,
-                                    bgcolor: isPhoneVerified ? 'rgba(74, 222, 128, 0.08)' : 'transparent',
-                                    px: isPhoneVerified ? 1.4 : 0, py: isPhoneVerified ? 0.4 : 0, 
-                                    borderRadius: '20px',
-                                    border: isPhoneVerified ? '1px solid rgba(74, 222, 128, 0.2)' : 'none',
-                                    width: 'fit-content'
-                                }}
-                            >
-                                {isPhoneVerified ? (
-                                    <>
-                                        <CheckCircleIcon sx={{ fontSize: 13, color: '#4ade80' }} />
-                                        <Typography variant="caption" sx={{ ml: 0.8, fontWeight: 700, color: '#bbf7d0', letterSpacing: '0.5px', textTransform: 'uppercase', fontSize: '10px' }}>
-                                            Đã xác minh số điện thoại
-                                        </Typography>
-                                    </>
-                                ) : (
-                                    <>
-                                        <WarningAmberIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }} />
-                                        <Typography variant="caption" sx={{ ml: 0.8, fontWeight: 500, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
-                                            Số điện thoại chưa xác thực
-                                        </Typography>
-                                    </>
+                            <Box sx={{ mt: 0.5 }}>
+                                {isMe && (user.phoneNumber || user.phone_number) && (
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            color: 'rgba(255,255,255,0.8)',
+                                            fontSize: '0.9rem',
+                                            mb: 0.25,
+                                        }}
+                                    >
+                                        Số điện thoại: <strong>{user.phoneNumber || user.phone_number}</strong>
+                                    </Typography>
+                                )}
+                                <Box 
+                                    sx={{ 
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        mt: 0.25,
+                                        bgcolor: isPhoneVerified ? 'rgba(74, 222, 128, 0.08)' : 'transparent',
+                                        px: isPhoneVerified ? 1.4 : 0, py: isPhoneVerified ? 0.4 : 0, 
+                                        borderRadius: '20px',
+                                        border: isPhoneVerified ? '1px solid rgba(74, 222, 128, 0.2)' : 'none',
+                                        width: 'fit-content'
+                                    }}
+                                >
+                                    {isPhoneVerified ? (
+                                        <>
+                                            <CheckCircleIcon sx={{ fontSize: 13, color: '#4ade80' }} />
+                                            <Typography variant="caption" sx={{ ml: 0.8, fontWeight: 700, color: '#bbf7d0', letterSpacing: '0.5px', textTransform: 'uppercase', fontSize: '10px' }}>
+                                                Đã xác minh số điện thoại
+                                            </Typography>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <WarningAmberIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.3)' }} />
+                                            <Typography variant="caption" sx={{ ml: 0.8, fontWeight: 500, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+                                                Số điện thoại chưa xác thực
+                                            </Typography>
+                                        </>
+                                    )}
+                                </Box>
+                                {isMe && hasPhoneNumber && !isPhoneVerified && !editing && (
+                                    <Box sx={{ mt: 1.25 }}>
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            disabled={sendingPhoneOtp || otpCooldownActive}
+                                            onClick={() => {
+                                                if (sendingPhoneOtp || otpCooldownActive) return;
+                                                onRequestPhoneOtp();
+                                                setOtpVerificationOpen(true);
+                                            }}
+                                            sx={{
+                                                borderRadius: 999,
+                                                borderColor: 'rgba(163,116,249,0.6)',
+                                                color: '#e9d5ff',
+                                                textTransform: 'none',
+                                                fontSize: '0.8rem',
+                                                px: 2,
+                                                py: 0.6,
+                                                '&:hover': {
+                                                    borderColor: 'rgba(163,116,249,0.9)',
+                                                    backgroundColor: 'rgba(163,116,249,0.08)',
+                                                },
+                                            }}
+                                        >
+                                            {sendingPhoneOtp
+                                                ? 'Đang gửi...'
+                                                : otpCooldownActive
+                                                    ? `Gửi lại sau ${otpCooldownLeftSeconds}s`
+                                                    : 'Gửi mã OTP để xác thực'}
+                                        </Button>
+                                    </Box>
                                 )}
                             </Box>
                         )}
@@ -450,6 +498,61 @@ export default function ProfileHeader({
                             sx={textFieldStyle}
                             size="small"
                         />
+
+                        {needsPhoneVerification && (
+                            <Box sx={{ mb: 2.5, mt: -0.5 }}>
+                                {phoneChanged && (
+                                    <Typography
+                                        variant="caption"
+                                        sx={{ display: 'block', color: 'rgba(255,255,255,0.65)', mb: 0.75 }}
+                                    >
+                                        Bạn đã thay đổi số điện thoại. Để bảo vệ tài khoản, số này cần xác thực lại trước khi được coi là đã xác minh.
+                                    </Typography>
+                                )}
+                                {!phoneChanged && (
+                                    <Typography
+                                        variant="caption"
+                                        sx={{ display: 'block', color: 'rgba(255,255,255,0.65)', mb: 0.75 }}
+                                    >
+                                        Số điện thoại của bạn chưa được xác thực. Bạn có thể gửi mã OTP bất cứ lúc nào — hoặc lưu hồ sơ trước, xác thực sau.
+                                    </Typography>
+                                )}
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        disabled={sendingPhoneOtp || otpCooldownActive}
+                                        onClick={() => {
+                                            if (sendingPhoneOtp || otpCooldownActive) return;
+                                            onRequestPhoneOtp();
+                                            setOtpVerificationOpen(true);
+                                        }}
+                                        sx={{
+                                            borderRadius: 999,
+                                            borderColor: 'rgba(163,116,249,0.6)',
+                                            color: '#e9d5ff',
+                                            textTransform: 'none',
+                                            fontSize: '0.8rem',
+                                            px: 1.8,
+                                            py: 0.5,
+                                            '&:hover': {
+                                                borderColor: 'rgba(163,116,249,0.9)',
+                                                backgroundColor: 'rgba(163,116,249,0.08)',
+                                            },
+                                        }}
+                                    >
+                                        {sendingPhoneOtp
+                                            ? 'Đang gửi...'
+                                            : otpCooldownActive
+                                                ? `Gửi lại sau ${otpCooldownLeftSeconds}s`
+                                                : 'Gửi mã OTP để xác thực'}
+                                    </Button>
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.45)', flex: '1 1 200px' }}>
+                                        Bạn vẫn có thể lưu mà chưa xác thực; sau khi xác thực thành công, dòng trạng thái phía trên sẽ chuyển sang &quot;Đã xác minh&quot;.
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        )}
                         <TextField 
                             fullWidth multiline rows={3} label="Giới thiệu" value={editForm.bio}
                             onChange={(e) => {
