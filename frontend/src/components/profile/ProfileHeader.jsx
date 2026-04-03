@@ -47,7 +47,7 @@ export default function ProfileHeader({
     joinDate,
     reputationScore,
     ratingCount,
-    chatLoading,
+    chatLoading = false,
     handleAvatarChange,
     avatarInputRef,
     uploadingAvatar,

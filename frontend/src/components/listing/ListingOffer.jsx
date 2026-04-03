@@ -68,14 +68,12 @@ export default function ListingOffer({ listing, onNotify }) {
 
         setLoading(true);
         try {
-            const sessionRes = await chatApi.getSession(listing.id);
-            const sessionId = sessionRes?.data?.data ?? sessionRes?.data;
+            const offerRes = await chatApi.makeOfferByListing(listing.id, numericPrice);
+            const offerMsg = offerRes?.data?.data ?? offerRes?.data;
+            const sessionId = offerMsg?.sessionId;
             if (!sessionId) {
                 throw new Error('Không tạo được phiên chat.');
             }
-
-            // Send offer as a chat deal message so both sides see it in conversation.
-            await chatApi.makeOffer(sessionId, numericPrice);
 
             // Optional note from buyer after offer is created.
             const note = String(message || '').trim();

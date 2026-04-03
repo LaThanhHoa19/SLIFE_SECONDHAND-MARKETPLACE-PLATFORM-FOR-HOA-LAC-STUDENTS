@@ -62,7 +62,7 @@ public class LandingService {
     }
 
     private LandingResponse build() {
-        var page = listingService.getActiveListingCards(0, RECENT_SIZE, null, null);
+        var page = listingService.getActiveListingCards(0, RECENT_SIZE, null, null, false);
         List<ListingCardResponse> recent = page.getContent() != null
                 ? List.copyOf(page.getContent())
                 : List.of();

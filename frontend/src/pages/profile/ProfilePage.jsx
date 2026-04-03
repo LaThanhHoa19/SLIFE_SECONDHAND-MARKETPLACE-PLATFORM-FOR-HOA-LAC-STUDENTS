@@ -19,7 +19,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useFollowActions } from '../../hooks/useFollowActions';
 import * as userApi from '../../api/userApi';
 import * as followApi from '../../api/followApi';
-import * as chatApi from '../../api/chatApi';
 import { getListings } from '../../api/listingApi';
 import Loading from '../../components/common/Loading';
 import { fullImageUrl } from '../../utils/constants';
@@ -70,7 +69,6 @@ export default function ProfilePage() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [chatLoading, setChatLoading] = useState(false);
   const [followListOpen, setFollowListOpen] = useState(false);
   const [followListMode, setFollowListMode] = useState('followers');
   const [showAllListings, setShowAllListings] = useState(false);
@@ -393,16 +391,10 @@ export default function ProfilePage() {
     });
   };
 
-  const handleChat = async () => {
+  const handleChat = () => {
     const firstListing = listings[0];
     if (!firstListing?.id) return;
-    setChatLoading(true);
-    try {
-      const res = await chatApi.getSession(firstListing.id);
-      const sessionId = res?.data?.data ?? res?.data;
-      if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
-    } catch (e) { console.error(e); }
-    finally { setChatLoading(false); }
+    navigate(`/chat?listingId=${firstListing.id}`);
   };
 
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
@@ -454,7 +446,7 @@ export default function ProfilePage() {
             handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
             avatarUrl={avatarUrl} displayCoverUrl={displayCoverUrl} fullName={fullName}
             joinDate={joinDate} reputationScore={reputationScore} ratingCount={ratingCount}
-            chatLoading={chatLoading} handleOpenReportDialog={() => setReportDialogOpen(true)}
+            handleOpenReportDialog={() => setReportDialogOpen(true)}
             handleCoverChange={(e) => handleFileChange(e.target.files[0], 'cover')}
             handleAvatarChange={(e) => handleFileChange(e.target.files[0], 'avatar')}
             coverInputRef={coverInputRef} avatarInputRef={avatarInputRef}
