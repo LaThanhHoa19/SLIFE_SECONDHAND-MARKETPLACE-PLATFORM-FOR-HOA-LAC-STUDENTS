@@ -3,17 +3,23 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.DealRequest;
 import com.slife.marketplace.dto.request.SealDealRequest;
 import com.slife.marketplace.dto.response.DealResponse;
+import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Conversation;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.Offer;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.repository.AddressRepository;
 import com.slife.marketplace.repository.ConversationRepository;
 import com.slife.marketplace.repository.DealRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.OfferRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.slife.marketplace.service.OfferService.STATUS_ACCEPTED;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -35,15 +41,21 @@ public class DealService {
     private final DealRepository dealRepository;
     private final ListingRepository listingRepository;
     private final ConversationRepository conversationRepository;
+    private final OfferRepository offerRepository;
+    private final AddressRepository addressRepository;
     private final UserService userService;
 
     public DealService(DealRepository dealRepository,
                        ListingRepository listingRepository,
                        ConversationRepository conversationRepository,
+                       OfferRepository offerRepository,
+                       AddressRepository addressRepository,
                        UserService userService) {
         this.dealRepository = dealRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
+        this.offerRepository = offerRepository;
+        this.addressRepository = addressRepository;
         this.userService = userService;
     }
 
@@ -70,6 +82,10 @@ public class DealService {
         deal.setBuyer(buyer);
         deal.setOfferedPrice(request.getPrice());
         deal.setStatus(STATUS_PENDING);
+        Offer offerForDeal = resolveOfferForCreateDeal(listingId, buyer, request.getPrice(), request.getOfferId())
+                .orElseGet(() -> persistNewPendingOffer(listing, buyer, request.getPrice()));
+        deal.setOffer(offerForDeal);
+        deal.setAddress(resolveAddressForDeal(listing, request.getAddressId()));
 
         deal = dealRepository.save(deal);
         return mapToResponse(deal);
@@ -99,6 +115,9 @@ public class DealService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá phải >= 0");
         }
 
+        Offer offerForDeal = resolveOfferForSeal(listingId, seller, buyer, request.getPrice(), request.getOfferId())
+                .orElseGet(() -> persistNewPendingOffer(listing, buyer, request.getPrice()));
+
         Optional<Deal> existing = dealRepository
                 .findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         listingId, buyer.getId(), STATUS_PENDING);
@@ -108,6 +127,8 @@ public class DealService {
             if (request.getPickupTime() != null) {
                 d.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
             }
+            d.setOffer(offerForDeal);
+            d.setAddress(resolveAddressForSealUpdate(listing, request.getAddressId(), d.getAddress()));
             return mapToResponse(dealRepository.save(d));
         }
 
@@ -117,6 +138,8 @@ public class DealService {
         deal.setProposedBy(buyer);
         deal.setDealPrice(request.getPrice());
         deal.setStatus(STATUS_PENDING);
+        deal.setOffer(offerForDeal);
+        deal.setAddress(resolveAddressForDeal(listing, request.getAddressId()));
         if (request.getPickupTime() != null) {
             deal.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
         }
@@ -304,8 +327,12 @@ public class DealService {
     }
 
     private DealResponse mapToResponse(Deal deal) {
+        Long offerId = deal.getOffer() != null ? deal.getOffer().getId() : null;
+        Long addressId = deal.getAddress() != null ? deal.getAddress().getId() : null;
         return DealResponse.builder()
                 .dealId(deal.getId())
+                .offerId(offerId)
+                .addressId(addressId)
                 .listingId(deal.getListing().getId())
                 .buyerId(deal.getBuyer().getId())
                 .sellerId(deal.getSeller().getId())
@@ -316,6 +343,103 @@ public class DealService {
                 .reminderSent(deal.getReminderSent())
                 .createdAt(deal.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Chốt đơn: gắn {@link Deal#setOffer(Offer)} nếu có {@code offerId} hợp lệ hoặc tự khớp lượt PENDING/ACCEPTED cùng giá.
+     */
+    private Optional<Offer> resolveOfferForSeal(Long listingId, User seller, User buyer, BigDecimal price, Long explicitOfferId) {
+        if (explicitOfferId != null) {
+            Offer offer = offerRepository.findById(explicitOfferId)
+                    .orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));
+            assertOfferMatchesSeal(offer, listingId, seller, buyer, price);
+            return Optional.of(offer);
+        }
+        return offerRepository.findFirstByListing_IdAndBuyer_IdAndAmountAndStatusInOrderByCreatedAtDesc(
+                listingId, buyer.getId(), price, List.of(STATUS_PENDING, STATUS_ACCEPTED));
+    }
+
+    private void assertOfferMatchesSeal(Offer offer, Long listingId, User seller, User buyer, BigDecimal price) {
+        if (offer.getListing() == null || !listingId.equals(offer.getListing().getId())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer không thuộc tin đăng này");
+        }
+        if (offer.getBuyer() == null || !buyer.getId().equals(offer.getBuyer().getId())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer không thuộc người mua này");
+        }
+        if (offer.getListing().getSeller() == null || !seller.getId().equals(offer.getListing().getSeller().getId())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer không thuộc người bán hiện tại");
+        }
+        if (offer.getAmount() == null || offer.getAmount().compareTo(price) != 0) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá chốt đơn phải khớp số tiền trong lượt trả giá");
+        }
+        String st = offer.getStatus();
+        if (!STATUS_PENDING.equals(st) && !STATUS_ACCEPTED.equals(st)) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Lượt trả giá không còn hợp lệ để chốt đơn");
+        }
+    }
+
+    /**
+     * Tạo deal từ listing: gắn offer PENDING nếu truyền {@code offerId} hoặc tự khớp cùng giá.
+     */
+    private Offer persistNewPendingOffer(Listing listing, User buyer, BigDecimal amount) {
+        Offer offer = new Offer();
+        offer.setListing(listing);
+        offer.setBuyer(buyer);
+        offer.setAmount(amount);
+        offer.setStatus(STATUS_PENDING);
+        Instant now = Instant.now();
+        offer.setCreatedAt(now);
+        offer.setUpdatedAt(now);
+        return offerRepository.save(offer);
+    }
+
+    /**
+     * Địa chỉ giao: {@code addressId} (thuộc người bán) hoặc địa chỉ nhận mặc định của tin.
+     */
+    private Address resolveAddressForDeal(Listing listing, Long explicitAddressId) {
+        if (explicitAddressId != null) {
+            Address addr = addressRepository.findById(explicitAddressId)
+                    .orElseThrow(() -> new SlifeException(ErrorCode.INVALID_INPUT, "Địa chỉ không tồn tại"));
+            Long sellerId = listing.getSeller() != null ? listing.getSeller().getId() : null;
+            if (sellerId == null || addr.getUser() == null || !sellerId.equals(addr.getUser().getId())) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Địa chỉ phải thuộc người bán của tin đăng");
+            }
+            return addr;
+        }
+        return listing.getPickupAddress();
+    }
+
+    /** Khi chốt lại deal: giữ địa chỉ cũ nếu client không gửi {@code addressId}. */
+    private Address resolveAddressForSealUpdate(Listing listing, Long explicitAddressId, Address currentOnDeal) {
+        if (explicitAddressId != null) {
+            return resolveAddressForDeal(listing, explicitAddressId);
+        }
+        if (currentOnDeal != null) {
+            return currentOnDeal;
+        }
+        return listing.getPickupAddress();
+    }
+
+    private Optional<Offer> resolveOfferForCreateDeal(Long listingId, User buyer, BigDecimal price, Long explicitOfferId) {
+        if (explicitOfferId != null) {
+            Offer offer = offerRepository.findById(explicitOfferId)
+                    .orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));
+            if (offer.getListing() == null || !listingId.equals(offer.getListing().getId())) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer không thuộc tin đăng này");
+            }
+            if (offer.getBuyer() == null || !buyer.getId().equals(offer.getBuyer().getId())) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer không thuộc người mua hiện tại");
+            }
+            if (!STATUS_PENDING.equals(offer.getStatus())) {
+                throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
+            }
+            if (offer.getAmount() == null || offer.getAmount().compareTo(price) != 0) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá deal phải khớp lượt trả giá");
+            }
+            return Optional.of(offer);
+        }
+        return offerRepository.findFirstByListing_IdAndBuyer_IdAndAmountAndStatusInOrderByCreatedAtDesc(
+                listingId, buyer.getId(), price, List.of(STATUS_PENDING));
     }
 
     private Conversation resolveConversationForDeal(Listing listing, User buyer) {

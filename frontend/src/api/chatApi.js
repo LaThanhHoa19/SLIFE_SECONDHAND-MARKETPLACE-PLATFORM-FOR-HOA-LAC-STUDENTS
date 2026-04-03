@@ -3,8 +3,21 @@
  */
 import axiosClient from './axiosClient';
 
-export const getChats = (filter = 'ALL') =>
-  axiosClient.get('/api/v1/chats', { params: { filter } });
+/**
+ * Danh sách phiên chat. Truyền string → filter; hoặc object { filter, q, listingId, page, size, … }.
+ * Tham số q chỉ lọc theo tiêu đề tin / tên đối phương / mã listing (không quét toàn bộ tin nhắn).
+ */
+export const getChats = (filterOrParams = 'ALL') => {
+  const params =
+    typeof filterOrParams === 'object' && filterOrParams !== null && !Array.isArray(filterOrParams)
+      ? { filter: 'ALL', ...filterOrParams }
+      : { filter: filterOrParams };
+  return axiosClient.get('/api/v1/chats', { params });
+};
+
+/** Tìm tin nhắn theo nội dung trong một phiên (q ≥ 2 ký tự). */
+export const searchChatMessages = (sessionId, q, page = 0, size = 15) =>
+  axiosClient.get(`/api/v1/chats/${sessionId}/messages/search`, { params: { q, page, size } });
 
 export const getSession = (listingId) =>
   axiosClient.post('/api/v1/chats/session', null, { params: { listingId } });

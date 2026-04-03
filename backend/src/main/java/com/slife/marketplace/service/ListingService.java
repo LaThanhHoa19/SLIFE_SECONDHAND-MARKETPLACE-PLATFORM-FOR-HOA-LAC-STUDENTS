@@ -544,6 +544,7 @@ public class ListingService {
         Address addr = listing.getPickupAddress();
         if (addr != null) {
             Map<String, Object> paMap = new HashMap<>();
+            paMap.put("addressId", addr.getId());
             paMap.put("locationName", addr.getLocationName());
             paMap.put("addressText", addr.getAddressText());
             paMap.put("lat", addr.getLat());

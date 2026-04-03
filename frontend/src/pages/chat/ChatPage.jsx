@@ -52,6 +52,7 @@ import OfferDialog from './components/OfferDialog';
 import ChatHeader from './components/ChatHeader';
 import MessageComposer from './components/MessageComposer';
 import ChatMessagesPanel from './components/ChatMessagesPanel';
+import ChatSearchInConversationDialog from './components/ChatSearchInConversationDialog';
 import { useChatSessions } from './hooks/useChatSessions';
 import { useChatRealtime } from './hooks/useChatRealtime';
 import {
@@ -59,6 +60,7 @@ import {
   enrichMessagesForDisplay,
   formatSessionTimeShort,
   getData,
+  markOfferSupersededByDealSeal,
   getMessageDomId,
   isMessageFromCurrentUser,
   makeTempId,
@@ -85,6 +87,8 @@ function ChatPageInner() {
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
+  const [bubbleSearchHighlight, setBubbleSearchHighlight] = useState(null);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionsVersion, setSessionsVersion] = useState(0);
@@ -198,7 +202,10 @@ function ChatPageInner() {
     messagesRef.current = messages;
   }, [messages]);
 
-  const displayMessages = useMemo(() => enrichMessagesForDisplay(messages), [messages]);
+  const displayMessages = useMemo(
+      () => markOfferSupersededByDealSeal(enrichMessagesForDisplay(messages)),
+      [messages],
+  );
 
   const scrollToBottom = useCallback((behavior = 'smooth') => {
     requestAnimationFrame(() => {
@@ -318,7 +325,7 @@ function ChatPageInner() {
           next.delete('listingId');
           return next;
         },
-        { replace: true }
+        { replace: true, preventScrollReset: true }
       );
     }
   }, [sessionIdFromUrl, listingIdFromUrl, setSearchParams]);
@@ -370,6 +377,10 @@ function ChatPageInner() {
   const {
     sessions,
     sessionsLoading,
+    sessionsTotalElements,
+    sidebarSearch,
+    setSidebarSearch,
+    sidebarSearchForHighlight,
     activeSession: sessionFromList,
     activeListingThumb: listingThumbFromList,
     activeListingPrice: listingPriceFromList,
@@ -381,6 +392,74 @@ function ChatPageInner() {
     currentUserId,
     sessionsVersion,
   });
+
+  /** Đồng bộ URL + state khi đã biết sessionUuid (phiên có sẵn hoặc vừa tạo sau tin đầu). */
+  const promoteUrlToSession = useCallback(
+    (sessionId) => {
+      if (!sessionId) return;
+      setActiveSessionId(sessionId);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('listingId');
+          next.set('sessionId', sessionId);
+          return next;
+        },
+        { replace: true, preventScrollReset: true }
+      );
+      setDraftListing(null);
+      setDraftListingError(false);
+      setDraftListingLoading(false);
+    },
+    [setSearchParams]
+  );
+
+  /**
+   * Mở từ listing (?listingId=) nhưng đã có hội thoại → gắn sessionId ngay để load history,
+   * tránh panel trắng đến khi gửi tin mới.
+   */
+  useEffect(() => {
+    if (!listingIdFromUrl || sessionIdFromUrl) return;
+    if (sessionsLoading) return;
+    if (!Array.isArray(sessions) || sessions.length === 0) return;
+
+    const lid = Number(listingIdFromUrl);
+    const candidates = sessions.filter((s) => s && Number(s.listingId) === lid);
+    if (candidates.length === 0) return;
+
+    const byLast = (a, b) => {
+      const ta = a?.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const tb = b?.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return tb - ta;
+    };
+
+    const uid = currentUserId != null ? Number(currentUserId) : NaN;
+    let chosen = null;
+    if (Number.isFinite(uid)) {
+      const asBuyer = candidates.filter((s) => Number(s.buyerId) === uid);
+      if (asBuyer.length === 1) chosen = asBuyer[0];
+      else if (asBuyer.length > 1) chosen = [...asBuyer].sort(byLast)[0];
+      else {
+        const asSeller = candidates.filter((s) => Number(s.sellerId) === uid);
+        if (asSeller.length === 1) chosen = asSeller[0];
+        else if (asSeller.length > 1) chosen = [...asSeller].sort(byLast)[0];
+      }
+    }
+    if (!chosen) {
+      chosen = candidates.length === 1 ? candidates[0] : [...candidates].sort(byLast)[0];
+    }
+
+    const sid = chosen?.sessionId;
+    if (!sid) return;
+    promoteUrlToSession(sid);
+  }, [
+    listingIdFromUrl,
+    sessionIdFromUrl,
+    sessionsLoading,
+    sessions,
+    currentUserId,
+    promoteUrlToSession,
+  ]);
 
   const activeSession = useMemo(() => {
     if (activeSessionId && sessionFromList) return sessionFromList;
@@ -432,20 +511,10 @@ function ChatPageInner() {
     (msgPayload) => {
       const sid = msgPayload?.sessionId;
       if (!sid) return;
-      setActiveSessionId(sid);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('listingId');
-          next.set('sessionId', sid);
-          return next;
-        },
-        { replace: true }
-      );
-      setDraftListing(null);
+      promoteUrlToSession(sid);
       setSessionsVersion((v) => v + 1);
     },
-    [setSearchParams]
+    [promoteUrlToSession]
   );
 
   useEffect(() => {
@@ -503,7 +572,7 @@ function ChatPageInner() {
       const isDealConfirmationRequest =
         typeof m.content === 'string' && m.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
       if (!isDealConfirmationRequest) continue;
-      if (m.dealDecision) return true;
+      if (m.dealDecision === 'ACCEPT') return true;
     }
     return false;
   }, [displayMessages, currentUserId, isSellerInActiveChat]);
@@ -545,6 +614,17 @@ function ChatPageInner() {
     }
   }, [activeSession?.listingId, fetchSessions, postSaleBannerBusy, showToast]);
 
+  // Xóa tin cũ trước khi paint khi đổi phiên — tránh nháy nội dung chat khác + giảm cảm giác “reload”.
+  useLayoutEffect(() => {
+    if (!activeSessionId) {
+      setMessages([]);
+      setHistoryLoading(false);
+      return;
+    }
+    setMessages([]);
+    setHistoryLoading(true);
+  }, [activeSessionId, messageIdFromUrl]);
+
   // ── Fetch message history ─────────────────────────────────────────────────
   const fetchHistory = useCallback(() => {
     if (!activeSessionId) return Promise.resolve();
@@ -561,12 +641,10 @@ function ChatPageInner() {
 
   useEffect(() => {
     if (!activeSessionId) {
-      setMessages([]);
       return;
     }
 
     let cancelled = false;
-    setHistoryLoading(true);
 
     const loadHistory = async () => {
       try {
@@ -743,6 +821,61 @@ function ChatPageInner() {
     window.setTimeout(() => setHighlightedMessageId(null), 1800);
   };
 
+  const ensureHistoryContainsMessage = useCallback(async (sessionId, messageId) => {
+    const mid = String(messageId);
+    if (!sessionId || !mid) return false;
+    if (messagesRef.current.some((m) => String(m?.id) === mid)) return true;
+    const pageSize = 30;
+    const maxPages = 20;
+    const aggregated = [];
+    try {
+      for (let p = 0; p < maxPages; p += 1) {
+        const res = await chatApi.getHistory(sessionId, p, pageSize);
+        const body = res?.data;
+        const page = body?.data ?? body;
+        const content = Array.isArray(page?.content)
+            ? page.content
+            : Array.isArray(page)
+                ? page
+                : [];
+        if (content.length === 0) break;
+        aggregated.push(...content);
+        if (content.some((m) => String(m?.id) === mid)) break;
+        if (content.length < pageSize) break;
+      }
+      if (aggregated.length === 0) return false;
+      setMessages([...aggregated].reverse());
+      return aggregated.some((m) => String(m?.id) === mid);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const handleInChatSearchPick = useCallback(
+      async (messageId, query) => {
+        if (!activeSessionId) return;
+        setInChatSearchOpen(false);
+        await ensureHistoryContainsMessage(activeSessionId, messageId);
+        const qstr = typeof query === 'string' ? query : '';
+        setBubbleSearchHighlight({ messageId: String(messageId), query: qstr });
+        window.setTimeout(() => {
+          const domId = getMessageDomId(messageId);
+          if (domId) {
+            const el = document.getElementById(domId);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          setHighlightedMessageId(String(messageId));
+          window.setTimeout(() => setHighlightedMessageId(null), 1800);
+          window.setTimeout(() => setBubbleSearchHighlight(null), 4200);
+        }, 120);
+      },
+      [activeSessionId, ensureHistoryContainsMessage],
+  );
+
+  useEffect(() => {
+    setBubbleSearchHighlight(null);
+  }, [activeSessionId]);
+
   const handleReportMessage = useCallback(
       (msg) => {
         const mid = msg?.id;
@@ -768,7 +901,7 @@ function ChatPageInner() {
           next.delete('listingId');
           return next;
         },
-        { replace: true }
+        { replace: true, preventScrollReset: true }
     );
   }, [setSearchParams]);
 
@@ -1164,11 +1297,28 @@ function ChatPageInner() {
         showToast('Thiếu thông tin để chốt đơn (tin / người mua / giá).', 'warning');
         return;
       }
+      let resolvedOfferId = null;
+      const acceptedOffer = latestAcceptedOfferForConfirm;
+      if (acceptedOffer?.offerId != null) {
+        const fromAccepted = parseDealPriceNumber(offerContentToPriceText(acceptedOffer.content));
+        if (Number.isFinite(fromAccepted) && fromAccepted === price) {
+          resolvedOfferId = acceptedOffer.offerId;
+        }
+      }
+      if (resolvedOfferId == null && pendingOfferForFinalize?.offerId != null) {
+        const fromPending = parseDealPriceNumber(pendingOfferForFinalize.content);
+        if (Number.isFinite(fromPending) && fromPending === price) {
+          resolvedOfferId = pendingOfferForFinalize.offerId;
+        }
+      }
       const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
+      const sealAddressId = pickupAddressForFinalize?.addressId ?? pickupAddressForFinalize?.id;
       await sealListingDeal(listingId, {
         buyerId: Number(buyerId),
         price,
         ...(pickupIso ? { pickupTime: pickupIso } : {}),
+        ...(resolvedOfferId != null ? { offerId: resolvedOfferId } : {}),
+        ...(sealAddressId != null ? { addressId: Number(sealAddressId) } : {}),
       });
       suppressOpponentDiffRef.current = true;
       const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');
@@ -1186,6 +1336,9 @@ function ChatPageInner() {
     activeSession?.buyerId,
     activeSessionId,
     dealPriceTextForConfirm,
+    latestAcceptedOfferForConfirm,
+    pendingOfferForFinalize,
+    offerContentToPriceText,
     parseDealPriceNumber,
     finalizePickupTimeLocal,
     toIsoFromDatetimeLocal,
@@ -1207,9 +1360,13 @@ function ChatPageInner() {
 
       // Frontend-only: disable actions after choosing once.
       if (confirmId != null) {
+        const responderName =
+            currentUser?.fullName || currentUser?.name || currentUser?.email || 'Bạn';
         setMessages((prev) =>
           prev.map((m) =>
-            String(m?.id) === String(confirmId) ? { ...m, dealDecision: decision } : m,
+            String(m?.id) === String(confirmId)
+                ? { ...m, dealDecision: decision, dealResponderName: responderName }
+                : m,
           ),
         );
       }
@@ -1246,6 +1403,7 @@ function ChatPageInner() {
       activeSessionId,
       buyerAcceptPendingDeal,
       buyerRejectPendingDeal,
+      currentUser,
       fetchSessions,
       scrollToBottom,
       showToast,
@@ -1315,11 +1473,25 @@ function ChatPageInner() {
     if (listingClosedForBuyer) setOfferOpen(false);
   }, [listingClosedForBuyer]);
 
+  /** Người bán đã gửi tin chốt đơn (XÁC NHẬN GIAO DỊCH) và chưa bị hủy → người mua không trả giá thêm. */
+  const buyerBlockedByDealSeal = useMemo(() => {
+    if (isSellerInActiveChat) return false;
+    return displayMessages.some((m) => {
+      if (m.messageType !== 'DEAL_CONFIRMATION') return false;
+      const c = typeof m.content === 'string' ? m.content : '';
+      if (!c.toUpperCase().includes('XÁC NHẬN GIAO DỊCH')) return false;
+      return m.dealDecision !== 'CANCEL';
+    });
+  }, [displayMessages, isSellerInActiveChat]);
+
   const draftChatReady =
       Boolean(listingIdFromUrl) && Boolean(draftListing) && !draftListingError && !draftListingLoading;
   const priceOfferDisabled =
       Boolean(activeSessionId || draftChatReady) &&
-      (isSellerInActiveChat || hasOpenOfferAwaitingSeller || listingClosedForBuyer);
+      (isSellerInActiveChat ||
+          hasOpenOfferAwaitingSeller ||
+          listingClosedForBuyer ||
+          buyerBlockedByDealSeal);
   const priceOfferTooltip = !activeSessionId && !draftChatReady
       ? 'Trả giá / đề xuất giá'
       : listingClosedForBuyer
@@ -1328,9 +1500,11 @@ function ChatPageInner() {
               : 'Tin đăng đã được bán'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
-          : hasOpenOfferAwaitingSeller
-              ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
-              : 'Trả giá / đề xuất giá';
+          : buyerBlockedByDealSeal
+              ? 'Người bán đã chốt giao dịch — không gửi trả giá mới cho đến khi giao dịch bị hủy'
+              : hasOpenOfferAwaitingSeller
+                  ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
+                  : 'Trả giá / đề xuất giá';
 
   const handleSelectChatSession = useCallback(
     (sessionId) => {
@@ -1344,7 +1518,7 @@ function ChatPageInner() {
           next.set('sessionId', sessionId);
           return next;
         },
-        { replace: true }
+        { replace: true, preventScrollReset: true }
       );
     },
     [setSearchParams]
@@ -1388,6 +1562,10 @@ function ChatPageInner() {
               listDisplay={listDisplay}
               sessionsLoading={sessionsLoading}
               sessions={sessions}
+              sessionsTotalElements={sessionsTotalElements}
+              sidebarSearch={sidebarSearch}
+              onSidebarSearchChange={setSidebarSearch}
+              highlightSearchQuery={sidebarSearchForHighlight}
               activeSessionId={activeSessionId}
               setActiveSessionId={handleSelectChatSession}
               navigate={navigate}
@@ -1454,6 +1632,8 @@ function ChatPageInner() {
                       activeSession={activeSession}
                       isSellerInActiveChat={isSellerInActiveChat}
                       wsConnected={wsConnected}
+                      showInChatSearch={Boolean(activeSessionId)}
+                      onOpenInChatSearch={() => setInChatSearchOpen(true)}
                   />
 
                   {/* Tin đang trao đổi (giống banner chợ) */}
@@ -1481,6 +1661,7 @@ function ChatPageInner() {
                       displayMessages={displayMessages}
                       currentUserId={currentUserId}
                       highlightedMessageId={highlightedMessageId}
+                      bubbleSearchHighlight={bubbleSearchHighlight}
                       handleAccept={handleAccept}
                       handleReject={handleReject}
                       handleDealConfirmDecision={handleDealConfirmDecision}
@@ -1557,6 +1738,13 @@ function ChatPageInner() {
             )}
           </DialogActions>
         </Dialog>
+
+        <ChatSearchInConversationDialog
+            open={inChatSearchOpen}
+            onClose={() => setInChatSearchOpen(false)}
+            sessionId={activeSessionId}
+            onPickMessage={handleInChatSearchPick}
+        />
 
         <OfferDialog
             open={offerOpen}

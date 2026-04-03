@@ -16,6 +16,10 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class DealResponse {
     private Long dealId;
+    /** Tham chiếu {@code offers.offer_id} nếu giá bắt nguồn từ lượt trả giá. */
+    private Long offerId;
+    /** Tham chiếu {@code addresses.address_id} (điểm giao). */
+    private Long addressId;
     private Long listingId;
     private Long buyerId;
     private Long sellerId;
