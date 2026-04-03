@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class NotificationService {
@@ -165,6 +166,34 @@ public class NotificationService {
             pushNotificationCount(followed);
         } catch (Exception ex) {
             log.error("notifyNewFollower failed followedId={}", followed.getId(), ex);
+        }
+    }
+
+    /** Notify followers when a seller posts a new listing. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyFollowersAboutNewListing(User seller, Long listingId, String listingTitle, Set<Long> followerIds) {
+        if (seller == null || listingId == null || followerIds == null || followerIds.isEmpty()) {
+            return;
+        }
+
+        String sellerName = (seller.getFullName() != null && !seller.getFullName().isBlank())
+                ? seller.getFullName()
+                : seller.getEmail();
+        String content = sellerName + " vừa đăng tin mới: \"" + truncate(listingTitle, 40) + "\"";
+
+        for (Long followerId : followerIds) {
+            if (followerId == null || followerId.equals(seller.getId())) {
+                continue;
+            }
+            try {
+                User recipient = new User();
+                recipient.setId(followerId);
+                Notification n = buildNotification(recipient, TYPE_SYSTEM, "LISTING", listingId, content);
+                notificationRepository.save(n);
+                pushNotificationCount(recipient);
+            } catch (Exception ex) {
+                log.warn("notifyFollowersAboutNewListing failed followerId={} listingId={}", followerId, listingId, ex);
+            }
         }
     }
 
