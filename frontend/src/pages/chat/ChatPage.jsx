@@ -382,6 +382,74 @@ function ChatPageInner() {
     sessionsVersion,
   });
 
+  /** Đồng bộ URL + state khi đã biết sessionUuid (phiên có sẵn hoặc vừa tạo sau tin đầu). */
+  const promoteUrlToSession = useCallback(
+    (sessionId) => {
+      if (!sessionId) return;
+      setActiveSessionId(sessionId);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('listingId');
+          next.set('sessionId', sessionId);
+          return next;
+        },
+        { replace: true }
+      );
+      setDraftListing(null);
+      setDraftListingError(false);
+      setDraftListingLoading(false);
+    },
+    [setSearchParams]
+  );
+
+  /**
+   * Mở từ listing (?listingId=) nhưng đã có hội thoại → gắn sessionId ngay để load history,
+   * tránh panel trắng đến khi gửi tin mới.
+   */
+  useEffect(() => {
+    if (!listingIdFromUrl || sessionIdFromUrl) return;
+    if (sessionsLoading) return;
+    if (!Array.isArray(sessions) || sessions.length === 0) return;
+
+    const lid = Number(listingIdFromUrl);
+    const candidates = sessions.filter((s) => s && Number(s.listingId) === lid);
+    if (candidates.length === 0) return;
+
+    const byLast = (a, b) => {
+      const ta = a?.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+      const tb = b?.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+      return tb - ta;
+    };
+
+    const uid = currentUserId != null ? Number(currentUserId) : NaN;
+    let chosen = null;
+    if (Number.isFinite(uid)) {
+      const asBuyer = candidates.filter((s) => Number(s.buyerId) === uid);
+      if (asBuyer.length === 1) chosen = asBuyer[0];
+      else if (asBuyer.length > 1) chosen = [...asBuyer].sort(byLast)[0];
+      else {
+        const asSeller = candidates.filter((s) => Number(s.sellerId) === uid);
+        if (asSeller.length === 1) chosen = asSeller[0];
+        else if (asSeller.length > 1) chosen = [...asSeller].sort(byLast)[0];
+      }
+    }
+    if (!chosen) {
+      chosen = candidates.length === 1 ? candidates[0] : [...candidates].sort(byLast)[0];
+    }
+
+    const sid = chosen?.sessionId;
+    if (!sid) return;
+    promoteUrlToSession(sid);
+  }, [
+    listingIdFromUrl,
+    sessionIdFromUrl,
+    sessionsLoading,
+    sessions,
+    currentUserId,
+    promoteUrlToSession,
+  ]);
+
   const activeSession = useMemo(() => {
     if (activeSessionId && sessionFromList) return sessionFromList;
     if (!activeSessionId && listingIdFromUrl && draftListing && !draftListingError) {
@@ -432,20 +500,10 @@ function ChatPageInner() {
     (msgPayload) => {
       const sid = msgPayload?.sessionId;
       if (!sid) return;
-      setActiveSessionId(sid);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('listingId');
-          next.set('sessionId', sid);
-          return next;
-        },
-        { replace: true }
-      );
-      setDraftListing(null);
+      promoteUrlToSession(sid);
       setSessionsVersion((v) => v + 1);
     },
-    [setSearchParams]
+    [promoteUrlToSession]
   );
 
   useEffect(() => {
