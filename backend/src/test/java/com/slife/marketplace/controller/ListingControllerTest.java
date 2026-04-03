@@ -28,6 +28,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
@@ -36,6 +37,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(ListingController.class)
 @Import(SecurityConfig.class)
@@ -100,7 +103,7 @@ class ListingControllerTest {
         response.setPage(0);
         response.setSize(20);
 
-        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any()))
+        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any(), anyBoolean()))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/listings")
@@ -124,7 +127,7 @@ class ListingControllerTest {
 
     @Test
     void getListings_whenServiceThrows_shouldReturn500WithErrorPayloadNot403() throws Exception {
-        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any()))
+        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any(), anyBoolean()))
                 .thenThrow(new RuntimeException("Simulated DB failure"));
 
         mockMvc.perform(get("/api/listings")
@@ -133,15 +136,15 @@ class ListingControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
-                .andExpect(jsonPath("$.message").value("Internal server error"));
+                .andExpect(jsonPath("$.message", containsString("Internal server error: Simulated DB failure")));
     }
 
     @Test
-    void createListing_withoutAuth_shouldReturn200() throws Exception {
+    void createListing_withoutAuth_shouldReturn403() throws Exception {
         mockMvc.perform(post("/api/listings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Test

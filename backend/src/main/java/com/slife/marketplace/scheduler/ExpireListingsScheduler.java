@@ -1,5 +1,6 @@
 /**
- * Job: tin ACTIVE quá expirationDate → HIDDEN (listing vẫn hiện cho seller ở tab Hết hạn theo ngày).
+ * Job: tin ACTIVE quá expirationDate → HIDDEN theo batch (mỗi giờ: cron {@code 0 0 * * * *}).
+ * Catalog đã lọc lazy expiry; batch đồng bộ status.
  */
 package com.slife.marketplace.scheduler;
 

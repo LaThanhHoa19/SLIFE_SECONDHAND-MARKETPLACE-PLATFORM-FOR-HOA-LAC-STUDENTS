@@ -22,7 +22,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     /**
      * Keyword search + multi-filter.
-     * Chi tra ve listing co status = ACTIVE.
+     * Chỉ listing {@code ACTIVE}, chưa soft-delete, chưa quá hạn hiển thị (lazy expiry —
+     * đồng bộ với cron batch).
      */
     @Query(value = """
             SELECT l
@@ -30,6 +31,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             LEFT JOIN l.category c
             LEFT JOIN l.pickupAddress a
             WHERE l.status = 'ACTIVE'
+              AND l.deletedAt IS NULL
+              AND (l.expirationDate IS NULL OR l.expirationDate >= :now)
               AND (:categoryId IS NULL OR c.id           = :categoryId)
               AND (:location   IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
               AND (:purpose    IS NULL OR :purpose = ''  OR l.purpose      = :purpose)
@@ -57,6 +60,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             @Param("itemCond") String itemCond,
             @Param("priceMin") BigDecimal priceMin,
             @Param("priceMax") BigDecimal priceMax,
+            @Param("now") Instant now,
             Pageable pageable);
 
     /**
@@ -92,10 +96,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                 FROM Listing l
                 LEFT JOIN l.pickupAddress a
                 WHERE l.status = 'ACTIVE'
+                  AND l.deletedAt IS NULL
+                  AND (l.expirationDate IS NULL OR l.expirationDate >= :now)
                   AND (:sellerId IS NULL OR l.seller.id = :sellerId)
             """)
     Page<com.slife.marketplace.dto.response.ListingCardResponse> findAllActiveListingCards(
             @Param("sellerId") Long sellerId,
+            @Param("now") Instant now,
             Pageable pageable);
 
     long countByStatus(String status);
@@ -111,18 +118,25 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             )
             FROM Listing l JOIN l.category c
             WHERE l.status = 'ACTIVE'
+              AND l.deletedAt IS NULL
+              AND (l.expirationDate IS NULL OR l.expirationDate >= :now)
             GROUP BY c.id, c.name
             ORDER BY COUNT(l) DESC
             """)
     java.util.List<com.slife.marketplace.dto.response.CategoryStatDto> findTopCategoryStatsByActiveListings(
+            @Param("now") Instant now,
             Pageable pageable);
 
     long countBySeller_IdAndStatus(Long sellerId, String status);
 
-    /** Distinct pickup locations for filter dropdown */
+    /**
+     * Địa điểm gợi ý filter: chỉ từ tin ACTIVE hiển thị được (chưa xóa mềm, chưa quá hạn lazy).
+     */
     @Query("SELECT DISTINCT a.locationName FROM Listing l JOIN l.pickupAddress a " +
-            "WHERE a.locationName IS NOT NULL AND a.locationName <> ''")
-    List<String> findDistinctPickupLocationNames();
+            "WHERE l.status = 'ACTIVE' AND l.deletedAt IS NULL " +
+            "AND (l.expirationDate IS NULL OR l.expirationDate >= :now) " +
+            "AND a.locationName IS NOT NULL AND a.locationName <> ''")
+    List<String> findDistinctPickupLocationNames(@Param("now") Instant now);
 
     // --- My Listings Management (pageable versions) ---
 
@@ -156,14 +170,20 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             "ORDER BY l.expirationDate DESC")
     Page<Listing> findExpiredListingsBySeller(@Param("seller") User seller, Pageable pageable);
 
+    /** ID tin ACTIVE đã quá hạn, ưu tiên hết hạn lâu nhất trước (batch job). */
+    @Query("SELECT l.id FROM Listing l WHERE l.status = 'ACTIVE' "
+            + "AND l.expirationDate IS NOT NULL AND l.expirationDate < :now AND l.deletedAt IS NULL "
+            + "ORDER BY l.expirationDate ASC")
+    List<Long> findIdsOfActiveExpiredListings(@Param("now") Instant now, Pageable pageable);
+
     /**
-     * Job định kỳ: tin {@code ACTIVE} đã quá {@code expirationDate} → {@code HIDDEN} (tránh vẫn hiện trên feed
-     * vì query chợ chỉ lấy ACTIVE). Không đụng MOD_HIDDEN, SOLD, DRAFT; bỏ qua hàng thiếu {@code expirationDate}.
+     * Batch: {@code HIDDEN} theo danh sách ID (chỉ khi vẫn {@code ACTIVE} để an toàn khi chạy song song).
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Listing l SET l.status = 'HIDDEN', l.updatedAt = :now WHERE l.status = 'ACTIVE' "
-            + "AND l.expirationDate IS NOT NULL AND l.expirationDate < :now")
-    int hideExpiredActiveListings(@Param("now") Instant now);
+    @Query("UPDATE Listing l SET l.status = 'HIDDEN', l.updatedAt = :now WHERE l.id IN :ids "
+            + "AND l.status = 'ACTIVE' AND l.expirationDate IS NOT NULL AND l.expirationDate < :now "
+            + "AND l.deletedAt IS NULL")
+    int hideExpiredActiveListingsByIds(@Param("ids") List<Long> ids, @Param("now") Instant now);
 
     /**
      * Tab "Đã ẩn": HIDDEN + MOD_HIDDEN và chưa quá hạn — uỷ quyền cho

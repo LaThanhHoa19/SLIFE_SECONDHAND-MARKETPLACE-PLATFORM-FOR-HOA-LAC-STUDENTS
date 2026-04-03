@@ -73,6 +73,7 @@ public class ListingService {
     private final ListingImageService listingImageService;
     private final ConfigService configService;
     private final NotificationService notificationService;
+    private final ListingExpiryBatchService listingExpiryBatchService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -84,7 +85,8 @@ public class ListingService {
                           ListingLikeRepository listingLikeRepository,
                           ListingImageService listingImageService,
                           ConfigService configService,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          ListingExpiryBatchService listingExpiryBatchService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -96,6 +98,7 @@ public class ListingService {
         this.listingImageService = listingImageService;
         this.configService = configService;
         this.notificationService = notificationService;
+        this.listingExpiryBatchService = listingExpiryBatchService;
     }
 
     // ----------------------------------------------------------------
@@ -117,6 +120,7 @@ public class ListingService {
                 parseSort(sort)
         );
 
+        Instant catalogNow = Instant.now();
         Page<Listing> pageResult = listingRepository.findByFilters(
                 normalizeParam(q),
                 categoryId,
@@ -125,6 +129,7 @@ public class ListingService {
                 null,   // itemCond
                 null,   // priceMin
                 null,   // priceMax
+                catalogNow,
                 pageable
         );
 
@@ -172,7 +177,7 @@ public class ListingService {
         );
 
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
-                listingRepository.findAllActiveListingCards(sellerId, pageable);
+                listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
 
         List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = prioritizeFollowing
                 ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
@@ -831,18 +836,22 @@ public class ListingService {
     // ----------------------------------------------------------------
 
     /**
-     * Chuyển tin ACTIVE đã quá hạn ({@code expirationDate} &lt; now) sang HIDDEN.
-     * Hợp với My Listings: tin nằm tab "Hết hạn" (theo ngày), không nằm tab "Đã ẩn" (chỉ ẩn chưa hết hạn).
-     * Gọi bởi {@link com.slife.marketplace.scheduler.ExpireListingsScheduler}.
+     * Chuyển tin ACTIVE đã quá hạn ({@code expirationDate} &lt; now) sang HIDDEN theo từng batch
+     * (transaction riêng mỗi đợt — {@link ListingExpiryBatchService}).
+     * Catalog công khai đã lọc lazy expiry; batch đồng bộ DB và My Listings.
      */
-    @Transactional
     public int hideExpiredActiveListings() {
         Instant now = Instant.now();
-        int updated = listingRepository.hideExpiredActiveListings(now);
-        if (updated > 0) {
-            log.info("hideExpiredActiveListings: set HIDDEN for {} ACTIVE listing(s) past expiration", updated);
+        int total = 0;
+        int batchUpdated;
+        do {
+            batchUpdated = listingExpiryBatchService.hideNextBatch(now);
+            total += batchUpdated;
+        } while (batchUpdated > 0);
+        if (total > 0) {
+            log.info("hideExpiredActiveListings: total {} ACTIVE listing(s) set HIDDEN (all batches)", total);
         }
-        return updated;
+        return total;
     }
 
     @Transactional(readOnly = true)
