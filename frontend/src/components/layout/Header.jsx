@@ -369,13 +369,11 @@ export default function Header({ onToggleSidebar }) {
                                         sx={{
                                             width: 36,
                                             height: 36,
-                                            bgcolor: ACCENT,
+                                            bgcolor: '#9D6EED', // Màu Tím Slife đồng bộ
                                             border: '2px solid rgba(255,255,255,0.15)',
-                                            fontSize: '1rem',
-                                            fontWeight: 600,
                                         }}
                                     >
-                                        {(user.fullName || user.email || 'U').charAt(0).toUpperCase()}
+                                        <PersonIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.85)' }} />
                                     </Avatar>
                                 )}
                             </IconButton>

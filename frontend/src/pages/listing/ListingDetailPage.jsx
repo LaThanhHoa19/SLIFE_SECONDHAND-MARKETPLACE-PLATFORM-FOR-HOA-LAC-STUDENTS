@@ -61,7 +61,7 @@ import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPr
 import ReportDialog from '../../components/report/ReportDialog';
 
 // Hang so mau sac dong bo voi Feed
-const DARK_BG = '#1C1B23';
+const DARK_BG = '#141225';
 const CARD_BG = '#201D26';
 const CARD_BG2 = '#252230';
 const BORDER = 'rgba(255,255,255,0.07)';
@@ -571,18 +571,18 @@ export default function ListingDetailPage() {
                 </Typography>
             </Breadcrumbs>
 
-            {/* Khoi chinh: layout luoi de cac thanh phan ngang hang nhau */}
-            <Box
+            <Card
                 sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' },
-                    gap: { xs: 3, md: 4 },
-                    mb: 4,
-                    alignItems: 'start' // Critical: content stays at top, doesn't stretch
+                    bgcolor: CARD_BG,
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: '16px',
+                    p: { xs: 1.5, sm: 2, md: 2.5 },
+                    mb: 1.5,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
                 }}
             >
-                {/* Row 1: Gallery (Left) | Info Block (Right) */}
-                <Box sx={{ gridColumn: { md: 'span 6' } }}>
+                <Grid container spacing={{ xs: 2, md: 5 }}>
+                    <Grid item xs={12} md={6}>
                     <ListingImageGallery
                         images={images}
                         title={listing.title}
@@ -598,9 +598,9 @@ export default function ListingDetailPage() {
                         likeDisabled={likeSubmitting}
                         hideThumbs={false}
                     />
-                </Box>
+                    </Grid>
 
-                <Box sx={{ gridColumn: { md: 'span 6' } }}>
+                    <Grid item xs={12} md={6}>
                     <ListingRightInfoBlock
                         listing={listing}
                         locationText={locationText}
@@ -616,18 +616,30 @@ export default function ListingDetailPage() {
                         sellerFollowed={sellerFollowed}
                         sellerFollowLoading={sellerFollowLoading}
                         onSellerFollowClick={handleSellerFollowClick}
-                    />
-                </Box>
+                        />
+                    </Grid>
+                </Grid>
+            </Card>
 
-                {/* Row 2: Description & Comments (Left) | Sidebar Stack (Right: Map -> Other Listings -> Ad) */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, gridColumn: { md: 'span 6' } }}>
+            {/* Content Row 2: Description & Comments (Left) | Sidebar Stack (Right) */}
+            <Box
+                sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' },
+                    gap: { xs: 1.5, md: 2 },
+                    alignItems: 'start'
+                }}
+            >
+                {/* Left Column: Description & Comments */}
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 7' }, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <ListingDescription description={listing.description} />
-
+                    
                     <Card
                         sx={{
-                            bgcolor: CARD_BG, border: `1px solid ${BORDER}`,
-                            borderRadius: '14px', p: 2.5,
-                            height: 'fit-content'
+                            bgcolor: CARD_BG,
+                            border: `1px solid ${BORDER}`,
+                            borderRadius: '14px',
+                            p: 1.25
                         }}
                     >
                         <ListingComments
@@ -639,8 +651,8 @@ export default function ListingDetailPage() {
                     </Card>
                 </Box>
 
-                {/* Cot phai (Sidebar): Map -> Other Listings -> Ad Banner */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0, gridColumn: { md: 'span 6' } }}>
+                {/* Right Column: Sidebar (Map, Other Listings) */}
+                <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 5' }, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {/* Map Preview */}
                     {pickupAddress && pickupAddress.lat != null && pickupAddress.lng != null ? (() => {
                         const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${pickupAddress.lat},${pickupAddress.lng}`)}`;
@@ -718,21 +730,18 @@ export default function ListingDetailPage() {
                         );
                     })() : null}
 
-                    {/* Other Listings */}
+                    {/* Other Listings from Seller */}
                     <ListingSellerOtherListings
                         sellerListings={sellerListings}
                         loadingRelated={loadingRelated}
                         seller={seller}
                         listing={listing}
                     />
-
-                    {/* Ad Banner removed */}
                 </Box>
             </Box>
 
-            {/* Tin đăng tương tự - luôn hiện, grid 4 cột */}
+            {/* Similar Listings */}
             <ListingSimilar
-
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
                 onToggleSave={handleToggleSaveSimilar}

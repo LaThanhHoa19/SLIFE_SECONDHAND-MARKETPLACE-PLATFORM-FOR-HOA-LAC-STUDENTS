@@ -24,20 +24,20 @@ export const PURPLE = '#9D6EED';
 export const RED = '#FF4757';
 
 export default function ListingImageGallery({
-                                                images,
-                                                title,
-                                                listingId,
-                                                onShare,
-                                                onReport,
-                                                isSaved,
-                                                onToggleSave,
-                                                saveDisabled = false,
-                                                likeCount = 0,
-                                                isLiked = false,
-                                                onToggleLike,
-                                                likeDisabled = false,
-                                                hideThumbs = false,
-                                            }) {
+    images,
+    title,
+    listingId,
+    onShare,
+    onReport,
+    isSaved,
+    onToggleSave,
+    saveDisabled = false,
+    likeCount = 0,
+    isLiked = false,
+    onToggleLike,
+    likeDisabled = false,
+    hideThumbs = false,
+}) {
     const [activeIdx, setActiveIdx] = useState(0);
     const [openZoom, setOpenZoom] = useState(false);
     const count = images.length;
@@ -137,22 +137,22 @@ export default function ListingImageGallery({
                         }}
                     >
                         <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
-              <span>
-                <IconButton
-                    size="small"
-                    disabled={likeDisabled}
-                    onClick={onToggleLike}
-                    sx={{
-                        color: isLiked ? RED : '#fff',
-                        width: 36,
-                        height: 36,
-                        transition: 'all 0.2s',
-                        '&:hover': { transform: 'scale(1.06)' },
-                    }}
-                >
-                  {isLiked ? <FavoriteIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderIcon sx={{ fontSize: 20 }} />}
-                </IconButton>
-              </span>
+                            <span>
+                                <IconButton
+                                    size="small"
+                                    disabled={likeDisabled}
+                                    onClick={onToggleLike}
+                                    sx={{
+                                        color: isLiked ? RED : '#fff',
+                                        width: 36,
+                                        height: 36,
+                                        transition: 'all 0.2s',
+                                        '&:hover': { transform: 'scale(1.06)' },
+                                    }}
+                                >
+                                    {isLiked ? <FavoriteIcon sx={{ fontSize: 20 }} /> : <FavoriteBorderIcon sx={{ fontSize: 20 }} />}
+                                </IconButton>
+                            </span>
                         </Tooltip>
                         <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.95)" sx={{ minWidth: 12 }}>
                             {Number(likeCount) >= 0 ? Number(likeCount) : 0}
@@ -163,24 +163,24 @@ export default function ListingImageGallery({
                 {/* Lưu tin (bookmark) + Share + Report góc phải trên */}
                 <Box sx={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 1.2 }}>
                     <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
-            <span>
-            <IconButton
-                size="small"
-                disabled={saveDisabled}
-                onClick={onToggleSave}
-                sx={{
-                    bgcolor: 'rgba(0,0,0,0.55)',
-                    color: isSaved ? PURPLE : '#fff',
-                    width: 34,
-                    height: 34,
-                    backdropFilter: 'blur(4px)',
-                    transition: 'all 0.2s',
-                    '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.05)' },
-                }}
-            >
-              {isSaved ? <BookmarkIcon sx={{ fontSize: 17 }} /> : <BookmarkBorderIcon sx={{ fontSize: 17 }} />}
-            </IconButton>
-            </span>
+                        <span>
+                            <IconButton
+                                size="small"
+                                disabled={saveDisabled}
+                                onClick={onToggleSave}
+                                sx={{
+                                    bgcolor: 'rgba(0,0,0,0.55)',
+                                    color: isSaved ? PURPLE : '#fff',
+                                    width: 34,
+                                    height: 34,
+                                    backdropFilter: 'blur(4px)',
+                                    transition: 'all 0.2s',
+                                    '&:hover': { bgcolor: 'rgba(0,0,0,0.7)', transform: 'scale(1.05)' },
+                                }}
+                            >
+                                {isSaved ? <BookmarkIcon sx={{ fontSize: 17 }} /> : <BookmarkBorderIcon sx={{ fontSize: 17 }} />}
+                            </IconButton>
+                        </span>
                     </Tooltip>
                     <Tooltip title="Chia sẻ link">
                         <IconButton
@@ -258,11 +258,10 @@ export default function ListingImageGallery({
                         display: 'flex',
                         gap: 1,
                         mt: 1.5,
-                        px: 0.5,
-                        py: 0.5,
-                        borderRadius: '10px',
-                        bgcolor: 'rgba(255,255,255,0.02)',
-                        border: `1px solid ${BORDER}`,
+                        px: 0,
+                        py: 0,
+                        bgcolor: 'transparent',
+                        border: 'none',
                         overflowX: 'auto',
                         '::-webkit-scrollbar': { height: 4 },
                         '::-webkit-scrollbar-thumb': { bgcolor: BORDER, borderRadius: 4 },
@@ -275,23 +274,44 @@ export default function ListingImageGallery({
                             sx={{
                                 position: 'relative',
                                 flexShrink: 0,
-                                width: 66,
-                                height: 66,
-                                borderRadius: '9px',
+                                width: 68,
+                                height: 68,
+                                borderRadius: '12px',
                                 overflow: 'hidden',
-                                border: `2px solid ${i === activeIdx ? PURPLE : BORDER}`,
-                                boxShadow: i === activeIdx ? '0 0 0 2px rgba(157,110,237,0.25), 0 8px 20px rgba(0,0,0,0.35)' : 'none',
+                                border: `2px solid ${i === activeIdx ? PURPLE : 'transparent'}`,
+                                bgcolor: 'rgba(255,255,255,0.03)',
+                                boxShadow: i === activeIdx 
+                                    ? `0 0 0 1px ${PURPLE}22, 0 4px 12px rgba(0,0,0,0.3)` 
+                                    : '0 2px 6px rgba(0,0,0,0.1)',
                                 transform: i === activeIdx ? 'translateY(-1px)' : 'none',
                                 cursor: 'pointer',
-                                transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s',
-                                '&:hover': { borderColor: PURPLE },
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': { 
+                                    borderColor: i === activeIdx ? PURPLE : 'rgba(255,255,255,0.3)',
+                                    transform: 'translateY(-1.5px)',
+                                    zIndex: 2
+                                },
+                                '&::after': i !== activeIdx ? {
+                                    content: '""',
+                                    position: 'absolute',
+                                    top: 0, left: 0, right: 0, bottom: 0,
+                                    bgcolor: 'rgba(15, 14, 20, 0.3)',
+                                    transition: 'opacity 0.2s',
+                                    pointerEvents: 'none'
+                                } : {},
+                                '&:hover::after': { opacity: 0 }
                             }}
                         >
                             <Box
                                 component="img"
                                 src={img}
                                 alt={`thumb-${i}`}
-                                sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                sx={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover',
+                                    filter: i === activeIdx ? 'none' : 'grayscale(0.2) brightness(0.9)'
+                                }}
                             />
                         </Box>
                     ))}

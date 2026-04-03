@@ -81,6 +81,7 @@ const normalizeParams = (params = {}, query = '') => ({
             ? params.category
             : Number(params.category),
     q: query,
+    prioritizeFollowing: params?.prioritizeFollowing !== false,
 });
 
 const normalizeConditionParam = (condition) => {
@@ -171,7 +172,13 @@ export default function useListings(initialParams = {}) {
                     },
                     { signal: controller.signal }
                 )
-                : getListings(p, { signal: controller.signal });
+                : getListings(
+                    {
+                        ...p,
+                        prioritizeFollowing: p.prioritizeFollowing,
+                    },
+                    { signal: controller.signal }
+                );
 
             const { data: res } = await requestPromise;
             if (controller.signal.aborted) return;
