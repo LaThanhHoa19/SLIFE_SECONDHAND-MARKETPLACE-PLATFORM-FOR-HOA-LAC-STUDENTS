@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.DealRequest;
+import com.slife.marketplace.dto.request.SealDealFullRequest;
 import com.slife.marketplace.dto.request.SealDealRequest;
 import com.slife.marketplace.dto.request.UpdatePickupTimeRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
@@ -30,7 +31,21 @@ public class DealController {
         return ResponseEntity.ok(ApiResponse.success("Tạo lượt trả giá thành công", response));
     }
 
-    /** Người bán chốt đơn trong chat → deal PENDING trong DB. */
+    /**
+     * Người bán chốt đơn trong chat → deal PENDING trong DB.
+     * Path phẳng (khuyến nghị): tránh lỗi proxy / static resource với URL lồng {@code .../deals/seal}.
+     */
+    @PostMapping("/deals/seller-seal")
+    public ResponseEntity<ApiResponse<DealResponse>> sealDealFlat(@Valid @RequestBody SealDealFullRequest body) {
+        SealDealRequest req = new SealDealRequest();
+        req.setBuyerId(body.getBuyerId());
+        req.setPrice(body.getPrice());
+        req.setPickupTime(body.getPickupTime());
+        DealResponse response = dealService.sealDealBySeller(body.getListingId(), req);
+        return ResponseEntity.ok(ApiResponse.success("Đã chốt đơn (chờ người mua xác nhận)", response));
+    }
+
+    /** Cùng nghiệp vụ {@link #sealDealFlat}; giữ để tương thích / gọi curl trực tiếp. */
     @PostMapping("/listings/{listingId}/deals/seal")
     public ResponseEntity<ApiResponse<DealResponse>> sealDeal(
             @PathVariable Long listingId,
