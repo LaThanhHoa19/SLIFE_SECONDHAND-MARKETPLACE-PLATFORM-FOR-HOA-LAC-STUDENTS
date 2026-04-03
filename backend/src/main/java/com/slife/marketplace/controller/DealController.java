@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.DealRequest;
+import com.slife.marketplace.dto.request.SealDealRequest;
 import com.slife.marketplace.dto.request.UpdatePickupTimeRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.DealResponse;
@@ -27,6 +28,29 @@ public class DealController {
             @Valid @RequestBody DealRequest request) {
         DealResponse response = dealService.createDeal(listingId, request);
         return ResponseEntity.ok(ApiResponse.success("Tạo lượt trả giá thành công", response));
+    }
+
+    /** Người bán chốt đơn trong chat → deal PENDING trong DB. */
+    @PostMapping("/listings/{listingId}/deals/seal")
+    public ResponseEntity<ApiResponse<DealResponse>> sealDeal(
+            @PathVariable Long listingId,
+            @Valid @RequestBody SealDealRequest request) {
+        DealResponse response = dealService.sealDealBySeller(listingId, request);
+        return ResponseEntity.ok(ApiResponse.success("Đã chốt đơn (chờ người mua xác nhận)", response));
+    }
+
+    /** Người mua chấp nhận sau khi người bán chốt đơn → COMPLETED. */
+    @PutMapping("/listings/{listingId}/deals/pending/accept")
+    public ResponseEntity<ApiResponse<DealResponse>> buyerAcceptPending(@PathVariable Long listingId) {
+        DealResponse response = dealService.buyerAcceptPendingDeal(listingId);
+        return ResponseEntity.ok(ApiResponse.success("Đã xác nhận giao dịch", response));
+    }
+
+    /** Người mua từ chối sau khi người bán chốt đơn → REJECTED. */
+    @PutMapping("/listings/{listingId}/deals/pending/reject")
+    public ResponseEntity<ApiResponse<DealResponse>> buyerRejectPending(@PathVariable Long listingId) {
+        DealResponse response = dealService.buyerRejectPendingDeal(listingId);
+        return ResponseEntity.ok(ApiResponse.success("Đã từ chối giao dịch", response));
     }
 
     @PutMapping("/deals/{id}/reject")

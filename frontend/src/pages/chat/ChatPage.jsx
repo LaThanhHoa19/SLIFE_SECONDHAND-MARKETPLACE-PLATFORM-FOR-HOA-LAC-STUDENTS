@@ -39,7 +39,11 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
 import { getListing, hideListing } from '../../api/listingApi';
-import { createDealForListing, updatePickupTime } from '../../api/dealApi';
+import {
+  sealListingDeal,
+  buyerAcceptPendingDeal,
+  buyerRejectPendingDeal,
+} from '../../api/dealApi';
 import { useToast } from '../../context/ToastContext';
 import { fullImageUrl } from '../../utils/constants';
 import ChatSidebar from './components/ChatSidebar';
@@ -1153,6 +1157,19 @@ function ChatPageInner() {
     ].join('\n');
 
     try {
+      const listingId = activeSession?.listingId;
+      const buyerId = activeSession?.buyerId;
+      const price = parseDealPriceNumber(dealPriceTextForConfirm);
+      if (listingId == null || buyerId == null || !Number.isFinite(price)) {
+        showToast('Thiếu thông tin để chốt đơn (tin / người mua / giá).', 'warning');
+        return;
+      }
+      const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
+      await sealListingDeal(listingId, {
+        buyerId: Number(buyerId),
+        price,
+        ...(pickupIso ? { pickupTime: pickupIso } : {}),
+      });
       suppressOpponentDiffRef.current = true;
       const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');
       const msg = getData(res);
@@ -1166,11 +1183,14 @@ function ChatPageInner() {
     }
   }, [
     activeSession?.listingId,
+    activeSession?.buyerId,
     activeSessionId,
     dealPriceTextForConfirm,
+    parseDealPriceNumber,
+    finalizePickupTimeLocal,
+    toIsoFromDatetimeLocal,
     fetchSessions,
     finalizePickupLocationText,
-    finalizePickupTimeLocal,
     fmtAddress,
     fmtDatetime,
     getData,
@@ -1200,24 +1220,13 @@ function ChatPageInner() {
           : '❌ Mình không đồng ý / hủy giao dịch này.';
 
       try {
+        const listingId = activeSession?.listingId;
         if (decision === 'ACCEPT') {
-          const listingId = activeSession?.listingId;
-          const price = parseDealPriceNumber(dealPriceTextForConfirm);
-          if (listingId != null && Number.isFinite(price)) {
-            const created = await createDealForListing(listingId, price);
-            const body = created?.data;
-            const data = body?.data ?? body;
-            const dealId = data?.dealId ?? data?.id;
-
-            const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
-            if (dealId && pickupIso) {
-              try {
-                await updatePickupTime(dealId, pickupIso);
-              } catch {
-                // ignore pickup time update errors (deal still created)
-              }
-            }
+          if (listingId != null) {
+            await buyerAcceptPendingDeal(listingId);
           }
+        } else if (decision === 'CANCEL' && listingId != null) {
+          await buyerRejectPendingDeal(listingId);
         }
         suppressOpponentDiffRef.current = true;
         const res = await chatApi.sendMessage(activeSessionId, replyText, 'TEXT', null, {
@@ -1235,15 +1244,11 @@ function ChatPageInner() {
     [
       activeSession?.listingId,
       activeSessionId,
-      createDealForListing,
-      dealPriceTextForConfirm,
+      buyerAcceptPendingDeal,
+      buyerRejectPendingDeal,
       fetchSessions,
-      finalizePickupTimeLocal,
-      parseDealPriceNumber,
       scrollToBottom,
       showToast,
-      toIsoFromDatetimeLocal,
-      updatePickupTime,
     ],
   );
 
