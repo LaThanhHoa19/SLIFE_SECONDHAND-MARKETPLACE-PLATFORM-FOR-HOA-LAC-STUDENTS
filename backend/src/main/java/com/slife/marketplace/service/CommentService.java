@@ -86,8 +86,11 @@ public class CommentService {
             throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
         }
 
-        if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            throw new SlifeException(ErrorCode.FORBIDDEN, "Only listing owner can reply to comments");
+        boolean isListingSeller = listing.getSeller().getId().equals(currentUser.getId());
+        boolean isParentAuthor = parent.getUser().getId().equals(currentUser.getId());
+        if (!isListingSeller && !isParentAuthor) {
+            throw new SlifeException(ErrorCode.FORBIDDEN,
+                    "Chỉ chủ tin đăng hoặc tác giả bình luận này mới có thể phản hồi.");
         }
 
         Comment reply = new Comment();
@@ -99,6 +102,12 @@ public class CommentService {
 
         Comment saved = commentRepository.save(reply);
         List<String> savedUrls = saveImages(saved, imageUrls);
+
+        if (!listing.getSeller().getId().equals(currentUser.getId())) {
+            notificationService.notifyListingCommented(
+                    listing.getSeller(), currentUser,
+                    listing.getId(), listing.getTitle());
+        }
         commentRateLimitService.recordSuccess(currentUser.getId());
 
         return toResponse(saved, savedUrls, Collections.emptyList());
