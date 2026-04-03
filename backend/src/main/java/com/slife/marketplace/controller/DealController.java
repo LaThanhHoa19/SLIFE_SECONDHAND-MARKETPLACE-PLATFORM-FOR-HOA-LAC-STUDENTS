@@ -41,6 +41,8 @@ public class DealController {
         req.setBuyerId(body.getBuyerId());
         req.setPrice(body.getPrice());
         req.setPickupTime(body.getPickupTime());
+        req.setOfferId(body.getOfferId());
+        req.setAddressId(body.getAddressId());
         DealResponse response = dealService.sealDealBySeller(body.getListingId(), req);
         return ResponseEntity.ok(ApiResponse.success("Đã chốt đơn (chờ người mua xác nhận)", response));
     }

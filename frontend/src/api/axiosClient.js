@@ -2,7 +2,7 @@
  * Mục đích: Axios instance với interceptor gắn JWT + chuẩn hoá lỗi + xử lý 401.
  * API dùng: tất cả /api/**.
  * Request mẫu: Authorization: Bearer <token>.
- * Response lỗi chuẩn: { message, code, fieldErrors? }.
+ * Response lỗi chuẩn (body): { code, message, data }. Object reject có thêm response (Axios) + raw.
  * Props: N/A.
  * Validation: kiểm tra token tồn tại trước khi attach header.
  * Accessibility: lỗi sẽ được đẩy lên UI để hiển thị snackbar thân thiện.
@@ -94,6 +94,8 @@ axiosClient.interceptors.response.use(
             message: error?.response?.data?.message || error.message || 'Unknown error',
             fieldErrors: error?.response?.data?.fieldErrors || {},
             raw: error,
+            // Giữ nguyên response của Axios để catch (e) => e.response?.data?.message vẫn đọc được ApiResponse lỗi.
+            response: error?.response,
         };
         if (normalizedError.status === 401) {
             const isAuthEndpoint = originalConfig?.url?.includes('/api/auth/');

@@ -24,4 +24,10 @@ public class SealDealRequest {
 
     /** Thời gian nhận hàng (tuỳ chọn), ISO-8601 (vd từ {@code Date#toISOString()}). */
     private Instant pickupTime;
+
+    /** Tuỳ chọn: tham chiếu {@code offers.offer_id} khi giá khớp lượt trả giá trong chat. */
+    private Long offerId;
+
+    /** Tuỳ chọn: địa chỉ giao; mặc định địa chỉ nhận của tin ({@code pickup_address_id}). */
+    private Long addressId;
 }

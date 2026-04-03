@@ -1164,11 +1164,28 @@ function ChatPageInner() {
         showToast('Thiếu thông tin để chốt đơn (tin / người mua / giá).', 'warning');
         return;
       }
+      let resolvedOfferId = null;
+      const acceptedOffer = latestAcceptedOfferForConfirm;
+      if (acceptedOffer?.offerId != null) {
+        const fromAccepted = parseDealPriceNumber(offerContentToPriceText(acceptedOffer.content));
+        if (Number.isFinite(fromAccepted) && fromAccepted === price) {
+          resolvedOfferId = acceptedOffer.offerId;
+        }
+      }
+      if (resolvedOfferId == null && pendingOfferForFinalize?.offerId != null) {
+        const fromPending = parseDealPriceNumber(pendingOfferForFinalize.content);
+        if (Number.isFinite(fromPending) && fromPending === price) {
+          resolvedOfferId = pendingOfferForFinalize.offerId;
+        }
+      }
       const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
+      const sealAddressId = pickupAddressForFinalize?.addressId ?? pickupAddressForFinalize?.id;
       await sealListingDeal(listingId, {
         buyerId: Number(buyerId),
         price,
         ...(pickupIso ? { pickupTime: pickupIso } : {}),
+        ...(resolvedOfferId != null ? { offerId: resolvedOfferId } : {}),
+        ...(sealAddressId != null ? { addressId: Number(sealAddressId) } : {}),
       });
       suppressOpponentDiffRef.current = true;
       const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');
@@ -1186,6 +1203,9 @@ function ChatPageInner() {
     activeSession?.buyerId,
     activeSessionId,
     dealPriceTextForConfirm,
+    latestAcceptedOfferForConfirm,
+    pendingOfferForFinalize,
+    offerContentToPriceText,
     parseDealPriceNumber,
     finalizePickupTimeLocal,
     toIsoFromDatetimeLocal,
