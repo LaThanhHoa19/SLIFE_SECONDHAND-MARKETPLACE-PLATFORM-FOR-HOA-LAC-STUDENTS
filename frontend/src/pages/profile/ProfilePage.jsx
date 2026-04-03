@@ -148,12 +148,12 @@ export default function ProfilePage() {
       if (isMe) {
         try {
           const { getMyListings } = await import('../../api/myListingApi');
-          const soldRes = await getMyListings({ status: 'SOLD', size: 50 });
-          const soldData = getPayload(soldRes);
-          const soldList = Array.isArray(soldData) ? soldData : soldData?.content ?? [];
+          const hiddenRes = await getMyListings({ status: 'HIDDEN', size: 50 });
+          const hiddenData = getPayload(hiddenRes);
+          const hiddenList = Array.isArray(hiddenData) ? hiddenData : hiddenData?.content ?? [];
           
-          // Gộp tin ACTIVE và SOLD vào chung state để render theo Tab
-          list = [...list, ...soldList];
+          // Gộp tin ACTIVE và HIDDEN vào chung state để render theo Tab
+          list = [...list, ...hiddenList];
         } catch (e) {
           console.error("Lỗi khi tải tin đã bán:", e);
         }
@@ -567,8 +567,8 @@ export default function ProfilePage() {
             </Box>
 
             <Box sx={{ flex: 1, p: { xs: 0.1, sm: 0.5 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter(l => l.status === 'HIDDEN' || l.status === 'MOD_HIDDEN')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
             </Box>
           </Box>
         </Box>
