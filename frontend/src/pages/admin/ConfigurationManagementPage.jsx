@@ -36,6 +36,15 @@ import {
     updateAdminConfigurationById,
     updateAdminConfigurations,
 } from '../../api/configApi';
+import {
+    extractApiErrorMessage,
+    getValidationHint,
+    isIntegerValidation,
+    mapApiValidationErrors,
+    sanitizeUnsignedIntegerInput,
+    validateConfigByMeta,
+    withSourcePrefix,
+} from './configValidation';
 
 const TABLE_SURFACE = '#19191B';
 const TABLE_BORDER = '#3E3E42';
@@ -134,41 +143,6 @@ const CONFIG_LABELS = {
 
 const SUPPORTED_CONFIG_KEYS = new Set(Object.keys(CONFIG_LABELS));
 
-function isIntegerValidation(meta) {
-    return String(meta?.type ?? '').toLowerCase() === 'integer';
-}
-
-/** Validate theo metadata backend để FE/BE luôn đồng bộ. */
-function validateConfigByMeta(meta, raw) {
-    const s = String(raw ?? '').trim();
-    if (s === '') return { ok: false, message: 'Vui lòng nhập giá trị.' };
-
-    if (!isIntegerValidation(meta)) {
-        return { ok: true, value: s };
-    }
-
-    if (/^-/.test(s)) return { ok: false, message: 'Không được nhập số âm.' };
-
-    const n = Number.parseInt(s, 10);
-    if (Number.isNaN(n)) return { ok: false, message: 'Chỉ nhập số nguyên.' };
-
-    const min = Number.isFinite(Number(meta?.min)) ? Number(meta.min) : null;
-    const max = Number.isFinite(Number(meta?.max)) ? Number(meta.max) : null;
-
-    if ((min != null && n < min) || (max != null && n > max)) {
-        if (meta?.hint) return { ok: false, message: meta.hint };
-        if (min != null && max != null) return { ok: false, message: `Giá trị hợp lệ: ${min}–${max}.` };
-        if (min != null) return { ok: false, message: `Giá trị phải >= ${min}.` };
-        if (max != null) return { ok: false, message: `Giá trị phải <= ${max}.` };
-    }
-
-    return { ok: true, value: String(n) };
-}
-
-function sanitizeUnsignedIntegerInput(raw) {
-    return String(raw ?? '').replace(/\D+/g, '');
-}
-
 function formatDateTime(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -179,62 +153,6 @@ function formatDateTime(iso) {
 function extractConfigurationList(response) {
     const payload = response?.data?.data;
     return Array.isArray(payload) ? payload : [];
-}
-
-function extractApiErrorMessage(error, fallback) {
-    return (
-        error?.raw?.response?.data?.message ||
-        error?.raw?.response?.data?.error ||
-        error?.message ||
-        fallback
-    );
-}
-
-function mapApiValidationErrors(error, editingKey) {
-    const payload = error?.raw?.response?.data;
-    const details = payload?.errors;
-    const topMessage = String(payload?.message || payload?.error || error?.message || '').trim();
-    const keyLower = String(editingKey ?? '').toLowerCase();
-
-    let valueError = '';
-    let descriptionError = '';
-
-    if (details && typeof details === 'object') {
-        for (const [field, rawMsg] of Object.entries(details)) {
-            const fieldName = String(field || '').toLowerCase();
-            const msg = String(rawMsg ?? '').trim();
-            if (!msg) continue;
-
-            if (fieldName.includes('description')) {
-                descriptionError = descriptionError || msg;
-                continue;
-            }
-
-            if (
-                fieldName.includes('value') ||
-                fieldName.includes('configvalue') ||
-                fieldName.includes('config_value') ||
-                fieldName === keyLower
-            ) {
-                valueError = valueError || msg;
-            }
-        }
-    }
-
-    const fullText = [topMessage, JSON.stringify(details || {})].join(' ').toLowerCase();
-    if (!descriptionError && (fullText.includes('description') || fullText.includes('mô tả'))) {
-        descriptionError = topMessage || 'Mô tả không hợp lệ.';
-    }
-    if (
-        !valueError &&
-        (fullText.includes('value') ||
-            fullText.includes('giá trị') ||
-            (keyLower && fullText.includes(keyLower)))
-    ) {
-        valueError = topMessage || 'Giá trị không hợp lệ.';
-    }
-
-    return { valueError, descriptionError, topMessage };
 }
 
 function mapDtoToRow(dto, index) {
@@ -350,13 +268,13 @@ export default function ConfigurationManagementPage() {
         const key = editing.config_name;
         const result = validateConfigByMeta(editing.validation, draftValue);
         if (!result.ok) {
-            setFieldError(result.message);
+            setFieldError(withSourcePrefix(result.message, 'client'));
             return;
         }
 
         const trimmedDescription = draftDescription.trim();
         if (trimmedDescription.length > DESCRIPTION_MAX_LENGTH) {
-            setDescriptionError(`Mô tả tối đa ${DESCRIPTION_MAX_LENGTH} ký tự.`);
+            setDescriptionError(withSourcePrefix(`Mô tả tối đa ${DESCRIPTION_MAX_LENGTH} ký tự.`, 'client'));
             return;
         }
 
@@ -382,23 +300,21 @@ export default function ConfigurationManagementPage() {
         } catch (error) {
             const mapped = mapApiValidationErrors(error, key);
             if (mapped.valueError || mapped.descriptionError) {
-                if (mapped.valueError) setFieldError(mapped.valueError);
-                if (mapped.descriptionError) setDescriptionError(mapped.descriptionError);
+                if (mapped.valueError) setFieldError(withSourcePrefix(mapped.valueError, 'server'));
+                if (mapped.descriptionError) setDescriptionError(withSourcePrefix(mapped.descriptionError, 'server'));
                 if (!mapped.valueError && !mapped.descriptionError && mapped.topMessage) {
-                    showToast(mapped.topMessage, 'error');
+                    showToast(withSourcePrefix(mapped.topMessage, 'server'), 'error');
                 }
                 return;
             }
-            showToast(extractApiErrorMessage(error, 'Không lưu được cấu hình.'), 'error');
+            showToast(
+                withSourcePrefix(extractApiErrorMessage(error, 'Không lưu được cấu hình.'), 'server'),
+                'error',
+            );
         } finally {
             setIsSaving(false);
         }
     }, [editing, draftValue, draftDescription, closeEdit, loadConfigs, showToast]);
-
-    const editingMeta = useMemo(() => {
-        if (!editing) return null;
-        return editing.validation ?? null;
-    }, [editing]);
 
     const hasDraftChanges = useMemo(() => {
         if (!editing) return false;
@@ -417,6 +333,18 @@ export default function ConfigurationManagementPage() {
         const nextValue = String(draftValue ?? '').trim();
         return descriptionChanged || currentValue !== nextValue;
     }, [editing, draftValue, draftDescription]);
+
+    const valueHelperText = useMemo(() => {
+        if (fieldError) return fieldError;
+        if (!editing) return undefined;
+        return getValidationHint(editing.validation) || 'Nhập giá trị.';
+    }, [fieldError, editing]);
+
+    const saveDisabledReason = useMemo(() => {
+        if (isSaving) return 'Đang lưu...';
+        if (!hasDraftChanges) return 'Chưa có thay đổi';
+        return '';
+    }, [isSaving, hasDraftChanges]);
 
     const sortedFilteredRows = useMemo(() => {
         const filtered = rows.filter((r) => configMatchesSearch(r, searchQuery));
@@ -677,7 +605,8 @@ export default function ConfigurationManagementPage() {
                                     if (fieldError) setFieldError('');
                                 }}
                                 error={Boolean(fieldError)}
-                                helperText={fieldError || (!editingMeta ? 'Nhập giá trị.' : undefined)}
+                                helperText={valueHelperText}
+                                FormHelperTextProps={{ id: 'config-value-helper' }}
                                 fullWidth
                                 autoFocus
                                 disabled={isSaving}
@@ -690,8 +619,9 @@ export default function ConfigurationManagementPage() {
                                                     e.preventDefault();
                                                 }
                                             },
+                                            'aria-describedby': 'config-value-helper',
                                         }
-                                        : undefined
+                                        : { 'aria-describedby': 'config-value-helper' }
                                 }
                                 sx={{ ...DARK_DIALOG_TEXTFIELD_SX }}
                             />
@@ -707,7 +637,11 @@ export default function ConfigurationManagementPage() {
                                 multiline
                                 minRows={2}
                                 disabled={isSaving}
-                                inputProps={{ maxLength: DESCRIPTION_MAX_LENGTH }}
+                                inputProps={{
+                                    maxLength: DESCRIPTION_MAX_LENGTH,
+                                    'aria-describedby': 'config-description-helper',
+                                }}
+                                FormHelperTextProps={{ id: 'config-description-helper' }}
                                 helperText={
                                     descriptionError ? (
                                         descriptionError
@@ -738,14 +672,18 @@ export default function ConfigurationManagementPage() {
                     <Button onClick={closeEdit} disabled={isSaving} sx={{ color: 'rgba(255,255,255,0.7)' }}>
                         Hủy
                     </Button>
-                    <Button
-                        variant="contained"
-                        onClick={handleSave}
-                        disabled={isSaving || !hasDraftChanges}
-                        sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
-                    >
-                        {isSaving ? 'Đang lưu…' : 'Lưu'}
-                    </Button>
+                    <Tooltip title={saveDisabledReason} disableHoverListener={!saveDisabledReason}>
+                        <span>
+                            <Button
+                                variant="contained"
+                                onClick={handleSave}
+                                disabled={isSaving || !hasDraftChanges}
+                                sx={{ bgcolor: '#7c3aed', '&:hover': { bgcolor: '#6d28d9' } }}
+                            >
+                                {isSaving ? 'Đang lưu…' : 'Lưu'}
+                            </Button>
+                        </span>
+                    </Tooltip>
                 </DialogActions>
             </Dialog>
 
