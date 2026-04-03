@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
@@ -33,7 +35,11 @@ public class Message {
     private User sender;
 
     @NotNull
-    @Lob
+    /**
+     * LONGVARCHAR thay vì @Lob/CLOB: truy vấn kiểu {@code ContainingIgnoreCase} sinh {@code upper(content)} —
+     * một số DB báo lỗi khi tham số là CLOB.
+     */
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "content", nullable = false)
     private String content;
 
