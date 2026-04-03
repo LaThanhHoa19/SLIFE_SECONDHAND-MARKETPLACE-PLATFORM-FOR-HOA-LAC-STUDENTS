@@ -102,7 +102,17 @@ export default function ChatSidebar({
                             Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
                         </Typography>
                     )}
-                    {sessions.map((s) => (
+                    {sessions.map((s) => {
+                        const listingTitle = s.listingTitle || '';
+                        const otherName = s.otherParticipantName || '';
+                        const hasListing = Boolean(listingTitle);
+                        const title = hasListing
+                            ? `${listingTitle} / ${otherName || 'Người dùng'}`
+                            : (otherName || 'Chat');
+                        const avatarInitialSource = hasListing ? listingTitle : (otherName || 'C');
+                        const avatarInitial = avatarInitialSource[0]?.toUpperCase();
+
+                        return (
                         <ListItemButton
                             key={s.sessionId}
                             selected={s.sessionId === activeSessionId}
@@ -137,10 +147,10 @@ export default function ChatSidebar({
                                     flexShrink: 0,
                                 }}
                             >
-                                {(s.otherParticipantName || s.listingTitle || 'C')[0]?.toUpperCase()}
+                                {avatarInitial}
                             </Avatar>
                             <ListItemText
-                                primary={s.otherParticipantName || s.listingTitle || 'Chat'}
+                                primary={title}
                                 secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
                                 primaryTypographyProps={{
                                     noWrap: true,
@@ -157,7 +167,7 @@ export default function ChatSidebar({
                                 {s.unreadCount > 0 && <Badge badgeContent={s.unreadCount} color="primary" sx={{ mt: 0.5 }} />}
                             </Box>
                         </ListItemButton>
-                    ))}
+                    )})}
                 </List>
             )}
         </Paper>

@@ -9,7 +9,7 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const PURPLE = '#9D6EED';
 export const GREEN = '#2ED573';
 
-export default function ListingActions({ phoneNumber, startingChat, handleShowPhone, handleChat }) {
+export default function ListingActions({ phoneNumber, startingChat = false, handleShowPhone, handleChat }) {
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             <Tooltip title={phoneNumber ? "Gọi ngay" : "Xem số điện thoại"}>

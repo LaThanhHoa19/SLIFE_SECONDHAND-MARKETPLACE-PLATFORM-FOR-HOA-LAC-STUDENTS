@@ -88,6 +88,23 @@ public class UserService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
     }
 
+    /**
+     * Lưu số điện thoại (E.164 từ Firebase) và {@code phone_verified_at} sau khi OTP Firebase thành công.
+     */
+    @Transactional
+    public User markPhoneVerifiedWithFirebase(String phoneNumberE164) {
+        User user = getCurrentUser();
+        user.setPhoneNumber(phoneNumberE164);
+        user.setPhoneVerifiedAt(LocalDateTime.now());
+        user.setUpdatedAt(LocalDateTime.now());
+        User saved = userRepository.saveAndFlush(user);
+        User reloaded = userRepository.findById(saved.getId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.INTERNAL_ERROR, "Failed to reload user after phone verification"));
+        log.info("markPhoneVerifiedWithFirebase: userId={}, phoneNumber={}, phoneVerifiedAt={}",
+                reloaded.getId(), reloaded.getPhoneNumber(), reloaded.getPhoneVerifiedAt());
+        return reloaded;
+    }
+
     @Transactional
     public User updateCurrentUser(UpdateUserRequest request) {
         log.debug("updateCurrentUser - start");
@@ -104,8 +121,11 @@ public class UserService {
         }
         if (request.getPhoneNumber() != null) {
             String normalizedPhone = request.getPhoneNumber().trim().isEmpty() ? null : request.getPhoneNumber().trim();
+            // Firebase lưu E.164 (+84...); form có thể gửi 090... — cùng thuê bao không được coi là "đổi số".
             boolean changed = (user.getPhoneNumber() == null && normalizedPhone != null)
-                    || (user.getPhoneNumber() != null && !user.getPhoneNumber().equals(normalizedPhone));
+                    || (user.getPhoneNumber() != null && normalizedPhone == null)
+                    || (user.getPhoneNumber() != null && normalizedPhone != null
+                            && !sameVietnamMobileNumber(user.getPhoneNumber(), normalizedPhone));
             user.setPhoneNumber(normalizedPhone);
             if (changed) {
                 user.setPhoneVerifiedAt(null);
@@ -189,6 +209,49 @@ public class UserService {
             log.error("uploadCover failed: {}", e.getMessage(), e);
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
         }
+    }
+
+    /**
+     * Hai chuỗi SĐT VN coi là một nếu cùng thuê bao (chuẩn hoá về 9 chữ số quốc nội).
+     * Tránh trường hợp E.164 (+84...) vs 0xx chỉ khác định dạng nhưng {@link #vietnamMobileNationalDigits}
+     * trả null (độ dài lệch) → gây xóa nhầm {@code phone_verified_at}.
+     */
+    private static boolean sameVietnamMobileNumber(String a, String b) {
+        if (a == null && b == null) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        String ka = vietnamMobileKey9(a);
+        String kb = vietnamMobileKey9(b);
+        if (ka != null && kb != null) {
+            return ka.equals(kb);
+        }
+        return a.trim().equals(b.trim());
+    }
+
+    /**
+     * Khóa so sánh: 9 chữ số thuê bao (vd 349544953). Bỏ qua +, 84, 0 đầu; lấy 9 số cuối nếu chuỗi dài hơn.
+     */
+    private static String vietnamMobileKey9(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String digits = raw.trim().replaceAll("\\s+", "").replaceFirst("^\\+", "").replaceAll("\\D", "");
+        if (digits.isEmpty()) {
+            return null;
+        }
+        if (digits.startsWith("84")) {
+            digits = digits.substring(2);
+        }
+        if (digits.startsWith("0")) {
+            digits = digits.substring(1);
+        }
+        if (digits.length() < 9) {
+            return null;
+        }
+        return digits.substring(digits.length() - 9);
     }
 
     private static String getImageExtension(String filename) {

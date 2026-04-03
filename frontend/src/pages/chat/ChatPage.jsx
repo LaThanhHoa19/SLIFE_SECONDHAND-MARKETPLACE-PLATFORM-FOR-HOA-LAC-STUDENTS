@@ -39,8 +39,13 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { useAuth } from '../../hooks/useAuth';
 import * as chatApi from '../../api/chatApi';
 import { getListing, hideListing } from '../../api/listingApi';
-import { createDealForListing, updatePickupTime } from '../../api/dealApi';
+import {
+  sealListingDeal,
+  buyerAcceptPendingDeal,
+  buyerRejectPendingDeal,
+} from '../../api/dealApi';
 import { useToast } from '../../context/ToastContext';
+import { fullImageUrl } from '../../utils/constants';
 import ChatSidebar from './components/ChatSidebar';
 import ListingContextBanner from './components/ListingContextBanner';
 import OfferDialog from './components/OfferDialog';
@@ -70,6 +75,9 @@ function ChatPageInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionIdFromUrl = searchParams.get('sessionId');
   const messageIdFromUrl = searchParams.get('messageId');
+  const listingIdFromUrlRaw = searchParams.get('listingId');
+  const listingIdFromUrl =
+    listingIdFromUrlRaw && /^\d+$/.test(listingIdFromUrlRaw) ? Number(listingIdFromUrlRaw) : null;
   const currentUserId = currentUser?.id ?? currentUser?.user_id;
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -83,6 +91,10 @@ function ChatPageInner() {
   const [imageUploading, setImageUploading] = useState(false);
   const [composerRef, setComposerRef] = useState(null);
   const [activeListingStatus, setActiveListingStatus] = useState(null);
+  /** Mở từ tin đăng: xem trước UI, chưa tạo phiên chat trên server cho đến khi gửi tin đầu tiên */
+  const [draftListing, setDraftListing] = useState(null);
+  const [draftListingLoading, setDraftListingLoading] = useState(false);
+  const [draftListingError, setDraftListingError] = useState(false);
 
   // Offer dialog
   const [offerOpen, setOfferOpen] = useState(false);
@@ -299,6 +311,49 @@ function ChatPageInner() {
   }, [sessionIdFromUrl]);
 
   useEffect(() => {
+    if (sessionIdFromUrl && listingIdFromUrl) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('listingId');
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [sessionIdFromUrl, listingIdFromUrl, setSearchParams]);
+
+  useEffect(() => {
+    if (!listingIdFromUrl || sessionIdFromUrl) {
+      setDraftListing(null);
+      setDraftListingError(false);
+      setDraftListingLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setDraftListingLoading(true);
+    setDraftListingError(false);
+    getListing(listingIdFromUrl)
+      .then((res) => {
+        const body = res?.data;
+        const data = body?.data ?? body;
+        if (!cancelled) setDraftListing(data ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDraftListing(null);
+          setDraftListingError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDraftListingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [listingIdFromUrl, sessionIdFromUrl]);
+
+  useEffect(() => {
     setSuggestAnchorEl(null);
   }, [activeSessionId]);
 
@@ -315,10 +370,9 @@ function ChatPageInner() {
   const {
     sessions,
     sessionsLoading,
-    activeSession,
-    activeListingThumb,
-    activeListingPrice,
-    isSellerInActiveChat,
+    activeSession: sessionFromList,
+    activeListingThumb: listingThumbFromList,
+    activeListingPrice: listingPriceFromList,
     suggestedChatPhrases,
     fetchSessions,
     scheduleFetchSessions,
@@ -327,6 +381,72 @@ function ChatPageInner() {
     currentUserId,
     sessionsVersion,
   });
+
+  const activeSession = useMemo(() => {
+    if (activeSessionId && sessionFromList) return sessionFromList;
+    if (!activeSessionId && listingIdFromUrl && draftListing && !draftListingError) {
+      const seller = draftListing.seller || draftListing.sellerSummary;
+      const sellerId = seller?.id ?? seller?.userId ?? null;
+      return {
+        sessionId: null,
+        listingId: draftListing.id,
+        listingTitle: draftListing.title,
+        buyerId: currentUserId,
+        sellerId,
+        otherParticipantName:
+          seller?.fullName || seller?.name || seller?.displayName || 'Người bán',
+        status: 'DRAFT',
+      };
+    }
+    return sessionFromList;
+  }, [
+    activeSessionId,
+    sessionFromList,
+    listingIdFromUrl,
+    draftListing,
+    draftListingError,
+    currentUserId,
+  ]);
+
+  const activeListingThumb = useMemo(() => {
+    if (!activeSessionId && listingIdFromUrl && draftListing) {
+      const raw = Array.isArray(draftListing.images) ? draftListing.images[0] : null;
+      return fullImageUrl(raw);
+    }
+    return listingThumbFromList;
+  }, [activeSessionId, listingIdFromUrl, draftListing, listingThumbFromList]);
+
+  const activeListingPrice = useMemo(() => {
+    if (!activeSessionId && listingIdFromUrl && draftListing && draftListing.price != null) {
+      return Number(draftListing.price);
+    }
+    return listingPriceFromList;
+  }, [activeSessionId, listingIdFromUrl, draftListing, listingPriceFromList]);
+
+  const isSellerInActiveChat = useMemo(() => {
+    if (!activeSession || currentUserId == null) return false;
+    return Number(activeSession.sellerId) === Number(currentUserId);
+  }, [activeSession, currentUserId]);
+
+  const hydrateSessionFromFirstMessage = useCallback(
+    (msgPayload) => {
+      const sid = msgPayload?.sessionId;
+      if (!sid) return;
+      setActiveSessionId(sid);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('listingId');
+          next.set('sessionId', sid);
+          return next;
+        },
+        { replace: true }
+      );
+      setDraftListing(null);
+      setSessionsVersion((v) => v + 1);
+    },
+    [setSearchParams]
+  );
 
   useEffect(() => {
     activeListingStatusRef.current = activeListingStatus;
@@ -555,18 +675,38 @@ function ChatPageInner() {
     } else {
       text = (inputText || '').trim();
     }
-    if (!text || !activeSessionId || sending) return;
+    if (!text || sending) return;
+    if (!activeSessionId && !listingIdFromUrl) return;
+    if (!activeSessionId && (draftListingLoading || draftListingError || !draftListing)) return;
     setSending(true);
     setInputText('');
     stopTyping();
     try {
       suppressOpponentDiffRef.current = true;
-      await chatApi.sendMessage(activeSessionId, text, 'TEXT', null, {
+      const res = await chatApi.sendMessage(activeSessionId || null, text, 'TEXT', null, {
         replyToMessageId: composerRef?.id ?? null,
         quoteMessageId: null,
+        listingId: !activeSessionId ? listingIdFromUrl : undefined,
       });
+      const msg = getData(res);
+      if (!activeSessionId && msg?.sessionId) {
+        hydrateSessionFromFirstMessage(msg);
+      }
       setComposerRef(null);
-      await fetchHistory();
+      const sidForHistory = msg?.sessionId || activeSessionId;
+      if (sidForHistory) {
+        try {
+          const hres = await chatApi.getHistory(sidForHistory, 0, 30);
+          const body = hres?.data;
+          const page = body?.data ?? body;
+          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          setMessages(Array.isArray(content) ? [...content].reverse() : []);
+        } catch {
+          setMessages([]);
+        }
+      } else {
+        await fetchHistory();
+      }
       fetchSessions();
       scrollToBottom('smooth');
       setNewOpponentMsgCount(0);
@@ -619,11 +759,13 @@ function ChatPageInner() {
 
   const handleChatMobileBack = useCallback(() => {
     setActiveSessionId(null);
+    setDraftListing(null);
     setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
           next.delete('sessionId');
           next.delete('messageId');
+          next.delete('listingId');
           return next;
         },
         { replace: true }
@@ -664,14 +806,16 @@ function ChatPageInner() {
   };
 
   const confirmSendImage = async () => {
-    if (!previewFile || !activeSessionId) return;
+    if (!previewFile) return;
+    if (!activeSessionId && !listingIdFromUrl) return;
+    if (!activeSessionId && (draftListingLoading || draftListingError || !draftListing)) return;
     setPreviewOpen(false);
     setImageUploading(true);
 
     const optimistic = {
       id: makeTempId(),
       _pending: true,
-      sessionId: activeSessionId,
+      sessionId: activeSessionId || `draft-${listingIdFromUrl}`,
       senderId: currentUserId,
       senderName: currentUser?.fullName || 'Bạn',
       content: '[Hình ảnh]',
@@ -684,21 +828,29 @@ function ChatPageInner() {
     setMessages((prev) => [...prev, optimistic]);
 
     try {
-      const uploadRes = await chatApi.uploadChatImage(activeSessionId, previewFile);
+      const uploadRes = await chatApi.uploadChatImage(
+          activeSessionId || null,
+          previewFile,
+          !activeSessionId ? listingIdFromUrl : null
+      );
       const fileUrl = getData(uploadRes);
       if (!fileUrl) throw new Error('No URL returned from upload');
 
       const msgRes = await chatApi.sendMessage(
-          activeSessionId,
+          activeSessionId || null,
           '[Hình ảnh]',
           'IMAGE',
           fileUrl,
           {
             replyToMessageId: composerRef?.id ?? null,
             quoteMessageId: null,
+            listingId: !activeSessionId ? listingIdFromUrl : undefined,
           }
       );
       const msg = getData(msgRes);
+      if (!activeSessionId && msg?.sessionId) {
+        hydrateSessionFromFirstMessage(msg);
+      }
       setComposerRef(null);
 
       suppressOpponentDiffRef.current = true;
@@ -706,6 +858,18 @@ function ChatPageInner() {
         if (!msg?.id) return prev.filter((m) => !m._pending);
         return upsertMessages(prev, msg, { dropPending: true });
       });
+      const sidForHistory = msg?.sessionId || activeSessionId;
+      if (sidForHistory) {
+        try {
+          const hres = await chatApi.getHistory(sidForHistory, 0, 30);
+          const body = hres?.data;
+          const page = body?.data ?? body;
+          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          setMessages(Array.isArray(content) ? [...content].reverse() : []);
+        } catch {
+          /* keep upserted */
+        }
+      }
       fetchSessions();
       scrollToBottom('smooth');
       setNewOpponentMsgCount(0);
@@ -726,13 +890,23 @@ function ChatPageInner() {
   // ── Offer ─────────────────────────────────────────────────────────────────
   const submitOffer = async () => {
     const amount = parseFloat(String(offerAmount).replace(/[^0-9.]/g, ''));
-    if (!amount || amount <= 0 || !activeSessionId) return;
+    if (!amount || amount <= 0) return;
+    if (!activeSessionId && !listingIdFromUrl) return;
+    if (!activeSessionId && (draftListingLoading || draftListingError || !draftListing)) return;
     setOfferOpen(false);
     setOfferAmount('');
     try {
       suppressOpponentDiffRef.current = true;
-      const res = await chatApi.makeOffer(activeSessionId, amount);
+      let res;
+      if (!activeSessionId && listingIdFromUrl) {
+        res = await chatApi.makeOfferByListing(listingIdFromUrl, amount);
+      } else {
+        res = await chatApi.makeOffer(activeSessionId, amount);
+      }
       const msg = getData(res);
+      if (!activeSessionId && msg?.sessionId) {
+        hydrateSessionFromFirstMessage(msg);
+      }
       if (msg?.id) setMessages((prev) => upsertMessages(prev, msg));
       fetchSessions();
       scrollToBottom('smooth');
@@ -983,6 +1157,19 @@ function ChatPageInner() {
     ].join('\n');
 
     try {
+      const listingId = activeSession?.listingId;
+      const buyerId = activeSession?.buyerId;
+      const price = parseDealPriceNumber(dealPriceTextForConfirm);
+      if (listingId == null || buyerId == null || !Number.isFinite(price)) {
+        showToast('Thiếu thông tin để chốt đơn (tin / người mua / giá).', 'warning');
+        return;
+      }
+      const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
+      await sealListingDeal(listingId, {
+        buyerId: Number(buyerId),
+        price,
+        ...(pickupIso ? { pickupTime: pickupIso } : {}),
+      });
       suppressOpponentDiffRef.current = true;
       const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');
       const msg = getData(res);
@@ -996,11 +1183,14 @@ function ChatPageInner() {
     }
   }, [
     activeSession?.listingId,
+    activeSession?.buyerId,
     activeSessionId,
     dealPriceTextForConfirm,
+    parseDealPriceNumber,
+    finalizePickupTimeLocal,
+    toIsoFromDatetimeLocal,
     fetchSessions,
     finalizePickupLocationText,
-    finalizePickupTimeLocal,
     fmtAddress,
     fmtDatetime,
     getData,
@@ -1030,24 +1220,13 @@ function ChatPageInner() {
           : '❌ Mình không đồng ý / hủy giao dịch này.';
 
       try {
+        const listingId = activeSession?.listingId;
         if (decision === 'ACCEPT') {
-          const listingId = activeSession?.listingId;
-          const price = parseDealPriceNumber(dealPriceTextForConfirm);
-          if (listingId != null && Number.isFinite(price)) {
-            const created = await createDealForListing(listingId, price);
-            const body = created?.data;
-            const data = body?.data ?? body;
-            const dealId = data?.dealId ?? data?.id;
-
-            const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
-            if (dealId && pickupIso) {
-              try {
-                await updatePickupTime(dealId, pickupIso);
-              } catch {
-                // ignore pickup time update errors (deal still created)
-              }
-            }
+          if (listingId != null) {
+            await buyerAcceptPendingDeal(listingId);
           }
+        } else if (decision === 'CANCEL' && listingId != null) {
+          await buyerRejectPendingDeal(listingId);
         }
         suppressOpponentDiffRef.current = true;
         const res = await chatApi.sendMessage(activeSessionId, replyText, 'TEXT', null, {
@@ -1065,15 +1244,11 @@ function ChatPageInner() {
     [
       activeSession?.listingId,
       activeSessionId,
-      createDealForListing,
-      dealPriceTextForConfirm,
+      buyerAcceptPendingDeal,
+      buyerRejectPendingDeal,
       fetchSessions,
-      finalizePickupTimeLocal,
-      parseDealPriceNumber,
       scrollToBottom,
       showToast,
-      toIsoFromDatetimeLocal,
-      updatePickupTime,
     ],
   );
 
@@ -1140,10 +1315,12 @@ function ChatPageInner() {
     if (listingClosedForBuyer) setOfferOpen(false);
   }, [listingClosedForBuyer]);
 
+  const draftChatReady =
+      Boolean(listingIdFromUrl) && Boolean(draftListing) && !draftListingError && !draftListingLoading;
   const priceOfferDisabled =
-      Boolean(activeSessionId) &&
+      Boolean(activeSessionId || draftChatReady) &&
       (isSellerInActiveChat || hasOpenOfferAwaitingSeller || listingClosedForBuyer);
-  const priceOfferTooltip = !activeSessionId
+  const priceOfferTooltip = !activeSessionId && !draftChatReady
       ? 'Trả giá / đề xuất giá'
       : listingClosedForBuyer
           ? activeListingStatus === 'HIDDEN'
@@ -1155,8 +1332,26 @@ function ChatPageInner() {
               ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
               : 'Trả giá / đề xuất giá';
 
+  const handleSelectChatSession = useCallback(
+    (sessionId) => {
+      setActiveSessionId(sessionId);
+      setDraftListing(null);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('listingId');
+          next.delete('messageId');
+          next.set('sessionId', sessionId);
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
+
   // ── render ────────────────────────────────────────────────────────────────
-  const showConversationMobile = Boolean(activeSessionId);
+  const showConversationMobile = Boolean(activeSessionId || draftChatReady);
   const listDisplay = { xs: showConversationMobile ? 'none' : 'flex', md: 'flex' };
   const panelDisplay = { xs: showConversationMobile ? 'flex' : 'none', md: 'flex' };
 
@@ -1194,7 +1389,7 @@ function ChatPageInner() {
               sessionsLoading={sessionsLoading}
               sessions={sessions}
               activeSessionId={activeSessionId}
-              setActiveSessionId={setActiveSessionId}
+              setActiveSessionId={handleSelectChatSession}
               navigate={navigate}
               formatSessionTimeShort={formatSessionTimeShort}
           />
@@ -1218,7 +1413,17 @@ function ChatPageInner() {
                 borderColor: { xs: 'transparent', md: alpha(theme.palette.divider, 0.35) },
               }}
           >
-            {!activeSessionId ? (
+            {!activeSessionId && listingIdFromUrl && draftListingLoading ? (
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <CircularProgress />
+                </Box>
+            ) : !activeSessionId && listingIdFromUrl && draftListingError ? (
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+                  <Typography color="error" align="center">
+                    Không tải được tin đăng. Thử lại từ trang chi tiết tin.
+                  </Typography>
+                </Box>
+            ) : !activeSessionId && !draftChatReady ? (
                 <Box
                     sx={{
                       flex: 1,
@@ -1302,7 +1507,7 @@ function ChatPageInner() {
                       fileInputRef={fileInputRef}
                       handleFileChange={handleFileChange}
                       imageUploading={imageUploading}
-                      activeSessionId={activeSessionId}
+                      activeSessionId={activeSessionId || (draftChatReady ? 'draft' : null)}
                       setOfferOpen={setOfferOpen}
                       priceOfferDisabled={priceOfferDisabled}
                       priceOfferTooltip={priceOfferTooltip}

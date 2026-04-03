@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.DealRequest;
+import com.slife.marketplace.dto.request.SealDealRequest;
 import com.slife.marketplace.dto.response.DealResponse;
 import com.slife.marketplace.entity.Conversation;
 import com.slife.marketplace.entity.Deal;
@@ -17,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class DealService {
@@ -26,6 +29,8 @@ public class DealService {
     public static final String STATUS_CONFIRMED = "CONFIRMED";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_CANCELLED = "CANCELLED";
+    /** Người mua từ chối sau khi người bán chốt đơn (deal đang PENDING). */
+    public static final String STATUS_REJECTED = "REJECTED";
 
     private final DealRepository dealRepository;
     private final ListingRepository listingRepository;
@@ -68,6 +73,91 @@ public class DealService {
 
         deal = dealRepository.save(deal);
         return mapToResponse(deal);
+    }
+
+    /**
+     * Người bán chốt đơn trong chat: lưu deal {@code PENDING} (người mua là {@code proposed_by}).
+     * Nếu đã có deal PENDING cùng listing + buyer thì cập nhật giá / thời gian nhận.
+     */
+    @Transactional
+    public DealResponse sealDealBySeller(Long listingId, SealDealRequest request) {
+        User seller = userService.getCurrentUser();
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        if (listing.getSeller() == null || !listing.getSeller().getId().equals(seller.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Chỉ người bán mới chốt đơn");
+        }
+        User buyer = userService.getUserById(request.getBuyerId());
+        if (buyer.getId().equals(seller.getId())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Người mua không hợp lệ");
+        }
+        conversationRepository.findActiveByListingBuyerSeller(listingId, buyer.getId(), seller.getId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND,
+                        "Không có cuộc trò chuyện với người mua này"));
+
+        if (request.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá phải >= 0");
+        }
+
+        Optional<Deal> existing = dealRepository
+                .findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        listingId, buyer.getId(), STATUS_PENDING);
+        if (existing.isPresent()) {
+            Deal d = existing.get();
+            d.setDealPrice(request.getPrice());
+            if (request.getPickupTime() != null) {
+                d.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
+            }
+            return mapToResponse(dealRepository.save(d));
+        }
+
+        Deal deal = new Deal();
+        deal.setConversation(resolveConversationForDeal(listing, buyer));
+        deal.setListing(listing);
+        deal.setProposedBy(buyer);
+        deal.setDealPrice(request.getPrice());
+        deal.setStatus(STATUS_PENDING);
+        if (request.getPickupTime() != null) {
+            deal.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
+        }
+        deal = dealRepository.save(deal);
+        return mapToResponse(deal);
+    }
+
+    /**
+     * Người mua chấp nhận sau khi người bán chốt đơn: PENDING → COMPLETED.
+     */
+    @Transactional
+    public DealResponse buyerAcceptPendingDeal(Long listingId) {
+        User buyer = userService.getCurrentUser();
+        Deal deal = dealRepository
+                .findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        listingId, buyer.getId(), STATUS_PENDING)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND,
+                        "Không có giao dịch chờ xác nhận cho tin này"));
+        if (!STATUS_PENDING.equals(deal.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
+        }
+        deal.setStatus(STATUS_COMPLETED);
+        return mapToResponse(dealRepository.save(deal));
+    }
+
+    /**
+     * Người mua từ chối sau khi người bán chốt đơn: PENDING → REJECTED.
+     */
+    @Transactional
+    public DealResponse buyerRejectPendingDeal(Long listingId) {
+        User buyer = userService.getCurrentUser();
+        Deal deal = dealRepository
+                .findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
+                        listingId, buyer.getId(), STATUS_PENDING)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND,
+                        "Không có giao dịch chờ để từ chối"));
+        if (!STATUS_PENDING.equals(deal.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
+        }
+        deal.setStatus(STATUS_REJECTED);
+        return mapToResponse(dealRepository.save(deal));
     }
 
     @Transactional

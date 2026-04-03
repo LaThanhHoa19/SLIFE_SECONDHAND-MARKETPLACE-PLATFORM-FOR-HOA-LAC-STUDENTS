@@ -41,7 +41,6 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
 
 import { getListing, getListingShareInfo, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
-import * as chatApi from '../../api/chatApi';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
@@ -129,7 +128,6 @@ export default function ListingDetailPage() {
     const [listing, setListing] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [startingChat, setStartingChat] = useState(false);
     const [showPhone, setShowPhone] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [isLiked, setIsLiked] = useState(false);
@@ -290,22 +288,13 @@ export default function ListingDetailPage() {
         setReportOpen(true);
     };
 
-    const handleChat = async () => {
+    const handleChat = () => {
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
             navigate('/login', { state: { from: location.pathname } });
             return;
         }
-        setStartingChat(true);
-        try {
-            const res = await chatApi.getSession(listing.id);
-            const sessionId = res?.data?.data ?? res?.data;
-            if (sessionId) navigate(`/chat?sessionId=${sessionId}`);
-        } catch {
-            showToast('Không thể mở cuộc trò chuyện. Thử lại sau.', 'error');
-        } finally {
-            setStartingChat(false);
-        }
+        navigate(`/chat?listingId=${listing.id}`);
     };
 
     const handleShowPhone = () => {
@@ -605,7 +594,6 @@ export default function ListingDetailPage() {
                         listing={listing}
                         locationText={locationText}
                         phoneNumber={phoneNumber}
-                        startingChat={startingChat}
                         handleShowPhone={handleShowPhone}
                         handleChat={handleChat}
                         seller={seller}
