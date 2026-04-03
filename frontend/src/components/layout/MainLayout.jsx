@@ -12,20 +12,40 @@ export default function MainLayout() {
     const isLgUp = useMediaQuery(theme.breakpoints.up('lg')); // >= 1200px
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
-    // Auto close sidebar when screen shrinks, auto open when large
-    useEffect(() => {
-        setSidebarOpen(isLgUp);
-    }, [isLgUp]);
     const location = useLocation();
     const isAdminRoute = location.pathname.startsWith('/admin');
     const isFullWidthMain = isFullWidthMainRoute(location.pathname);
+    const isChatRoute = location.pathname === '/chat';
+
+    // Đồng bộ sidebar theo breakpoint; trên /chat không render Sidebar app (chỉ còn danh sách hội thoại trong ChatPage).
+    useEffect(() => {
+        if (isChatRoute) return;
+        setSidebarOpen(isLgUp);
+    }, [isLgUp, isChatRoute]);
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: APP_SHELL_BG }}>
+        <Box
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                bgcolor: APP_SHELL_BG,
+                ...(isChatRoute
+                    ? {
+                          height: '100dvh',
+                          maxHeight: '100dvh',
+                          overflow: 'hidden',
+                      }
+                    : { minHeight: '100vh' }),
+            }}
+        >
             {/* Header fixed — ẩn trên admin routes, chỉ dùng header riêng trong AdminLayout */}
             {!isAdminRoute && (
                 <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1300 }}>
-                    <Header onToggleSidebar={() => setSidebarOpen(prev => !prev)} />
+                    <Header
+                        onToggleSidebar={
+                            isChatRoute ? undefined : () => setSidebarOpen((prev) => !prev)
+                        }
+                    />
                 </Box>
             )}
 
@@ -34,34 +54,47 @@ export default function MainLayout() {
                 sx={{
                     display: 'flex',
                     flex: 1,
+                    minHeight: 0,
                     mt: isAdminRoute ? 0 : `${HEADER_HEIGHT + HEADER_GAP}px`,
                     width: '100%',
+                    overflow: isChatRoute ? 'hidden' : undefined,
                 }}
             >
-                {!isAdminRoute && <Sidebar open={sidebarOpen} />}
+                {!isAdminRoute && !isChatRoute && <Sidebar open={sidebarOpen} />}
                 <Box
                     component="main"
                     sx={{
                         flex: 1,
-                        minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
+                        minWidth: 0,
                         display: 'flex',
                         flexDirection: 'column',
-                        minWidth: 0,
+                        ...(isChatRoute
+                            ? {
+                                  minHeight: 0,
+                                  overflow: 'hidden',
+                              }
+                            : {
+                                  minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
+                              }),
                     }}
                 >
                     <Box
                         sx={{
                             flex: 1,
+                            minHeight: 0,
                             width: '100%',
                             maxWidth: isAdminRoute || isFullWidthMain ? '100%' : CONTENT_MAX_WIDTH,
                             mx: isAdminRoute || isFullWidthMain ? 0 : 'auto',
-                            px: isAdminRoute ? 0 : PAGE_PADDING_X,
-                            py: isAdminRoute ? 0 : PAGE_PADDING_Y,
+                            px: isAdminRoute || isChatRoute ? 0 : PAGE_PADDING_X,
+                            py: isAdminRoute || isChatRoute ? 0 : PAGE_PADDING_Y,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: isChatRoute ? 'hidden' : undefined,
                         }}
                     >
                         <Outlet />
                     </Box>
-                    {!isAdminRoute && <Footer />}
+                    {!isAdminRoute && !isChatRoute && <Footer />}
                 </Box>
             </Box>
         </Box>
