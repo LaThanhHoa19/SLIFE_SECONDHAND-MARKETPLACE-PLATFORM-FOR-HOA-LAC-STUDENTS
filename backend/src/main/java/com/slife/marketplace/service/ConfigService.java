@@ -4,6 +4,7 @@ import com.slife.marketplace.config.CacheConfig;
 import com.slife.marketplace.dto.request.ConfigSingleUpdateRequest;
 import com.slife.marketplace.dto.request.ConfigUpdateRequest;
 import com.slife.marketplace.dto.response.ConfigResponseDTO;
+import com.slife.marketplace.dto.response.ConfigValidationMetaDTO;
 import com.slife.marketplace.entity.Configuration;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
@@ -32,6 +33,14 @@ public class ConfigService {
             "DEAL_TIMEOUT_DAYS",
             "REPORT_THRESHOLD",
             "AUTO_HIDE_REPORT_THRESHOLD");
+
+    private static final Map<String, ConfigValidationMetaDTO> VALIDATION_RULES = Map.of(
+            "LISTING_EXPIRATION", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
+            "MAX_IMAGES", new ConfigValidationMetaDTO("integer", 1, 30, "Giá trị hợp lệ: 1–30 ảnh."),
+            "MAX_IMAGES_PER_POST", new ConfigValidationMetaDTO("integer", 1, 30, "Giá trị hợp lệ: 1–30 ảnh."),
+            "REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."),
+            "DEAL_TIMEOUT_DAYS", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
+            "AUTO_HIDE_REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."));
     private final ConfigRepository configRepository;
 
     public ConfigService(ConfigRepository configRepository) {
@@ -200,10 +209,27 @@ public class ConfigService {
         if (!NUMERIC_CONFIG_KEYS.contains(key)) {
             return;
         }
+
+        final int parsed;
         try {
-            Integer.parseInt(value);
+            parsed = Integer.parseInt(value);
         } catch (NumberFormatException ex) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, key + " must be a valid number");
+        }
+
+        ConfigValidationMetaDTO meta = VALIDATION_RULES.get(key);
+        if (meta == null) {
+            return;
+        }
+
+        Integer min = meta.min();
+        Integer max = meta.max();
+        if ((min != null && parsed < min) || (max != null && parsed > max)) {
+            String hint = meta.hint();
+            if (hint != null && !hint.isBlank()) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, hint);
+            }
+            throw new SlifeException(ErrorCode.INVALID_INPUT, key + " is out of valid range");
         }
     }
 
