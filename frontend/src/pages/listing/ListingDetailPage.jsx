@@ -22,6 +22,11 @@ import {
     Breadcrumbs,
     Link,
     Grid,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -39,6 +44,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import HomeIcon from '@mui/icons-material/Home';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import LockPersonOutlinedIcon from '@mui/icons-material/LockPersonOutlined';
 
 import { getListing, getListingShareInfo, getListings, toggleListingLike, saveListing, unsaveListing } from '../../api/listingApi';
 import { fullImageUrl } from '../../utils/constants';
@@ -58,6 +64,7 @@ import ListingSellerOtherListings from '../../components/listing/ListingSellerOt
 import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
 import ReportDialog from '../../components/report/ReportDialog';
+import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#141225';
@@ -142,6 +149,8 @@ export default function ListingDetailPage() {
     const [saveSubmittingSimilarId, setSaveSubmittingSimilarId] = useState(null);
     const [sellerFollowed, setSellerFollowed] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
+    const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+    const [loginDialogConfig, setLoginDialogConfig] = useState({ title: '', content: '' });
 
     // Load listing
     useEffect(() => {
@@ -210,13 +219,19 @@ export default function ListingDetailPage() {
             .finally(() => setLoadingRelated(false));
     }, [listing, id]);
 
+    // Auth requirement helper
+    const requireAuth = useCallback((title, content) => {
+        if (!isAuthenticated) {
+            setLoginDialogConfig({ title, content });
+            setLoginDialogOpen(true);
+            return false;
+        }
+        return true;
+    }, [isAuthenticated]);
+
     // Handlers
     const handleToggleLike = async () => {
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để thích tin.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
+        if (!requireAuth('Thích tin đăng', 'Bạn cần đăng nhập để thích tin đăng này.')) return;
         if (likeSubmitting) return;
 
         const prevLiked = isLiked;
@@ -280,29 +295,17 @@ export default function ListingDetailPage() {
     };
 
     const handleReport = () => {
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
+        if (!requireAuth('Báo cáo tin đăng', 'Bạn cần đăng nhập để báo cáo tin đăng vi phạm.')) return;
         setReportOpen(true);
     };
 
     const handleChat = () => {
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
+        if (!requireAuth('Nhắn tin cho người bán', 'Bạn cần đăng nhập để gửi tin nhắn cho người bán.')) return;
         navigate(`/chat?listingId=${listing.id}`);
     };
 
     const handleShowPhone = () => {
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để xem số điện thoại.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
+        if (!requireAuth('Xem số điện thoại', 'Bạn cần đăng nhập để xem số điện thoại người bán.')) return;
         setShowPhone(true);
     };
 
@@ -319,8 +322,7 @@ export default function ListingDetailPage() {
             isFollowing: sellerFollowed,
             isAuthenticated,
             onUnauthenticated: () => {
-                showSnack('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
-                navigate('/login', { state: { from: location.pathname } });
+                requireAuth('Theo dõi người bán', 'Bạn cần đăng nhập để theo dõi người bán này.');
             },
             onSuccess: (nextIsFollowing) => {
                 const delta = nextIsFollowing ? 1 : -1;
@@ -349,11 +351,7 @@ export default function ListingDetailPage() {
     }, [listing, sellerFollowed, isAuthenticated, navigate, showSnack, toggleFollow]);
 
     const handleToggleSave = async () => {
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
+        if (!requireAuth('Lưu tin đăng', 'Bạn cần đăng nhập để lưu tin đăng này vào danh sách yêu thích.')) return;
         if (!listing?.id || saveSubmitting) return;
 
         const wasSaved = isSavedItem;
@@ -379,11 +377,7 @@ export default function ListingDetailPage() {
     const handleToggleSaveSimilar = async (targetListing) => {
         const targetId = targetListing?.id ?? targetListing?.listingId;
         if (!targetId || saveSubmittingSimilarId) return;
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để lưu tin.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
+        if (!requireAuth('Lưu tin đăng', 'Bạn cần đăng nhập để lưu tin đăng này.')) return;
         const wasSaved = !!(targetListing?.isSaved ?? targetListing?.saved);
         setSaveSubmittingSimilarId(targetId);
         setSimilarListings((prev) =>
@@ -424,7 +418,7 @@ export default function ListingDetailPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {[1, 2, 3, 4].map((n) => (
                             <Skeleton key={n} variant="rectangular" height={n === 1 ? 32 : n === 2 ? 44 : 24}
-                                      sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
+                                sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
                         ))}
                     </Box>
                 </Box>
@@ -453,8 +447,14 @@ export default function ListingDetailPage() {
     const conditionInfo = getConditionInfo(listing.itemCondition);
     const locationText = getLocation(listing);
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
+    // Lấy số điện thoại theo thứ tự ưu tiên: top-level field -> seller object -> sellerSummary object
+    // Kiểm tra cả camelCase và snake_case để tránh lỗi serialization
+    const rawPhone = listing?.sellerPhone 
+        || seller?.phoneNumber || seller?.phone_number
+        || listing?.sellerSummary?.phoneNumber || listing?.sellerSummary?.phone_number;
+
     const phoneNumber = isAuthenticated && showPhone
-        ? (listing.sellerPhone || seller?.phoneNumber || 'Không có SĐT')
+        ? (rawPhone || 'Thông tin liên hệ trống')
         : null;
     const pickupAddress = listing?.pickupAddress;
     const s = String(listing?.status || listing?.itemStatus || '').toUpperCase();
@@ -572,38 +572,38 @@ export default function ListingDetailPage() {
             >
                 <Grid container spacing={{ xs: 2, md: 5 }}>
                     <Grid item xs={12} md={6}>
-                    <ListingImageGallery
-                        images={images}
-                        title={listing.title}
-                        listingId={listing.id}
-                        onShare={handleShare}
-                        onReport={handleReport}
-                        isSaved={isSavedItem}
-                        onToggleSave={handleToggleSave}
-                        saveDisabled={saveSubmitting}
-                        likeCount={likeCount}
-                        isLiked={isLiked}
-                        onToggleLike={handleToggleLike}
-                        likeDisabled={likeSubmitting}
-                        hideThumbs={false}
-                    />
+                        <ListingImageGallery
+                            images={images}
+                            title={listing.title}
+                            listingId={listing.id}
+                            onShare={handleShare}
+                            onReport={handleReport}
+                            isSaved={isSavedItem}
+                            onToggleSave={handleToggleSave}
+                            saveDisabled={saveSubmitting}
+                            likeCount={likeCount}
+                            isLiked={isLiked}
+                            onToggleLike={handleToggleLike}
+                            likeDisabled={likeSubmitting}
+                            hideThumbs={false}
+                        />
                     </Grid>
 
                     <Grid item xs={12} md={6}>
-                    <ListingRightInfoBlock
-                        listing={listing}
-                        locationText={locationText}
-                        phoneNumber={phoneNumber}
-                        handleShowPhone={handleShowPhone}
-                        handleChat={handleChat}
-                        seller={seller}
-                        sellerId={sellerId}
-                        isOwnListing={isOwnListing}
-                        onNotify={showSnack}
-                        showSellerFollow={!isOwnListing && !!sellerId}
-                        sellerFollowed={sellerFollowed}
-                        sellerFollowLoading={sellerFollowLoading}
-                        onSellerFollowClick={handleSellerFollowClick}
+                        <ListingRightInfoBlock
+                            listing={listing}
+                            locationText={locationText}
+                            phoneNumber={phoneNumber}
+                            handleShowPhone={handleShowPhone}
+                            handleChat={handleChat}
+                            seller={seller}
+                            sellerId={sellerId}
+                            isOwnListing={isOwnListing}
+                            onNotify={showSnack}
+                            showSellerFollow={!isOwnListing && !!sellerId}
+                            sellerFollowed={sellerFollowed}
+                            sellerFollowLoading={sellerFollowLoading}
+                            onSellerFollowClick={handleSellerFollowClick}
                         />
                     </Grid>
                 </Grid>
@@ -621,7 +621,7 @@ export default function ListingDetailPage() {
                 {/* Left Column: Description & Comments */}
                 <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 7' }, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <ListingDescription description={listing.description} />
-                    
+
                     <Card
                         sx={{
                             bgcolor: CARD_BG,
@@ -743,6 +743,102 @@ export default function ListingDetailPage() {
                 targetId={id}
                 targetTitle={listing?.title}
             />
+
+            {/* Login Prompt Dialog - Premium UI */}
+            <Dialog
+                open={loginDialogOpen}
+                onClose={() => setLoginDialogOpen(false)}
+                PaperProps={{
+                    sx: {
+                        bgcolor: 'rgba(32, 29, 38, 0.95)',
+                        backgroundImage: 'none',
+                        border: '1px solid rgba(157, 110, 237, 0.15)',
+                        borderRadius: '24px',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                        backdropFilter: 'blur(12px)',
+                        p: 1.5,
+                        overflow: 'visible'
+                    }
+                }}
+                BackdropProps={{
+                    sx: { backdropFilter: 'blur(4px)', bgcolor: 'rgba(0,0,0,0.5)' }
+                }}
+                maxWidth="xs"
+                fullWidth
+            >
+                <Box sx={{ position: 'relative', pt: 3, pb: 1, px: 2, textAlign: 'center' }}>
+                    {/* Top Icon with Glow */}
+                    <Box
+                        sx={{
+                            width: 80, height: 80, borderRadius: '28px',
+                            mx: 'auto', mb: 3, mt: -7,
+                            background: 'linear-gradient(135deg, #9D6EED 0%, #6B3FBF 100%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 15px 35px rgba(157, 110, 237, 0.45)',
+                            border: '4px solid #201D26'
+                        }}
+                    >
+                        <LockPersonOutlinedIcon sx={{ fontSize: 40, color: '#fff' }} />
+                    </Box>
+
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: '#fff', mb: 1.5, letterSpacing: '-0.02em' }}>
+                        {loginDialogConfig.title || 'Dành riêng cho thành viên'}
+                    </Typography>
+
+                    <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, lineHeight: 1.6, mb: 4 }}>
+                        {loginDialogConfig.content || 'Hãy đăng nhập ngay để trải nghiệm đầy đủ các tính năng tuyệt vời của SLIFE.'}
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button
+                            fullWidth
+                            onClick={() => setLoginDialogOpen(false)}
+                            sx={{
+                                py: 1.5,
+                                color: 'rgba(255,255,255,0.5)',
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                fontSize: 15,
+                                borderRadius: '14px',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                    color: '#fff',
+                                    bgcolor: 'rgba(255,255,255,0.05)',
+                                    borderColor: 'rgba(157, 110, 237, 0.4)'
+                                }
+                            }}
+                        >
+                            Để sau
+                        </Button>
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={() => {
+                                setLoginDialogOpen(false);
+                                navigate('/login', { state: { from: location.pathname } });
+                            }}
+                            sx={{
+                                py: 1.5,
+                                borderRadius: '14px',
+                                bgcolor: PURPLE,
+                                color: '#fff',
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                fontSize: 15,
+                                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                '&:hover': {
+                                    bgcolor: '#835cd4',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 8px 20px rgba(157, 110, 237, 0.4)',
+                                },
+                            }}
+                        >
+                            Đăng nhập ngay
+                        </Button>
+                    </Box>
+                </Box>
+            </Dialog>
         </Box>
     );
 }

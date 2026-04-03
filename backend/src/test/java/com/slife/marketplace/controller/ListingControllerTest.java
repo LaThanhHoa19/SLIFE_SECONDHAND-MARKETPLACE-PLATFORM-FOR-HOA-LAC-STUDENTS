@@ -38,6 +38,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.hamcrest.Matchers.containsString;
+
 @WebMvcTest(ListingController.class)
 @Import(SecurityConfig.class)
 class ListingControllerTest {
@@ -134,15 +136,15 @@ class ListingControllerTest {
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
-                .andExpect(jsonPath("$.message").value("Internal server error"));
+                .andExpect(jsonPath("$.message", containsString("Internal server error: Simulated DB failure")));
     }
 
     @Test
-    void createListing_withoutAuth_shouldReturn200() throws Exception {
+    void createListing_withoutAuth_shouldReturn403() throws Exception {
         mockMvc.perform(post("/api/listings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
     }
 
     @Test

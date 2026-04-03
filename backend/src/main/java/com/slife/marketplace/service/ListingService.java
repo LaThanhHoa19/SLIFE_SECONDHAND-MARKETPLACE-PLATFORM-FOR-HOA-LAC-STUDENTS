@@ -59,7 +59,9 @@ public class ListingService {
     private static final String LISTING_STATUS_DELETED = "DELETED";
     /** Đồng bộ với frontend (tối đa 10 ảnh/tin). */
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
-    /** Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION. */
+    /**
+     * Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION.
+     */
     private static final int DEFAULT_LISTING_EXPIRATION_DAYS = 30;
 
     private final ListingRepository listingRepository;
@@ -73,6 +75,7 @@ public class ListingService {
     private final ListingImageService listingImageService;
     private final ConfigService configService;
     private final NotificationService notificationService;
+    private final ListingExpiryBatchService listingExpiryBatchService;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -84,7 +87,8 @@ public class ListingService {
                           ListingLikeRepository listingLikeRepository,
                           ListingImageService listingImageService,
                           ConfigService configService,
-                          NotificationService notificationService) {
+                          NotificationService notificationService,
+                          ListingExpiryBatchService listingExpiryBatchService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -96,6 +100,7 @@ public class ListingService {
         this.listingImageService = listingImageService;
         this.configService = configService;
         this.notificationService = notificationService;
+        this.listingExpiryBatchService = listingExpiryBatchService;
     }
 
     // ----------------------------------------------------------------
@@ -114,9 +119,9 @@ public class ListingService {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 10,
-                parseSort(sort)
-        );
+                parseSort(sort));
 
+        Instant catalogNow = Instant.now();
         Page<Listing> pageResult = listingRepository.findByFilters(
                 normalizeParam(q),
                 categoryId,
@@ -125,6 +130,7 @@ public class ListingService {
                 null,   // itemCond
                 null,   // priceMin
                 null,   // priceMax
+                catalogNow,
                 pageable
         );
 
@@ -152,8 +158,7 @@ public class ListingService {
                 pageResult.getNumber(),
                 pageResult.getSize(),
                 pageResult.getTotalElements(),
-                pageResult.getTotalPages()
-        );
+                pageResult.getTotalPages());
     }
 
     /**
@@ -168,22 +173,20 @@ public class ListingService {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
+                Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
-                listingRepository.findAllActiveListingCards(sellerId, pageable);
+                listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
 
         List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = prioritizeFollowing
                 ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
                 : pageResult.getContent();
 
-        List<com.slife.marketplace.dto.response.ListingCardResponse> content =
-                prioritized.stream()
-                        .filter(card -> currentUser == null
-                                || card.getSellerId() == null
-                                || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
-                        .collect(Collectors.toCollection(java.util.ArrayList::new));
+        List<com.slife.marketplace.dto.response.ListingCardResponse> content = prioritized.stream()
+                .filter(card -> currentUser == null
+                        || card.getSellerId() == null
+                        || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
+                .collect(Collectors.toCollection(java.util.ArrayList::new));
         if (currentUser != null && !content.isEmpty()) {
             Set<Long> sellerIds = content.stream()
                     .map(com.slife.marketplace.dto.response.ListingCardResponse::getSellerId)
@@ -230,9 +233,7 @@ public class ListingService {
                             img -> img.getListing().getId(),
                             Collectors.mapping(
                                     com.slife.marketplace.entity.ListingImage::getImageUrl,
-                                    Collectors.toList()
-                            )
-                    ));
+                                    Collectors.toList())));
             for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
                 if (card.getId() != null) {
                     card.setImageUrls(imagesByListing.getOrDefault(card.getId(), java.util.Collections.emptyList()));
@@ -245,8 +246,7 @@ public class ListingService {
                 pageResult.getNumber(),
                 pageResult.getSize(),
                 pageResult.getTotalElements(),
-                pageResult.getTotalPages()
-        );
+                pageResult.getTotalPages());
     }
 
     /**
@@ -264,7 +264,10 @@ public class ListingService {
         return r;
     }
 
-    /** Chỉ dùng cho chi tiết tin — tránh N+1 count trên danh sách dùng {@link #toListingResponse}. */
+    /**
+     * Chỉ dùng cho chi tiết tin — tránh N+1 count trên danh sách dùng
+     * {@link #toListingResponse}.
+     */
     private void enrichSellerSummaryWithFollowerCount(ListingResponse r, Listing listing) {
         if (r == null || listing == null || listing.getSeller() == null) {
             return;
@@ -298,10 +301,12 @@ public class ListingService {
     }
 
     /**
-     * Tạo tin + upload ảnh trong một transaction — tránh lỗi upload sau khi đã commit listing (tin “mồ côi” trong DB).
+     * Tạo tin + upload ảnh trong một transaction — tránh lỗi upload sau khi đã
+     * commit listing (tin “mồ côi” trong DB).
      */
     @Transactional
-    public ListingResponse createListingWithImages(User seller, CreateListingRequest request, List<MultipartFile> images) {
+    public ListingResponse createListingWithImages(User seller, CreateListingRequest request,
+            List<MultipartFile> images) {
         if (seller == null) {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
         }
@@ -324,7 +329,8 @@ public class ListingService {
             listingImageService.uploadListingImages(saved.getId(), imageParts, seller);
         }
         notifyFollowersIfNewActiveListing(saved);
-        log.info("createListingWithImages: id={}, status={}, seller={}, images={}", saved.getId(), saved.getStatus(), seller.getId(), imageParts.size());
+        log.info("createListingWithImages: id={}, status={}, seller={}, images={}", saved.getId(), saved.getStatus(),
+                seller.getId(), imageParts.size());
 
         ListingResponse created = toListingResponse(saved, seller, false, false);
         enrichSingleListingResponseWithLikes(created, seller);
@@ -389,8 +395,7 @@ public class ListingService {
         listing.setPurpose(
                 request.getPurpose() != null && !request.getPurpose().isBlank()
                         ? request.getPurpose()
-                        : "SALE"
-        );
+                        : "SALE");
         listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
         listing.setStatus(isDraft ? LISTING_STATUS_DRAFT : LISTING_STATUS_ACTIVE);
         listing.setViewCount(0L);
@@ -402,7 +407,8 @@ public class ListingService {
     }
 
     /**
-     * Cập nhật listing hiện có (payload cùng dạng {@link CreateListingRequest} như tạo mới).
+     * Cập nhật listing hiện có (payload cùng dạng {@link CreateListingRequest} như
+     * tạo mới).
      */
     @Transactional
     public ListingResponse updateListing(Long listingId, User seller, CreateListingRequest request) {
@@ -460,8 +466,7 @@ public class ListingService {
         listing.setPurpose(
                 request.getPurpose() != null && !request.getPurpose().isBlank()
                         ? request.getPurpose()
-                        : "SALE"
-        );
+                        : "SALE");
         listing.setIsGiveaway(Boolean.TRUE.equals(request.getIsGiveaway()));
 
         if (isDraft) {
@@ -471,7 +476,8 @@ public class ListingService {
             listing.setStatus(LISTING_STATUS_ACTIVE);
             listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
         } else if (LISTING_STATUS_ACTIVE.equals(listing.getStatus()) && listing.getExpirationDate() == null) {
-            // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION was enforced.
+            // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION
+            // was enforced.
             listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
         }
 
@@ -551,17 +557,21 @@ public class ListingService {
             Map<String, Object> cat = new HashMap<>();
             cat.put("id", listing.getCategory().getId());
             cat.put("name", listing.getCategory().getName());
-            cat.put("parentId", listing.getCategory().getParent() != null ? listing.getCategory().getParent().getId() : null);
+            cat.put("parentId",
+                    listing.getCategory().getParent() != null ? listing.getCategory().getParent().getId() : null);
             response.setCategory(cat);
         }
 
-        // seller info (redundant path – FE reads both sellerSummary and seller)
         if (listing.getSeller() != null) {
             Map<String, Object> sel = new HashMap<>();
             sel.put("id", listing.getSeller().getId());
             sel.put("fullName", listing.getSeller().getFullName());
             sel.put("avatarUrl", listing.getSeller().getAvatarUrl());
+            sel.put("phoneNumber", listing.getSeller().getPhoneNumber());
+            sel.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
             response.setSeller(sel);
+            response.setSellerPhone(listing.getSeller().getPhoneNumber());
+            response.setPhoneVerified(listing.getSeller().getPhoneVerifiedAt() != null);
         }
 
         response.setIsSaved(isSaved);
@@ -571,8 +581,6 @@ public class ListingService {
 
         return response;
     }
-
-
 
     private Map<Long, Long> likeCountsForListingIds(Collection<Long> listingIds) {
         if (listingIds == null || listingIds.isEmpty()) {
@@ -586,7 +594,8 @@ public class ListingService {
             }
             return map;
         } catch (DataAccessException ex) {
-            log.warn("Skip like count enrichment because listing_likes is unavailable: {}", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
+            log.warn("Skip like count enrichment because listing_likes is unavailable: {}",
+                    ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
             return Map.of();
         }
     }
@@ -598,7 +607,8 @@ public class ListingService {
         try {
             return new HashSet<>(listingLikeRepository.findLikedListingIds(userId, listingIds));
         } catch (DataAccessException ex) {
-            log.warn("Skip liked-state enrichment because listing_likes is unavailable: {}", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
+            log.warn("Skip liked-state enrichment because listing_likes is unavailable: {}",
+                    ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
             return Set.of();
         }
     }
@@ -627,7 +637,8 @@ public class ListingService {
         }
     }
 
-    private void enrichListingCardsWithLikes(List<com.slife.marketplace.dto.response.ListingCardResponse> cards, User currentUser) {
+    private void enrichListingCardsWithLikes(List<com.slife.marketplace.dto.response.ListingCardResponse> cards,
+            User currentUser) {
         if (cards == null || cards.isEmpty()) {
             return;
         }
@@ -660,12 +671,12 @@ public class ListingService {
             r.setIsLiked(currentUser != null
                     && listingLikeRepository.existsByUser_IdAndListing_Id(currentUser.getId(), r.getId()));
         } catch (DataAccessException ex) {
-            log.warn("Skip single-listing like enrichment because listing_likes is unavailable: {}", ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
+            log.warn("Skip single-listing like enrichment because listing_likes is unavailable: {}",
+                    ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
             r.setLikeCount(0L);
             r.setIsLiked(false);
         }
     }
-
 
     private Set<Long> resolveFollowedSellerIds(User currentUser, List<Listing> listings) {
         if (currentUser == null || listings == null || listings.isEmpty()) {
@@ -705,8 +716,7 @@ public class ListingService {
             List<com.slife.marketplace.dto.response.ListingCardResponse> source,
             User currentUser,
             Long sellerId,
-            int page
-    ) {
+            int page) {
         if (source == null || source.isEmpty() || currentUser == null || sellerId != null || page != 0) {
             return source;
         }
@@ -742,8 +752,7 @@ public class ListingService {
                 listing.getSeller(),
                 listing.getId(),
                 listing.getTitle(),
-                followerIds
-        );
+                followerIds);
     }
 
     private boolean isSellerBlockingViewer(User seller, User viewer) {
@@ -757,18 +766,22 @@ public class ListingService {
     }
 
     private Object buildSellerSummary(Listing listing) {
-        if (listing.getSeller() == null) return null;
+        if (listing.getSeller() == null)
+            return null;
 
         Map<String, Object> seller = new HashMap<>();
         seller.put("userId", listing.getSeller().getId());
         seller.put("fullName", listing.getSeller().getFullName());
         seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
+        seller.put("phoneNumber", listing.getSeller().getPhoneNumber());
+        seller.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
 
         return seller;
     }
 
     private String resolveLocation(Listing listing) {
-        if (listing.getPickupAddress() == null) return null;
+        if (listing.getPickupAddress() == null)
+            return null;
         return AddressFormat.pickupDisplayLine(
                 listing.getPickupAddress().getLocationName(),
                 listing.getPickupAddress().getAddressText());
@@ -817,7 +830,8 @@ public class ListingService {
     }
 
     private String normalizeCondition(String condition) {
-        if (condition == null || condition.isBlank()) return "USED_GOOD";
+        if (condition == null || condition.isBlank())
+            return "USED_GOOD";
         return switch (condition.trim().toUpperCase()) {
             case "NEW" -> "NEW";
             case "USED_LIKE_NEW" -> "USED_LIKE_NEW";
@@ -831,13 +845,31 @@ public class ListingService {
     // My Listings Management
     // ----------------------------------------------------------------
 
+    /**
+     * Chuyển tin ACTIVE đã quá hạn ({@code expirationDate} &lt; now) sang HIDDEN theo từng batch
+     * (transaction riêng mỗi đợt — {@link ListingExpiryBatchService}).
+     * Catalog công khai đã lọc lazy expiry; batch đồng bộ DB và My Listings.
+     */
+    public int hideExpiredActiveListings() {
+        Instant now = Instant.now();
+        int total = 0;
+        int batchUpdated;
+        do {
+            batchUpdated = listingExpiryBatchService.hideNextBatch(now);
+            total += batchUpdated;
+        } while (batchUpdated > 0);
+        if (total > 0) {
+            log.info("hideExpiredActiveListings: total {} ACTIVE listing(s) set HIDDEN (all batches)", total);
+        }
+        return total;
+    }
+
     @Transactional(readOnly = true)
     public PagedResponse<MyListingResponse> getMyListings(String status, int page, int size, User currentUser) {
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 10,
-                Sort.by(Sort.Direction.DESC, "createdAt")
-        );
+                Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Listing> pageResult;
         if ("REPORTED".equalsIgnoreCase(status)) {
@@ -861,8 +893,7 @@ public class ListingService {
                 pageResult.getNumber(),
                 pageResult.getSize(),
                 pageResult.getTotalElements(),
-                pageResult.getTotalPages()
-        );
+                pageResult.getTotalPages());
     }
 
     private MyListingResponse toMyListingResponse(Listing listing) {
@@ -1030,8 +1061,7 @@ public class ListingService {
         fresh.setPurpose(
                 source.getPurpose() != null && !source.getPurpose().isBlank()
                         ? source.getPurpose()
-                        : "SALE"
-        );
+                        : "SALE");
         fresh.setIsGiveaway(Boolean.TRUE.equals(source.getIsGiveaway()));
         fresh.setStatus(LISTING_STATUS_ACTIVE);
         fresh.setViewCount(0L);

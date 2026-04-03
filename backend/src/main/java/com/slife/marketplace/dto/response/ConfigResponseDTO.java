@@ -7,5 +7,6 @@ public record ConfigResponseDTO(
         String configKey,
         String configValue,
         String description,
-        Instant lastUpdated) {
+        Instant lastUpdated,
+        ConfigValidationMetaDTO validation) {
 }

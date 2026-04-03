@@ -1,5 +1,6 @@
 package com.slife.marketplace.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.math.BigDecimal;
 
@@ -32,4 +33,8 @@ public class ListingResponse {
     private Object pickupAddress;
     private Object category;
     private Object seller;
+    @JsonProperty("sellerPhone")
+    private String sellerPhone;
+    @JsonProperty("phoneVerified")
+    private Boolean phoneVerified;
 }
