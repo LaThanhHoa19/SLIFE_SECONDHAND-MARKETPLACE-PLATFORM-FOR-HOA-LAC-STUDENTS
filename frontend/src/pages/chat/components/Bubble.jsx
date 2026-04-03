@@ -24,6 +24,7 @@ import {
     getReferencePreview,
     resolveChatImageSrc,
 } from '../chatMessageUtils';
+import { SearchHighlight } from '../chatSearchHighlight';
 
 function ImageBubble({ fileUrl }) {
     const src = resolveChatImageSrc(fileUrl);
@@ -94,7 +95,16 @@ function OfferBubble({ msg, onAccept, onReject }) {
     );
 }
 
-export default function Bubble({ msg, onAccept, onReject, onDealConfirmDecision, onReply, onJumpToMessage, onReportMessage }) {
+export default function Bubble({
+    msg,
+    onAccept,
+    onReject,
+    onDealConfirmDecision,
+    onReply,
+    onJumpToMessage,
+    onReportMessage,
+    contentHighlightQuery = '',
+}) {
     const theme = useTheme();
     const [menuAnchor, setMenuAnchor] = useState(null);
     const isMe = msg.isFromCurrentUser === true;
@@ -338,6 +348,18 @@ export default function Bubble({ msg, onAccept, onReject, onDealConfirmDecision,
                     <ImageBubble fileUrl={msg.fileUrl} />
                 ) : msg.messageType === 'OFFER_PROPOSAL' ? (
                     <OfferBubble msg={msg} onAccept={onAccept} onReject={onReject} />
+                ) : contentHighlightQuery ? (
+                    <SearchHighlight
+                        text={typeof msg.content === 'string' ? msg.content : ''}
+                        query={contentHighlightQuery}
+                        component="div"
+                        sx={{
+                            fontSize: '0.875rem',
+                            lineHeight: 1.5,
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                        }}
+                    />
                 ) : (
                     <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                         {msg.content}
