@@ -21,7 +21,7 @@ export default function ListingDescription({ description }) {
                 bgcolor: CARD_BG,
                 border: `1px solid ${BORDER}`,
                 borderRadius: '14px',
-                p: 2.5,
+                p: 1.5,
             }}
         >
             <Typography fontSize={16} fontWeight={700} color={TEXT_PRI} sx={{ mb: 1.5 }}>

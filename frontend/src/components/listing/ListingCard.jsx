@@ -24,6 +24,7 @@ import {
     Flag as ReportIcon,
     Add as AddIcon,
     Check as CheckIcon,
+    Person as PersonIcon,
     ChatOutlined as MessageIcon,
     ShareOutlined as ShareIconOutlined,
     ModeCommentOutlined as CommentIconOutlined,
@@ -399,10 +400,17 @@ export default function ListingCard({
                                 to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                                 src={fullImageUrl(seller?.avatarUrl)}
                                 alt={seller?.fullName || 'seller'}
-                                sx={{ width: 44, height: 44, cursor: isUnavailable ? 'default' : 'pointer', textDecoration: 'none', bgcolor: '#9D6EED' }}
+                                sx={{ 
+                                    width: 44, 
+                                    height: 44, 
+                                    cursor: isUnavailable ? 'default' : 'pointer', 
+                                    textDecoration: 'none', 
+                                    bgcolor: '#9D6EED', // Màu Tím Slife
+                                    border: '1px solid rgba(255,255,255,0.1)'
+                                }}
                                 onClick={(e) => { e.stopPropagation(); }}
                             >
-                                {seller?.fullName ? seller.fullName.charAt(0).toUpperCase() : 'U'}
+                                <PersonIcon sx={{ fontSize: 24, color: 'rgba(255,255,255,0.85)' }} />
                             </Avatar>
                         </Tooltip>
                         {showFollowBtn && (
