@@ -11,66 +11,68 @@ export const GREEN = '#2ED573';
 
 export default function ListingActions({ phoneNumber, startingChat, handleShowPhone, handleChat }) {
     return (
-        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
             <Tooltip title={phoneNumber ? "Gọi ngay" : "Xem số điện thoại"}>
                 <Button
                     variant="outlined"
                     onClick={handleShowPhone}
                     sx={{
                         py: 1.75,
-                        borderRadius: '14px',
+                        borderRadius: '12px', // Đồng bộ 12px
                         border: `1px solid ${BORDER}`,
-                        bgcolor: CARD_BG,
+                        bgcolor: '#252230',
                         color: TEXT_PRI,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 1,
+                        gap: 1.5,
                         textTransform: 'none',
-                        transition: 'all 0.2s',
-                        '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE, color: PURPLE }
+                        transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        '&:hover': { 
+                            bgcolor: 'rgba(157, 110, 237, 0.05)', 
+                            borderColor: PURPLE, 
+                            color: PURPLE,
+                            transform: 'translateY(-2px)',
+                            boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
+                        },
+                        '&:active': { transform: 'translateY(0)' }
                     }}
                 >
                     <PhoneAndroidIcon sx={{ fontSize: 22, color: phoneNumber ? GREEN : 'inherit' }} />
-                    <Box sx={{ textAlign: 'left' }}>
-                        <Typography fontSize={13} fontWeight={700} color={'rgba(255,255,255,0.78)'} lineHeight={1.15}>
-                            Số điện thoại
-                        </Typography>
-                        <Typography fontSize={13} fontWeight={800} color={phoneNumber ? GREEN : TEXT_PRI} lineHeight={1.2}>
-                            {phoneNumber || 'Hiển thị số'}
-                        </Typography>
-                    </Box>
+                    <Typography fontSize={14} fontWeight={700} color={phoneNumber ? GREEN : TEXT_PRI}>
+                        {phoneNumber || 'Hiện số điện thoại'}
+                    </Typography>
                 </Button>
             </Tooltip>
             <Tooltip title="Gửi tin nhắn">
                 <Button
-                    variant="outlined"
+                    variant="contained"
                     onClick={handleChat}
                     disabled={startingChat}
                     sx={{
                         py: 1.75,
-                        borderRadius: '14px',
-                        border: `1px solid ${BORDER}`,
-                        bgcolor: CARD_BG,
-                        color: TEXT_PRI,
+                        borderRadius: '12px',
+                        bgcolor: PURPLE,
+                        color: '#fff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 1,
+                        gap: 1.5,
                         textTransform: 'none',
-                        transition: 'all 0.2s',
-                        '&:hover': { bgcolor: CARD_BG2, borderColor: PURPLE, color: PURPLE }
+                        transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                        '&:hover': { 
+                            bgcolor: '#835cd4',
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 8px 25px rgba(157, 110, 237, 0.4)`, // Glow tím Pro
+                        },
+                        '&:active': { transform: 'translateY(0)' },
+                        '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.2)' }
                     }}
                 >
                     <ChatBubbleOutlineIcon sx={{ fontSize: 22 }} />
-                    <Box sx={{ textAlign: 'left' }}>
-                        <Typography fontSize={13} fontWeight={700} color={'rgba(255,255,255,0.78)'} lineHeight={1.15}>
-                            Nhắn tin
-                        </Typography>
-                        <Typography fontSize={13} fontWeight={800} color={TEXT_PRI} lineHeight={1.2}>
-                            Bắt đầu chat
-                        </Typography>
-                    </Box>
+                    <Typography fontSize={15} fontWeight={700}>
+                        Nhắn tin
+                    </Typography>
                 </Button>
             </Tooltip>
         </Box>

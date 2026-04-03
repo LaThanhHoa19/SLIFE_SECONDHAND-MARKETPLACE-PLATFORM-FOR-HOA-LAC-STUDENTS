@@ -14,10 +14,10 @@ export const toCurrency = (value) =>
     value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
 
 const CONDITION_MAP = {
-    NEW:           { label: 'Mới',         color: GREEN },
-    USED_LIKE_NEW: { label: 'Như mới',     color: '#1DD3B0' },
-    USED_GOOD:     { label: 'Đã dùng – tốt', color: PURPLE },
-    USED_FAIR:     { label: 'Đã dùng',     color: '#FFA502' },
+    NEW: { label: 'Mới', color: GREEN },
+    USED_LIKE_NEW: { label: 'Như mới', color: '#1DD3B0' },
+    USED_GOOD: { label: 'Đã dùng – tốt', color: PURPLE },
+    USED_FAIR: { label: 'Đã dùng', color: '#FFA502' },
 };
 
 export const getConditionInfo = (condition) =>
@@ -29,12 +29,12 @@ export default function ListingSummary({ title, price, isGiveaway, locationText,
     return (
         <Box>
             <Typography
-                fontSize={{ xs: 22, sm: 28 }}
-                fontWeight={800}
+                fontSize={{ xs: 20, sm: 24 }}
+                fontWeight={700}
                 color={TEXT_PRI}
                 sx={{
-                    lineHeight: 1.25,
-                    mb: 2,
+                    lineHeight: 1.3,
+                    mb: 1.5,
                     letterSpacing: '-0.01em',
                     wordBreak: 'break-word'
                 }}
@@ -42,47 +42,44 @@ export default function ListingSummary({ title, price, isGiveaway, locationText,
                 {title}
             </Typography>
 
-            <Box sx={{ mb: 2.75 }}>
+            <Box sx={{ mb: 1.5 }}>
                 <Typography
-                    fontSize={{ xs: 26, sm: 32 }}
-                    fontWeight={900}
+                    fontSize={{ xs: 22, sm: 28 }}
+                    fontWeight={800}
                     color={isGiveaway ? GREEN : RED}
-                    sx={{ lineHeight: 1.15 }}
+                    sx={{ lineHeight: 1.2 }}
                 >
                     {isGiveaway ? 'Cho tặng miễn phí' : toCurrency(price)}
                 </Typography>
             </Box>
 
             {/* Meta thông tin: Location, Time, Condition */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 2, sm: 3.5 } }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-                    {locationText && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-                            <LocationOnOutlinedIcon sx={{ fontSize: 18, color: PURPLE }} />
-                            <Typography fontSize={14} color={'rgba(255,255,255,0.88)'}>{locationText}</Typography>
-                        </Box>
-                    )}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-                        <AccessTimeOutlinedIcon sx={{ fontSize: 18, color: PURPLE }} />
-                        <Typography fontSize={14} color={'rgba(255,255,255,0.88)'}>
-                            {formatDate(createdAt) || 'Vừa đăng'}
-                        </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {locationText && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LocationOnOutlinedIcon sx={{ fontSize: 18, color: TEXT_SEC }} />
+                        <Typography fontSize={14} color={TEXT_SEC}>{locationText}</Typography>
                     </Box>
+                )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AccessTimeOutlinedIcon sx={{ fontSize: 18, color: TEXT_SEC }} />
+                    <Typography fontSize={14} color={TEXT_SEC}>
+                        {formatDate(createdAt) || 'Vừa đăng'}
+                    </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <LocalOfferOutlinedIcon sx={{ fontSize: 18, color: PURPLE }} />
-                        <Chip
-                            label={conditionInfo.label}
-                            size="small"
-                            sx={{
-                                bgcolor: `${conditionInfo.color}22`,
-                                color: conditionInfo.color,
-                                border: `1px solid ${conditionInfo.color}44`,
-                                fontSize: 12, fontWeight: 600, height: 24, paddingX: 1
-                            }}
-                        />
-                    </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                    <LocalOfferOutlinedIcon sx={{ fontSize: 16, color: TEXT_SEC }} />
+                    <Chip
+                        label={conditionInfo.label}
+                        size="small"
+                        sx={{
+                            bgcolor: `${conditionInfo.color}11`,
+                            color: conditionInfo.color,
+                            border: `1px solid ${conditionInfo.color}33`,
+                            fontSize: 10, fontWeight: 700, height: 20, px: 0.5,
+                            textTransform: 'uppercase'
+                        }}
+                    />
                 </Box>
             </Box>
         </Box>

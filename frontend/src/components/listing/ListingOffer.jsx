@@ -93,19 +93,52 @@ export default function ListingOffer({ listing, onNotify }) {
     };
 
     return (
-        <Box sx={{ bgcolor: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: '12px', p: 2, mt: 1 }}>
-            <Typography fontSize={13} fontWeight={600} color={TEXT_SEC} sx={{ mb: 1.5 }}>
-                Deal giá
-            </Typography>
+        <Box sx={{ 
+            bgcolor: '#252230', 
+            border: `1px solid ${PURPLE}33`, 
+            borderRadius: '12px', // Đồng bộ với các khối khác
+            p: 1.5,
+            mt: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+                borderColor: 'rgba(157, 110, 237, 0.5)',
+                bgcolor: 'rgba(157, 110, 237, 0.06)',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.2)'
+            }
+        }}>
+            <Box>
+                <Typography fontSize={13} fontWeight={800} color={PURPLE} sx={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Deal giá
+                </Typography>
+                <Typography fontSize={12} color={TEXT_SEC}>
+                    Đề xuất giá tốt nhất cho bạn
+                </Typography>
+            </Box>
 
             <Button
-                fullWidth
+                variant="contained"
                 onClick={handleOpen}
-                startIcon={<LocalOfferOutlinedIcon />}
+                startIcon={<LocalOfferOutlinedIcon sx={{ fontSize: 18 }} />}
                 sx={{
-                    height: 48, bgcolor: `${PURPLE}15`, color: PURPLE, border: `1px solid ${PURPLE}33`,
-                    borderRadius: '12px', fontWeight: 700, textTransform: 'none',
-                    '&:hover': { bgcolor: PURPLE, color: '#fff', boxShadow: '0 8px 16px rgba(157, 110, 237, 0.2)' },
+                    height: 40,
+                    bgcolor: PURPLE,
+                    color: '#fff',
+                    borderRadius: '12px',
+                    px: 3,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    boxShadow: `0 4px 15px rgba(157, 110, 237, 0.2)`,
+                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    '&:hover': {
+                        bgcolor: '#8B5CF6',
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 25px rgba(157, 110, 237, 0.5)`, // Glow mạnh cho nút quan trọng
+                    },
+                    '&:active': { transform: 'translateY(0)' }
                 }}
             >
                 Trả giá ngay

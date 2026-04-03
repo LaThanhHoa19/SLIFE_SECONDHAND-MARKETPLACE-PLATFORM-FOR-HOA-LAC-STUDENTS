@@ -22,6 +22,7 @@ import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonIcon from '@mui/icons-material/Person';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
@@ -175,7 +176,7 @@ export default function ProfileHeader({
                                     fontSize: { xs: '2rem', sm: '4rem' },
                                 }}
                             >
-                                {fullName ? fullName.charAt(0).toUpperCase() : 'U'}
+                                <PersonIcon sx={{ fontSize: { xs: '3rem', sm: '6rem' }, color: 'rgba(255,255,255,0.85)' }} />
                             </Avatar>
                         }
                     </IconButton>
@@ -686,7 +687,9 @@ export default function ProfileHeader({
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 2, minHeight: 300 }}>
                         {avatarUrl
                             ? <img src={avatarUrl} alt={fullName} style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 8, objectFit: 'contain' }} />
-                            : <Avatar sx={{ width: 200, height: 200, bgcolor: PURPLE, fontSize: '5rem' }}>{fullName?.charAt(0)?.toUpperCase()}</Avatar>
+                            : <Avatar sx={{ width: 200, height: 200, bgcolor: PURPLE }}>
+                                <PersonIcon sx={{ fontSize: '8rem', color: 'rgba(255,255,255,0.85)' }} />
+                            </Avatar>
                         }
                     </Box>
                 </DialogContent>

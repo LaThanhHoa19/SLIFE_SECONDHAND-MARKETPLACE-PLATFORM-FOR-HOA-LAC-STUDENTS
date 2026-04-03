@@ -29,10 +29,10 @@ export default function ListingRightInfoBlock({
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 3,
+                gap: 1.5, // Thu hẹp thêm 0.5 để khít hơn
             }}
         >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
                 {/* Title, Price, Meta */}
                 <ListingSummary
                     title={listing.title}
@@ -46,12 +46,14 @@ export default function ListingRightInfoBlock({
                 {/* Action Buttons */}
                 {!isOwnListing ? (
                     !isUnavailable && (
-                        <ListingActions
-                            phoneNumber={phoneNumber}
-                            startingChat={startingChat}
-                            handleShowPhone={handleShowPhone}
-                            handleChat={handleChat}
-                        />
+                         <Box sx={{ my: 1.6 }}>
+                            <ListingActions
+                                phoneNumber={phoneNumber}
+                                startingChat={startingChat}
+                                handleShowPhone={handleShowPhone}
+                                handleChat={handleChat}
+                            />
+                         </Box>
                     )
                 ) : (
                     <ListingOwnerActions
