@@ -29,6 +29,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS, DARK_DIALOG_TEXTFIELD_SX } from '../../components/common/dialogStyles';
 import {
@@ -59,6 +60,7 @@ const tableContainerSx = {
     border: `1px solid ${TABLE_BORDER}`,
     borderRadius: 1,
     boxShadow: 'none',
+    maxHeight: 560,
 };
 
 const tableSx = {
@@ -68,6 +70,9 @@ const tableSx = {
         borderBottom: `1px solid ${TABLE_BORDER}`,
         fontWeight: 700,
         fontSize: 13,
+        position: 'sticky',
+        top: 0,
+        zIndex: 2,
     },
     '& tbody td': {
         color: '#ffffff',
@@ -263,6 +268,7 @@ export default function ConfigurationManagementPage() {
         setDescriptionError('');
     }, []);
 
+
     const handleSave = useCallback(async () => {
         if (!editing) return;
         const key = editing.config_name;
@@ -345,6 +351,15 @@ export default function ConfigurationManagementPage() {
         if (!hasDraftChanges) return 'Chưa có thay đổi';
         return '';
     }, [isSaving, hasDraftChanges]);
+
+    const handleDialogClose = useCallback(() => {
+        if (isSaving) return;
+        if (hasDraftChanges) {
+            const ok = window.confirm('Bạn có thay đổi chưa lưu. Đóng và bỏ các thay đổi?');
+            if (!ok) return;
+        }
+        closeEdit();
+    }, [isSaving, hasDraftChanges, closeEdit]);
 
     const sortedFilteredRows = useMemo(() => {
         const filtered = rows.filter((r) => configMatchesSearch(r, searchQuery));
@@ -473,7 +488,7 @@ export default function ConfigurationManagementPage() {
             ) : (
                 <>
                     <TableContainer sx={tableContainerSx}>
-                        <Table size="medium" sx={tableSx}>
+                        <Table stickyHeader size="medium" sx={tableSx}>
                             <TableHead>
                                 <TableRow>
                                     <TableCell width={72}>ID</TableCell>
@@ -496,7 +511,23 @@ export default function ConfigurationManagementPage() {
                                 ) : sortedFilteredRows.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'rgba(255,255,255,0.55)' }}>
-                                            Không có dòng nào khớp tìm kiếm.
+                                            <Stack spacing={1} alignItems="center">
+                                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)' }}>
+                                                    Không có dòng nào khớp tìm kiếm.
+                                                </Typography>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={() => setSearchQuery('')}
+                                                    sx={{
+                                                        textTransform: 'none',
+                                                        color: '#e9d5ff',
+                                                        borderColor: 'rgba(233,213,255,0.35)',
+                                                    }}
+                                                >
+                                                    Xóa bộ lọc
+                                                </Button>
+                                            </Stack>
                                         </TableCell>
                                     </TableRow>
                                 ) : null}
@@ -518,7 +549,24 @@ export default function ConfigurationManagementPage() {
                                             {row.config_value}
                                         </TableCell>
                                         <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
-                                            {row.description || '—'}
+                                            {row.description ? (
+                                                <Tooltip title={row.description} arrow placement="top-start">
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{
+                                                            color: 'rgba(255,255,255,0.75)',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap',
+                                                            maxWidth: 320,
+                                                        }}
+                                                    >
+                                                        {row.description}
+                                                    </Typography>
+                                                </Tooltip>
+                                            ) : (
+                                                '—'
+                                            )}
                                         </TableCell>
                                         <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
                                             {formatDateTime(row.updated_at)}
@@ -579,7 +627,7 @@ export default function ConfigurationManagementPage() {
 
             <Dialog
                 open={editOpen}
-                onClose={isSaving ? undefined : closeEdit}
+                onClose={handleDialogClose}
                 fullWidth
                 maxWidth="sm"
                 PaperProps={DARK_DIALOG_PAPER_PROPS}
@@ -605,7 +653,16 @@ export default function ConfigurationManagementPage() {
                                     if (fieldError) setFieldError('');
                                 }}
                                 error={Boolean(fieldError)}
-                                helperText={valueHelperText}
+                                helperText={
+                                    fieldError ? (
+                                        fieldError
+                                    ) : valueHelperText ? (
+                                        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+                                            <InfoOutlinedIcon sx={{ fontSize: 15, color: 'rgba(255,255,255,0.55)' }} />
+                                            <span>{valueHelperText}</span>
+                                        </Box>
+                                    ) : undefined
+                                }
                                 FormHelperTextProps={{ id: 'config-value-helper' }}
                                 fullWidth
                                 autoFocus
@@ -623,7 +680,12 @@ export default function ConfigurationManagementPage() {
                                         }
                                         : { 'aria-describedby': 'config-value-helper' }
                                 }
-                                sx={{ ...DARK_DIALOG_TEXTFIELD_SX }}
+                                sx={{
+                                    ...DARK_DIALOG_TEXTFIELD_SX,
+                                    '& .MuiFormHelperText-root': {
+                                        color: fieldError ? '#fca5a5' : 'rgba(255,255,255,0.5)',
+                                    },
+                                }}
                             />
                             <TextField
                                 label="Mô tả"
@@ -669,7 +731,7 @@ export default function ConfigurationManagementPage() {
                     )}
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={closeEdit} disabled={isSaving} sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                    <Button onClick={handleDialogClose} disabled={isSaving} sx={{ color: 'rgba(255,255,255,0.7)' }}>
                         Hủy
                     </Button>
                     <Tooltip title={saveDisabledReason} disableHoverListener={!saveDisabledReason}>
