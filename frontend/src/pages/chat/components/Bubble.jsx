@@ -49,13 +49,15 @@ function ImageBubble({ fileUrl }) {
 
 function OfferBubble({ msg, onAccept, onReject }) {
     const isMe = msg.isFromCurrentUser;
+    const superseded = msg.offerActionsSuperseded === true;
     // Chỉ coi là kết thúc khi BE trả về ACCEPTED/REJECTED. offerStatus null (lịch sử cũ) = vẫn đang chờ, không hiện "từ chối" nhầm.
     const isPending =
-        msg.offerStatus === 'PENDING' ||
-        (msg.messageType === 'OFFER_PROPOSAL' &&
-            msg.offerStatus !== 'ACCEPTED' &&
-            msg.offerStatus !== 'REJECTED');
-    const showTerminalChip = msg.offerStatus === 'ACCEPTED' || msg.offerStatus === 'REJECTED';
+        !superseded &&
+        (msg.offerStatus === 'PENDING' ||
+            (msg.messageType === 'OFFER_PROPOSAL' &&
+                msg.offerStatus !== 'ACCEPTED' &&
+                msg.offerStatus !== 'REJECTED'));
+    const showTerminalChip = msg.offerStatus === 'ACCEPTED' || msg.offerStatus === 'REJECTED' || superseded;
     return (
         <Box>
             <Typography variant="body2" fontWeight={600} gutterBottom>
@@ -86,8 +88,20 @@ function OfferBubble({ msg, onAccept, onReject }) {
             {showTerminalChip && (
                 <Chip
                     size="small"
-                    label={msg.offerStatus === 'ACCEPTED' ? '✅ Đã chấp nhận' : '❌ Đã từ chối'}
-                    color={msg.offerStatus === 'ACCEPTED' ? 'success' : 'error'}
+                    label={
+                        superseded && msg.offerStatus !== 'ACCEPTED' && msg.offerStatus !== 'REJECTED'
+                            ? '✅ Đã chốt đơn (xem tin xác nhận bên dưới)'
+                            : msg.offerStatus === 'ACCEPTED'
+                              ? '✅ Đã chấp nhận'
+                              : '❌ Đã từ chối'
+                    }
+                    color={
+                        superseded && msg.offerStatus !== 'ACCEPTED' && msg.offerStatus !== 'REJECTED'
+                            ? 'success'
+                            : msg.offerStatus === 'ACCEPTED'
+                              ? 'success'
+                              : 'error'
+                    }
                     sx={{ mt: 0.5 }}
                 />
             )}
@@ -118,40 +132,82 @@ export default function Bubble({
     const showBubbleMenu = !isPending && stableMessageId && (Boolean(onReply) || showReport);
 
     if (isSystem) {
-        const decided = msg?.dealDecision === 'ACCEPT' || msg?.dealDecision === 'CANCEL';
+        const decided =
+            msg?.dealDecision === 'ACCEPT' ||
+            msg?.dealDecision === 'CANCEL' ||
+            msg?.dealDecision === 'DONE';
         const isDealConfirmationRequest =
             typeof msg?.content === 'string' &&
             msg.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
+        const responder = (msg?.dealResponderName && String(msg.dealResponderName).trim()) || 'Người mua';
+        const formatted = formatDealConfirmationDisplayContent(msg.content);
+        const detailBody =
+            decided && typeof formatted === 'string'
+                ? formatted.replace(/^🧾\s*XÁC NHẬN GIAO DỊCH\s*\n*/i, '').trim()
+                : formatted;
+        const isAccept = msg?.dealDecision === 'ACCEPT';
+        const isCancel = msg?.dealDecision === 'CANCEL';
+        const borderColor = isCancel
+            ? alpha(theme.palette.error.main, 0.55)
+            : alpha(theme.palette.success.main, 0.55);
+        const bgColor = isCancel
+            ? alpha(theme.palette.error.main, theme.palette.mode === 'dark' ? 0.12 : 0.08)
+            : alpha(theme.palette.success.main, theme.palette.mode === 'dark' ? 0.14 : 0.12);
+        const titleColor = isCancel
+            ? theme.palette.mode === 'dark'
+                ? theme.palette.error.light
+                : theme.palette.error.dark
+            : theme.palette.mode === 'dark'
+              ? theme.palette.success.light
+              : theme.palette.success.dark;
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
                 <Paper
                     sx={{
                         px: 2,
-                        py: 1,
+                        py: 1.25,
                         borderRadius: 2,
                         border: '1px solid',
-                        borderColor: alpha(theme.palette.success.main, 0.55),
-                        bgcolor: alpha(
-                            theme.palette.success.main,
-                            theme.palette.mode === 'dark' ? 0.14 : 0.12
-                        ),
+                        borderColor,
+                        bgcolor: bgColor,
                         boxShadow: 'none',
                         maxWidth: 560,
                     }}
                 >
-                    <Typography
-                        variant="body2"
-                        fontWeight={600}
-                        sx={{
-                            color:
-                                theme.palette.mode === 'dark'
-                                    ? theme.palette.success.light
-                                    : theme.palette.success.dark,
-                            whiteSpace: 'pre-wrap',
-                        }}
-                    >
-                        {formatDealConfirmationDisplayContent(msg.content)}
-                    </Typography>
+                    {decided && isDealConfirmationRequest ? (
+                        <>
+                            <Typography variant="subtitle1" fontWeight={800} sx={{ color: titleColor, lineHeight: 1.35 }}>
+                                {isAccept && `${responder} đã chấp nhận giao dịch`}
+                                {isCancel && `${responder} đã từ chối / hủy giao dịch`}
+                                {!isAccept && !isCancel && `${responder} đã phản hồi về giao dịch`}
+                            </Typography>
+                            {detailBody ? (
+                                <Typography
+                                    variant="caption"
+                                    component="div"
+                                    sx={{
+                                        mt: 1.25,
+                                        color: 'text.secondary',
+                                        whiteSpace: 'pre-wrap',
+                                        lineHeight: 1.5,
+                                    }}
+                                >
+                                    {detailBody}
+                                </Typography>
+                            ) : null}
+                        </>
+                    ) : (
+                        <Typography
+                            variant="body2"
+                            fontWeight={600}
+                            sx={{
+                                color: titleColor,
+                                whiteSpace: 'pre-wrap',
+                            }}
+                        >
+                            {formatted}
+                        </Typography>
+                    )}
                     {!isMe &&
                         isDealConfirmationRequest &&
                         typeof onDealConfirmDecision === 'function' &&

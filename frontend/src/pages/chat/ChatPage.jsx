@@ -60,6 +60,7 @@ import {
   enrichMessagesForDisplay,
   formatSessionTimeShort,
   getData,
+  markOfferSupersededByDealSeal,
   getMessageDomId,
   isMessageFromCurrentUser,
   makeTempId,
@@ -201,7 +202,10 @@ function ChatPageInner() {
     messagesRef.current = messages;
   }, [messages]);
 
-  const displayMessages = useMemo(() => enrichMessagesForDisplay(messages), [messages]);
+  const displayMessages = useMemo(
+      () => markOfferSupersededByDealSeal(enrichMessagesForDisplay(messages)),
+      [messages],
+  );
 
   const scrollToBottom = useCallback((behavior = 'smooth') => {
     requestAnimationFrame(() => {
@@ -568,7 +572,7 @@ function ChatPageInner() {
       const isDealConfirmationRequest =
         typeof m.content === 'string' && m.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
       if (!isDealConfirmationRequest) continue;
-      if (m.dealDecision) return true;
+      if (m.dealDecision === 'ACCEPT') return true;
     }
     return false;
   }, [displayMessages, currentUserId, isSellerInActiveChat]);
@@ -1356,9 +1360,13 @@ function ChatPageInner() {
 
       // Frontend-only: disable actions after choosing once.
       if (confirmId != null) {
+        const responderName =
+            currentUser?.fullName || currentUser?.name || currentUser?.email || 'Bạn';
         setMessages((prev) =>
           prev.map((m) =>
-            String(m?.id) === String(confirmId) ? { ...m, dealDecision: decision } : m,
+            String(m?.id) === String(confirmId)
+                ? { ...m, dealDecision: decision, dealResponderName: responderName }
+                : m,
           ),
         );
       }
@@ -1395,6 +1403,7 @@ function ChatPageInner() {
       activeSessionId,
       buyerAcceptPendingDeal,
       buyerRejectPendingDeal,
+      currentUser,
       fetchSessions,
       scrollToBottom,
       showToast,
@@ -1464,11 +1473,25 @@ function ChatPageInner() {
     if (listingClosedForBuyer) setOfferOpen(false);
   }, [listingClosedForBuyer]);
 
+  /** Người bán đã gửi tin chốt đơn (XÁC NHẬN GIAO DỊCH) và chưa bị hủy → người mua không trả giá thêm. */
+  const buyerBlockedByDealSeal = useMemo(() => {
+    if (isSellerInActiveChat) return false;
+    return displayMessages.some((m) => {
+      if (m.messageType !== 'DEAL_CONFIRMATION') return false;
+      const c = typeof m.content === 'string' ? m.content : '';
+      if (!c.toUpperCase().includes('XÁC NHẬN GIAO DỊCH')) return false;
+      return m.dealDecision !== 'CANCEL';
+    });
+  }, [displayMessages, isSellerInActiveChat]);
+
   const draftChatReady =
       Boolean(listingIdFromUrl) && Boolean(draftListing) && !draftListingError && !draftListingLoading;
   const priceOfferDisabled =
       Boolean(activeSessionId || draftChatReady) &&
-      (isSellerInActiveChat || hasOpenOfferAwaitingSeller || listingClosedForBuyer);
+      (isSellerInActiveChat ||
+          hasOpenOfferAwaitingSeller ||
+          listingClosedForBuyer ||
+          buyerBlockedByDealSeal);
   const priceOfferTooltip = !activeSessionId && !draftChatReady
       ? 'Trả giá / đề xuất giá'
       : listingClosedForBuyer
@@ -1477,9 +1500,11 @@ function ChatPageInner() {
               : 'Tin đăng đã được bán'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
-          : hasOpenOfferAwaitingSeller
-              ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
-              : 'Trả giá / đề xuất giá';
+          : buyerBlockedByDealSeal
+              ? 'Người bán đã chốt giao dịch — không gửi trả giá mới cho đến khi giao dịch bị hủy'
+              : hasOpenOfferAwaitingSeller
+                  ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
+                  : 'Trả giá / đề xuất giá';
 
   const handleSelectChatSession = useCallback(
     (sessionId) => {
