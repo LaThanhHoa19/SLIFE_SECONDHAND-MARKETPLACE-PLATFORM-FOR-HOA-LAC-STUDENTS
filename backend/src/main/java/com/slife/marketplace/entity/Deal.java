@@ -51,7 +51,7 @@ public class Deal {
     @NotNull
     @ColumnDefault("'PENDING'")
     @Column(name = "status", nullable = false)
-    private String status; // PENDING, CONFIRMED, COMPLETED, CANCELLED
+    private String status; // PENDING, CONFIRMED, COMPLETED, CANCELLED, REJECTED
 
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;

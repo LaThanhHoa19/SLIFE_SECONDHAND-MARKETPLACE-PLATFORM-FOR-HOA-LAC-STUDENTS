@@ -9,3 +9,18 @@ export const sendReminder = (id) => axiosClient.post(`/api/deals/${id}/reminder`
 /** Tạo deal trực tiếp từ listing (khớp backend: POST /api/listings/{listingId}/deals). */
 export const createDealForListing = (listingId, price) =>
   axiosClient.post(`/api/listings/${listingId}/deals`, { price });
+
+/** Người bán chốt đơn trong chat → deal PENDING. Body: { listingId, buyerId, price, pickupTime? } — path phẳng để tránh lỗi 404 static trên một số proxy. */
+export const sealListingDeal = (listingId, payload) =>
+  axiosClient.post('/api/deals/seller-seal', {
+    listingId,
+    ...payload,
+  });
+
+/** Người mua chấp nhận sau khi người bán chốt đơn → COMPLETED */
+export const buyerAcceptPendingDeal = (listingId) =>
+  axiosClient.put(`/api/listings/${listingId}/deals/pending/accept`);
+
+/** Người mua từ chối → REJECTED */
+export const buyerRejectPendingDeal = (listingId) =>
+  axiosClient.put(`/api/listings/${listingId}/deals/pending/reject`);

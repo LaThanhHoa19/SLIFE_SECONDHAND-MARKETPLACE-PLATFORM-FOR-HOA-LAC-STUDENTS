@@ -25,6 +25,7 @@ export const STATUS_BADGE_LABELS = {
     PENDING:    'CHỜ DUYỆT',
     REJECTED:   'TỪ CHỐI',
     REPORTED:   'BÁO CÁO',
+    DELETED:    'ĐÃ XÓA',
 };
 
 /** Chuẩn hóa tab từ query `status` (back/forward, deep link). */
@@ -52,6 +53,7 @@ export const STATUS_COLORS = {
     PENDING:    { bg: 'rgba(255,214,0,0.1)',    text: '#ffd700',  border: 'rgba(255,214,0,0.28)' },
     REJECTED:   { bg: 'rgba(255,71,87,0.1)',    text: '#ff4757',  border: 'rgba(255,71,87,0.25)' },
     REPORTED:   { bg: 'rgba(255,71,87,0.12)',   text: '#ff4757',  border: 'rgba(255,71,87,0.3)' },
+    DELETED:    { bg: 'rgba(100,100,110,0.2)',  text: 'rgba(255,255,255,0.45)', border: 'rgba(255,255,255,0.12)' },
 };
 
 export const STATUS_LABELS = {
@@ -66,6 +68,7 @@ export const STATUS_LABELS = {
     REJECTED:   'Bị từ chối',
     EXPIRED:    'Hết hạn',
     REPORTED:   'Bị báo cáo',
+    DELETED:    'Đã xóa',
 };
 
 export const PAGE_SIZE = 12;

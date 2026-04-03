@@ -1,5 +1,6 @@
 package com.slife.marketplace.controller;
 
+import com.slife.marketplace.dto.request.MakeOfferByListingRequest;
 import com.slife.marketplace.dto.request.MakeOfferRequest;
 import com.slife.marketplace.dto.request.OfferResponseRequest;
 import com.slife.marketplace.dto.request.SendMessageRequest;
@@ -88,6 +89,7 @@ public class ChatController {
         User user = userService.getCurrentUser();
         ChatMessageResponse msg = chatService.sendMessage(
                 request.getSessionId(),
+                request.getListingId(),
                 request.getContent(),
                 request.getMessageType(),
                 request.getFileUrl(),
@@ -116,9 +118,10 @@ public class ChatController {
 
     @PostMapping(value = "/chats/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<String>> uploadChatImage(
-            @RequestParam String sessionId,
+            @RequestParam(required = false) String sessionId,
+            @RequestParam(required = false) Long listingId,
             @RequestParam("file") MultipartFile file) {
-        String url = chatService.uploadChatImage(sessionId, file);
+        String url = chatService.uploadChatImage(sessionId, listingId, file);
         return ResponseEntity.ok(ApiResponse.success("OK", url));
     }
 
@@ -131,6 +134,15 @@ public class ChatController {
         User buyer = userService.getCurrentUser();
         BigDecimal amount = request.getAmount();
         ChatMessageResponse msg = chatService.makeOffer(sessionId, amount, buyer);
+        return ResponseEntity.ok(ApiResponse.success("OK", msg));
+    }
+
+    /** Buyer makes an offer without knowing session UUID (session resolved from listing). */
+    @PostMapping("/chats/offers")
+    public ResponseEntity<ApiResponse<ChatMessageResponse>> makeOfferByListing(
+            @Valid @RequestBody MakeOfferByListingRequest request) {
+        User buyer = userService.getCurrentUser();
+        ChatMessageResponse msg = chatService.makeOffer(request.getListingId(), request.getAmount(), buyer);
         return ResponseEntity.ok(ApiResponse.success("OK", msg));
     }
 
@@ -170,6 +182,7 @@ public class ChatController {
             }
             chatService.sendMessage(
                     request.getSessionId(),
+                    request.getListingId(),
                     request.getContent(),
                     request.getMessageType(),
                     request.getFileUrl(),

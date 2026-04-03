@@ -195,11 +195,25 @@ export default function MyListingsPage() {
     };
 
     const handleRepost = async (id) => {
+        const sourceId = Number(id);
+        if (!Number.isFinite(sourceId) || sourceId <= 0) {
+            showSnackbar('Không xác định được tin cần đăng lại.', 'error');
+            return;
+        }
         try {
-            await repostListing(id);
-            showSnackbar('Đã đăng lại thành công! Tin sẽ hiển thị trong 30 ngày.', 'success');
+            const { data: body } = await repostListing(sourceId);
+            const payload = body?.data;
+            const newIdRaw =
+                payload != null && typeof payload === 'object' && payload !== null && 'data' in payload
+                    ? payload.data
+                    : payload;
+            const newId = newIdRaw != null && newIdRaw !== '' ? Number(newIdRaw) : NaN;
+            showSnackbar('Đăng tin lại thành công', 'success');
             fetchTabCounts();
             fetchListings(activeTab, page);
+            if (Number.isFinite(newId) && newId > 0) {
+                navigate(`/listings/${newId}`);
+            }
         } catch {
             showSnackbar('Không thể đăng lại. Vui lòng thử lại.', 'error');
         }
