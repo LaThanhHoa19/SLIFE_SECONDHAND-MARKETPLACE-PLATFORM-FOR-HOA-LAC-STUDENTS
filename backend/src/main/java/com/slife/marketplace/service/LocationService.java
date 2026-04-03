@@ -3,6 +3,7 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.repository.ListingRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -15,6 +16,6 @@ public class LocationService {
     }
 
     public List<String> getPickupLocations() {
-        return listingRepository.findDistinctPickupLocationNames();
+        return listingRepository.findDistinctPickupLocationNames(Instant.now());
     }
 }

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -36,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
-
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class ListingServiceTest {
@@ -72,6 +73,12 @@ class ListingServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private ListingExpiryBatchService listingExpiryBatchService;
+
     private ListingService listingService;
 
     @BeforeEach
@@ -88,9 +95,19 @@ class ListingServiceTest {
                 listingImageService,
                 configService,
                 notificationService
+                configService,
+                notificationService,
+                listingExpiryBatchService
         );
     }
 
+    @Test
+    @DisplayName("hideExpiredActiveListings runs batched updates until empty")
+    void hideExpiredActiveListings_runsBatchesUntilZero() {
+        when(listingExpiryBatchService.hideNextBatch(any(Instant.class))).thenReturn(100, 5, 0);
+        assertEquals(105, listingService.hideExpiredActiveListings());
+        verify(listingExpiryBatchService, times(3)).hideNextBatch(any(Instant.class));
+    }
 
     @Test
     void getFilteredListings_shouldReturnPagedListingResponses() {
@@ -119,7 +136,7 @@ class ListingServiceTest {
         image.setImageUrl("https://example.com/iphone.jpg");
 
         Page<Listing> pageData = new PageImpl<>(List.of(listing));
-        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(listingRepository.findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), any(Pageable.class)))
                 .thenReturn(pageData);
         when(listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(10L))
                 .thenReturn(List.of(image));
@@ -162,13 +179,13 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải tự điều chỉnh khi tham số phân trang nằm ngoài phạm vi cho phép")
         void should_SanitizePagination_When_InputIsOutOfRange() {
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(null, null, null, null, -1, 100, null);
 
             org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), captor.capture());
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), captor.capture());
 
             assertEquals(0, captor.getValue().getPageNumber());
             assertEquals(20, captor.getValue().getPageSize());
@@ -177,13 +194,13 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải dùng sắp xếp mặc định (createdAt, DESC) khi người dùng truyền field không hợp lệ")
         void should_FallbackToDefaultSort_When_InvalidFieldProvided() {
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(null, null, null, "password,asc", 0, 10, null);
 
             org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), captor.capture());
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), captor.capture());
 
             assertEquals("createdAt: DESC", captor.getValue().getSort().toString());
         }
@@ -191,13 +208,13 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải chấp nhận hướng sắp xếp tăng dần (ASC) nếu field hợp lệ")
         void should_ApplyAscendingOrder_When_ValidFieldAndDirectionProvided() {
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(null, null, null, "price,asc", 0, 10, null);
 
             org.mockito.ArgumentCaptor<Pageable> captor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
-            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), captor.capture());
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), captor.capture());
 
             assertEquals("price: ASC", captor.getValue().getSort().toString());
         }
@@ -213,7 +230,7 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải loại bỏ khoảng trắng thừa và chuyển chuỗi trống thành null")
         void should_NormalizeInputParams_When_Searching() {
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(1L, "  Hoa Lac  ", "   ", null, 0, 10, null);
@@ -224,6 +241,7 @@ class ListingServiceTest {
                     eq(1L),
                     locationCaptor.capture(),
                     isNull(), isNull(), isNull(), isNull(),
+                    any(Instant.class),
                     any(Pageable.class)
             );
             assertEquals("Hoa Lac", locationCaptor.getValue());
@@ -232,12 +250,12 @@ class ListingServiceTest {
         @Test
         @DisplayName("Hệ thống phải xử lý an toàn khi các tham số tìm kiếm hoàn toàn null")
         void should_HandleNullParams_Gracefully() {
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
             listingService.getFilteredListings(null, null, null, null, 0, 10, null);
 
-            verify(listingRepository).findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+            verify(listingRepository).findByFilters(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Instant.class), any(Pageable.class));
         }
     }
 
@@ -257,7 +275,7 @@ class ListingServiceTest {
             address.setAddressText("Ký túc xá Dom A");
             listing.setPickupAddress(address);
 
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(listing)));
 
             PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null, null, 0, 10, null);
@@ -272,7 +290,7 @@ class ListingServiceTest {
             listing.setSeller(null);
             listing.setPickupAddress(null);
 
-            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(Instant.class), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(listing)));
 
             PagedResponse<ListingResponse> result = listingService.getFilteredListings(null, null, null, null, 0, 10, null);

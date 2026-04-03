@@ -10,6 +10,7 @@ import com.slife.marketplace.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
@@ -80,6 +81,7 @@ public class LandingService {
         }
 
         var categoryStats = listingRepository.findTopCategoryStatsByActiveListings(
+                Instant.now(),
                 PageRequest.of(0, TOP_CATEGORIES));
 
         long activeListings = listingRepository.countByStatus("ACTIVE");
