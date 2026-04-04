@@ -337,8 +337,15 @@ export function AuthProvider({ children }) {
             localStorage.setItem(USER_KEY, JSON.stringify(userData));
             setupTokenRefresh(token);
           } catch (error) {
-            console.error('Failed to fetch user:', error);
-            await logout();
+            console.error('Failed to fetch user (403/401):', error);
+            // clear local storage immediately to stop spamming 403/401s
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            setToken(null);
+            setRefreshToken(null);
+            setUser(null);
+            // Don't call full logout() as it might try to call the auth/logout API with the same bad token.
           }
         }
       } catch (error) {
