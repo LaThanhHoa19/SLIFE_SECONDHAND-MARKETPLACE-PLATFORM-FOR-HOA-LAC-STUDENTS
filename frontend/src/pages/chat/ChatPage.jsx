@@ -56,14 +56,18 @@ import ChatSearchInConversationDialog from './components/ChatSearchInConversatio
 import { useChatSessions } from './hooks/useChatSessions';
 import { useChatRealtime } from './hooks/useChatRealtime';
 import {
+  CHAT_HISTORY_PAGE_SIZE,
+  CHAT_LOAD_OLDER_THRESHOLD_PX,
   CHAT_NEAR_BOTTOM_PX,
   enrichMessagesForDisplay,
   formatSessionTimeShort,
   getData,
   markOfferSupersededByDealSeal,
+  mergeChatHistoryPage,
   getMessageDomId,
   isMessageFromCurrentUser,
   makeTempId,
+  parseChatHistoryResponse,
   upsertMessages,
 } from './chatMessageUtils';
 // ── main component ────────────────────────────────────────────────────────────
@@ -87,6 +91,10 @@ function ChatPageInner() {
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  /** Còn trang cũ hơn để tải khi cuộn lên (theo phân trang BE). */
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [nextHistoryPage, setNextHistoryPage] = useState(1);
+  const [loadingOlderHistory, setLoadingOlderHistory] = useState(false);
   const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
   const [bubbleSearchHighlight, setBubbleSearchHighlight] = useState(null);
   const [inputText, setInputText] = useState('');
@@ -195,6 +203,8 @@ function ChatPageInner() {
   const suppressOpponentDiffRef = useRef(false);
   /** Sau đổi session: cuộn đáy đồng bộ trong layout (trước khi đếm tin mới — tránh scrollTop=0 nhầm là đang xem lịch sử) */
   const didInitialScrollForSessionRef = useRef(false);
+  const historyScrollRestoreRef = useRef(null);
+  const olderLoadInFlightRef = useRef(false);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [newOpponentMsgCount, setNewOpponentMsgCount] = useState(0);
 
@@ -230,11 +240,78 @@ function ChatPageInner() {
     }
   }, []);
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeSessionId || !historyHasMore || olderLoadInFlightRef.current) return;
+    const el = messagesScrollRef.current;
+    if (!el || messagesRef.current.length === 0) return;
+    olderLoadInFlightRef.current = true;
+    setLoadingOlderHistory(true);
+    const prevMetrics = { scrollHeight: el.scrollHeight, scrollTop: el.scrollTop };
+    const pageToLoad = nextHistoryPage;
+    try {
+      const res = await chatApi.getHistory(activeSessionId, pageToLoad, CHAT_HISTORY_PAGE_SIZE);
+      const { content, last } = parseChatHistoryResponse(res);
+      const olderAsc = Array.isArray(content) ? [...content].reverse() : [];
+      if (olderAsc.length === 0) {
+        setHistoryHasMore(false);
+        return;
+      }
+      suppressOpponentDiffRef.current = true;
+      let appended = 0;
+      setMessages((prev) => {
+        const ids = new Set(prev.map((m) => String(m?.id)));
+        const merged = olderAsc.filter((m) => m != null && m.id != null && !ids.has(String(m.id)));
+        appended = merged.length;
+        if (merged.length === 0) return prev;
+        historyScrollRestoreRef.current = prevMetrics;
+        return [...merged, ...prev];
+      });
+      if (appended === 0) setHistoryHasMore(false);
+      else {
+        setHistoryHasMore(!last);
+        setNextHistoryPage((p) => p + 1);
+      }
+    } catch {
+      /* giữ nguyên danh sách */
+    } finally {
+      olderLoadInFlightRef.current = false;
+      setLoadingOlderHistory(false);
+    }
+  }, [activeSessionId, historyHasMore, nextHistoryPage]);
+
+  const handleMessagesScroll = useCallback(() => {
+    updateJumpToLatestVisibility();
+    const el = messagesScrollRef.current;
+    if (!el || historyLoading || loadingOlderHistory || !historyHasMore) return;
+    if (el.scrollTop > CHAT_LOAD_OLDER_THRESHOLD_PX) return;
+    loadOlderMessages();
+  }, [
+    updateJumpToLatestVisibility,
+    historyLoading,
+    loadingOlderHistory,
+    historyHasMore,
+    loadOlderMessages,
+  ]);
+
+  useLayoutEffect(() => {
+    const snap = historyScrollRestoreRef.current;
+    if (snap == null) return;
+    historyScrollRestoreRef.current = null;
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    const delta = el.scrollHeight - snap.scrollHeight;
+    el.scrollTop = snap.scrollTop + delta;
+  }, [messages]);
+
   useEffect(() => {
     setNewOpponentMsgCount(0);
     prevMessagesForDiffRef.current = [];
     didInitialScrollForSessionRef.current = false;
     setHighlightedMessageId(null);
+    setHistoryHasMore(false);
+    setNextHistoryPage(1);
+    setLoadingOlderHistory(false);
+    olderLoadInFlightRef.current = false;
   }, [activeSessionId]);
 
   // Khi deep-link đổi messageId (kể cả cùng session), cho phép chạy lại flow scroll-to-message.
@@ -651,14 +728,12 @@ function ChatPageInner() {
   const fetchHistory = useCallback(() => {
     if (!activeSessionId) return Promise.resolve();
     return chatApi
-        .getHistory(activeSessionId, 0, 30)
+        .getHistory(activeSessionId, 0, CHAT_HISTORY_PAGE_SIZE)
         .then((res) => {
-          const body = res?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
-          setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          const { content } = parseChatHistoryResponse(res);
+          setMessages((prev) => mergeChatHistoryPage(prev, content));
         })
-        .catch(() => setMessages([]));
+        .catch(() => {});
   }, [activeSessionId]);
 
   useEffect(() => {
@@ -671,16 +746,15 @@ function ChatPageInner() {
     const loadHistory = async () => {
       try {
         const targetId = messageIdFromUrl ? String(messageIdFromUrl) : null;
-        const pageSize = 30;
 
         // Bình thường: chỉ lấy page 0.
         if (!targetId) {
-          const res = await chatApi.getHistory(activeSessionId, 0, pageSize);
+          const res = await chatApi.getHistory(activeSessionId, 0, CHAT_HISTORY_PAGE_SIZE);
           if (cancelled) return;
-          const body = res?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const { content, last } = parseChatHistoryResponse(res);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          setHistoryHasMore(!last);
+          setNextHistoryPage(1);
           return;
         }
 
@@ -688,17 +762,15 @@ function ChatPageInner() {
         const maxPagesToScan = 8;
         const aggregated = [];
         let found = false;
+        let lastFetchedLast = true;
+        let pagesScanned = 0;
 
         for (let p = 0; p < maxPagesToScan; p += 1) {
-          const res = await chatApi.getHistory(activeSessionId, p, pageSize);
+          const res = await chatApi.getHistory(activeSessionId, p, CHAT_HISTORY_PAGE_SIZE);
           if (cancelled) return;
-          const body = res?.data;
-          const page = body?.data ?? body;
-          const content = Array.isArray(page?.content)
-              ? page.content
-              : Array.isArray(page)
-                  ? page
-                  : [];
+          const { content, last } = parseChatHistoryResponse(res);
+          lastFetchedLast = last;
+          pagesScanned = p + 1;
 
           if (content.length === 0) break;
           aggregated.push(...content);
@@ -707,12 +779,14 @@ function ChatPageInner() {
             found = true;
             break;
           }
-          if (content.length < pageSize) break;
+          if (content.length < CHAT_HISTORY_PAGE_SIZE) break;
         }
 
         if (cancelled) return;
         const base = aggregated.length > 0 ? aggregated : [];
         setMessages([...base].reverse());
+        setNextHistoryPage(pagesScanned);
+        setHistoryHasMore(!lastFetchedLast);
 
         if (!found && import.meta.env.DEV) {
           console.warn('[Chat] target messageId not found in scanned history:', targetId);
@@ -796,11 +870,11 @@ function ChatPageInner() {
       const sidForHistory = msg?.sessionId || activeSessionId;
       if (sidForHistory) {
         try {
-          const hres = await chatApi.getHistory(sidForHistory, 0, 30);
-          const body = hres?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const hres = await chatApi.getHistory(sidForHistory, 0, CHAT_HISTORY_PAGE_SIZE);
+          const { content, last } = parseChatHistoryResponse(hres);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          setHistoryHasMore(!last);
+          setNextHistoryPage(1);
         } catch {
           setMessages([]);
         }
@@ -847,26 +921,25 @@ function ChatPageInner() {
     const mid = String(messageId);
     if (!sessionId || !mid) return false;
     if (messagesRef.current.some((m) => String(m?.id) === mid)) return true;
-    const pageSize = 30;
     const maxPages = 20;
     const aggregated = [];
+    let lastFetchedLast = true;
+    let pagesScanned = 0;
     try {
       for (let p = 0; p < maxPages; p += 1) {
-        const res = await chatApi.getHistory(sessionId, p, pageSize);
-        const body = res?.data;
-        const page = body?.data ?? body;
-        const content = Array.isArray(page?.content)
-            ? page.content
-            : Array.isArray(page)
-                ? page
-                : [];
+        const res = await chatApi.getHistory(sessionId, p, CHAT_HISTORY_PAGE_SIZE);
+        const { content, last } = parseChatHistoryResponse(res);
+        lastFetchedLast = last;
+        pagesScanned = p + 1;
         if (content.length === 0) break;
         aggregated.push(...content);
         if (content.some((m) => String(m?.id) === mid)) break;
-        if (content.length < pageSize) break;
+        if (content.length < CHAT_HISTORY_PAGE_SIZE) break;
       }
       if (aggregated.length === 0) return false;
       setMessages([...aggregated].reverse());
+      setNextHistoryPage(pagesScanned);
+      setHistoryHasMore(!lastFetchedLast);
       return aggregated.some((m) => String(m?.id) === mid);
     } catch {
       return false;
@@ -1016,11 +1089,11 @@ function ChatPageInner() {
       const sidForHistory = msg?.sessionId || activeSessionId;
       if (sidForHistory) {
         try {
-          const hres = await chatApi.getHistory(sidForHistory, 0, 30);
-          const body = hres?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const hres = await chatApi.getHistory(sidForHistory, 0, CHAT_HISTORY_PAGE_SIZE);
+          const { content, last } = parseChatHistoryResponse(hres);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          setHistoryHasMore(!last);
+          setNextHistoryPage(1);
         } catch {
           /* keep upserted */
         }
@@ -1719,8 +1792,11 @@ function ChatPageInner() {
                   <ChatMessagesPanel
                       theme={theme}
                       messagesScrollRef={messagesScrollRef}
+                      onScroll={handleMessagesScroll}
                       updateJumpToLatestVisibility={updateJumpToLatestVisibility}
                       historyLoading={historyLoading}
+                      loadingOlderHistory={loadingOlderHistory}
+                      historyHasMore={historyHasMore}
                       displayMessages={displayMessages}
                       currentUserId={currentUserId}
                       highlightedMessageId={highlightedMessageId}
