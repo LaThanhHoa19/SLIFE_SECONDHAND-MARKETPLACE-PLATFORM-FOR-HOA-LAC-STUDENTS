@@ -39,6 +39,7 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                     backgroundImage: 'none',
                     borderRadius: fullScreen ? 0 : '16px',
                     border: '1px solid rgba(255,255,255,0.1)',
+                    overflow: 'hidden', // Khóa cuộn lớp Paper
                 }
             }}
         >
@@ -65,7 +66,7 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                 </IconButton>
             </DialogTitle>
 
-            <DialogContent sx={{ p: 0 }}>
+            <DialogContent sx={{ p: 0, overflowY: 'auto', maxHeight: fullScreen ? 'none' : '75vh' }}>
                 {/* Visual Listing Header Preview */}
                 <Box sx={{ 
                     p: 2, 
@@ -73,7 +74,10 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                     gap: 2, 
                     alignItems: 'center',
                     bgcolor: 'rgba(157,110,237,0.05)',
-                    borderBottom: '1px solid rgba(255,255,255,0.03)'
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                    position: 'sticky', // Tiêu đề tin đăng đứng yên khi cuộn cmt
+                    top: 0,
+                    zIndex: 10
                 }}>
                     {imageUrl ? (
                         <Box
@@ -117,7 +121,7 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                     </Box>
                 </Box>
 
-                <Box sx={{ height: fullScreen ? 'calc(100vh - 120px)' : '500px', overflow: 'auto' }}>
+                <Box sx={{ p: 0, overflow: 'visible' }}>
                     <ListingComments listingId={listingId} />
                 </Box>
             </DialogContent>
