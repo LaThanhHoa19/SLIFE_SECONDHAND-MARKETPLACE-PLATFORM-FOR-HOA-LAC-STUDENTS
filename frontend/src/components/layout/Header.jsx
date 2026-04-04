@@ -225,13 +225,14 @@ export default function Header({ onToggleSidebar }) {
     return (
         <AppBar
             className="user-header-root"
-            position="static"
+            position="sticky"
             sx={{
                 background: HEADER_BG,
-                boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
-                borderBottom: '1px solid rgba(255,255,255,0.03)',
-                zIndex: theme.zIndex.drawer + 1,
+                boxShadow: '0 12px 24px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.04)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                zIndex: (theme) => theme.zIndex.drawer + 1,
                 top: 0,
+                backdropFilter: 'blur(8px)',
             }}
         >
             <Toolbar sx={{ gap: 1, py: 0, px: 3, minHeight: '64px' }}>
