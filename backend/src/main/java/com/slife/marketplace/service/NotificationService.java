@@ -59,9 +59,10 @@ public class NotificationService {
             // Persist a stable reference for deep-linking:
             // store MESSAGE id (refId) so FE can open + scroll to exact message (no parsing display strings).
             Long messageId = msg != null ? msg.getId() : null;
+            String safeText = buildSafeNewChatNotificationText(msg);
             Notification n = buildNotification(recipient, TYPE_MESSAGE,
                     "MESSAGE", messageId,
-                    msg.getSenderName() + ": " + truncate(msg.getContent(), 60));
+                    safeText);
             notificationRepository.save(n);
             pushToUser(recipient.getEmail(), "/queue/messages", msg);
             pushNotificationCount(recipient);
@@ -71,13 +72,40 @@ public class NotificationService {
         }
     }
 
-    /** Notify seller of a new offer proposal. */
+    /**
+     * Không hiển thị nội dung tin nhắn (privacy / màn hình khóa). Chỉ tên người gửi + tin đăng nếu có.
+     */
+    private static String buildSafeNewChatNotificationText(ChatMessageResponse msg) {
+        if (msg == null) {
+            return "Bạn có tin nhắn mới";
+        }
+        String sender = msg.getSenderName();
+        if (sender == null || sender.isBlank()) {
+            sender = "Người dùng";
+        }
+        String listingTitle = msg.getListingTitle();
+        if (listingTitle != null && !listingTitle.isBlank()) {
+            return "Tin nhắn mới từ " + sender + " · " + truncate(listingTitle.trim(), 48);
+        }
+        return "Tin nhắn mới từ " + sender;
+    }
+
+    /**
+     * Người mua đề xuất giá — refType OFFER + refId = conversation_id khi đã có hội thoại (mở thẳng chat),
+     * ngược lại LISTING + listingId (mở trang tin).
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyOfferProposal(User seller, User buyer, Long listingId, java.math.BigDecimal amount) {
+    public void notifyOfferProposal(User seller, User buyer, Long listingId, String listingTitle,
+                                    java.math.BigDecimal amount) {
         try {
-            Notification n = buildNotification(seller, TYPE_OFFER,
-                    "LISTING", listingId,
-                    buyer.getFullName() + " đề xuất giá " + amount.toPlainString() + "đ");
+            String buyerName = displayName(buyer);
+            String title = listingTitle != null && !listingTitle.isBlank() ? listingTitle.trim() : "tin đăng";
+            String text = buyerName + " đề xuất giá " + amount.toPlainString() + "đ cho sản phẩm «"
+                    + truncate(title, 52) + "» — mở chat để xem chi tiết.";
+            Long convId = resolveConversationId(listingId, buyer, seller);
+            String refType = convId != null ? "OFFER" : "LISTING";
+            Long refId = convId != null ? convId : listingId;
+            Notification n = buildNotification(seller, TYPE_OFFER, refType, refId, text);
             notificationRepository.save(n);
             pushNotificationCount(seller);
         } catch (Exception ex) {
@@ -85,19 +113,82 @@ public class NotificationService {
         }
     }
 
-    /** Notify both parties when a deal is confirmed. */
+    /**
+     * Người bán chấp nhận trả giá — cả hai vào chat theo conversationId nếu có.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyDealConfirmed(User buyer, User seller, Long listingId, String listingTitle) {
+    public void notifyDealConfirmed(User buyer, User seller, Long listingId, String listingTitle,
+                                    Long conversationId) {
         try {
-            String text = "Deal đã được xác nhận cho: " + listingTitle;
-            for (User u : List.of(buyer, seller)) {
-                Notification n = buildNotification(u, TYPE_DEAL, "LISTING", listingId, text);
-                notificationRepository.save(n);
-                pushNotificationCount(u);
-            }
+            String title = listingTitle != null && !listingTitle.isBlank() ? listingTitle.trim() : "tin đăng";
+            String buyerText = "Người bán đã chấp nhận mức giá bạn đề xuất cho «"
+                    + truncate(title, 52) + "» — tiếp tục trao đổi trong chat.";
+            String sellerText = displayName(buyer) + " đã được bạn chấp nhận trả giá cho «"
+                    + truncate(title, 52) + "» — mở chat để chốt giao dịch.";
+            String refType = conversationId != null ? "CONVERSATION" : "LISTING";
+            Long refId = conversationId != null ? conversationId : listingId;
+            Notification nb = buildNotification(buyer, TYPE_DEAL, refType, refId, buyerText);
+            notificationRepository.save(nb);
+            pushNotificationCount(buyer);
+            Notification ns = buildNotification(seller, TYPE_DEAL, refType, refId, sellerText);
+            notificationRepository.save(ns);
+            pushNotificationCount(seller);
         } catch (Exception ex) {
             log.error("notifyDealConfirmed failed listingId={}", listingId, ex);
         }
+    }
+
+    /**
+     * Người bán từ chối lượt trả giá — thông báo cho người mua.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyOfferRejected(User buyer, User seller, Long listingId, String listingTitle,
+                                    java.math.BigDecimal amount) {
+        try {
+            String title = listingTitle != null && !listingTitle.isBlank() ? listingTitle.trim() : "tin đăng";
+            String text = "Người bán đã từ chối mức giá " + amount.toPlainString() + "đ bạn đề xuất cho «"
+                    + truncate(title, 52) + "» — có thể trao đổi thêm trong chat.";
+            Long convId = resolveConversationId(listingId, buyer, seller);
+            String refType = convId != null ? "OFFER_REJECT" : "LISTING";
+            Long refId = convId != null ? convId : listingId;
+            Notification n = buildNotification(buyer, TYPE_SYSTEM, refType, refId, text);
+            notificationRepository.save(n);
+            pushNotificationCount(buyer);
+        } catch (Exception ex) {
+            log.error("notifyOfferRejected failed buyerId={}", buyer.getId(), ex);
+        }
+    }
+
+    private Long resolveConversationId(Long listingId, User buyer, User seller) {
+        if (listingId == null || buyer == null || seller == null) {
+            return null;
+        }
+        Long bid = buyer.getId();
+        Long sid = seller.getId();
+        if (bid == null || sid == null) {
+            return null;
+        }
+        try {
+            return conversationRepository.findActiveByListingAndParticipants(listingId, bid, sid)
+                    .map(Conversation::getId)
+                    .orElse(null);
+        } catch (Exception ex) {
+            log.warn("resolveConversationId failed listingId={}: {}", listingId, ex.getMessage());
+            return null;
+        }
+    }
+
+    private static String displayName(User u) {
+        if (u == null) {
+            return "Người dùng";
+        }
+        if (u.getFullName() != null && !u.getFullName().isBlank()) {
+            return u.getFullName().trim();
+        }
+        if (u.getEmail() != null && !u.getEmail().isBlank()) {
+            return u.getEmail().trim();
+        }
+        return "Người dùng";
     }
 
     /** Notify listing owner when their listing is reported. */
@@ -263,6 +354,14 @@ public class NotificationService {
         String rt = n.getRefType().trim().toUpperCase();
         try {
             if ("CONVERSATION".equals(rt)) {
+                String sessionId = conversationRepository.findById(n.getRefId())
+                        .map(Conversation::getSessionUuid)
+                        .orElse(null);
+                dto.setSessionId(sessionId);
+                return dto;
+            }
+
+            if ("OFFER".equals(rt) || "OFFER_REJECT".equals(rt)) {
                 String sessionId = conversationRepository.findById(n.getRefId())
                         .map(Conversation::getSessionUuid)
                         .orElse(null);

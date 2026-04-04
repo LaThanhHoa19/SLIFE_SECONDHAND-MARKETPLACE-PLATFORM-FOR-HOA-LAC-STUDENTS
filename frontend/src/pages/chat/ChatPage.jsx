@@ -474,6 +474,11 @@ function ChatPageInner() {
         sellerId,
         otherParticipantName:
           seller?.fullName || seller?.name || seller?.displayName || 'Người bán',
+        otherParticipantAvatarUrl:
+          seller?.avatarUrl ||
+          seller?.sellerAvatarUrl ||
+          seller?.avatar_url ||
+          null,
         status: 'DRAFT',
       };
     }
@@ -1532,7 +1537,10 @@ function ChatPageInner() {
   return (
       <Box
           sx={{
-            height: '100dvh',
+            flex: 1,
+            minHeight: 0,
+            height: '100%',
+            maxHeight: '100%',
             width: '100%',
             maxWidth: '100%',
             mx: 0,
@@ -1551,9 +1559,11 @@ function ChatPageInner() {
         <Box
             sx={{
               flex: 1,
+              minHeight: 0,
+              height: '100%',
+              maxHeight: '100%',
               display: 'flex',
               flexDirection: { xs: 'column', md: 'row' },
-              minHeight: 0,
               overflow: 'hidden',
             }}
         >
@@ -1577,10 +1587,12 @@ function ChatPageInner() {
               elevation={0}
               sx={{
                 flex: 1,
+                alignSelf: 'stretch',
                 display: panelDisplay,
                 flexDirection: 'column',
                 minWidth: 0,
                 minHeight: 0,
+                maxHeight: '100%',
                 borderRadius: { xs: 0, md: 3 },
                 overflow: 'hidden',
                 bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.78 : 0.95),
@@ -1630,6 +1642,7 @@ function ChatPageInner() {
                       isMdUp={isMdUp}
                       handleChatMobileBack={handleChatMobileBack}
                       activeSession={activeSession}
+                      currentUserId={currentUserId}
                       isSellerInActiveChat={isSellerInActiveChat}
                       wsConnected={wsConnected}
                       showInChatSearch={Boolean(activeSessionId)}
@@ -1643,7 +1656,6 @@ function ChatPageInner() {
                       activeListingThumb={activeListingThumb}
                       isSellerInActiveChat={isSellerInActiveChat}
                       showPostSaleActions={showPostSaleActions}
-                      hideViewListing={listingClosedForBuyer}
                       onPostSaleAction={handlePostSaleBannerAction}
                       postSaleOutcome={resolvedPostSaleBannerOutcome}
                       postSaleBusy={postSaleBannerBusy}
