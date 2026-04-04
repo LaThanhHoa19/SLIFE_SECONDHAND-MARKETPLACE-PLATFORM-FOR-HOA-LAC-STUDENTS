@@ -224,7 +224,8 @@ export default function Header({ onToggleSidebar }) {
 
     return (
         <AppBar
-            position="sticky"
+            className="user-header-root"
+            position="static"
             sx={{
                 background: HEADER_BG,
                 boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
