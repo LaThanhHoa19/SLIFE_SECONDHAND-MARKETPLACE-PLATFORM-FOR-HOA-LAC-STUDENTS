@@ -23,6 +23,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteDraft, getMyListings, hideListing, renewListing, repostListing, unhideListing } from '../../api/myListingApi';
 import { useToast } from '../../context/ToastContext';
 import DeleteDraftDialog from './myListings/DeleteDraftDialog';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import MyListingCard from './myListings/MyListingCard';
 import MyListingsAddPlaceholder from './myListings/MyListingsAddPlaceholder';
 import MyListingsEmptyState from './myListings/MyListingsEmptyState';
@@ -112,6 +113,16 @@ export default function MyListingsPage() {
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [deleteDialog,   setDeleteDialog]   = useState({ open: false, listingId: null });
     const [isDeleting,     setIsDeleting]     = useState(false);
+    const [actionConfirm,  setActionConfirm]  = useState({
+        open: false,
+        action: null,
+        listingId: null,
+        title: '',
+        content: '',
+        confirmLabel: 'Xác nhận',
+        variant: 'warning',
+    });
+    const [isActionSubmitting, setIsActionSubmitting] = useState(false);
     const { showToast } = useToast();
     const abortRef = useRef(null);
 
@@ -161,37 +172,58 @@ export default function MyListingsPage() {
         }
     }, []);
 
+    const openActionConfirm = useCallback((config) => {
+        setActionConfirm({
+            open: true,
+            action: null,
+            listingId: null,
+            title: '',
+            content: '',
+            confirmLabel: 'Xác nhận',
+            variant: 'warning',
+            ...config,
+        });
+    }, []);
+
+    const closeActionConfirm = useCallback(() => {
+        if (isActionSubmitting) return;
+        setActionConfirm((prev) => ({ ...prev, open: false }));
+    }, [isActionSubmitting]);
+
     const handleHide = async (id) => {
-        try {
-            await hideListing(id);
-            showSnackbar('Đã ẩn tin thành công', 'success');
-            fetchTabCounts();
-            fetchListings(activeTab, page);
-        } catch {
-            showSnackbar('Không thể ẩn tin. Vui lòng thử lại.', 'error');
-        }
+        if (!id) return;
+        openActionConfirm({
+            action: 'hide',
+            listingId: id,
+            title: 'Xác nhận ẩn tin đăng',
+            content: 'Tin đăng sẽ bị ẩn khỏi feed công khai cho đến khi bạn hiển thị lại.',
+            confirmLabel: 'Ẩn tin',
+            variant: 'warning',
+        });
     };
 
     const handleUnhide = async (id) => {
-        try {
-            await unhideListing(id);
-            showSnackbar('Tin đăng đã hiển thị lại', 'success');
-            fetchTabCounts();
-            fetchListings(activeTab, page);
-        } catch {
-            showSnackbar('Không thể hiển thị lại tin. Vui lòng thử lại.', 'error');
-        }
+        if (!id) return;
+        openActionConfirm({
+            action: 'unhide',
+            listingId: id,
+            title: 'Xác nhận hiển thị lại tin đăng',
+            content: 'Tin đăng sẽ hiển thị trở lại trong feed công khai nếu vẫn hợp lệ.',
+            confirmLabel: 'Hiển thị lại',
+            variant: 'info',
+        });
     };
 
     const handleRenew = async (id) => {
-        try {
-            await renewListing(id);
-            showSnackbar('Đã gia hạn bài đăng thêm 15 ngày tính từ ngày hôm nay.', 'success');
-            fetchListings(activeTab, page);
-            fetchTabCounts();
-        } catch {
-            showSnackbar('Không thể gia hạn. Vui lòng thử lại.', 'error');
-        }
+        if (!id) return;
+        openActionConfirm({
+            action: 'renew',
+            listingId: id,
+            title: 'Xác nhận gia hạn tin đăng',
+            content: 'Tin đăng sẽ được gia hạn thêm 15 ngày kể từ thời điểm hiện tại.',
+            confirmLabel: 'Gia hạn',
+            variant: 'info',
+        });
     };
 
     const handleRepost = async (id) => {
@@ -200,24 +232,58 @@ export default function MyListingsPage() {
             showSnackbar('Không xác định được tin cần đăng lại.', 'error');
             return;
         }
+        openActionConfirm({
+            action: 'repost',
+            listingId: sourceId,
+            title: 'Xác nhận đăng lại tin',
+            content: 'Hệ thống sẽ tạo một tin đăng mới từ tin đã hết hạn. Bạn có thể chỉnh sửa sau khi tạo.',
+            confirmLabel: 'Đăng lại',
+            variant: 'warning',
+        });
+    };
+
+    const handleConfirmListingAction = useCallback(async () => {
+        const { action, listingId } = actionConfirm;
+        if (!action || !listingId) return;
+
         try {
-            const { data: body } = await repostListing(sourceId);
-            const payload = body?.data;
-            const newIdRaw =
-                payload != null && typeof payload === 'object' && payload !== null && 'data' in payload
-                    ? payload.data
-                    : payload;
-            const newId = newIdRaw != null && newIdRaw !== '' ? Number(newIdRaw) : NaN;
-            showSnackbar('Đăng tin lại thành công', 'success');
+            setIsActionSubmitting(true);
+
+            if (action === 'hide') {
+                await hideListing(listingId);
+                showSnackbar('Đã ẩn tin thành công', 'success');
+            } else if (action === 'unhide') {
+                await unhideListing(listingId);
+                showSnackbar('Tin đăng đã hiển thị lại', 'success');
+            } else if (action === 'renew') {
+                await renewListing(listingId);
+                showSnackbar('Đã gia hạn bài đăng thêm 15 ngày tính từ ngày hôm nay.', 'success');
+            } else if (action === 'repost') {
+                const { data: body } = await repostListing(listingId);
+                const payload = body?.data;
+                const newIdRaw =
+                    payload != null && typeof payload === 'object' && payload !== null && 'data' in payload
+                        ? payload.data
+                        : payload;
+                const newId = newIdRaw != null && newIdRaw !== '' ? Number(newIdRaw) : NaN;
+                showSnackbar('Đăng tin lại thành công', 'success');
+                if (Number.isFinite(newId) && newId > 0) {
+                    navigate(`/listings/${newId}`);
+                }
+            }
+
+            setActionConfirm((prev) => ({ ...prev, open: false }));
             fetchTabCounts();
             fetchListings(activeTab, page);
-            if (Number.isFinite(newId) && newId > 0) {
-                navigate(`/listings/${newId}`);
-            }
         } catch {
-            showSnackbar('Không thể đăng lại. Vui lòng thử lại.', 'error');
+            if (action === 'hide') showSnackbar('Không thể ẩn tin. Vui lòng thử lại.', 'error');
+            else if (action === 'unhide') showSnackbar('Không thể hiển thị lại tin. Vui lòng thử lại.', 'error');
+            else if (action === 'renew') showSnackbar('Không thể gia hạn. Vui lòng thử lại.', 'error');
+            else if (action === 'repost') showSnackbar('Không thể đăng lại. Vui lòng thử lại.', 'error');
+        } finally {
+            setIsActionSubmitting(false);
         }
-    };
+    }, [actionConfirm, navigate, fetchListings, fetchTabCounts, activeTab, page]);
 
     const handleDeleteDraft = (id) => {
         setDeleteDialog({ open: true, listingId: id });
@@ -653,6 +719,18 @@ export default function MyListingsPage() {
                     isDeleting={isDeleting}
                     onClose={handleCancelDelete}
                     onConfirm={handleConfirmDelete}
+                />
+
+                <ConfirmDialog
+                    open={actionConfirm.open}
+                    title={actionConfirm.title}
+                    content={actionConfirm.content}
+                    variant={actionConfirm.variant}
+                    confirmLabel={actionConfirm.confirmLabel}
+                    cancelLabel="Hủy"
+                    onClose={closeActionConfirm}
+                    onConfirm={handleConfirmListingAction}
+                    loading={isActionSubmitting}
                 />
 
                 {!isLoading && !error && totalPages > 1 && listings.length > 0 && (

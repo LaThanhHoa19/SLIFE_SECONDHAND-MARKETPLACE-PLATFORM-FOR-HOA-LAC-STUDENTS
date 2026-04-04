@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Alert, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { deleteListingImage, getListing, updateListing, uploadImages } from '../../api/listingApi';
@@ -117,6 +118,8 @@ export default function EditListingPage() {
     const [listingData, setListingData] = useState(null);
     const [formDefaults, setFormDefaults] = useState(null);
     const [existingImages, setExistingImages] = useState([]);
+    const [pendingRemoveImageId, setPendingRemoveImageId] = useState(null);
+    const [isRemovingImage, setIsRemovingImage] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
     const { showToast } = useToast();
@@ -176,14 +179,29 @@ export default function EditListingPage() {
     }, [listingData, user?.id]);
 
     const handleRemoveExistingImage = async (imageId) => {
-        if (imageId == null) return;
+        if (imageId == null || isRemovingImage) return;
+        setPendingRemoveImageId(imageId);
+    };
+
+    const handleCancelRemoveImage = () => {
+        if (isRemovingImage) return;
+        setPendingRemoveImageId(null);
+    };
+
+    const handleConfirmRemoveImage = async () => {
+        if (pendingRemoveImageId == null || isRemovingImage) return;
+
         try {
-            await deleteListingImage(listingIdNum, imageId);
-            setExistingImages((prev) => prev.filter((x) => x.id !== imageId));
+            setIsRemovingImage(true);
+            await deleteListingImage(listingIdNum, pendingRemoveImageId);
+            setExistingImages((prev) => prev.filter((x) => x.id !== pendingRemoveImageId));
+            setPendingRemoveImageId(null);
             showToast('Đã xóa ảnh.', 'success');
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message || 'Không xóa được ảnh.';
             showToast(msg, 'error');
+        } finally {
+            setIsRemovingImage(false);
         }
     };
 
@@ -250,20 +268,34 @@ export default function EditListingPage() {
             }}
         >
             {formDefaults && (
-                <ListingForm
-                    key={String(listingIdNum)}
-                    mode="edit"
-                    layoutVariant="createStudio"
-                    defaultValues={formDefaults}
-                    existingImages={existingImages}
-                    onRemoveExistingImage={handleRemoveExistingImage}
-                    maxImagesPerPost={maxImagesPerPost}
-                    onSubmit={handleSubmit}
-                    submitting={submitting}
-                    serverSubmitError={error}
-                    serverSubmitErrorPlacement={submitErrorPlacement}
-                    onDismissServerSubmitError={() => setError('')}
-                />
+                <>
+                    <ListingForm
+                        key={String(listingIdNum)}
+                        mode="edit"
+                        layoutVariant="createStudio"
+                        defaultValues={formDefaults}
+                        existingImages={existingImages}
+                        onRemoveExistingImage={handleRemoveExistingImage}
+                        maxImagesPerPost={maxImagesPerPost}
+                        onSubmit={handleSubmit}
+                        submitting={submitting}
+                        serverSubmitError={error}
+                        serverSubmitErrorPlacement={submitErrorPlacement}
+                        onDismissServerSubmitError={() => setError('')}
+                    />
+
+                    <ConfirmDialog
+                        open={pendingRemoveImageId != null}
+                        title="Xác nhận xóa ảnh"
+                        content="Ảnh này sẽ bị xóa khỏi tin đăng hiện tại và không thể khôi phục. Bạn có muốn tiếp tục không?"
+                        variant="danger"
+                        confirmLabel="Xóa ảnh"
+                        cancelLabel="Giữ lại"
+                        onClose={handleCancelRemoveImage}
+                        onConfirm={handleConfirmRemoveImage}
+                        loading={isRemovingImage}
+                    />
+                </>
             )}
         </Box>
     );
