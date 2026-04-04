@@ -52,11 +52,17 @@ export default function CategoryTree({
                         py: compact ? 0.9 : 1.25,
                         gap: 1.1,
                         cursor: 'pointer',
-                        mx: compact ? 0 : 0.75,
-                        borderRadius: compact ? '8px' : '10px',
-                        bgcolor: hasChildren ? 'rgba(255,255,255,0.02)' : 'transparent',
-                        transition: 'background-color 0.2s',
-                        '&:hover': { bgcolor: 'rgba(157,110,237,0.12)' },
+                        mx: compact ? 0 : 1,
+                        mb: 0.75, // Add margin between items to prevent 'sticking'
+                        borderRadius: compact ? '8px' : '12px',
+                        bgcolor: hasChildren ? 'rgba(255,255,255,0.03)' : 'transparent',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        border: '1px solid transparent',
+                        '&:hover': { 
+                            bgcolor: 'rgba(157,110,237,0.12)',
+                            borderColor: 'rgba(157,110,237,0.15)',
+                            transform: 'translateX(2px)'
+                        },
                     }}
                 >
                     <Box
@@ -161,9 +167,7 @@ export default function CategoryTree({
                         })}
                     </Box>
                 )}
-                {idx < items.length - 1 && !compact && (
-                    <Box sx={{ mx: 1.5, borderBottom: '1px solid rgba(255,255,255,0.05)' }} />
-                )}
+                {/* Removed Divider that was making items feel stuck */}
             </Box>
         );
     });
