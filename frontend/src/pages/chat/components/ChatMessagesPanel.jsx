@@ -1,4 +1,4 @@
-import { Box, Badge, Chip, CircularProgress, Fab, Tooltip, Typography } from '@mui/material';
+import { Box, Badge, Chip, Fab, LinearProgress, Skeleton, Tooltip, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
@@ -19,6 +19,7 @@ export default function ChatMessagesPanel({
                                               displayMessages,
                                               currentUserId,
                                               highlightedMessageId,
+                                              bubbleSearchHighlight,
                                               handleAccept,
                                               handleReject,
                                               handleDealConfirmDecision,
@@ -32,6 +33,8 @@ export default function ChatMessagesPanel({
                                               messages,
                                               scrollToBottom,
                                           }) {
+    const showHistorySkeleton = historyLoading && displayMessages.length === 0;
+
     return (
         <Box
             sx={{
@@ -42,6 +45,19 @@ export default function ChatMessagesPanel({
                 flexDirection: 'column',
             }}
         >
+            {historyLoading && (
+                <LinearProgress
+                    sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        zIndex: 4,
+                        height: 2,
+                        borderRadius: 0,
+                    }}
+                />
+            )}
             <Box
                 ref={messagesScrollRef}
                 onScroll={updateJumpToLatestVisibility}
@@ -78,9 +94,21 @@ export default function ChatMessagesPanel({
                     },
                 }}
             >
-                {historyLoading ? (
-                    <Box display="flex" justifyContent="center" py={2}>
-                        <CircularProgress size={28} />
+                {showHistorySkeleton ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, py: 0.5 }}>
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
+                            <Skeleton
+                                key={i}
+                                variant="rounded"
+                                height={i % 2 === 0 ? 48 : 56}
+                                sx={{
+                                    alignSelf: i % 2 === 0 ? 'flex-end' : 'flex-start',
+                                    width: `${58 + (i % 3) * 12}%`,
+                                    maxWidth: '92%',
+                                    borderRadius: 2.5,
+                                }}
+                            />
+                        ))}
                     </Box>
                 ) : displayMessages.length === 0 ? (
                     <Box sx={{ textAlign: 'center', py: 4, px: 2 }}>
@@ -100,6 +128,12 @@ export default function ChatMessagesPanel({
                         const showDay = idx === 0 || !sameCalendarDayVi(prev?.timestamp, m.timestamp);
                         const mid = m?.id != null ? String(m.id) : null;
                         const isHighlighted = mid != null && String(highlightedMessageId) === mid;
+                        const contentHighlightQuery =
+                            bubbleSearchHighlight &&
+                            mid != null &&
+                            String(bubbleSearchHighlight.messageId) === mid
+                                ? bubbleSearchHighlight.query || ''
+                                : '';
                         return (
                             <Box key={getMessageRowKey(m, idx)}>
                                 {showDay && m.timestamp && (
@@ -127,6 +161,7 @@ export default function ChatMessagesPanel({
                                         onReply={handleReplyMessage}
                                         onJumpToMessage={handleJumpToMessage}
                                         onReportMessage={handleReportMessage}
+                                        contentHighlightQuery={contentHighlightQuery}
                                     />
                                 </div>
                             </Box>

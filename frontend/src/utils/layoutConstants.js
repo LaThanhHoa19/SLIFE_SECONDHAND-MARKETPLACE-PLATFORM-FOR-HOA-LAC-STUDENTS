@@ -21,6 +21,7 @@ export const CONTENT_MAX_WIDTH = 1200;
  */
 export function isFullWidthMainRoute(pathname) {
     if (!pathname) return false;
+    if (pathname === '/chat') return true;
     if (pathname === '/listings/new') return true;
     if (/^\/listings\/[^/]+\/edit$/.test(pathname)) return true;
     if (/^\/drafts\/[^/]+\/publish$/.test(pathname)) return true;

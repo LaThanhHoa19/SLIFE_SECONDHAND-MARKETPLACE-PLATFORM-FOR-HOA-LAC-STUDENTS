@@ -45,13 +45,20 @@ export function deriveNotificationTab(n) {
     const content = String(n?.content || '');
 
     if (type === 'MESSAGE' && ref === 'CONVERSATION') return NOTIF_TAB.MESSAGE;
+    /** Chat: refId = message_id, refType MESSAGE — vẫn là thông báo tin nhắn. */
+    if (type === 'MESSAGE' && ref === 'MESSAGE') return NOTIF_TAB.MESSAGE;
     if (type === 'MESSAGE' && ref === 'LISTING') return NOTIF_TAB.COMMENT;
 
     if (type === 'SYSTEM' && ref === 'LISTING_PUBLISHED') return NOTIF_TAB.PUBLISH;
+    /** Đề xuất giá (refType OFFER / fallback nội dung cũ). */
+    if (type === 'SYSTEM' && ref === 'OFFER') return NOTIF_TAB.OFFER;
+    if (type === 'SYSTEM' && ref === 'OFFER_REJECT') return NOTIF_TAB.OFFER;
     if (type === 'SYSTEM' && ref === 'LISTING' && content.includes('đề xuất giá')) return NOTIF_TAB.OFFER;
 
     if (type === 'COMMENT') return NOTIF_TAB.COMMENT;
     if (type === 'OFFER') return NOTIF_TAB.OFFER;
+    /** Chấp nhận trả giá / deal — cùng tab Trả giá. */
+    if (type === 'DEAL') return NOTIF_TAB.OFFER;
     if (type === 'LISTING_APPROVAL') return NOTIF_TAB.PUBLISH;
 
     return 'other';

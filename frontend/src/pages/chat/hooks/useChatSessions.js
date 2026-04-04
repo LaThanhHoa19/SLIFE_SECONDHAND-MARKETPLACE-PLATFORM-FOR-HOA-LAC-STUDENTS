@@ -7,30 +7,57 @@ import { LOCAL_BUYER_CHIPS, LOCAL_SELLER_CHIPS } from '../chatMessageUtils';
 export function useChatSessions({ activeSessionId, currentUserId, sessionsVersion }) {
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(true);
+    const [sessionsTotalElements, setSessionsTotalElements] = useState(0);
+    const [sidebarSearch, setSidebarSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [quickRepliesFromApi, setQuickRepliesFromApi] = useState([]);
     const [listingMetaById, setListingMetaById] = useState({});
     const fetchSessionsDebounceRef = useRef(null);
 
+    useEffect(() => {
+        const t = window.setTimeout(() => setDebouncedSearch(sidebarSearch.trim()), 320);
+        return () => window.clearTimeout(t);
+    }, [sidebarSearch]);
+
+    const buildListParams = useCallback(() => {
+        const params = { filter: 'ALL' };
+        if (debouncedSearch) {
+            params.q = debouncedSearch;
+        }
+        return params;
+    }, [debouncedSearch]);
+
     const fetchSessions = useCallback(() => {
         return chatApi
-            .getChats('ALL')
+            .getChats(buildListParams())
             .then((res) => {
                 const body = res?.data;
-                const list = Array.isArray(body?.data)
-                    ? body.data
-                    : Array.isArray(body?.content)
+                const raw = body?.data;
+                const list = Array.isArray(raw?.content)
+                    ? raw.content
+                    : Array.isArray(raw)
+                      ? raw
+                      : Array.isArray(body?.content)
                         ? body.content
                         : Array.isArray(body)
-                            ? body
-                            : [];
+                          ? body
+                          : [];
+                const total =
+                    typeof raw?.totalElements === 'number'
+                        ? raw.totalElements
+                        : Array.isArray(list)
+                          ? list.length
+                          : 0;
+                setSessionsTotalElements(total);
                 setSessions(list);
                 return list;
             })
             .catch((err) => {
                 if (import.meta.env.DEV) console.warn('[Chat] getChats failed:', err?.message ?? err);
+                setSessionsTotalElements(0);
                 return [];
             });
-    }, []);
+    }, [buildListParams]);
 
     const scheduleFetchSessions = useCallback(() => {
         if (fetchSessionsDebounceRef.current != null) {
@@ -60,7 +87,7 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         return () => {
             alive = false;
         };
-    }, [sessionsVersion, fetchSessions]);
+    }, [sessionsVersion, debouncedSearch, fetchSessions]);
 
     useEffect(() => {
         chatApi
@@ -156,6 +183,11 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
     return {
         sessions,
         sessionsLoading,
+        sessionsTotalElements,
+        sidebarSearch,
+        setSidebarSearch,
+        /** Cùng chuỗi gửi lên API `q` — dùng tô vàng khớp trong sidebar */
+        sidebarSearchForHighlight: debouncedSearch,
         activeSession,
         activeListingThumb,
         activeListingPrice,

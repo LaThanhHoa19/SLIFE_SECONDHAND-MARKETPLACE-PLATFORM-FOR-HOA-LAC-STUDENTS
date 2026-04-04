@@ -265,44 +265,81 @@ export function enrichMessagesForDisplay(msgs) {
     // Derive deal confirmation decision from existing replies so action buttons
     // don't reappear after refresh (BE doesn't persist a "decision" field).
     let dealDecision = m.dealDecision;
-    if (
-      dealDecision == null &&
-      m?.messageType === 'DEAL_CONFIRMATION' &&
-      m?.id != null &&
-      !String(m.id).startsWith('tmp_')
-    ) {
+    let dealResponderName = m.dealResponderName ?? null;
+    if (m?.messageType === 'DEAL_CONFIRMATION' && m?.id != null && !String(m.id).startsWith('tmp_')) {
       const candidates = repliesByTargetId.get(String(m.id)) ?? [];
-      const texts = candidates
-        .map((x) => (x?.content != null ? String(x.content) : ''))
-        .filter((t) => t.trim() !== '');
-      const joined = texts.join('\n').toLowerCase();
-      if (joined) {
-        if (
-          joined.includes('đồng ý') ||
-          joined.includes('chap nhan') ||
-          joined.includes('chấp nhận') ||
-          joined.includes('✅')
-        ) {
-          dealDecision = 'ACCEPT';
-        } else if (
-          joined.includes('hủy') ||
-          joined.includes('huy') ||
-          joined.includes('không đồng ý') ||
-          joined.includes('khong dong y') ||
-          joined.includes('❌')
-        ) {
-          dealDecision = 'CANCEL';
+      if (dealDecision == null) {
+        const texts = candidates
+          .map((x) => (x?.content != null ? String(x.content) : ''))
+          .filter((t) => t.trim() !== '');
+        const joined = texts.join('\n').toLowerCase();
+        if (joined) {
+          if (
+            joined.includes('đồng ý') ||
+            joined.includes('chap nhan') ||
+            joined.includes('chấp nhận') ||
+            joined.includes('✅')
+          ) {
+            dealDecision = 'ACCEPT';
+          } else if (
+            joined.includes('hủy') ||
+            joined.includes('huy') ||
+            joined.includes('không đồng ý') ||
+            joined.includes('khong dong y') ||
+            joined.includes('❌')
+          ) {
+            dealDecision = 'CANCEL';
+          } else if (candidates.length > 0) {
+            dealDecision = 'DONE';
+          }
         } else if (candidates.length > 0) {
-          // Any reply referencing the confirmation counts as "decided" (disable buttons),
-          // even if the text doesn't match our heuristics.
           dealDecision = 'DONE';
         }
-      } else if (candidates.length > 0) {
-        dealDecision = 'DONE';
+      }
+      if (candidates.length > 0 && (dealDecision === 'ACCEPT' || dealDecision === 'CANCEL' || dealDecision === 'DONE')) {
+        const sorted = [...candidates].sort((a, b) => {
+          const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return ta - tb;
+        });
+        const nm = sorted[0]?.senderName;
+        if (nm && String(nm).trim()) dealResponderName = String(nm).trim();
       }
     }
 
-    return { ...m, replyTo, quote, dealDecision };
+    return { ...m, replyTo, quote, dealDecision, dealResponderName };
+  });
+}
+
+/**
+ * Với mỗi tin OFFER_PROPOSAL: true nếu sau đó (trong cùng phiên) đã có tin DEAL_CONFIRMATION chốt đơn.
+ * Dùng để ẩn nút Chấp nhận/Từ chối dù offerStatus còn lệch tạm thời.
+ */
+export function markOfferSupersededByDealSeal(msgs) {
+  if (!Array.isArray(msgs) || msgs.length === 0) return msgs;
+  const n = msgs.length;
+  const supersededIds = new Set();
+  for (let i = 0; i < n; i += 1) {
+    if (msgs[i]?.messageType !== 'OFFER_PROPOSAL' || msgs[i]?.id == null) continue;
+    const idKey = String(msgs[i].id);
+    if (idKey.startsWith('tmp_')) continue;
+    for (let j = i + 1; j < n; j += 1) {
+      const x = msgs[j];
+      if (
+        x?.messageType === 'DEAL_CONFIRMATION' &&
+        typeof x?.content === 'string' &&
+        x.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH')
+      ) {
+        supersededIds.add(idKey);
+        break;
+      }
+    }
+  }
+  return msgs.map((m) => {
+    if (m?.messageType !== 'OFFER_PROPOSAL' || m?.id == null) return m;
+    const key = String(m.id);
+    if (!supersededIds.has(key)) return m;
+    return { ...m, offerActionsSuperseded: true };
   });
 }
 

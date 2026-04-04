@@ -1,30 +1,41 @@
 import {
-    Avatar,
     Badge,
     Box,
     CircularProgress,
     Divider,
     IconButton,
+    InputAdornment,
     List,
     ListItemButton,
     ListItemText,
     Paper,
+    TextField,
     Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import SearchIcon from '@mui/icons-material/Search';
+import { SearchHighlight } from '../chatSearchHighlight';
+import ChatParticipantAvatar from './ChatParticipantAvatar';
 
 export default function ChatSidebar({
-                                        theme,
-                                        listDisplay,
-                                        sessionsLoading,
-                                        sessions,
-                                        activeSessionId,
-                                        setActiveSessionId,
-                                        navigate,
-                                        formatSessionTimeShort,
-                                    }) {
+    theme,
+    listDisplay,
+    sessionsLoading,
+    sessions,
+    sessionsTotalElements = 0,
+    sidebarSearch = '',
+    onSidebarSearchChange,
+    /** Chuỗi đã debounce — tô vàng trên dòng tiêu đề (tin / tên), khớp lọc API */
+    highlightSearchQuery = '',
+    activeSessionId,
+    setActiveSessionId,
+    navigate,
+    formatSessionTimeShort,
+}) {
+    const hasSearch = Boolean(String(sidebarSearch || '').trim());
+
     return (
         <Paper
             elevation={0}
@@ -32,6 +43,9 @@ export default function ChatSidebar({
                 width: { xs: '100%', md: 336 },
                 maxWidth: { xs: '100%', md: 336 },
                 flexShrink: 0,
+                alignSelf: 'stretch',
+                minHeight: 0,
+                maxHeight: '100%',
                 display: listDisplay,
                 flexDirection: 'column',
                 overflow: 'hidden',
@@ -63,9 +77,31 @@ export default function ChatSidebar({
                     Tin nhắn
                 </Typography>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 1, display: 'block' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ px: 2, py: 0.75, display: 'block' }}>
                 Trao đổi nhanh — gửi ảnh, trả giá, hẹn xem hàng.
             </Typography>
+            <Box sx={{ px: 1.5, pb: 1 }}>
+                <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Tìm theo tiêu đề tin hoặc tên…"
+                    value={sidebarSearch}
+                    onChange={(e) => onSidebarSearchChange?.(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon fontSize="small" color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: 2,
+                            bgcolor: alpha(theme.palette.action.hover, 0.06),
+                        },
+                    }}
+                />
+            </Box>
             <Divider />
             {sessionsLoading ? (
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
@@ -97,26 +133,90 @@ export default function ChatSidebar({
                         },
                     }}
                 >
-                    {sessions.length === 0 && (
+                    {!hasSearch && sessions.length === 0 && (
                         <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 2 }}>
                             Chưa có hội thoại. Vào tin đăng và bấm &quot;Nhắn tin&quot; để bắt đầu.
+                        </Typography>
+                    )}
+                    {hasSearch && sessions.length === 0 && (
+                        <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 2 }}>
+                            Không có hội thoại khớp. Thử tìm theo tiêu đề tin hoặc tên người trong chat.
+                        </Typography>
+                    )}
+                    {sessions.length > 0 && hasSearch && sessionsTotalElements > sessions.length && (
+                        <Typography variant="caption" color="text.disabled" sx={{ px: 2, py: 0.5, display: 'block' }}>
+                            Hiển thị {sessions.length}/{sessionsTotalElements} — thu hẹp từ khóa để lọc chính xác hơn.
                         </Typography>
                     )}
                     {sessions.map((s) => {
                         const listingTitle = s.listingTitle || '';
                         const otherName = s.otherParticipantName || '';
                         const hasListing = Boolean(listingTitle);
-                        const title = hasListing
-                            ? `${listingTitle} / ${otherName || 'Người dùng'}`
-                            : (otherName || 'Chat');
-                        const avatarInitialSource = hasListing ? listingTitle : (otherName || 'C');
-                        const avatarInitial = avatarInitialSource[0]?.toUpperCase();
+                        const rowKey = s.sessionId || `row-${s.listingId}-${otherName}`;
+                        const unread = s.unreadCount > 0;
+
+                        const titleBlock = hasListing ? (
+                            <Box sx={{ minWidth: 0 }}>
+                                <SearchHighlight
+                                    text={listingTitle}
+                                    query={highlightSearchQuery}
+                                    component="div"
+                                    sx={{
+                                        fontWeight: unread ? 800 : 700,
+                                        fontSize: '0.78rem',
+                                        lineHeight: 1.35,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.04em',
+                                        color: 'primary.main',
+                                        overflow: 'hidden',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        wordBreak: 'break-word',
+                                    }}
+                                />
+                                <SearchHighlight
+                                    text={otherName || 'Người dùng'}
+                                    query={highlightSearchQuery}
+                                    component="div"
+                                    sx={{
+                                        fontWeight: unread ? 600 : 500,
+                                        fontSize: '0.82rem',
+                                        lineHeight: 1.4,
+                                        color: 'text.secondary',
+                                        mt: 0.35,
+                                        overflow: 'hidden',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        wordBreak: 'break-word',
+                                    }}
+                                />
+                            </Box>
+                        ) : (
+                            <SearchHighlight
+                                text={otherName || 'Chat'}
+                                query={highlightSearchQuery}
+                                component="div"
+                                sx={{
+                                    fontWeight: unread ? 700 : 600,
+                                    fontSize: '0.88rem',
+                                    lineHeight: 1.35,
+                                    overflow: 'hidden',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    wordBreak: 'break-word',
+                                }}
+                            />
+                        );
 
                         return (
                         <ListItemButton
-                            key={s.sessionId}
+                            key={rowKey}
                             selected={s.sessionId === activeSessionId}
-                            onClick={() => setActiveSessionId(s.sessionId)}
+                            onClick={() => s.sessionId && setActiveSessionId(s.sessionId)}
+                            disabled={!s.sessionId}
                             sx={{
                                 py: 1.1,
                                 alignItems: 'flex-start',
@@ -137,26 +237,15 @@ export default function ChatSidebar({
                                 },
                             }}
                         >
-                            <Avatar
-                                sx={{
-                                    width: 44,
-                                    height: 44,
-                                    mr: 1.5,
-                                    bgcolor: 'primary.main',
-                                    fontSize: 16,
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {avatarInitial}
-                            </Avatar>
+                            <ChatParticipantAvatar
+                                avatarUrl={s.otherParticipantAvatarUrl}
+                                displayName={otherName || listingTitle}
+                                sx={{ width: 44, height: 44, mr: 1.5, fontSize: 16 }}
+                            />
                             <ListItemText
-                                primary={title}
+                                primary={titleBlock}
+                                primaryTypographyProps={{ component: 'div' }}
                                 secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
-                                primaryTypographyProps={{
-                                    noWrap: true,
-                                    fontWeight: s.unreadCount > 0 ? 700 : 600,
-                                    fontSize: '0.9rem',
-                                }}
                                 secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
                                 sx={{ mr: 0.5, minWidth: 0 }}
                             />
@@ -173,4 +262,3 @@ export default function ChatSidebar({
         </Paper>
     );
 }
-

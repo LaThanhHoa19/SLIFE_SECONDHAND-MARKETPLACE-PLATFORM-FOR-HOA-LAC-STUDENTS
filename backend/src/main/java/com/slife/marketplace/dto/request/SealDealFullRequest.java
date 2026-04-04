@@ -27,4 +27,10 @@ public class SealDealFullRequest {
     private BigDecimal price;
 
     private Instant pickupTime;
+
+    /** Tuỳ chọn: tham chiếu {@code offers.offer_id}. */
+    private Long offerId;
+
+    /** Tuỳ chọn: địa chỉ giao; mặc định {@code listing.pickup_address_id}. */
+    private Long addressId;
 }
