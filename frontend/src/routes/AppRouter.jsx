@@ -43,6 +43,7 @@ import {
     SuspenseTermsPage,
     SuspenseCommunityFeedPage,
     SuspenseCommunityCreatePostPage,
+    SuspenseCommunityPostDetailPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -99,6 +100,7 @@ export default function AppRouter() {
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/feed" element={<SuspenseListingsPage />} />
                 <Route path="/community" element={<SuspenseCommunityFeedPage />} />
+                <Route path="/community/posts/:id" element={<SuspenseCommunityPostDetailPage />} />
                 <Route
                     path="/community/new"
                     element={

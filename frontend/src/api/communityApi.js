@@ -18,7 +18,24 @@ export const createCommunityPostWithImages = (payload, imageFiles = []) => {
     return axiosClient.post('/api/community/posts', formData, { timeout: 120000 });
 };
 
-export const getCommunityPosts = (params = {}) =>
-    axiosClient.get('/api/community/posts', { params });
+export const getCommunityPosts = (params = {}, config = {}) =>
+    axiosClient.get('/api/community/posts', { params, ...config });
 
 export const getCommunityPost = (id) => axiosClient.get(`/api/community/posts/${id}`);
+
+export const toggleCommunityPostLike = (id) => axiosClient.post(`/api/community/posts/${id}/like`);
+
+export const getCommunityPostComments = (postId) =>
+    axiosClient.get(`/api/v1/community-posts/${postId}/comments`);
+
+export const createCommunityPostComment = (postId, body) =>
+    axiosClient.post(`/api/v1/community-posts/${postId}/comments`, body);
+
+export const replyCommunityPostComment = (commentId, body) =>
+    axiosClient.post(`/api/v1/community-post-comments/${commentId}/reply`, body);
+
+export const updateCommunityPostComment = (commentId, body) =>
+    axiosClient.put(`/api/v1/community-post-comments/${commentId}`, body);
+
+export const deleteCommunityPostComment = (commentId) =>
+    axiosClient.delete(`/api/v1/community-post-comments/${commentId}`);

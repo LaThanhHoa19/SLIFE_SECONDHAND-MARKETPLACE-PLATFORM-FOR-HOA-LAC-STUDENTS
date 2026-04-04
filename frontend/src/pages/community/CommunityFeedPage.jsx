@@ -1,22 +1,72 @@
 /**
- * Trang Cộng đồng — feed chia sẻ / hỏi đáp.
+ * Trang Cộng đồng — feed: GET /api/community/posts (bài ACTIVE, chưa xóa/ẩn).
  */
-import { Box, Button, Card, CardContent, Chip, Stack, Typography, useTheme } from '@mui/material';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    Alert,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Chip,
+    CircularProgress,
+    Skeleton,
+    Stack,
+    Typography,
+    useTheme,
+} from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import PostAddOutlinedIcon from '@mui/icons-material/PostAddOutlined';
+import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import TagOutlinedIcon from '@mui/icons-material/TagOutlined';
 import { useNavigate } from 'react-router-dom';
 import RightPanel from '../../components/layout/RightPanel';
 import { useAuth } from '../../hooks/useAuth';
+import CommunityPostCard from '../../components/community/CommunityPostCard';
+import { getCommunityPosts } from '../../api/communityApi';
+import { unwrapApiData } from '../../utils/apiPayload';
 
 const PLACEHOLDER_TAGS = ['Hỏi đáp', 'Ký túc xá', 'Học bổng', 'Đồ cũ', 'Sự kiện'];
+const PAGE_SIZE = 15;
+
+function normalizePaged(res) {
+    const raw = unwrapApiData(res);
+    const content = Array.isArray(raw?.content) ? raw.content : [];
+    const page = Number(raw?.page);
+    const totalPages = Number(raw?.totalPages);
+    const totalElements = Number(raw?.totalElements);
+    return {
+        content,
+        page: Number.isFinite(page) ? page : 0,
+        totalPages: Number.isFinite(totalPages) ? totalPages : 0,
+        totalElements: Number.isFinite(totalElements) ? totalElements : content.length,
+    };
+}
+
+function FeedSkeleton() {
+    return (
+        <Stack spacing={2}>
+            {[1, 2, 3].map((k) => (
+                <Skeleton key={k} variant="rounded" height={120} sx={{ borderRadius: 3 }} />
+            ))}
+        </Stack>
+    );
+}
 
 export default function CommunityFeedPage() {
     const theme = useTheme();
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
     const isDark = theme.palette.mode === 'dark';
+
+    const [posts, setPosts] = useState([]);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState('');
+    const abortRef = useRef(null);
 
     const goCreatePost = () => {
         if (!isAuthenticated) {
@@ -25,6 +75,58 @@ export default function CommunityFeedPage() {
         }
         navigate('/community/new');
     };
+
+    const fetchPage = useCallback(async (pageIndex, append) => {
+        abortRef.current?.abort();
+        const ac = new AbortController();
+        abortRef.current = ac;
+        try {
+            const res = await getCommunityPosts(
+                { page: pageIndex, size: PAGE_SIZE },
+                { signal: ac.signal },
+            );
+            const { content, page: p, totalPages: tp } = normalizePaged(res);
+            setError('');
+            setPosts((prev) => (append ? [...prev, ...content] : content));
+            setPage(p);
+            setTotalPages(tp);
+        } catch (e) {
+            if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
+            setError(
+                e?.response?.data?.message ||
+                    e?.response?.data?.error ||
+                    e?.message ||
+                    'Không tải được bài cộng đồng.',
+            );
+            if (!append) setPosts([]);
+        }
+    }, []);
+
+    const loadInitial = useCallback(async () => {
+        setLoading(true);
+        await fetchPage(0, false);
+        setLoading(false);
+    }, [fetchPage]);
+
+    useEffect(() => {
+        loadInitial();
+        return () => abortRef.current?.abort();
+    }, [loadInitial]);
+
+    const loadMore = async () => {
+        if (loadingMore || page + 1 >= totalPages) return;
+        setLoadingMore(true);
+        await fetchPage(page + 1, true);
+        setLoadingMore(false);
+    };
+
+    const openPost = (postId) => navigate(`/community/posts/${postId}`);
+
+    const handlePatchPost = useCallback((postId, patch) => {
+        setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
+    }, []);
+
+    const hasMore = totalPages > 0 && page + 1 < totalPages;
 
     return (
         <Box
@@ -60,8 +162,7 @@ export default function CommunityFeedPage() {
                     </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.65 }}>
                         Nơi sinh viên Hòa Lạc chia sẻ, hỏi đáp và bàn luận — tách biệt với{' '}
-                        <strong>Feed mua bán</strong>. Bạn có thể tạo bài kèm ảnh và hashtag; feed danh sách sẽ được
-                        bổ sung trên trang này.
+                        <strong>Feed mua bán</strong>. Chỉ hiển thị bài đang hoạt động (ACTIVE), chưa bị gỡ hoặc ẩn.
                     </Typography>
                     <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
                         {PLACEHOLDER_TAGS.map((t) => (
@@ -90,31 +191,81 @@ export default function CommunityFeedPage() {
                         <Button variant="outlined" onClick={() => navigate('/feed')} sx={{ fontWeight: 700 }}>
                             Về Feed mua bán
                         </Button>
+                        <Button
+                            variant="text"
+                            startIcon={<RefreshOutlinedIcon />}
+                            onClick={loadInitial}
+                            disabled={loading}
+                            sx={{ fontWeight: 700 }}
+                        >
+                            Làm mới
+                        </Button>
                     </Stack>
                 </Box>
 
-                <Card
-                    elevation={0}
-                    sx={{
-                        borderRadius: 3,
-                        bgcolor: isDark ? alpha('#fff', 0.04) : alpha(theme.palette.primary.main, 0.04),
-                        border: '1px solid',
-                        borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'divider',
-                    }}
-                >
-                    <CardContent sx={{ py: 4, textAlign: 'center' }}>
-                        <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                            Chưa có bài đăng cộng đồng
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
-                            Bấm &quot;Tạo bài đăng&quot; ở trên để đăng bài. Danh sách bài trên feed sẽ hiển thị khi
-                            phần hiển thị feed được kết nối đầy đủ.
-                        </Typography>
-                        <Button variant="text" onClick={goCreatePost} sx={{ fontWeight: 700 }}>
-                            Tạo bài đăng ngay
-                        </Button>
-                    </CardContent>
-                </Card>
+                {error ? (
+                    <Alert
+                        severity="error"
+                        sx={{ mb: 2, borderRadius: 2 }}
+                        action={
+                            <Button color="inherit" size="small" onClick={loadInitial}>
+                                Thử lại
+                            </Button>
+                        }
+                    >
+                        {error}
+                    </Alert>
+                ) : null}
+
+                {loading ? (
+                    <FeedSkeleton />
+                ) : posts.length === 0 ? (
+                    <Card
+                        elevation={0}
+                        sx={{
+                            borderRadius: 3,
+                            bgcolor: isDark ? alpha('#fff', 0.04) : alpha(theme.palette.primary.main, 0.04),
+                            border: '1px solid',
+                            borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'divider',
+                        }}
+                    >
+                        <CardContent sx={{ py: 4, textAlign: 'center' }}>
+                            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                                Chưa có bài đăng cộng đồng
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
+                                Hãy là người đầu tiên chia sẻ — hoặc kiểm tra kết nối API nếu bạn chắc đã có bài trên
+                                server.
+                            </Typography>
+                            <Button variant="text" onClick={goCreatePost} sx={{ fontWeight: 700 }}>
+                                Tạo bài đăng ngay
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Stack spacing={2}>
+                        {posts.map((post) => (
+                            <CommunityPostCard
+                                key={post.id}
+                                post={post}
+                                onOpen={openPost}
+                                onPatchPost={handlePatchPost}
+                            />
+                        ))}
+                        {hasMore ? (
+                            <Box sx={{ textAlign: 'center', pt: 1 }}>
+                                <Button
+                                    variant="outlined"
+                                    onClick={loadMore}
+                                    disabled={loadingMore}
+                                    sx={{ fontWeight: 700, minWidth: 160 }}
+                                >
+                                    {loadingMore ? <CircularProgress size={22} /> : 'Xem thêm'}
+                                </Button>
+                            </Box>
+                        ) : null}
+                    </Stack>
+                )}
             </Box>
 
             <RightPanel />

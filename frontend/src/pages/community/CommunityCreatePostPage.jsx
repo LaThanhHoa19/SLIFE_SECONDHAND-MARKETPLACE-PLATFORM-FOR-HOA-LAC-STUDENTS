@@ -1,18 +1,9 @@
 /**
- * Tạo bài đăng cộng đồng — multipart giống CreateListingPage.
+ * Tạo bài đăng cộng đồng — hashtag nhận diện trong nội dung (#tag), không ô nhập riêng.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    Box,
-    Button,
-    Chip,
-    IconButton,
-    Paper,
-    Stack,
-    TextField,
-    Typography,
-} from '@mui/material';
+import { Box, Button, Chip, IconButton, Paper, Stack, TextField, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PostAddOutlinedIcon from '@mui/icons-material/PostAddOutlined';
@@ -20,19 +11,12 @@ import ImageUploader from '../../components/common/ImageUploader';
 import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxCommunityPostImages } from '../../hooks/useMaxCommunityPostImages';
 import { createCommunityPostWithImages } from '../../api/communityApi';
+import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
+import { previewHashtagsFromDescription } from '../../utils/communityHashtagUtils';
 
-const MAX_HASHTAGS = 20;
 const MAX_TITLE = 300;
 const MAX_DESC = 8000;
-
-function parseHashtagInput(raw) {
-    if (raw == null || !String(raw).trim()) return [];
-    return String(raw)
-        .split(/[,;\s]+/)
-        .map((s) => s.trim().replace(/^#+/, ''))
-        .filter(Boolean);
-}
 
 export default function CommunityCreatePostPage() {
     const navigate = useNavigate();
@@ -41,37 +25,12 @@ export default function CommunityCreatePostPage() {
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [hashtagDraft, setHashtagDraft] = useState('');
-    const [hashtags, setHashtags] = useState([]);
     const [imageFiles, setImageFiles] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
     const canSubmit = useMemo(() => title.trim().length > 0 && !submitting, [title, submitting]);
-
-    const addHashtagsFromDraft = useCallback(() => {
-        const parts = parseHashtagInput(hashtagDraft);
-        if (parts.length === 0) return;
-        setHashtags((prev) => {
-            const next = [...prev];
-            for (const p of parts) {
-                const lower = p.toLowerCase();
-                if (next.length >= MAX_HASHTAGS) break;
-                if (!next.some((x) => x.toLowerCase() === lower)) {
-                    next.push(p.length > 100 ? p.slice(0, 100) : p);
-                }
-            }
-            return next;
-        });
-        setHashtagDraft('');
-    }, [hashtagDraft]);
-
-    const onKeyDownHashtag = (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addHashtagsFromDraft();
-        }
-    };
+    const previewTags = useMemo(() => previewHashtagsFromDescription(description, 20), [description]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -82,11 +41,17 @@ export default function CommunityCreatePostPage() {
             const payload = {
                 title: title.trim(),
                 description: description.trim() || null,
-                hashtags,
+                hashtags: [],
             };
-            await createCommunityPostWithImages(payload, imageFiles);
+            const res = await createCommunityPostWithImages(payload, imageFiles);
+            const created = unwrapApiData(res);
+            const newId = created?.id;
             showToast('Đã đăng bài cộng đồng!', 'success');
-            navigate('/community', { replace: true });
+            if (newId != null) {
+                navigate(`/community/posts/${newId}`, { replace: true });
+            } else {
+                navigate('/community', { replace: true });
+            }
         } catch (err) {
             const msg =
                 err?.response?.data?.message ||
@@ -133,8 +98,8 @@ export default function CommunityCreatePostPage() {
                 </Stack>
 
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Chia sẻ hỏi đáp, thảo luận — có thể thêm ảnh và hashtag. Không dùng cho đăng bán hàng (dùng Feed
-                    mua bán).
+                    Viết nội dung tại ô bên dưới — gõ trực tiếp hashtag trong bài (ví dụ <strong>#hoctienganh</strong>,{' '}
+                    <strong>#iphone15</strong>). Hệ thống sẽ tự nhận diện và gắn thẻ khi đăng.
                 </Typography>
 
                 <Box component="form" onSubmit={handleSubmit}>
@@ -148,45 +113,34 @@ export default function CommunityCreatePostPage() {
                             inputProps={{ maxLength: MAX_TITLE }}
                             placeholder="Ví dụ: Có ai học nhóm môn OS không?"
                         />
-                        <TextField
-                            label="Nội dung"
-                            fullWidth
-                            multiline
-                            minRows={5}
-                            value={description}
-                            onChange={(ev) => setDescription(ev.target.value)}
-                            inputProps={{ maxLength: MAX_DESC }}
-                            placeholder="Mô tả chi tiết…"
-                        />
-
                         <Box>
-                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>
-                                Hashtag (tối đa {MAX_HASHTAGS})
+                            <TextField
+                                label="Nội dung"
+                                fullWidth
+                                multiline
+                                minRows={6}
+                                value={description}
+                                onChange={(ev) => setDescription(ev.target.value)}
+                                inputProps={{ maxLength: MAX_DESC }}
+                                placeholder={
+                                    'Viết nội dung tại đây. Hashtag: bắt đầu bằng #, không khoảng trắng trong thẻ, chỉ chữ/số/gạch dưới — ví dụ: #slife #kytucxa2026'
+                                }
+                            />
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, lineHeight: 1.5 }}>
+                                Quy tắc hashtag: không khoảng trắng trong thẻ; không ký tự đặc biệt (dấu câu, @, $, %…); # phải
+                                đứng sau đầu dòng hoặc sau dấu cách / dấu câu; có thể dùng số (ví dụ #iphone15).
                             </Typography>
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
-                                <TextField
-                                    size="small"
-                                    fullWidth
-                                    placeholder="Nhập rồi Enter — hoặc nhiều tag cách nhau bởi dấu phẩy"
-                                    value={hashtagDraft}
-                                    onChange={(ev) => setHashtagDraft(ev.target.value)}
-                                    onKeyDown={onKeyDownHashtag}
-                                />
-                                <Button variant="outlined" onClick={addHashtagsFromDraft} sx={{ flexShrink: 0 }}>
-                                    Thêm
-                                </Button>
-                            </Stack>
-                            {hashtags.length > 0 && (
-                                <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mt: 1.25 }}>
-                                    {hashtags.map((tag) => (
-                                        <Chip
-                                            key={tag}
-                                            label={`#${tag}`}
-                                            size="small"
-                                            onDelete={() => setHashtags((prev) => prev.filter((t) => t !== tag))}
-                                        />
-                                    ))}
-                                </Stack>
+                            {previewTags.length > 0 && (
+                                <Box sx={{ mt: 1.25 }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                                        Hashtag sẽ được lưu ({previewTags.length}/20 tối đa):
+                                    </Typography>
+                                    <Stack direction="row" flexWrap="wrap" gap={0.75}>
+                                        {previewTags.map((t) => (
+                                            <Chip key={t.toLowerCase()} size="small" label={`#${t}`} color="primary" variant="outlined" />
+                                        ))}
+                                    </Stack>
+                                </Box>
                             )}
                         </Box>
 
@@ -194,11 +148,7 @@ export default function CommunityCreatePostPage() {
                             <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>
                                 Ảnh đính kèm (tối đa {maxImages})
                             </Typography>
-                            <ImageUploader
-                                onFilesChange={setImageFiles}
-                                maxFiles={maxImages}
-                                variant="studioHero"
-                            />
+                            <ImageUploader onFilesChange={setImageFiles} maxFiles={maxImages} variant="studioHero" />
                         </Box>
 
                         {error ? (
