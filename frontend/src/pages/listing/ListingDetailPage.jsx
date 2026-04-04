@@ -411,7 +411,7 @@ export default function ListingDetailPage() {
     // Render loading / error
     if (loading) {
         return (
-            <Box sx={{ px: 2, py: 3, maxWidth: 1100, mx: 'auto' }}>
+            <Box sx={{ px: 2, py: 3 }}>
                 <Skeleton variant="rectangular" width={100} height={32} sx={{ bgcolor: '#2A2535', mb: 3, borderRadius: 2 }} />
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
                     <Skeleton variant="rectangular" sx={{ bgcolor: '#2A2535', borderRadius: 2, height: 380 }} />
@@ -496,7 +496,7 @@ export default function ListingDetailPage() {
     }
 
     return (
-        <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
+        <Box sx={{ px: { xs: 1, sm: 2 }, py: { xs: 2, sm: 3 } }}>
             {/* Noi duoi cha-con (Breadcrumbs) */}
             <Breadcrumbs
                 separator={
