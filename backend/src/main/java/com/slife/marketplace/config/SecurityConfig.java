@@ -1,9 +1,10 @@
 package com.slife.marketplace.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.slife.marketplace.dto.response.BaseResponse;
+import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -68,6 +69,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/*/followers", "/api/users/*/following").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/community/posts/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/community-posts/*/comments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/*/comments").permitAll()
 
                         // Admin-only
@@ -75,10 +78,18 @@ public class SecurityConfig {
 
                         // Mọi request còn lại yêu cầu đăng nhập
                         .anyRequest().authenticated())
-                .exceptionHandling(e -> e.accessDeniedHandler((request, response, ex) -> {
-                    // Keep it minimal to avoid extra dependencies/imports here
-                    response.setStatus(403);
-                }))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            // 401 so REST clients (Axios) can refresh JWT; anonymous on protected routes was 403 by default.
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                            var body = ApiResponse.error("UNAUTHORIZED", "Authentication required");
+                            response.getWriter().write(objectMapper.writeValueAsString(body));
+                        })
+                        .accessDeniedHandler((request, response, ex) -> {
+                            response.setStatus(403);
+                        }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

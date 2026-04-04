@@ -116,12 +116,12 @@ class ListingControllerTest {
     }
 
     @Test
-    void getListingsLegacyPath_withoutAuth_shouldReturn403() throws Exception {
+    void getListingsLegacyPath_withoutAuth_shouldReturn401() throws Exception {
         mockMvc.perform(get("/api/listing")
                         .param("page", "0")
                         .param("size", "10")
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
 
@@ -140,15 +140,15 @@ class ListingControllerTest {
     }
 
     @Test
-    void createListing_withoutAuth_shouldReturn403() throws Exception {
+    void createListing_withoutAuth_shouldReturn401() throws Exception {
         mockMvc.perform(post("/api/listings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void listingsPreflight_withoutAuth_shouldNotReturn403() throws Exception {
+    void listingsPreflight_withoutAuth_returns403FromCors() throws Exception {
         mockMvc.perform(options("/api/listings")
                         .header("Origin", "http://localhost:5173")
                         .header("Access-Control-Request-Method", "GET"))

@@ -9,7 +9,6 @@ import {
     Button,
     InputBase,
     Avatar,
-    Chip,
     Menu,
     MenuItem,
     ListItemIcon,
@@ -25,13 +24,12 @@ import {
     FavoriteBorder as FavoriteIcon,
     ChatBubbleOutline as ChatIcon,
     Search as SearchIcon,
-    AccountCircle as AccountCircleIcon,
     Person as PersonIcon,
     Logout as LogoutIcon,
     PostAdd as PostAddIcon
 } from '@mui/icons-material';
 import { useContext, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
@@ -42,7 +40,7 @@ const ACCENT = uiTokens.colors.brand.textSoft;
 const ACCENT_HOVER = '#8b5cf6';
 const ACCENT_SUBTLE = uiTokens.colors.brand.accentSubtle;
 
-const Search = styled('div')(({ theme }) => ({
+const Search = styled('div')(() => ({
     position: 'relative',
     borderRadius: '12px',
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -159,7 +157,6 @@ export default function Header({ onToggleSidebar }) {
     const { unreadCount } = useContext(NotificationContext);
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
-    const location = useLocation();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [searchValue, setSearchValue] = useState('');
@@ -181,10 +178,6 @@ export default function Header({ onToggleSidebar }) {
         navigate('/login');
     };
 
-    const handleRegister = () => {
-        navigate('/register');
-    };
-
     const handleProfile = () => {
         navigate('/profile');
     };
@@ -202,11 +195,6 @@ export default function Header({ onToggleSidebar }) {
         navigate('/listings/new');
     };
 
-    const handleManagePosts = () => {
-        /* Trùng với Sidebar "Tin của tôi" — không dùng /profile/listings (bị nuốt bởi /profile/:id → id=listings). */
-        navigate('/my-listings');
-    };
-
     const handleUserMenuOpen = (e) => {
         setUserMenuAnchor(e.currentTarget);
     };
@@ -221,10 +209,23 @@ export default function Header({ onToggleSidebar }) {
         navigate('/feed');
     };
 
+    const handleLikeIconClick = () => {
+        if (!user) {
+            navigate('/login', {
+                state: {
+                    from: '/liked',
+                    message: 'Bạn cần đăng nhập để xem tin đã thích',
+                },
+            });
+            return;
+        }
+        navigate('/liked');
+    };
 
     return (
         <AppBar
-            position="sticky"
+            className="user-header-root"
+            position="static"
             sx={{
                 background: HEADER_BG,
                 boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
@@ -294,7 +295,7 @@ export default function Header({ onToggleSidebar }) {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                     <IconButton
                         color="inherit"
-                        onClick={() => navigate('/wishlist')}
+                        onClick={handleLikeIconClick}
                         sx={{
                             color: 'rgba(255,255,255,0.85)',
                             p: 1,

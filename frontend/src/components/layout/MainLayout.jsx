@@ -25,16 +25,17 @@ export default function MainLayout() {
 
     return (
         <Box
+            className="user-layout-root"
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
                 bgcolor: APP_SHELL_BG,
                 ...(isChatRoute
                     ? {
-                          height: '100dvh',
-                          maxHeight: '100dvh',
-                          overflow: 'hidden',
-                      }
+                        height: '100dvh',
+                        maxHeight: '100dvh',
+                        overflow: 'hidden',
+                    }
                     : { minHeight: '100vh' }),
             }}
         >
@@ -68,12 +69,12 @@ export default function MainLayout() {
                         flexDirection: 'column',
                         ...(isChatRoute
                             ? {
-                                  minHeight: 0,
-                                  overflow: 'hidden',
-                              }
+                                minHeight: 0,
+                                overflow: 'hidden',
+                            }
                             : {
-                                  minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
-                              }),
+                                minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
+                            }),
                     }}
                 >
                     <Box
