@@ -29,6 +29,7 @@ public enum ErrorCode {
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Listing not found", HttpStatus.NOT_FOUND),
+    COMMUNITY_POST_NOT_FOUND("COMMUNITY_POST_NOT_FOUND", "Community post not found", HttpStatus.NOT_FOUND),
     LISTING_NOT_DRAFT("LISTING_NOT_DRAFT", "Only DRAFT listings can be deleted", HttpStatus.CONFLICT),
     LISTING_NOT_EXPIRED("LISTING_NOT_EXPIRED", "Only EXPIRED listings can be reposted", HttpStatus.CONFLICT),
     LISTING_MOD_HIDDEN_REPOST_FORBIDDEN("LISTING_MOD_HIDDEN_REPOST_FORBIDDEN", "Listing hidden by moderation cannot be reposted", HttpStatus.CONFLICT),
@@ -59,6 +60,7 @@ public enum ErrorCode {
 
     // Comment related
     COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "Comment not found", HttpStatus.NOT_FOUND),
+    COMMUNITY_POST_COMMENT_NOT_FOUND("COMMUNITY_POST_COMMENT_NOT_FOUND", "Community post comment not found", HttpStatus.NOT_FOUND),
     COMMENT_DELETE_FORBIDDEN("COMMENT_DELETE_FORBIDDEN", "Only the comment author, listing owner or admin can delete this comment", HttpStatus.FORBIDDEN),
 
     // Report related
@@ -66,7 +68,7 @@ public enum ErrorCode {
     REPORT_NOT_FOUND("REPORT_NOT_FOUND", "Report not found", HttpStatus.NOT_FOUND),
     REPORT_DUPLICATE("REPORT_DUPLICATE", "You have already reported this item", HttpStatus.CONFLICT),
     REPORT_SELF("REPORT_SELF", "You cannot report your own content", HttpStatus.BAD_REQUEST),
-    REPORT_INVALID_TARGET("REPORT_INVALID_TARGET", "Invalid report target type (must be LISTING/POST, USER, COMMENT, or MESSAGE)", HttpStatus.BAD_REQUEST),
+    REPORT_INVALID_TARGET("REPORT_INVALID_TARGET", "Invalid report target type", HttpStatus.BAD_REQUEST),
     REPORT_INVALID_STATUS("REPORT_INVALID_STATUS", "Invalid resolve status (must be RESOLVED or REJECTED)", HttpStatus.BAD_REQUEST);
 
     private final String code;
