@@ -15,10 +15,14 @@ export default function NotificationTypeIcon({ notification: n, fontSize = 20 })
     const tab = deriveNotificationTab(n);
     if (tab === NOTIF_TAB.MESSAGE) return <ChatIcon sx={sx} />;
     if (tab === NOTIF_TAB.COMMENT) return <ChatBubbleOutlineIcon sx={sx} />;
-    if (tab === NOTIF_TAB.OFFER) return <LocalOfferIcon sx={sx} />;
+    if (tab === NOTIF_TAB.OFFER) {
+        if (String(n?.type || '').toUpperCase() === 'DEAL') {
+            return <CheckCircleIcon sx={sx} />;
+        }
+        return <LocalOfferIcon sx={sx} />;
+    }
     if (tab === NOTIF_TAB.PUBLISH) return <NewspaperIcon sx={sx} />;
     const type = String(n?.type || '').toUpperCase();
     if (type === 'REPORT') return <FlagIcon sx={sx} />;
-    if (type === 'DEAL') return <CheckCircleIcon sx={sx} />;
     return <NotificationsIcon sx={sx} />;
 }
