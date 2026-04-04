@@ -474,6 +474,11 @@ function ChatPageInner() {
         sellerId,
         otherParticipantName:
           seller?.fullName || seller?.name || seller?.displayName || 'Người bán',
+        otherParticipantAvatarUrl:
+          seller?.avatarUrl ||
+          seller?.sellerAvatarUrl ||
+          seller?.avatar_url ||
+          null,
         status: 'DRAFT',
       };
     }

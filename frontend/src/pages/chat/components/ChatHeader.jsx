@@ -1,7 +1,8 @@
-import { Avatar, Box, Chip, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, IconButton, Tooltip, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
+import ChatParticipantAvatar from './ChatParticipantAvatar';
 
 export default function ChatHeader({
                                        theme,
@@ -16,12 +17,6 @@ export default function ChatHeader({
     const listingTitle = activeSession?.listingTitle || '';
     const otherName = activeSession?.otherParticipantName || '';
     const hasListing = Boolean(listingTitle);
-    const headerTitle = hasListing
-        ? `${listingTitle} / ${otherName || 'Người dùng'}`
-        : (otherName || 'Chat');
-
-    const avatarInitialSource = hasListing ? listingTitle : (otherName || 'C');
-    const avatarInitial = avatarInitialSource[0]?.toUpperCase();
 
     return (
         <Box
@@ -41,20 +36,54 @@ export default function ChatHeader({
                     <ArrowBackIcon />
                 </IconButton>
             ) : null}
-            <Avatar
-                sx={{
-                    width: 44,
-                    height: 44,
-                    bgcolor: 'primary.main',
-                    fontSize: 18,
-                }}
-            >
-                {avatarInitial}
-            </Avatar>
+            <ChatParticipantAvatar
+                avatarUrl={activeSession?.otherParticipantAvatarUrl}
+                displayName={otherName || listingTitle}
+                sx={{ width: 44, height: 44, fontSize: 18 }}
+            />
             <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="subtitle1" fontWeight={700} noWrap>
-                    {headerTitle}
-                </Typography>
+                {hasListing ? (
+                    <>
+                        <Typography
+                            component="div"
+                            variant="subtitle2"
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                                color: 'primary.main',
+                                lineHeight: 1.35,
+                                fontSize: '0.8rem',
+                                overflow: 'hidden',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                wordBreak: 'break-word',
+                            }}
+                        >
+                            {listingTitle}
+                        </Typography>
+                        <Typography
+                            component="div"
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                                fontWeight: 500,
+                                lineHeight: 1.35,
+                                mt: 0.25,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {otherName || 'Người dùng'}
+                        </Typography>
+                    </>
+                ) : (
+                    <Typography variant="subtitle1" fontWeight={700} noWrap>
+                        {otherName || 'Chat'}
+                    </Typography>
+                )}
                 <Typography variant="caption" color="text.secondary" noWrap display="block">
                     {isSellerInActiveChat
                         ? 'Bạn đang chat với người quan tâm tin của bạn'
