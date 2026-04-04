@@ -1642,6 +1642,7 @@ function ChatPageInner() {
                       isMdUp={isMdUp}
                       handleChatMobileBack={handleChatMobileBack}
                       activeSession={activeSession}
+                      currentUserId={currentUserId}
                       isSellerInActiveChat={isSellerInActiveChat}
                       wsConnected={wsConnected}
                       showInChatSearch={Boolean(activeSessionId)}
@@ -1655,7 +1656,6 @@ function ChatPageInner() {
                       activeListingThumb={activeListingThumb}
                       isSellerInActiveChat={isSellerInActiveChat}
                       showPostSaleActions={showPostSaleActions}
-                      hideViewListing={listingClosedForBuyer}
                       onPostSaleAction={handlePostSaleBannerAction}
                       postSaleOutcome={resolvedPostSaleBannerOutcome}
                       postSaleBusy={postSaleBannerBusy}
