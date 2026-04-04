@@ -195,6 +195,7 @@ export default function EditListingPage() {
             const payload = buildPayload(values, false);
             await updateListing(listingIdNum, payload);
             await uploadListingImages(listingIdNum, imageFiles);
+            showToast('Cập nhật tin thành công.', 'success');
             navigate(`/listings/${listingIdNum}`, { replace: true });
         } catch (err) {
             const msg = getListingSubmitErrorMessage(err, 'Cập nhật tin thất bại.');
