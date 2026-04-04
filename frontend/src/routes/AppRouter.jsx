@@ -41,6 +41,8 @@ import {
     SuspenseSearchPage,
     SuspenseAdminLoginPage,
     SuspenseTermsPage,
+    SuspenseCommunityFeedPage,
+    SuspenseCommunityCreatePostPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -96,6 +98,15 @@ export default function AppRouter() {
             <Route element={<MainLayout />}>
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/feed" element={<SuspenseListingsPage />} />
+                <Route path="/community" element={<SuspenseCommunityFeedPage />} />
+                <Route
+                    path="/community/new"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCommunityCreatePostPage />
+                        </RouteGuard>
+                    }
+                />
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
