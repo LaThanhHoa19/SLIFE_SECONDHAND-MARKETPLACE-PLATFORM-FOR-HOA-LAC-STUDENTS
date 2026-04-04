@@ -63,6 +63,7 @@ export default function CreateListingPage() {
       const res = await createListingWithImages(payload, imageFiles);
       const created = getPayload(res);
       const id = created?.id ?? created?.listingId;
+      showToast('Đăng tin thành công.', 'success');
       if (id) {
         navigate(`/listings/${id}`, { replace: true });
       } else {

@@ -37,6 +37,7 @@ import {
     targetTypeLabel,
     writeReportMockPatch,
 } from './reportAdminUtils';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const STITCH_PAGE_GRADIENT = `linear-gradient(165deg, #0b0e1e 0%, #0f0e18 40%, ${t.bgApp} 100%)`;
 const CARD_BG = 'rgba(22, 27, 34, 0.92)';
@@ -132,6 +133,14 @@ export default function ReportDetailPage() {
     const [submitting, setSubmitting] = useState(false);
     const [quickActionLoading, setQuickActionLoading] = useState(false);
     const [autoClosedByQuickAction, setAutoClosedByQuickAction] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState({
+        open: false,
+        action: null,
+        title: '',
+        message: '',
+        confirmLabel: 'Xác nhận',
+        tone: 'primary',
+    });
     const { showToast } = useToast();
 
     const loadReport = useCallback(async () => {
@@ -199,6 +208,23 @@ export default function ReportDetailPage() {
         navigate('/admin/reports');
     };
 
+    const openConfirmDialog = (config) => {
+        setConfirmDialog({
+            open: true,
+            action: null,
+            title: '',
+            message: '',
+            confirmLabel: 'Xác nhận',
+            tone: 'primary',
+            ...config,
+        });
+    };
+
+    const closeConfirmDialog = () => {
+        if (submitting || quickActionLoading) return;
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+    };
+
     const submitProcess = async (action) => {
         const id = reportRowId(report);
         if (id == null) return;
@@ -246,8 +272,6 @@ export default function ReportDetailPage() {
         const id = reportRowId(report);
         const listingId = report?.listingId ?? report?.targetId;
         if (!id || !listingId) return;
-        const ok = window.confirm(`Bạn có chắc muốn ẩn tin #${listingId}?`);
-        if (!ok) return;
 
         try {
             setQuickActionLoading(true);
@@ -269,22 +293,38 @@ export default function ReportDetailPage() {
         const id = reportRowId(report);
         const userId = report?.targetId;
         if (!id || !userId) return;
-        const ok = window.confirm(`Bạn có chắc muốn ban user #${userId}?`);
-        if (!ok) return;
 
         try {
             setQuickActionLoading(true);
             await processReport(id, {
                 action: 'BAN_USER_APPROVE',
-                note: adminNote.trim() || `Admin đã ban user #${userId} do vi phạm.`,
+                note: adminNote.trim() || `Admin đã khóa tài khoản ID ${userId} do vi phạm.`,
             });
             setAutoClosedByQuickAction(true);
-            showToast(`Đã ban user #${userId} và đóng báo cáo.`, 'success');
+            showToast('Đã khóa tài khoản và đóng báo cáo.', 'success');
             await loadReport();
         } catch (error) {
             showToast(error?.message || 'Không thể ban user.', 'error');
         } finally {
             setQuickActionLoading(false);
+        }
+    };
+
+    const handleConfirmAction = async () => {
+        if (!confirmDialog.action) return;
+        const currentAction = confirmDialog.action;
+        setConfirmDialog((prev) => ({ ...prev, open: false }));
+
+        if (currentAction === 'APPROVE' || currentAction === 'REJECT') {
+            await submitProcess(currentAction);
+            return;
+        }
+        if (currentAction === 'HIDE_LISTING_APPROVE') {
+            await handleQuickHideListing();
+            return;
+        }
+        if (currentAction === 'BAN_USER_APPROVE') {
+            await handleQuickBanUser();
         }
     };
 
@@ -832,7 +872,15 @@ export default function ReportDetailPage() {
                     {canAct && (tt === 'LISTING' || tt === 'POST') && (
                         <Button
                             variant="outlined"
-                            onClick={handleQuickHideListing}
+                            onClick={() =>
+                                openConfirmDialog({
+                                    action: 'HIDE_LISTING_APPROVE',
+                                    title: 'Xác nhận ẩn bài đăng',
+                                    message: 'Bạn sắp ẩn bài đăng liên quan và đóng báo cáo này. Hành động này ảnh hưởng trực tiếp đến khả năng hiển thị của tin đăng.',
+                                    confirmLabel: 'Xác nhận ẩn bài',
+                                    tone: 'danger',
+                                })
+                            }
                             disabled={isActionLocked}
                             sx={{
                                 textTransform: 'none',
@@ -855,7 +903,15 @@ export default function ReportDetailPage() {
                     {canAct && tt === 'USER' && (
                         <Button
                             variant="outlined"
-                            onClick={handleQuickBanUser}
+                            onClick={() =>
+                                openConfirmDialog({
+                                    action: 'BAN_USER_APPROVE',
+                                    title: 'Xác nhận khoá tài khoản',
+                                    message: 'Bạn sắp khóa tài khoản bị báo cáo và đóng hồ sơ này. Đây là quyết định quan trọng, vui lòng kiểm tra lại thông tin trước khi xác nhận.',
+                                    confirmLabel: 'Xác nhận khoá tài khoản',
+                                    tone: 'warning',
+                                })
+                            }
                             disabled={submitting || quickActionLoading}
                             sx={{
                                 textTransform: 'none',
@@ -877,7 +933,15 @@ export default function ReportDetailPage() {
 
                     <Button
                         variant="outlined"
-                        onClick={() => submitProcess('REJECT')}
+                        onClick={() =>
+                            openConfirmDialog({
+                                action: 'REJECT',
+                                title: 'Xác nhận từ chối báo cáo',
+                                message: 'Bạn sắp từ chối báo cáo này. Hãy chắc chắn rằng báo cáo không đủ căn cứ vi phạm.',
+                                confirmLabel: 'Xác nhận từ chối',
+                                tone: 'danger',
+                            })
+                        }
                         disabled={submitting || quickActionLoading || !canAct}
                         sx={{
                             textTransform: 'none',
@@ -902,7 +966,15 @@ export default function ReportDetailPage() {
                     </Button>
                     <Button
                         variant="contained"
-                        onClick={() => submitProcess('APPROVE')}
+                        onClick={() =>
+                            openConfirmDialog({
+                                action: 'APPROVE',
+                                title: 'Xác nhận duyệt báo cáo',
+                                message: 'Bạn sắp duyệt báo cáo này. Thao tác này sẽ ghi nhận vi phạm và cập nhật trạng thái xử lý.',
+                                confirmLabel: 'Xác nhận duyệt',
+                                tone: 'primary',
+                            })
+                        }
                         disabled={submitting || quickActionLoading || !canAct}
                         sx={{
                             textTransform: 'none',
@@ -925,6 +997,18 @@ export default function ReportDetailPage() {
                     </Button>
                 </Stack>
             </Paper>
+
+            <ConfirmDialog
+                open={confirmDialog.open}
+                title={confirmDialog.title || 'Xác nhận thao tác'}
+                content={confirmDialog.message || 'Bạn có chắc chắn muốn thực hiện hành động này?'}
+                variant={confirmDialog.tone === 'danger' ? 'danger' : confirmDialog.tone === 'warning' ? 'warning' : 'info'}
+                confirmLabel={confirmDialog.confirmLabel || 'Xác nhận'}
+                cancelLabel="Huỷ"
+                onClose={closeConfirmDialog}
+                onConfirm={handleConfirmAction}
+                loading={submitting || quickActionLoading}
+            />
         </Box>
     );
 }
