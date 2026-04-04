@@ -21,6 +21,7 @@ import {
     SuspenseCreateListingPage,
     SuspenseMyListingsPage,
     SuspenseSavedListingsPage,
+    SuspenseLikedListingsPage,
     SuspenseEditListingPage,
     SuspenseDraftEditPublishPage,
     SuspenseProfilePage,
@@ -118,6 +119,14 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseSavedListingsPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/liked"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseLikedListingsPage />
                         </RouteGuard>
                     }
                 />
