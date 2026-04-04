@@ -108,7 +108,8 @@ public class OfferService {
         Offer saved = offerRepository.save(offer);
 
         if (listing.getSeller() != null) {
-            notificationService.notifyOfferProposal(listing.getSeller(), buyer, listing.getId(), proposed);
+            notificationService.notifyOfferProposal(listing.getSeller(), buyer, listing.getId(),
+                    listing.getTitle(), proposed);
         }
         return toResponse(saved);
     }
@@ -350,11 +351,13 @@ public class OfferService {
         deal.setStatus("PENDING");
         dealRepository.save(deal);
 
+        Long convId = deal.getConversation() != null ? deal.getConversation().getId() : null;
         notificationService.notifyDealConfirmed(
                 offer.getBuyer(),
                 listing.getSeller(),
                 listing.getId(),
-                listing.getTitle()
+                listing.getTitle(),
+                convId
         );
         return toResponse(offer);
     }
@@ -377,6 +380,12 @@ public class OfferService {
         offer.setStatus(STATUS_REJECTED);
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
+
+        User buyer = offer.getBuyer();
+        if (buyer != null && listing.getSeller() != null && offer.getAmount() != null) {
+            notificationService.notifyOfferRejected(buyer, listing.getSeller(), listing.getId(),
+                    listing.getTitle(), offer.getAmount());
+        }
         return toResponse(offer);
     }
 

@@ -17,6 +17,9 @@ public class ChatMessageResponse {
 
     private Long id;
     private String sessionId;
+    /** Tin đăng gắn hội thoại (ngữ cảnh thông báo, không lộ nội dung chat). */
+    private Long listingId;
+    private String listingTitle;
     private Long senderId;
     private String senderName;
     private String content;

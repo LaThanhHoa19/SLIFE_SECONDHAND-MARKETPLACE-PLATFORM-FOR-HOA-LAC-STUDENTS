@@ -29,17 +29,19 @@ export default function NotificationsPage() {
             await markRead(n.id);
         }
 
-        // Tin nhắn mới trong chat
-        if (n?.type === 'MESSAGE' && (n?.refType === 'CONVERSATION' || n?.refType === 'MESSAGE')) {
-            if (n?.sessionId) {
-                const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
-                navigate(`/chat?sessionId=${n.sessionId}${qp}`);
-            }
-            else navigate('/chat');
+        // Có session chat (tin nhắn, đề xuất giá, chấp nhận/từ chối trả giá, …)
+        if (n?.sessionId) {
+            const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
+            navigate(`/chat?sessionId=${encodeURIComponent(n.sessionId)}${qp}`);
             return;
         }
 
-        // Tin khác có refType LISTING => mở trang listing
+        // Tin nhắn: chưa resolve session (fallback)
+        if (n?.type === 'MESSAGE' && (n?.refType === 'CONVERSATION' || n?.refType === 'MESSAGE')) {
+            navigate('/chat');
+            return;
+        }
+
         if (n?.refType === 'LISTING' && n?.refId) {
             navigate(`/listings/${n.refId}`);
         }
