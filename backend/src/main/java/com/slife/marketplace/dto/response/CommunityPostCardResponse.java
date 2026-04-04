@@ -13,6 +13,8 @@ import java.util.List;
 public class CommunityPostCardResponse {
     private Long id;
     private String title;
+    /** Mô tả rút gọn trên feed (có thể null). */
+    private String description;
     private String thumbUrl;
     private Instant createdAt;
     private Long authorId;
@@ -21,4 +23,6 @@ public class CommunityPostCardResponse {
     private Long likeCount;
     private Long commentCount;
     private List<String> hashtags;
+    /** null nếu khách chưa đăng nhập */
+    private Boolean isLiked;
 }

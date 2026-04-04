@@ -29,12 +29,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +48,14 @@ import java.util.stream.Collectors;
 public class CommunityPostService {
 
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
+    private static final int MAX_HASHTAGS_PER_POST = 20;
+
+    /**
+     * # phải đứng sau đầu chuỗi hoặc ký tự không phải chữ/số/_/#; thân tag: chữ (Unicode), số, gạch dưới, tối đa 100.
+     */
+    private static final Pattern DESCRIPTION_HASHTAG_PATTERN = Pattern.compile(
+            "(?:^|[^#\\p{L}\\p{N}_])#([\\p{L}\\p{N}_]{1,100})(?=[^\\p{L}\\p{N}_]|$)",
+            Pattern.UNICODE_CHARACTER_CLASS | Pattern.MULTILINE);
 
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostImageRepository communityPostImageRepository;
@@ -83,7 +96,7 @@ public class CommunityPostService {
         post.setUpdatedAt(now);
 
         CommunityPost saved = communityPostRepository.save(post);
-        syncHashtags(saved, request.getHashtags());
+        syncHashtags(saved, mergeHashtagSources(request.getHashtags(), saved.getDescription()));
         communityPostRepository.save(saved);
 
         if (!imageParts.isEmpty()) {
@@ -103,8 +116,9 @@ public class CommunityPostService {
         if (request.getDescription() != null) {
             post.setDescription(trimToNull(request.getDescription()));
         }
-        if (request.getHashtags() != null) {
-            syncHashtags(post, request.getHashtags());
+        if (request.getDescription() != null || request.getHashtags() != null) {
+            List<String> explicit = request.getHashtags() != null ? request.getHashtags() : List.of();
+            syncHashtags(post, mergeHashtagSources(explicit, post.getDescription()));
         }
         post.setUpdatedAt(Instant.now());
         communityPostRepository.save(post);
@@ -135,9 +149,13 @@ public class CommunityPostService {
         Map<Long, String> thumbByPost = firstThumbByPostId(ids);
         Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
         Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
+        Set<Long> likedByViewer = new HashSet<>();
+        if (viewerId != null && !ids.isEmpty()) {
+            likedByViewer.addAll(communityPostLikeRepository.findPostIdsLikedByUser(viewerId, ids));
+        }
 
         List<CommunityPostCardResponse> cards = posts.stream()
-                .map(p -> toCard(p, thumbByPost, likes, comments))
+                .map(p -> toCard(p, thumbByPost, likes, comments, viewerId, likedByViewer))
                 .collect(Collectors.toList());
 
         return new PagedResponse<>(
@@ -233,13 +251,17 @@ public class CommunityPostService {
     private CommunityPostCardResponse toCard(CommunityPost p,
                                              Map<Long, String> thumbByPost,
                                              Map<Long, Long> likes,
-                                             Map<Long, Long> comments) {
+                                             Map<Long, Long> comments,
+                                             Long viewerId,
+                                             Set<Long> likedByViewer) {
         Long id = p.getId();
         User a = p.getAuthor();
         List<String> tags = p.getHashtags().stream().map(Hashtag::getTag).sorted().toList();
+        Boolean isLiked = viewerId == null ? null : likedByViewer.contains(id);
         return new CommunityPostCardResponse(
                 id,
                 p.getTitle(),
+                p.getDescription(),
                 thumbByPost.get(id),
                 p.getCreatedAt(),
                 a != null ? a.getId() : null,
@@ -247,7 +269,8 @@ public class CommunityPostService {
                 a != null ? a.getAvatarUrl() : null,
                 likes.getOrDefault(id, 0L),
                 comments.getOrDefault(id, 0L),
-                tags);
+                tags,
+                isLiked);
     }
 
     private Map<Long, String> firstThumbByPostId(List<Long> ids) {
@@ -289,6 +312,9 @@ public class CommunityPostService {
             }
         }
         for (String tag : uniq) {
+            if (post.getHashtags().size() >= MAX_HASHTAGS_PER_POST) {
+                break;
+            }
             Hashtag h = hashtagRepository.findByTag(tag).orElseGet(() -> {
                 Hashtag x = new Hashtag();
                 x.setTag(tag);
@@ -299,6 +325,31 @@ public class CommunityPostService {
         }
     }
 
+    /** Thứ tự: hashtag trong mô tả (trái → phải), sau đó hashtag gửi kèm request (API). */
+    private static List<String> mergeHashtagSources(List<String> explicitFromRequest, String description) {
+        List<String> out = new ArrayList<>();
+        out.addAll(extractHashtagBodiesFromDescription(description));
+        if (explicitFromRequest != null) {
+            out.addAll(explicitFromRequest);
+        }
+        return out;
+    }
+
+    private static List<String> extractHashtagBodiesFromDescription(String description) {
+        if (description == null || description.isBlank()) {
+            return List.of();
+        }
+        List<String> found = new ArrayList<>();
+        Matcher m = DESCRIPTION_HASHTAG_PATTERN.matcher(description);
+        while (m.find()) {
+            found.add(m.group(1));
+        }
+        return found;
+    }
+
+    /**
+     * Chuẩn hóa hashtag: không khoảng trắng, không ký tự đặc biệt; chỉ chữ Unicode, số, gạch dưới; chữ thường.
+     */
     private static String normalizeHashtag(String raw) {
         if (raw == null) {
             return null;
@@ -310,11 +361,16 @@ public class CommunityPostService {
         if (s.isEmpty()) {
             return null;
         }
-        s = s.toLowerCase(Locale.ROOT).replaceAll("\\s+", "-");
+        for (int i = 0; i < s.length(); i++) {
+            if (Character.isWhitespace(s.charAt(i))) {
+                return null;
+            }
+        }
+        s = s.toLowerCase(Locale.ROOT);
         if (s.length() > 100) {
             s = s.substring(0, 100);
         }
-        if (!s.matches("[\\p{L}\\p{N}_\\-]+")) {
+        if (!s.matches("[\\p{L}\\p{N}_]+")) {
             return null;
         }
         return s;

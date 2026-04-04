@@ -15,7 +15,8 @@ import java.util.Optional;
 @Repository
 public interface CommunityPostRepository extends JpaRepository<CommunityPost, Long> {
 
-    @EntityGraph(attributePaths = {"author"})
+    /** author + hashtags để tránh N+1 khi build card feed */
+    @EntityGraph(attributePaths = {"author", "hashtags"})
     @Query("""
             SELECT p FROM CommunityPost p
             WHERE p.status = :status

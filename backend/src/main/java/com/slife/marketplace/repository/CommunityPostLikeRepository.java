@@ -21,4 +21,7 @@ public interface CommunityPostLikeRepository extends JpaRepository<CommunityPost
 
     @Query("SELECT l.post.id, COUNT(l) FROM CommunityPostLike l WHERE l.post.id IN :ids GROUP BY l.post.id")
     List<Object[]> countLikesByPostIds(@Param("ids") Collection<Long> ids);
+
+    @Query("SELECT l.post.id FROM CommunityPostLike l WHERE l.user.id = :userId AND l.post.id IN :postIds")
+    List<Long> findPostIdsLikedByUser(@Param("userId") Long userId, @Param("postIds") Collection<Long> postIds);
 }
