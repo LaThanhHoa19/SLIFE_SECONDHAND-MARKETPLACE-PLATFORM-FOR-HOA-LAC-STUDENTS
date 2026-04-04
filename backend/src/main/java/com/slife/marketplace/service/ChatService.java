@@ -809,16 +809,14 @@ public class ChatService {
 
     private ChatSessionResponse toSessionResponse(Conversation c, User currentUser) {
         Long currentUserId = currentUser.getId();
-        boolean currentIs1 = isCurrentParticipant(c.getUserId1(), currentUser);
-        boolean currentIs2 = isCurrentParticipant(c.getUserId2(), currentUser);
-        String otherName;
-        if (currentIs1) {
-            otherName = c.getUserId2().getFullName();
-        } else if (currentIs2) {
-            otherName = c.getUserId1().getFullName();
-        } else {
-            otherName = c.getUserId1().getId().equals(currentUserId)
-                    ? c.getUserId2().getFullName() : c.getUserId1().getFullName();
+        User other = getOtherParticipant(c, currentUser);
+        if (other == null) {
+            other = c.getUserId1().getId().equals(currentUserId) ? c.getUserId2() : c.getUserId1();
+        }
+        String otherName = other != null && other.getFullName() != null ? other.getFullName() : "";
+        String otherAvatarUrl = null;
+        if (other != null && other.getAvatarUrl() != null && !other.getAvatarUrl().isBlank()) {
+            otherAvatarUrl = other.getAvatarUrl().trim();
         }
         Long buyerId = c.getListing() != null && c.getListing().getSeller().getId().equals(c.getUserId1().getId())
                 ? c.getUserId2().getId() : c.getUserId1().getId();
@@ -838,6 +836,7 @@ public class ChatService {
                 .buyerId(buyerId)
                 .sellerId(sellerId)
                 .otherParticipantName(otherName)
+                .otherParticipantAvatarUrl(otherAvatarUrl)
                 .status(c.getStatus())
                 .lastMessageAt(c.getLastMessageAt())
                 .lastMessagePreview(lastMsg != null ? truncate(lastMsg.getContent(), 80) : null)

@@ -1,5 +1,4 @@
 import {
-    Avatar,
     Badge,
     Box,
     CircularProgress,
@@ -18,6 +17,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import SearchIcon from '@mui/icons-material/Search';
 import { SearchHighlight } from '../chatSearchHighlight';
+import ChatParticipantAvatar from './ChatParticipantAvatar';
 
 export default function ChatSidebar({
     theme,
@@ -152,12 +152,64 @@ export default function ChatSidebar({
                         const listingTitle = s.listingTitle || '';
                         const otherName = s.otherParticipantName || '';
                         const hasListing = Boolean(listingTitle);
-                        const title = hasListing
-                            ? `${listingTitle} / ${otherName || 'Người dùng'}`
-                            : (otherName || 'Chat');
-                        const avatarInitialSource = hasListing ? listingTitle : (otherName || 'C');
-                        const avatarInitial = avatarInitialSource[0]?.toUpperCase();
                         const rowKey = s.sessionId || `row-${s.listingId}-${otherName}`;
+                        const unread = s.unreadCount > 0;
+
+                        const titleBlock = hasListing ? (
+                            <Box sx={{ minWidth: 0 }}>
+                                <SearchHighlight
+                                    text={listingTitle}
+                                    query={highlightSearchQuery}
+                                    component="div"
+                                    sx={{
+                                        fontWeight: unread ? 800 : 700,
+                                        fontSize: '0.78rem',
+                                        lineHeight: 1.35,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.04em',
+                                        color: 'primary.main',
+                                        overflow: 'hidden',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        wordBreak: 'break-word',
+                                    }}
+                                />
+                                <SearchHighlight
+                                    text={otherName || 'Người dùng'}
+                                    query={highlightSearchQuery}
+                                    component="div"
+                                    sx={{
+                                        fontWeight: unread ? 600 : 500,
+                                        fontSize: '0.82rem',
+                                        lineHeight: 1.4,
+                                        color: 'text.secondary',
+                                        mt: 0.35,
+                                        overflow: 'hidden',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        wordBreak: 'break-word',
+                                    }}
+                                />
+                            </Box>
+                        ) : (
+                            <SearchHighlight
+                                text={otherName || 'Chat'}
+                                query={highlightSearchQuery}
+                                component="div"
+                                sx={{
+                                    fontWeight: unread ? 700 : 600,
+                                    fontSize: '0.88rem',
+                                    lineHeight: 1.35,
+                                    overflow: 'hidden',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    wordBreak: 'break-word',
+                                }}
+                            />
+                        );
 
                         return (
                         <ListItemButton
@@ -185,34 +237,14 @@ export default function ChatSidebar({
                                 },
                             }}
                         >
-                            <Avatar
-                                sx={{
-                                    width: 44,
-                                    height: 44,
-                                    mr: 1.5,
-                                    bgcolor: 'primary.main',
-                                    fontSize: 16,
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {avatarInitial}
-                            </Avatar>
+                            <ChatParticipantAvatar
+                                avatarUrl={s.otherParticipantAvatarUrl}
+                                displayName={otherName || listingTitle}
+                                sx={{ width: 44, height: 44, mr: 1.5, fontSize: 16 }}
+                            />
                             <ListItemText
-                                primary={
-                                    <SearchHighlight
-                                        text={title}
-                                        query={highlightSearchQuery}
-                                        component="div"
-                                        sx={{
-                                            fontWeight: s.unreadCount > 0 ? 700 : 600,
-                                            fontSize: '0.9rem',
-                                            lineHeight: 1.35,
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    />
-                                }
+                                primary={titleBlock}
+                                primaryTypographyProps={{ component: 'div' }}
                                 secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
                                 secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
                                 sx={{ mr: 0.5, minWidth: 0 }}
