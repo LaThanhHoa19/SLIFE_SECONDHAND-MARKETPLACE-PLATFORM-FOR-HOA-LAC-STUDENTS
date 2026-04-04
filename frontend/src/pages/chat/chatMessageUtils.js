@@ -274,21 +274,24 @@ export function enrichMessagesForDisplay(msgs) {
           .filter((t) => t.trim() !== '');
         const joined = texts.join('\n').toLowerCase();
         if (joined) {
-          if (
-            joined.includes('đồng ý') ||
-            joined.includes('chap nhan') ||
-            joined.includes('chấp nhận') ||
-            joined.includes('✅')
-          ) {
-            dealDecision = 'ACCEPT';
-          } else if (
-            joined.includes('hủy') ||
-            joined.includes('huy') ||
+          // Hủy / từ chối TRƯỚC: "không đồng ý" vẫn chứa chuỗi "đồng ý" → không được nhận nhầm ACCEPT sau F5.
+          const isReject =
             joined.includes('không đồng ý') ||
             joined.includes('khong dong y') ||
-            joined.includes('❌')
-          ) {
+            joined.includes('❌') ||
+            joined.includes('hủy') ||
+            joined.includes('huy');
+          const isAccept =
+            joined.includes('✅') ||
+            joined.includes('chấp nhận') ||
+            joined.includes('chap nhan') ||
+            (joined.includes('đồng ý') &&
+              !joined.includes('không đồng ý') &&
+              !joined.includes('khong dong y'));
+          if (isReject) {
             dealDecision = 'CANCEL';
+          } else if (isAccept) {
+            dealDecision = 'ACCEPT';
           } else if (candidates.length > 0) {
             dealDecision = 'DONE';
           }
