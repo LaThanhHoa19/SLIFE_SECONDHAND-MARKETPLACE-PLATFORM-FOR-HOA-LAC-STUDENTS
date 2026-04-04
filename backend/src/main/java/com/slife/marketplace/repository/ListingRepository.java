@@ -107,6 +107,17 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     long countByStatus(String status);
 
+    /** Số tin đăng mới mỗi ngày trong N ngày gần nhất. */
+    @Query(value = """
+            SELECT DATE(l.created_at) AS day, COUNT(*) AS cnt
+            FROM listings l
+            WHERE l.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+              AND l.deleted_at IS NULL
+            GROUP BY DATE(l.created_at)
+            ORDER BY day ASC
+            """, nativeQuery = true)
+    java.util.List<Object[]> countListingsByDayLast(@Param("days") int days);
+
     /**
      * Top danh mục theo số tin ACTIVE (dùng Pageable để giới hạn N).
      */
