@@ -39,15 +39,13 @@ export default function MainLayout() {
                     : { minHeight: '100vh' }),
             }}
         >
-            {/* Header fixed — ẩn trên admin routes, chỉ dùng header riêng trong AdminLayout */}
+            {/* Header — ẩn trên admin routes, dùng header riêng trong AdminLayout. internal: position fixed */}
             {!isAdminRoute && (
-                <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1300 }}>
-                    <Header
-                        onToggleSidebar={
-                            isChatRoute ? undefined : () => setSidebarOpen((prev) => !prev)
-                        }
-                    />
-                </Box>
+                <Header
+                    onToggleSidebar={
+                        isChatRoute ? undefined : () => setSidebarOpen((prev) => !prev)
+                    }
+                />
             )}
 
             {/* Phần thân — bắt đầu sau header */}
@@ -56,7 +54,7 @@ export default function MainLayout() {
                     display: 'flex',
                     flex: 1,
                     minHeight: 0,
-                    mt: isAdminRoute ? 0 : `${HEADER_HEIGHT + HEADER_GAP}px`,
+                    mt: 0,
                     width: '100%',
                     overflow: isChatRoute ? 'hidden' : undefined,
                 }}

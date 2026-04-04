@@ -230,7 +230,8 @@ export default function Header({ onToggleSidebar }) {
                 background: HEADER_BG,
                 boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
                 borderBottom: '1px solid rgba(255,255,255,0.03)',
-                zIndex: 1300,
+                zIndex: theme.zIndex.drawer + 1,
+                top: 0,
             }}
         >
             <Toolbar sx={{ gap: 1, py: 0, px: 3, minHeight: '64px' }}>

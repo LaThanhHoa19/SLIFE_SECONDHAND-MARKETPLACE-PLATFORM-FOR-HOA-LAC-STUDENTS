@@ -3,6 +3,7 @@
  * API dùng: tất cả /api/**.
  * Request mẫu: Authorization: Bearer <token>.
  * Response lỗi chuẩn (body): { code, message, data }. Object reject có thêm response (Axios) + raw.
+ * 401: thử refresh token; hết hạn thật thì xóa JWT + redirect /login. 403: chỉ reject (không logout).
  * Props: N/A.
  * Validation: kiểm tra token tồn tại trước khi attach header.
  * Accessibility: lỗi sẽ được đẩy lên UI để hiển thị snackbar thân thiện.
@@ -97,7 +98,8 @@ axiosClient.interceptors.response.use(
             // Giữ nguyên response của Axios để catch (e) => e.response?.data?.message vẫn đọc được ApiResponse lỗi.
             response: error?.response,
         };
-        if (normalizedError.status === 401 || normalizedError.status === 403) {
+        // 403 = đã đăng nhập nhưng không đủ quyền (vd reply comment) — tuyệt đối không xóa token / redirect
+        if (normalizedError.status === 401) {
             const isAuthEndpoint = originalConfig?.url?.includes('/api/auth/');
             const wasRetried = !!originalConfig._retry;
             if (!isAuthEndpoint && !wasRetried) {
