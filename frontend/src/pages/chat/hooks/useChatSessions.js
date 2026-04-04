@@ -120,9 +120,10 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
                     const data = body?.data ?? body;
                     const thumb = Array.isArray(data?.images) ? data.images[0] : null;
                     const price = data?.price != null ? Number(data.price) : null;
-                    return [id, { thumb: thumb || null, price }];
+                    const isGiveaway = Boolean(data?.isGiveaway);
+                    return [id, { thumb: thumb || null, price, isGiveaway }];
                 } catch {
-                    return [id, { thumb: null, price: null }];
+                    return [id, { thumb: null, price: null, isGiveaway: false }];
                 }
             }),
         ).then((pairs) => {
@@ -160,6 +161,11 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         return NaN;
     }, [activeSession, listingMetaById]);
 
+    const activeListingIsGiveaway = useMemo(() => {
+        if (activeSession?.listingId == null) return false;
+        return Boolean(listingMetaById[activeSession.listingId]?.isGiveaway);
+    }, [activeSession, listingMetaById]);
+
     const isSellerInActiveChat = useMemo(() => {
         if (!activeSession || currentUserId == null) return false;
         return Number(activeSession.sellerId) === Number(currentUserId);
@@ -191,6 +197,7 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         activeSession,
         activeListingThumb,
         activeListingPrice,
+        activeListingIsGiveaway,
         isSellerInActiveChat,
         suggestedChatPhrases,
         fetchSessions,

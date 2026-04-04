@@ -384,6 +384,7 @@ function ChatPageInner() {
     activeSession: sessionFromList,
     activeListingThumb: listingThumbFromList,
     activeListingPrice: listingPriceFromList,
+    activeListingIsGiveaway: listingIsGiveawayFromSession,
     suggestedChatPhrases,
     fetchSessions,
     scheduleFetchSessions,
@@ -506,6 +507,22 @@ function ChatPageInner() {
     }
     return listingPriceFromList;
   }, [activeSessionId, listingIdFromUrl, draftListing, listingPriceFromList]);
+
+  /** Tin cho tặng / 0đ — người mua không cần (và không nên) mở hộp trả giá. */
+  const listingIsFreeOrGiveaway = useMemo(() => {
+    const gw =
+        Boolean(listingIsGiveawayFromSession) ||
+        Boolean(draftListing?.isGiveaway) ||
+        Boolean(finalizeListing?.isGiveaway);
+    const pr = activeListingPrice;
+    const zero = Number.isFinite(pr) && pr <= 0;
+    return gw || zero;
+  }, [
+    listingIsGiveawayFromSession,
+    draftListing?.isGiveaway,
+    finalizeListing?.isGiveaway,
+    activeListingPrice,
+  ]);
 
   const isSellerInActiveChat = useMemo(() => {
     if (!activeSession || currentUserId == null) return false;
@@ -1211,7 +1228,8 @@ function ChatPageInner() {
       }
     }
     if (!finalizePickupTimeLocal) {
-      setFinalizePickupTimeLocal(toDatetimeLocal(new Date().toISOString()));
+      const d = new Date(Date.now() + 60 * 60 * 1000);
+      setFinalizePickupTimeLocal(toDatetimeLocal(d.toISOString()));
     }
     if (!finalizePickupLocationText) {
       const fromListing = fmtAddress(finalizeListing?.pickupAddress);
@@ -1275,7 +1293,16 @@ function ChatPageInner() {
   }, []);
 
   const sendDealConfirmation = useCallback(async () => {
-    if (!activeSessionId) return;
+    if (!activeSessionId) return false;
+    if (!finalizePickupTimeLocal || !String(finalizePickupTimeLocal).trim()) {
+      showToast('Vui lòng chọn thời gian nhận hàng.', 'warning');
+      return false;
+    }
+    const pickupMs = new Date(finalizePickupTimeLocal).getTime();
+    if (!Number.isFinite(pickupMs) || pickupMs <= Date.now()) {
+      showToast('Thời gian nhận hàng phải sau thời điểm hiện tại.', 'warning');
+      return false;
+    }
     const title = listingTitleForFinalize || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : 'Tin đăng');
     const when = finalizePickupTimeLocal ? fmtDatetime(finalizePickupTimeLocal) : '—';
     const where =
@@ -1300,7 +1327,7 @@ function ChatPageInner() {
       const price = parseDealPriceNumber(dealPriceTextForConfirm);
       if (listingId == null || buyerId == null || !Number.isFinite(price)) {
         showToast('Thiếu thông tin để chốt đơn (tin / người mua / giá).', 'warning');
-        return;
+        return false;
       }
       let resolvedOfferId = null;
       const acceptedOffer = latestAcceptedOfferForConfirm;
@@ -1332,9 +1359,11 @@ function ChatPageInner() {
       fetchSessions();
       scrollToBottom('smooth');
       setNewOpponentMsgCount(0);
+      return true;
     } catch (err) {
       const detail = err?.response?.data?.message || err?.message || 'Lỗi không xác định';
       showToast(`Chốt đơn thất bại: ${detail}`, 'error');
+      return false;
     }
   }, [
     activeSession?.listingId,
@@ -1478,19 +1507,29 @@ function ChatPageInner() {
     if (listingClosedForBuyer) setOfferOpen(false);
   }, [listingClosedForBuyer]);
 
-  /** Người bán đã gửi tin chốt đơn (XÁC NHẬN GIAO DỊCH) và chưa bị hủy → người mua không trả giá thêm. */
+  /**
+   * Chặn nút trả giá khi còn tin chốt đơn đang chờ mua phản hồi hoặc mua đã chấp nhận.
+   * Đã hủy (CANCEL) hoặc phản hồi không phân loại (DONE) → không chặn (chỉ sau ACCEPT mới khóa lâu dài).
+   */
   const buyerBlockedByDealSeal = useMemo(() => {
     if (isSellerInActiveChat) return false;
     return displayMessages.some((m) => {
       if (m.messageType !== 'DEAL_CONFIRMATION') return false;
       const c = typeof m.content === 'string' ? m.content : '';
       if (!c.toUpperCase().includes('XÁC NHẬN GIAO DỊCH')) return false;
-      return m.dealDecision !== 'CANCEL';
+      if (m.dealDecision === 'CANCEL') return false;
+      if (m.dealDecision === 'ACCEPT') return true;
+      if (m.dealDecision == null) return true;
+      return false;
     });
   }, [displayMessages, isSellerInActiveChat]);
 
   const draftChatReady =
       Boolean(listingIdFromUrl) && Boolean(draftListing) && !draftListingError && !draftListingLoading;
+
+  const freeListingBuyerHint =
+      !isSellerInActiveChat && Boolean(activeSessionId || draftChatReady) && listingIsFreeOrGiveaway;
+
   const priceOfferDisabled =
       Boolean(activeSessionId || draftChatReady) &&
       (isSellerInActiveChat ||
@@ -1505,8 +1544,10 @@ function ChatPageInner() {
               : 'Tin đăng đã được bán'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
+          : freeListingBuyerHint
+              ? 'Hàng này free bạn nhé, không cần mặc cả đâu ^^'
           : buyerBlockedByDealSeal
-              ? 'Người bán đã chốt giao dịch — không gửi trả giá mới cho đến khi giao dịch bị hủy'
+              ? 'Đang chờ bạn Chấp nhận/Hủy giao dịch đã chốt, hoặc đã chấp nhận — không gửi trả giá mới'
               : hasOpenOfferAwaitingSeller
                   ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
                   : 'Trả giá / đề xuất giá';
@@ -1528,6 +1569,16 @@ function ChatPageInner() {
     },
     [setSearchParams]
   );
+
+  /** MUI v5 + native picker: `inputProps.min` chặn chọn quá khứ; cập nhật theo mỗi lần render khi dialog mở. */
+  const minPickupDatetimeLocal = finalizeOpen ? toDatetimeLocal(new Date().toISOString()) : '';
+  const finalizePickupMs = finalizePickupTimeLocal
+      ? new Date(finalizePickupTimeLocal).getTime()
+      : NaN;
+  const finalizePickupIsFuture =
+      Boolean(finalizePickupTimeLocal?.trim()) &&
+      Number.isFinite(finalizePickupMs) &&
+      finalizePickupMs > Date.now();
 
   // ── render ────────────────────────────────────────────────────────────────
   const showConversationMobile = Boolean(activeSessionId || draftChatReady);
@@ -1704,6 +1755,10 @@ function ChatPageInner() {
                       setOfferOpen={setOfferOpen}
                       priceOfferDisabled={priceOfferDisabled}
                       priceOfferTooltip={priceOfferTooltip}
+                      freeListingBuyerHint={freeListingBuyerHint}
+                      onFreeListingOfferHint={() =>
+                          showToast('Hàng này free bạn nhé, không cần mặc cả đâu ^^', 'info')
+                      }
                       suggestBtnRef={suggestBtnRef}
                       inputRef={inputRef}
                       inputText={inputText}
@@ -1914,7 +1969,22 @@ function ChatPageInner() {
                   size="small"
                   fullWidth
                   type="datetime-local"
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={
+                    minPickupDatetimeLocal
+                        ? { min: minPickupDatetimeLocal, step: 60 }
+                        : { step: 60 }
+                  }
+                  error={
+                    Boolean(finalizePickupTimeLocal?.trim()) &&
+                    (!Number.isFinite(finalizePickupMs) || finalizePickupMs <= Date.now())
+                  }
+                  helperText={
+                    finalizePickupTimeLocal?.trim() &&
+                    (!Number.isFinite(finalizePickupMs) || finalizePickupMs <= Date.now())
+                        ? 'Chọn thời gian sau thời điểm hiện tại — không dùng thời gian quá khứ.'
+                        : undefined
+                  }
                   sx={{
                     '& .MuiInputBase-root': {
                       backgroundColor: DEAL_UI.surface,
@@ -2030,6 +2100,7 @@ function ChatPageInner() {
             </Button>
             <Button
                 variant="contained"
+                disabled={!finalizePickupIsFuture || finalizeListingLoading}
                 sx={{
                   textTransform: 'none',
                   borderRadius: 2.5,
@@ -2049,8 +2120,8 @@ function ChatPageInner() {
                   },
                 }}
                 onClick={async () => {
-                  setFinalizeOpen(false);
-                  await sendDealConfirmation();
+                  const ok = await sendDealConfirmation();
+                  if (ok) setFinalizeOpen(false);
                 }}
             >
               Chốt đơn
