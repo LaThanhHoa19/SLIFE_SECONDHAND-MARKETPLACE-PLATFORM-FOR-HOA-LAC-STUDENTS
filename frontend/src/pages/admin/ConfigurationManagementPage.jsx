@@ -32,6 +32,7 @@ import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS, DARK_DIALOG_TEXTFIELD_SX } from '../../components/common/dialogStyles';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import {
     getAdminConfigurations,
     updateAdminConfigurationById,
@@ -224,6 +225,7 @@ export default function ConfigurationManagementPage() {
     const [fieldError, setFieldError] = useState('');
     const [descriptionError, setDescriptionError] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     /** `default` = theo ID tăng dần (như DB); `desc` / `asc` = theo cập nhật lúc */
     const [sortUpdatedDir, setSortUpdatedDir] = useState('default');
@@ -355,11 +357,21 @@ export default function ConfigurationManagementPage() {
     const handleDialogClose = useCallback(() => {
         if (isSaving) return;
         if (hasDraftChanges) {
-            const ok = window.confirm('Bạn có thay đổi chưa lưu. Đóng và bỏ các thay đổi?');
-            if (!ok) return;
+            setDiscardConfirmOpen(true);
+            return;
         }
         closeEdit();
     }, [isSaving, hasDraftChanges, closeEdit]);
+
+    const handleConfirmDiscardChanges = useCallback(() => {
+        setDiscardConfirmOpen(false);
+        closeEdit();
+    }, [closeEdit]);
+
+    const handleCancelDiscardChanges = useCallback(() => {
+        if (isSaving) return;
+        setDiscardConfirmOpen(false);
+    }, [isSaving]);
 
     const sortedFilteredRows = useMemo(() => {
         const filtered = rows.filter((r) => configMatchesSearch(r, searchQuery));
@@ -620,11 +632,6 @@ export default function ConfigurationManagementPage() {
                 </>
             )}
 
-            <Typography variant="caption" sx={{ display: 'block', mt: 2, color: 'rgba(255,255,255,0.45)' }}>
-                API: <code style={{ color: 'rgba(167,139,250,0.9)' }}>GET/PUT /api/admin/configurations</code>
-                {' '}(yêu cầu quyền ADMIN).
-            </Typography>
-
             <Dialog
                 open={editOpen}
                 onClose={handleDialogClose}
@@ -748,6 +755,18 @@ export default function ConfigurationManagementPage() {
                     </Tooltip>
                 </DialogActions>
             </Dialog>
+
+            <ConfirmDialog
+                open={discardConfirmOpen}
+                title="Bỏ thay đổi chưa lưu"
+                content="Bạn đang có thay đổi chưa lưu. Nếu tiếp tục, các chỉnh sửa hiện tại sẽ bị hủy."
+                variant="warning"
+                confirmLabel="Bỏ thay đổi"
+                cancelLabel="Tiếp tục chỉnh sửa"
+                onClose={handleCancelDiscardChanges}
+                onConfirm={handleConfirmDiscardChanges}
+                loading={isSaving}
+            />
 
         </Box>
     );
