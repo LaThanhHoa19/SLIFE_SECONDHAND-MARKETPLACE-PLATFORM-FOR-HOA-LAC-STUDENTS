@@ -474,6 +474,11 @@ function ChatPageInner() {
         sellerId,
         otherParticipantName:
           seller?.fullName || seller?.name || seller?.displayName || 'Người bán',
+        otherParticipantAvatarUrl:
+          seller?.avatarUrl ||
+          seller?.sellerAvatarUrl ||
+          seller?.avatar_url ||
+          null,
         status: 'DRAFT',
       };
     }
@@ -1637,6 +1642,7 @@ function ChatPageInner() {
                       isMdUp={isMdUp}
                       handleChatMobileBack={handleChatMobileBack}
                       activeSession={activeSession}
+                      currentUserId={currentUserId}
                       isSellerInActiveChat={isSellerInActiveChat}
                       wsConnected={wsConnected}
                       showInChatSearch={Boolean(activeSessionId)}
@@ -1650,7 +1656,6 @@ function ChatPageInner() {
                       activeListingThumb={activeListingThumb}
                       isSellerInActiveChat={isSellerInActiveChat}
                       showPostSaleActions={showPostSaleActions}
-                      hideViewListing={listingClosedForBuyer}
                       onPostSaleAction={handlePostSaleBannerAction}
                       postSaleOutcome={resolvedPostSaleBannerOutcome}
                       postSaleBusy={postSaleBannerBusy}

@@ -97,7 +97,7 @@ axiosClient.interceptors.response.use(
             // Giữ nguyên response của Axios để catch (e) => e.response?.data?.message vẫn đọc được ApiResponse lỗi.
             response: error?.response,
         };
-        if (normalizedError.status === 401) {
+        if (normalizedError.status === 401 || normalizedError.status === 403) {
             const isAuthEndpoint = originalConfig?.url?.includes('/api/auth/');
             const wasRetried = !!originalConfig._retry;
             if (!isAuthEndpoint && !wasRetried) {

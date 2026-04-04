@@ -34,7 +34,12 @@ const formatTime = (createdAt) => {
     return d.toLocaleDateString('vi-VN');
 };
 
-const getIconForType = (type) => {
+const getIconForNotification = (n) => {
+    const type = String(n?.type || '');
+    const ref = String(n?.refType || '').toUpperCase();
+    if (type === 'SYSTEM' && (ref === 'OFFER' || ref === 'OFFER_REJECT')) {
+        return <LocalOfferIcon sx={{ fontSize: 18 }} />;
+    }
     switch (type) {
         case 'MESSAGE':
         case 'COMMENT':
@@ -63,17 +68,17 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
         }
         onClose?.();
 
-        // Tin nhắn mới trong chat: mở thẳng trang chat của người vừa nhắn
-        if (n?.type === 'MESSAGE' && (n?.refType === 'CONVERSATION' || n?.refType === 'MESSAGE')) {
-            if (n?.sessionId) {
-                const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
-                navigate(`/chat?sessionId=${n.sessionId}${qp}`);
-            }
-            else navigate('/chat');
+        if (n?.sessionId) {
+            const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
+            navigate(`/chat?sessionId=${encodeURIComponent(n.sessionId)}${qp}`);
             return;
         }
 
-        // Các loại khác: điều hướng theo refType/refId (vd: tin đăng)
+        if (n?.type === 'MESSAGE' && (n?.refType === 'CONVERSATION' || n?.refType === 'MESSAGE')) {
+            navigate('/chat');
+            return;
+        }
+
         if (n?.refType === 'LISTING' && n?.refId) {
             navigate(`/listings/${n.refId}`);
         } else if (n.refType === 'USER' && n.refId) {
@@ -207,7 +212,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                                         color: n.isRead ? 'rgba(255,255,255,0.6)' : '#9D6EED',
                                     }}
                                 >
-                                    {getIconForType(n.type)}
+                                    {getIconForNotification(n)}
                                 </Avatar>
                             </ListItemAvatar>
                             <ListItemText

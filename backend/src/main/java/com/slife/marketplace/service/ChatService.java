@@ -545,8 +545,8 @@ public class ChatService {
 
         User seller = getOtherParticipant(conv, buyer);
         if (seller != null) {
-            notificationService.notifyOfferProposal(seller, buyer, listing.getId(), amount);
-            notificationService.notifyNewMessage(seller, response, sessionId);
+            // Chỉ thông báo đề xuất giá — không gửi thêm "tin nhắn mới" (cùng một bubble OFFER_PROPOSAL).
+            notificationService.notifyOfferProposal(seller, buyer, listing.getId(), listing.getTitle(), amount);
         }
         broadcastToSession(sessionId, response);
 
@@ -628,7 +628,7 @@ public class ChatService {
             User acceptedBuyer = offer.getBuyer();
             if (listing != null) {
                 notificationService.notifyDealConfirmed(acceptedBuyer, seller,
-                        listing.getId(), listing.getTitle());
+                        listing.getId(), listing.getTitle(), conv.getId());
             }
             log.info("respondToOffer ACCEPTED offerId={} listingId={}", offerId,
                     listing != null ? listing.getId() : null);
@@ -640,6 +640,12 @@ public class ChatService {
             conversationRepository.save(conv);
             Map<Long, Message> refs = mapReferencedMessages(List.of(rejMsg));
             response = toMessageResponse(rejMsg, sessionId, seller, null, refs);
+            Listing rejListing = offer.getListing();
+            if (buyer != null && rejListing != null && offer.getAmount() != null) {
+                User rejSeller = rejListing.getSeller() != null ? rejListing.getSeller() : seller;
+                notificationService.notifyOfferRejected(buyer, rejSeller, rejListing.getId(),
+                        rejListing.getTitle(), offer.getAmount());
+            }
             log.info("respondToOffer REJECTED offerId={}", offerId);
         }
 
@@ -803,16 +809,14 @@ public class ChatService {
 
     private ChatSessionResponse toSessionResponse(Conversation c, User currentUser) {
         Long currentUserId = currentUser.getId();
-        boolean currentIs1 = isCurrentParticipant(c.getUserId1(), currentUser);
-        boolean currentIs2 = isCurrentParticipant(c.getUserId2(), currentUser);
-        String otherName;
-        if (currentIs1) {
-            otherName = c.getUserId2().getFullName();
-        } else if (currentIs2) {
-            otherName = c.getUserId1().getFullName();
-        } else {
-            otherName = c.getUserId1().getId().equals(currentUserId)
-                    ? c.getUserId2().getFullName() : c.getUserId1().getFullName();
+        User other = getOtherParticipant(c, currentUser);
+        if (other == null) {
+            other = c.getUserId1().getId().equals(currentUserId) ? c.getUserId2() : c.getUserId1();
+        }
+        String otherName = other != null && other.getFullName() != null ? other.getFullName() : "";
+        String otherAvatarUrl = null;
+        if (other != null && other.getAvatarUrl() != null && !other.getAvatarUrl().isBlank()) {
+            otherAvatarUrl = other.getAvatarUrl().trim();
         }
         Long buyerId = c.getListing() != null && c.getListing().getSeller().getId().equals(c.getUserId1().getId())
                 ? c.getUserId2().getId() : c.getUserId1().getId();
@@ -832,6 +836,7 @@ public class ChatService {
                 .buyerId(buyerId)
                 .sellerId(sellerId)
                 .otherParticipantName(otherName)
+                .otherParticipantAvatarUrl(otherAvatarUrl)
                 .status(c.getStatus())
                 .lastMessageAt(c.getLastMessageAt())
                 .lastMessagePreview(lastMsg != null ? truncate(lastMsg.getContent(), 80) : null)
@@ -855,9 +860,22 @@ public class ChatService {
         Instant seenAt = seen ? (m.getUpdatedAt() != null ? m.getUpdatedAt() : m.getSentAt()) : null;
         Message replyToMsg = (replyToId != null && refs != null) ? refs.get(replyToId) : null;
         Message quoteMsg = (quoteId != null && refs != null) ? refs.get(quoteId) : null;
+        Long ctxListingId = null;
+        String ctxListingTitle = null;
+        try {
+            Conversation convCtx = m.getConversation();
+            if (convCtx != null && convCtx.getListing() != null) {
+                ctxListingId = convCtx.getListing().getId();
+                ctxListingTitle = convCtx.getListing().getTitle();
+            }
+        } catch (Exception ignored) {
+            // lazy / detached
+        }
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .sessionId(sessionUuid)
+                .listingId(ctxListingId)
+                .listingTitle(ctxListingTitle)
                 .senderId(sender.getId())
                 .senderName(sender.getFullName())
                 .content(m.getContent())
