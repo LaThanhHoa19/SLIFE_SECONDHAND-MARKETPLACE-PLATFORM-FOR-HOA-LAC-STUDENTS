@@ -36,7 +36,7 @@ public class CommentController {
 
     /**
      * POST /api/v1/comments/{id}/reply
-     * Chủ tin đăng hoặc tác giả bình luận được phản hồi (reply) vào comment đó.
+     * User đã đăng nhập phản hồi dưới một bình luận (cùng tin với parent).
      */
     @PostMapping("/comments/{id}/reply")
     public ResponseEntity<ApiResponse<CommentResponse>> reply(

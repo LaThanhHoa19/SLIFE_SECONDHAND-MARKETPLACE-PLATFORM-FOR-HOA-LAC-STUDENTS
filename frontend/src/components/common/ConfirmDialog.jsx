@@ -18,6 +18,7 @@ import {
     WarningAmberOutlined as WarningIcon,
 } from '@mui/icons-material';
 import {
+    alpha,
     Box,
     Button,
     CircularProgress,
@@ -35,25 +36,31 @@ import { useState } from 'react';
 const VARIANTS = {
     danger: {
         Icon: DeleteIcon,
-        confirmColor: 'error',
-        iconBg: '#fff1f0',
-        iconColor: '#d32f2f',
+        iconBg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.18), rgba(220, 38, 38, 0.1))',
+        iconColor: '#ef4444',
+        glow: alpha('#ef4444', 0.28),
+        confirmBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        confirmHoverBg: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
         defaultTitle: 'Xác nhận xoá',
         defaultConfirmLabel: 'Xoá',
     },
     warning: {
         Icon: WarningIcon,
-        confirmColor: 'warning',
-        iconBg: '#fffbeb',
-        iconColor: '#ed6c02',
+        iconBg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1))',
+        iconColor: '#f59e0b',
+        glow: alpha('#f59e0b', 0.28),
+        confirmBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        confirmHoverBg: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
         defaultTitle: 'Xác nhận thao tác',
         defaultConfirmLabel: 'Tiếp tục',
     },
     info: {
         Icon: InfoIcon,
-        confirmColor: 'primary',
-        iconBg: '#e8f4fd',
-        iconColor: '#0288d1',
+        iconBg: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1))',
+        iconColor: '#6366f1',
+        glow: alpha('#6366f1', 0.28),
+        confirmBg: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+        confirmHoverBg: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
         defaultTitle: 'Xác nhận',
         defaultConfirmLabel: 'Đồng ý',
     },
@@ -73,8 +80,16 @@ export default function ConfirmDialog({
     const [internalLoading, setInternalLoading] = useState(false);
     const isLoading = externalLoading ?? internalLoading;
 
-    const { Icon, confirmColor, iconBg, iconColor, defaultTitle, defaultConfirmLabel } =
-    VARIANTS[variant] ?? VARIANTS.danger;
+    const {
+        Icon,
+        iconBg,
+        iconColor,
+        glow,
+        confirmBg,
+        confirmHoverBg,
+        defaultTitle,
+        defaultConfirmLabel,
+    } = VARIANTS[variant] ?? VARIANTS.danger;
 
     const handleConfirm = async () => {
         if (!onConfirm) return;
@@ -96,92 +111,111 @@ export default function ConfirmDialog({
             maxWidth="xs"
             fullWidth
             TransitionComponent={Fade}
-            TransitionProps={{ timeout: 200 }}
-            PaperProps={{
-                elevation: 8,
-                sx: {
-                    borderRadius: 3,
-                    overflow: 'hidden',
+            TransitionProps={{ timeout: 180 }}
+            slotProps={{
+                backdrop: {
+                    sx: {
+                        backdropFilter: 'blur(4px)',
+                        backgroundColor: 'rgba(2, 6, 23, 0.5)',
+                    },
+                },
+                paper: {
+                    elevation: 0,
+                    sx: {
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                        boxShadow: '0 28px 64px rgba(15, 23, 42, 0.28)',
+                    },
                 },
             }}
         >
-            {/* Header với icon nổi bật */}
             <Box
                 sx={{
+                    px: 3,
+                    pt: 3,
+                    pb: 2,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    pt: 4,
-                    pb: 2,
-                    px: 3,
+                    textAlign: 'center',
                     gap: 1.5,
                 }}
             >
-                {/* Icon circle */}
                 <Box
                     sx={{
-                        width: 64,
-                        height: 64,
+                        width: 66,
+                        height: 66,
                         borderRadius: '50%',
-                        bgcolor: iconBg,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        background: iconBg,
+                        border: '1px solid rgba(148, 163, 184, 0.25)',
+                        boxShadow: `0 0 0 6px ${glow}`,
+                        display: 'grid',
+                        placeItems: 'center',
                     }}
                 >
-                    <Icon sx={{ fontSize: 32, color: iconColor }} />
+                    <Icon sx={{ fontSize: 31, color: iconColor }} />
                 </Box>
 
-                <Typography variant="h6" fontWeight={700} textAlign="center" lineHeight={1.3}>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', lineHeight: 1.3 }}>
                     {title || defaultTitle}
                 </Typography>
             </Box>
 
-            {/* Content */}
             {content && (
-                <DialogContent sx={{ pt: 0, pb: 1, px: 3 }}>
-                    <DialogContentText textAlign="center" fontSize="0.9rem">
+                <DialogContent sx={{ pt: 0.5, pb: 1.5, px: 3 }}>
+                    <DialogContentText sx={{ textAlign: 'center', color: '#334155', fontSize: 14.5, lineHeight: 1.65 }}>
                         {content}
                     </DialogContentText>
                 </DialogContent>
             )}
 
-            {/* Actions */}
-            <DialogActions sx={{ px: 3, pb: 3, pt: 2 }}>
-                <Stack direction="row" spacing={1.5} width="100%">
+            <DialogActions sx={{ px: 3, pb: 3, pt: 1.5 }}>
+                <Stack direction="row" spacing={1.25} width="100%">
                     <Button
                         fullWidth
                         variant="outlined"
-                        color="inherit"
                         onClick={onClose}
                         disabled={isLoading}
                         sx={{
-                            borderRadius: 2,
-                            py: 1.2,
-                            fontWeight: 600,
-                            borderColor: 'divider',
-                            color: 'text.secondary',
-                            '&:hover': { borderColor: 'text.secondary', bgcolor: 'action.hover' },
+                            borderRadius: 999,
+                            py: 1.05,
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            borderColor: 'rgba(148, 163, 184, 0.45)',
+                            color: '#475569',
+                            background: '#ffffff',
+                            '&:hover': {
+                                borderColor: 'rgba(100, 116, 139, 0.58)',
+                                background: '#f8fafc',
+                            },
                         }}
                     >
                         {cancelLabel}
                     </Button>
+
                     <Button
                         fullWidth
                         variant="contained"
-                        color={confirmColor}
                         onClick={handleConfirm}
                         disabled={isLoading}
                         sx={{
-                            borderRadius: 2,
-                            py: 1.2,
-                            fontWeight: 600,
-                            boxShadow: 'none',
-                            '&:hover': { boxShadow: 'none' },
+                            borderRadius: 999,
+                            py: 1.05,
+                            fontWeight: 800,
+                            textTransform: 'none',
+                            color: '#fff',
+                            background: confirmBg,
+                            boxShadow: '0 10px 24px rgba(15, 23, 42, 0.22)',
+                            '&:hover': {
+                                background: confirmHoverBg,
+                                boxShadow: '0 12px 28px rgba(15, 23, 42, 0.26)',
+                            },
                         }}
                     >
                         {isLoading ? (
-                            <CircularProgress size={20} color="inherit" />
+                            <CircularProgress size={18} color="inherit" />
                         ) : (
                             confirmLabel || defaultConfirmLabel
                         )}

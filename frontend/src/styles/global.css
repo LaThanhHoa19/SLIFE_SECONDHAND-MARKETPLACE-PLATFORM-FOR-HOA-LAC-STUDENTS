@@ -24,3 +24,321 @@ a { color: inherit; text-decoration: none; }
 #root .MuiOutlinedInput-root:focus-within {
     outline: none !important;
 }
+
+/* Mockup mode for Figma capture (wireframe/greyscale look) */
+body.figma-mockup-mode,
+body.figma-mockup-mode #root {
+    background: #f5f5f5 !important;
+    color: #2f2f2f !important;
+}
+
+body.figma-mockup-mode * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+    filter: grayscale(1) !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+body.figma-mockup-mode *:not(svg):not(path) {
+    background-image: none !important;
+}
+
+body.figma-mockup-mode img,
+body.figma-mockup-mode video,
+body.figma-mockup-mode canvas,
+body.figma-mockup-mode svg {
+    opacity: 0.85 !important;
+}
+
+/* Force admin dark areas to light wireframe surfaces */
+body.figma-mockup-mode .MuiAppBar-root,
+body.figma-mockup-mode .MuiAppBar-root *,
+body.figma-mockup-mode .MuiDrawer-paper,
+body.figma-mockup-mode .MuiDrawer-paper *,
+body.figma-mockup-mode [class*='Admin'],
+body.figma-mockup-mode [class*='admin'] {
+    background-color: #ffffff !important;
+    color: #2f2f2f !important;
+    border-color: #cfcfcf !important;
+}
+
+body.figma-mockup-mode .MuiPaper-root,
+body.figma-mockup-mode .MuiCard-root,
+body.figma-mockup-mode .MuiAppBar-root,
+body.figma-mockup-mode .MuiDrawer-paper,
+body.figma-mockup-mode .MuiTable-root,
+body.figma-mockup-mode .MuiTableCell-root,
+body.figma-mockup-mode .MuiOutlinedInput-root,
+body.figma-mockup-mode .MuiButton-root,
+body.figma-mockup-mode .MuiChip-root,
+body.figma-mockup-mode [class*='sidebar'],
+body.figma-mockup-mode [class*='Sidebar'],
+body.figma-mockup-mode [class*='header'],
+body.figma-mockup-mode [class*='Header'] {
+    background-color: #ffffff !important;
+    color: #2f2f2f !important;
+    border-color: #cfcfcf !important;
+}
+
+body.figma-mockup-mode .MuiButton-contained,
+body.figma-mockup-mode .MuiButton-containedPrimary,
+body.figma-mockup-mode .MuiButton-containedSecondary {
+    background-color: #dedede !important;
+    color: #2f2f2f !important;
+}
+
+body.figma-mockup-mode .MuiSvgIcon-root,
+body.figma-mockup-mode .MuiAvatar-root,
+body.figma-mockup-mode .MuiAvatar-root * {
+    opacity: 1 !important;
+    color: #7a7a7a !important;
+}
+
+body.figma-mockup-mode .MuiTypography-root,
+body.figma-mockup-mode .MuiTableCell-root,
+body.figma-mockup-mode label,
+body.figma-mockup-mode p,
+body.figma-mockup-mode span,
+body.figma-mockup-mode h1,
+body.figma-mockup-mode h2,
+body.figma-mockup-mode h3,
+body.figma-mockup-mode h4,
+body.figma-mockup-mode h5,
+body.figma-mockup-mode h6,
+body.figma-mockup-mode a {
+    color: #2f2f2f !important;
+}
+
+body.figma-mockup-mode .MuiOutlinedInput-notchedOutline,
+body.figma-mockup-mode .MuiInputBase-root,
+body.figma-mockup-mode input,
+body.figma-mockup-mode textarea,
+body.figma-mockup-mode select {
+    border-color: #bdbdbd !important;
+    color: #2f2f2f !important;
+    background-color: #ffffff !important;
+}
+
+body.figma-mockup-mode [class*='gradient'],
+body.figma-mockup-mode [style*='gradient'] {
+    background: #ececec !important;
+}
+
+/* Force admin shell to light grayscale in mockup mode */
+body.figma-mockup-mode .admin-layout-root,
+body.figma-mockup-mode .admin-layout-root > .MuiBox-root,
+body.figma-mockup-mode .admin-sidebar-root,
+body.figma-mockup-mode .admin-header-root {
+    background-color: #f4f4f4 !important;
+    border-color: #cfcfcf !important;
+}
+
+body.figma-mockup-mode .admin-layout-root .MuiBox-root,
+body.figma-mockup-mode .admin-layout-root .MuiPaper-root,
+body.figma-mockup-mode .admin-layout-root .MuiCard-root,
+body.figma-mockup-mode .admin-layout-root .MuiAppBar-root,
+body.figma-mockup-mode .admin-layout-root .MuiToolbar-root,
+body.figma-mockup-mode .admin-layout-root .MuiDrawer-paper {
+    background-color: #ffffff !important;
+    border-color: #d4d4d4 !important;
+}
+
+body.figma-mockup-mode .admin-sidebar-root .MuiListItemButton-root {
+    background-color: #f7f7f7 !important;
+}
+
+body.figma-mockup-mode .admin-sidebar-root .MuiListItemButton-root.Mui-selected,
+body.figma-mockup-mode .admin-sidebar-root .MuiListItemButton-root:hover {
+    background-color: #ececec !important;
+}
+
+/* Force user shell to light grayscale in mockup mode */
+body.figma-mockup-mode .user-layout-root,
+body.figma-mockup-mode .user-layout-root .MuiBox-root,
+body.figma-mockup-mode .user-header-root,
+body.figma-mockup-mode .user-sidebar-root,
+body.figma-mockup-mode .user-layout-root main,
+body.figma-mockup-mode .user-layout-root [data-sidebar='main'] {
+    background-color: #f5f5f5 !important;
+    border-color: #cfcfcf !important;
+    color: #2f2f2f !important;
+}
+
+body.figma-mockup-mode .user-header-root,
+body.figma-mockup-mode .user-header-root .MuiToolbar-root,
+body.figma-mockup-mode .user-header-root .MuiIconButton-root,
+body.figma-mockup-mode .user-header-root .MuiButton-root,
+body.figma-mockup-mode .user-header-root .MuiInputBase-root,
+body.figma-mockup-mode .user-header-root .MuiAvatar-root {
+    background-color: #ffffff !important;
+    color: #2f2f2f !important;
+    border-color: #d3d3d3 !important;
+    box-shadow: none !important;
+}
+
+body.figma-mockup-mode .user-sidebar-root {
+    background-color: #f2f2f2 !important;
+    border-right: 1px solid #cfcfcf !important;
+}
+
+body.figma-mockup-mode .user-sidebar-root .MuiTypography-root,
+body.figma-mockup-mode .user-sidebar-root .MuiSvgIcon-root,
+body.figma-mockup-mode .user-sidebar-root .MuiButton-root,
+body.figma-mockup-mode .user-sidebar-root .MuiDivider-root {
+    color: #4a4a4a !important;
+    border-color: #d6d6d6 !important;
+}
+
+body.figma-mockup-mode .user-sidebar-root [style*='linear-gradient'],
+body.figma-mockup-mode .user-header-root [style*='linear-gradient'],
+body.figma-mockup-mode .user-layout-root [style*='linear-gradient'] {
+    background: #e7e7e7 !important;
+}
+
+
+/* Super wireframe mode: keep text visible, make UI flatter + neutral */
+body.figma-wireframe-super,
+body.figma-wireframe-super #root {
+    background: #f3f3f3 !important;
+    color: #1f1f1f !important;
+}
+
+body.figma-wireframe-super * {
+    text-shadow: none !important;
+    box-shadow: none !important;
+    filter: grayscale(1) !important;
+    transition: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+}
+
+body.figma-wireframe-super *:not(svg):not(path) {
+    background-image: none !important;
+}
+
+body.figma-wireframe-super .MuiPaper-root,
+body.figma-wireframe-super .MuiCard-root,
+body.figma-wireframe-super .MuiAppBar-root,
+body.figma-wireframe-super .MuiDrawer-paper,
+body.figma-wireframe-super .MuiTable-root,
+body.figma-wireframe-super .MuiTableCell-root,
+body.figma-wireframe-super .MuiOutlinedInput-root,
+body.figma-wireframe-super .MuiButton-root,
+body.figma-wireframe-super .MuiChip-root,
+body.figma-wireframe-super [class*='sidebar'],
+body.figma-wireframe-super [class*='Sidebar'],
+body.figma-wireframe-super [class*='header'],
+body.figma-wireframe-super [class*='Header'] {
+    background-color: #ffffff !important;
+    color: #1f1f1f !important;
+    border-color: #bfbfbf !important;
+    opacity: 1 !important;
+}
+
+body.figma-wireframe-super .MuiButton-contained,
+body.figma-wireframe-super .MuiButton-containedPrimary,
+body.figma-wireframe-super .MuiButton-containedSecondary {
+    background-color: #d9d9d9 !important;
+    color: #1f1f1f !important;
+}
+
+body.figma-wireframe-super img,
+body.figma-wireframe-super video,
+body.figma-wireframe-super canvas,
+body.figma-wireframe-super svg {
+    opacity: 1 !important;
+}
+
+body.figma-wireframe-super .MuiTypography-root,
+body.figma-wireframe-super .MuiTableCell-root,
+body.figma-wireframe-super label,
+body.figma-wireframe-super p,
+body.figma-wireframe-super span,
+body.figma-wireframe-super h1,
+body.figma-wireframe-super h2,
+body.figma-wireframe-super h3,
+body.figma-wireframe-super h4,
+body.figma-wireframe-super h5,
+body.figma-wireframe-super h6,
+body.figma-wireframe-super a,
+body.figma-wireframe-super input,
+body.figma-wireframe-super textarea,
+body.figma-wireframe-super select {
+    color: #1f1f1f !important;
+    opacity: 1 !important;
+}
+
+/* Extra low-fidelity pass: remove visual richness so it looks like wireframe, not final UI */
+body.figma-wireframe-super .MuiPaper-root,
+body.figma-wireframe-super .MuiCard-root,
+body.figma-wireframe-super .MuiButton-root,
+body.figma-wireframe-super .MuiChip-root,
+body.figma-wireframe-super .MuiOutlinedInput-root,
+body.figma-wireframe-super .MuiTable-root,
+body.figma-wireframe-super .MuiTableCell-root,
+body.figma-wireframe-super .MuiListItemButton-root,
+body.figma-wireframe-super [role='button'] {
+    border-radius: 4px !important;
+    box-shadow: none !important;
+}
+
+body.figma-wireframe-super .MuiButton-root,
+body.figma-wireframe-super .MuiChip-root,
+body.figma-wireframe-super .MuiListItemButton-root,
+body.figma-wireframe-super .MuiTab-root {
+    background: #f1f1f1 !important;
+    border: 1px solid #c8c8c8 !important;
+    color: #262626 !important;
+}
+
+body.figma-wireframe-super .MuiButton-contained,
+body.figma-wireframe-super .MuiButton-containedPrimary,
+body.figma-wireframe-super .MuiButton-containedSecondary {
+    background: #e7e7e7 !important;
+    border: 1px solid #c2c2c2 !important;
+}
+
+body.figma-wireframe-super .MuiOutlinedInput-root,
+body.figma-wireframe-super .MuiInputBase-root,
+body.figma-wireframe-super input,
+body.figma-wireframe-super textarea,
+body.figma-wireframe-super select {
+    background: #ffffff !important;
+    border-color: #c7c7c7 !important;
+}
+
+body.figma-wireframe-super .MuiAvatar-root,
+body.figma-wireframe-super .MuiSvgIcon-root {
+    color: #8a8a8a !important;
+    background: #ececec !important;
+}
+
+body.figma-wireframe-super .MuiTableCell-root {
+    border-color: #d3d3d3 !important;
+}
+
+body.figma-wireframe-super .MuiListItemButton-root.Mui-selected,
+body.figma-wireframe-super .MuiListItemButton-root:hover {
+    background: #ebebeb !important;
+}
+
+body.figma-wireframe-super h1,
+body.figma-wireframe-super h2,
+body.figma-wireframe-super h3,
+body.figma-wireframe-super h4 {
+    letter-spacing: 0 !important;
+    font-weight: 700 !important;
+}
+
+body.figma-wireframe-super .MuiTableBody-root .MuiAvatar-root,
+body.figma-wireframe-super .MuiTableBody-root img {
+    opacity: 0.55 !important;
+    filter: grayscale(1) !important;
+}
+
+body.figma-wireframe-super input::placeholder,
+body.figma-wireframe-super textarea::placeholder {
+    color: #b5b5b5 !important;
+}
+

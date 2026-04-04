@@ -114,6 +114,9 @@ public class DealService {
         if (request.getPrice().compareTo(BigDecimal.ZERO) < 0) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giá phải >= 0");
         }
+        if (request.getPickupTime() != null && !request.getPickupTime().isAfter(Instant.now())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Thời gian nhận hàng phải sau thời điểm hiện tại");
+        }
 
         Offer offerForDeal = resolveOfferForSeal(listingId, seller, buyer, request.getPrice(), request.getOfferId())
                 .orElseGet(() -> persistNewPendingOffer(listing, buyer, request.getPrice()));
@@ -162,6 +165,7 @@ public class DealService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
         }
         deal.setStatus(STATUS_COMPLETED);
+        deal.setConfirmedAt(LocalDateTime.now());
         return mapToResponse(dealRepository.save(deal));
     }
 
@@ -180,6 +184,7 @@ public class DealService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
         }
         deal.setStatus(STATUS_REJECTED);
+        deal.setConfirmedAt(LocalDateTime.now());
         return mapToResponse(dealRepository.save(deal));
     }
 

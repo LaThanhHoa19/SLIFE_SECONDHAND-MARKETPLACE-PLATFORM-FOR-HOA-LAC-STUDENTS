@@ -25,28 +25,27 @@ export default function MainLayout() {
 
     return (
         <Box
+            className="user-layout-root"
             sx={{
                 display: 'flex',
                 flexDirection: 'column',
                 bgcolor: APP_SHELL_BG,
                 ...(isChatRoute
                     ? {
-                          height: '100dvh',
-                          maxHeight: '100dvh',
-                          overflow: 'hidden',
-                      }
+                        height: '100dvh',
+                        maxHeight: '100dvh',
+                        overflow: 'hidden',
+                    }
                     : { minHeight: '100vh' }),
             }}
         >
-            {/* Header fixed — ẩn trên admin routes, chỉ dùng header riêng trong AdminLayout */}
+            {/* Header — ẩn trên admin routes, dùng header riêng trong AdminLayout. internal: position fixed */}
             {!isAdminRoute && (
-                <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1300 }}>
-                    <Header
-                        onToggleSidebar={
-                            isChatRoute ? undefined : () => setSidebarOpen((prev) => !prev)
-                        }
-                    />
-                </Box>
+                <Header
+                    onToggleSidebar={
+                        isChatRoute ? undefined : () => setSidebarOpen((prev) => !prev)
+                    }
+                />
             )}
 
             {/* Phần thân — bắt đầu sau header */}
@@ -55,7 +54,7 @@ export default function MainLayout() {
                     display: 'flex',
                     flex: 1,
                     minHeight: 0,
-                    mt: isAdminRoute ? 0 : `${HEADER_HEIGHT + HEADER_GAP}px`,
+                    mt: 0,
                     width: '100%',
                     overflow: isChatRoute ? 'hidden' : undefined,
                 }}
@@ -70,12 +69,12 @@ export default function MainLayout() {
                         flexDirection: 'column',
                         ...(isChatRoute
                             ? {
-                                  minHeight: 0,
-                                  overflow: 'hidden',
-                              }
+                                minHeight: 0,
+                                overflow: 'hidden',
+                            }
                             : {
-                                  minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
-                              }),
+                                minHeight: isAdminRoute ? '100vh' : `calc(100vh - ${HEADER_HEIGHT + HEADER_GAP}px)`,
+                            }),
                     }}
                 >
                     <Box

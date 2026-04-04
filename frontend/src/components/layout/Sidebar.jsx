@@ -80,6 +80,7 @@ export default function Sidebar({ open = true }) {
 
     return (
         <Box
+            className="user-sidebar-root"
             data-sidebar="main"
             sx={{
                 width: currentWidth,

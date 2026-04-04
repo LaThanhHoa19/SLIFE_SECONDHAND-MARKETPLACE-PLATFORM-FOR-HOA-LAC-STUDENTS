@@ -192,6 +192,7 @@ export default function DraftEditPublishPage() {
             const payload = buildPublishPayload(values);
             await updateListing(listingIdNum, payload);
             await uploadListingImages(listingIdNum, imageFiles);
+            showToast('Đăng tin thành công.', 'success');
             navigate(`/listings/${listingIdNum}`, { replace: true });
         } catch (err) {
             const msg = getListingSubmitErrorMessage(err, 'Đăng tin thất bại.');

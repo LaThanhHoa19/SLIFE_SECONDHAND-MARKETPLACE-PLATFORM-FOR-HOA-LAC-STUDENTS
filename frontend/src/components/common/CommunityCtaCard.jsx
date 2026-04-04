@@ -9,39 +9,75 @@ export default function CommunityCtaCard({
     return (
         <Box
             sx={{
-                background: 'linear-gradient(145deg, #6D28D9 0%, #8B5CF6 50%, #A78BFA 100%)',
-                borderRadius: '16px',
-                p: 2.25,
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #9D6EED 100%)',
+                borderRadius: '24px',
+                p: 2.75,
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
+                boxShadow: '0 12px 32px rgba(99, 102, 241, 0.35)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: '-50%',
+                    left: '-50%',
+                    width: '200%',
+                    height: '200%',
+                    background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
+                    pointerEvents: 'none'
+                },
                 ...sx,
             }}
         >
-            <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#EDE9FE', lineHeight: 1.45, mb: 1.5, pr: 4 }}>
+            <Typography sx={{
+                fontSize: '14px',
+                fontWeight: 800,
+                color: '#fff',
+                lineHeight: 1.4,
+                mb: 2,
+                pr: 5,
+                letterSpacing: '-0.2px',
+                textShadow: '0 2px 4px rgba(0,0,0,0.15)'
+            }}>
                 {title}
             </Typography>
             <Button
                 onClick={onAction}
                 sx={{
                     bgcolor: '#FFF',
-                    color: '#6D28D9',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    px: 2,
-                    py: 0.75,
-                    borderRadius: '10px',
+                    color: '#6366f1',
+                    fontSize: '12.5px',
+                    fontWeight: 800,
+                    px: 2.5,
+                    py: 1,
+                    borderRadius: '12px',
                     textTransform: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    transition: 'transform 0.15s, box-shadow 0.15s',
-                    '&:hover': { bgcolor: '#FFF', transform: 'translateY(-1px)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' },
+                    boxShadow: '0 4px 12px rgba(255,255,255,0.25)',
+                    transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    '&:hover': {
+                        bgcolor: '#f8fafc',
+                        transform: 'translateY(-2px) scale(1.02)',
+                        boxShadow: '0 6px 16px rgba(255,255,255,0.3)',
+                    },
+                    '&:active': { transform: 'scale(0.98)' }
                 }}
             >
                 {actionLabel}
             </Button>
-            <Typography sx={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 32, opacity: 0.35, pointerEvents: 'none' }}>
+            <Box
+                sx={{
+                    position: 'absolute',
+                    right: -5,
+                    bottom: -10,
+                    fontSize: 72,
+                    opacity: 0.15,
+                    transform: 'rotate(-15deg)',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                }}
+            >
                 📢
-            </Typography>
+            </Box>
         </Box>
     );
 }

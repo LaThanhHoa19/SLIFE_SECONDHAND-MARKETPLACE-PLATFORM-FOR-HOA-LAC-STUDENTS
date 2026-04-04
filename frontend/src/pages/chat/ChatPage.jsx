@@ -56,14 +56,18 @@ import ChatSearchInConversationDialog from './components/ChatSearchInConversatio
 import { useChatSessions } from './hooks/useChatSessions';
 import { useChatRealtime } from './hooks/useChatRealtime';
 import {
+  CHAT_HISTORY_PAGE_SIZE,
+  CHAT_LOAD_OLDER_THRESHOLD_PX,
   CHAT_NEAR_BOTTOM_PX,
   enrichMessagesForDisplay,
   formatSessionTimeShort,
   getData,
   markOfferSupersededByDealSeal,
+  mergeChatHistoryPage,
   getMessageDomId,
   isMessageFromCurrentUser,
   makeTempId,
+  parseChatHistoryResponse,
   upsertMessages,
 } from './chatMessageUtils';
 // ── main component ────────────────────────────────────────────────────────────
@@ -87,6 +91,10 @@ function ChatPageInner() {
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  /** Còn trang cũ hơn để tải khi cuộn lên (theo phân trang BE). */
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [nextHistoryPage, setNextHistoryPage] = useState(1);
+  const [loadingOlderHistory, setLoadingOlderHistory] = useState(false);
   const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
   const [bubbleSearchHighlight, setBubbleSearchHighlight] = useState(null);
   const [inputText, setInputText] = useState('');
@@ -195,6 +203,8 @@ function ChatPageInner() {
   const suppressOpponentDiffRef = useRef(false);
   /** Sau đổi session: cuộn đáy đồng bộ trong layout (trước khi đếm tin mới — tránh scrollTop=0 nhầm là đang xem lịch sử) */
   const didInitialScrollForSessionRef = useRef(false);
+  const historyScrollRestoreRef = useRef(null);
+  const olderLoadInFlightRef = useRef(false);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [newOpponentMsgCount, setNewOpponentMsgCount] = useState(0);
 
@@ -230,11 +240,78 @@ function ChatPageInner() {
     }
   }, []);
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!activeSessionId || !historyHasMore || olderLoadInFlightRef.current) return;
+    const el = messagesScrollRef.current;
+    if (!el || messagesRef.current.length === 0) return;
+    olderLoadInFlightRef.current = true;
+    setLoadingOlderHistory(true);
+    const prevMetrics = { scrollHeight: el.scrollHeight, scrollTop: el.scrollTop };
+    const pageToLoad = nextHistoryPage;
+    try {
+      const res = await chatApi.getHistory(activeSessionId, pageToLoad, CHAT_HISTORY_PAGE_SIZE);
+      const { content, last } = parseChatHistoryResponse(res);
+      const olderAsc = Array.isArray(content) ? [...content].reverse() : [];
+      if (olderAsc.length === 0) {
+        setHistoryHasMore(false);
+        return;
+      }
+      suppressOpponentDiffRef.current = true;
+      let appended = 0;
+      setMessages((prev) => {
+        const ids = new Set(prev.map((m) => String(m?.id)));
+        const merged = olderAsc.filter((m) => m != null && m.id != null && !ids.has(String(m.id)));
+        appended = merged.length;
+        if (merged.length === 0) return prev;
+        historyScrollRestoreRef.current = prevMetrics;
+        return [...merged, ...prev];
+      });
+      if (appended === 0) setHistoryHasMore(false);
+      else {
+        setHistoryHasMore(!last);
+        setNextHistoryPage((p) => p + 1);
+      }
+    } catch {
+      /* giữ nguyên danh sách */
+    } finally {
+      olderLoadInFlightRef.current = false;
+      setLoadingOlderHistory(false);
+    }
+  }, [activeSessionId, historyHasMore, nextHistoryPage]);
+
+  const handleMessagesScroll = useCallback(() => {
+    updateJumpToLatestVisibility();
+    const el = messagesScrollRef.current;
+    if (!el || historyLoading || loadingOlderHistory || !historyHasMore) return;
+    if (el.scrollTop > CHAT_LOAD_OLDER_THRESHOLD_PX) return;
+    loadOlderMessages();
+  }, [
+    updateJumpToLatestVisibility,
+    historyLoading,
+    loadingOlderHistory,
+    historyHasMore,
+    loadOlderMessages,
+  ]);
+
+  useLayoutEffect(() => {
+    const snap = historyScrollRestoreRef.current;
+    if (snap == null) return;
+    historyScrollRestoreRef.current = null;
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    const delta = el.scrollHeight - snap.scrollHeight;
+    el.scrollTop = snap.scrollTop + delta;
+  }, [messages]);
+
   useEffect(() => {
     setNewOpponentMsgCount(0);
     prevMessagesForDiffRef.current = [];
     didInitialScrollForSessionRef.current = false;
     setHighlightedMessageId(null);
+    setHistoryHasMore(false);
+    setNextHistoryPage(1);
+    setLoadingOlderHistory(false);
+    olderLoadInFlightRef.current = false;
   }, [activeSessionId]);
 
   // Khi deep-link đổi messageId (kể cả cùng session), cho phép chạy lại flow scroll-to-message.
@@ -384,6 +461,7 @@ function ChatPageInner() {
     activeSession: sessionFromList,
     activeListingThumb: listingThumbFromList,
     activeListingPrice: listingPriceFromList,
+    activeListingIsGiveaway: listingIsGiveawayFromSession,
     suggestedChatPhrases,
     fetchSessions,
     scheduleFetchSessions,
@@ -506,6 +584,22 @@ function ChatPageInner() {
     }
     return listingPriceFromList;
   }, [activeSessionId, listingIdFromUrl, draftListing, listingPriceFromList]);
+
+  /** Tin cho tặng / 0đ — người mua không cần (và không nên) mở hộp trả giá. */
+  const listingIsFreeOrGiveaway = useMemo(() => {
+    const gw =
+        Boolean(listingIsGiveawayFromSession) ||
+        Boolean(draftListing?.isGiveaway) ||
+        Boolean(finalizeListing?.isGiveaway);
+    const pr = activeListingPrice;
+    const zero = Number.isFinite(pr) && pr <= 0;
+    return gw || zero;
+  }, [
+    listingIsGiveawayFromSession,
+    draftListing?.isGiveaway,
+    finalizeListing?.isGiveaway,
+    activeListingPrice,
+  ]);
 
   const isSellerInActiveChat = useMemo(() => {
     if (!activeSession || currentUserId == null) return false;
@@ -634,14 +728,12 @@ function ChatPageInner() {
   const fetchHistory = useCallback(() => {
     if (!activeSessionId) return Promise.resolve();
     return chatApi
-        .getHistory(activeSessionId, 0, 30)
+        .getHistory(activeSessionId, 0, CHAT_HISTORY_PAGE_SIZE)
         .then((res) => {
-          const body = res?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
-          setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          const { content } = parseChatHistoryResponse(res);
+          setMessages((prev) => mergeChatHistoryPage(prev, content));
         })
-        .catch(() => setMessages([]));
+        .catch(() => {});
   }, [activeSessionId]);
 
   useEffect(() => {
@@ -654,16 +746,15 @@ function ChatPageInner() {
     const loadHistory = async () => {
       try {
         const targetId = messageIdFromUrl ? String(messageIdFromUrl) : null;
-        const pageSize = 30;
 
         // Bình thường: chỉ lấy page 0.
         if (!targetId) {
-          const res = await chatApi.getHistory(activeSessionId, 0, pageSize);
+          const res = await chatApi.getHistory(activeSessionId, 0, CHAT_HISTORY_PAGE_SIZE);
           if (cancelled) return;
-          const body = res?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const { content, last } = parseChatHistoryResponse(res);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          setHistoryHasMore(!last);
+          setNextHistoryPage(1);
           return;
         }
 
@@ -671,17 +762,15 @@ function ChatPageInner() {
         const maxPagesToScan = 8;
         const aggregated = [];
         let found = false;
+        let lastFetchedLast = true;
+        let pagesScanned = 0;
 
         for (let p = 0; p < maxPagesToScan; p += 1) {
-          const res = await chatApi.getHistory(activeSessionId, p, pageSize);
+          const res = await chatApi.getHistory(activeSessionId, p, CHAT_HISTORY_PAGE_SIZE);
           if (cancelled) return;
-          const body = res?.data;
-          const page = body?.data ?? body;
-          const content = Array.isArray(page?.content)
-              ? page.content
-              : Array.isArray(page)
-                  ? page
-                  : [];
+          const { content, last } = parseChatHistoryResponse(res);
+          lastFetchedLast = last;
+          pagesScanned = p + 1;
 
           if (content.length === 0) break;
           aggregated.push(...content);
@@ -690,12 +779,14 @@ function ChatPageInner() {
             found = true;
             break;
           }
-          if (content.length < pageSize) break;
+          if (content.length < CHAT_HISTORY_PAGE_SIZE) break;
         }
 
         if (cancelled) return;
         const base = aggregated.length > 0 ? aggregated : [];
         setMessages([...base].reverse());
+        setNextHistoryPage(pagesScanned);
+        setHistoryHasMore(!lastFetchedLast);
 
         if (!found && import.meta.env.DEV) {
           console.warn('[Chat] target messageId not found in scanned history:', targetId);
@@ -779,11 +870,11 @@ function ChatPageInner() {
       const sidForHistory = msg?.sessionId || activeSessionId;
       if (sidForHistory) {
         try {
-          const hres = await chatApi.getHistory(sidForHistory, 0, 30);
-          const body = hres?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const hres = await chatApi.getHistory(sidForHistory, 0, CHAT_HISTORY_PAGE_SIZE);
+          const { content, last } = parseChatHistoryResponse(hres);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          setHistoryHasMore(!last);
+          setNextHistoryPage(1);
         } catch {
           setMessages([]);
         }
@@ -830,26 +921,25 @@ function ChatPageInner() {
     const mid = String(messageId);
     if (!sessionId || !mid) return false;
     if (messagesRef.current.some((m) => String(m?.id) === mid)) return true;
-    const pageSize = 30;
     const maxPages = 20;
     const aggregated = [];
+    let lastFetchedLast = true;
+    let pagesScanned = 0;
     try {
       for (let p = 0; p < maxPages; p += 1) {
-        const res = await chatApi.getHistory(sessionId, p, pageSize);
-        const body = res?.data;
-        const page = body?.data ?? body;
-        const content = Array.isArray(page?.content)
-            ? page.content
-            : Array.isArray(page)
-                ? page
-                : [];
+        const res = await chatApi.getHistory(sessionId, p, CHAT_HISTORY_PAGE_SIZE);
+        const { content, last } = parseChatHistoryResponse(res);
+        lastFetchedLast = last;
+        pagesScanned = p + 1;
         if (content.length === 0) break;
         aggregated.push(...content);
         if (content.some((m) => String(m?.id) === mid)) break;
-        if (content.length < pageSize) break;
+        if (content.length < CHAT_HISTORY_PAGE_SIZE) break;
       }
       if (aggregated.length === 0) return false;
       setMessages([...aggregated].reverse());
+      setNextHistoryPage(pagesScanned);
+      setHistoryHasMore(!lastFetchedLast);
       return aggregated.some((m) => String(m?.id) === mid);
     } catch {
       return false;
@@ -999,11 +1089,11 @@ function ChatPageInner() {
       const sidForHistory = msg?.sessionId || activeSessionId;
       if (sidForHistory) {
         try {
-          const hres = await chatApi.getHistory(sidForHistory, 0, 30);
-          const body = hres?.data;
-          const page = body?.data ?? body;
-          const content = page?.content ?? (Array.isArray(page) ? page : []);
+          const hres = await chatApi.getHistory(sidForHistory, 0, CHAT_HISTORY_PAGE_SIZE);
+          const { content, last } = parseChatHistoryResponse(hres);
           setMessages(Array.isArray(content) ? [...content].reverse() : []);
+          setHistoryHasMore(!last);
+          setNextHistoryPage(1);
         } catch {
           /* keep upserted */
         }
@@ -1211,7 +1301,8 @@ function ChatPageInner() {
       }
     }
     if (!finalizePickupTimeLocal) {
-      setFinalizePickupTimeLocal(toDatetimeLocal(new Date().toISOString()));
+      const d = new Date(Date.now() + 60 * 60 * 1000);
+      setFinalizePickupTimeLocal(toDatetimeLocal(d.toISOString()));
     }
     if (!finalizePickupLocationText) {
       const fromListing = fmtAddress(finalizeListing?.pickupAddress);
@@ -1275,7 +1366,16 @@ function ChatPageInner() {
   }, []);
 
   const sendDealConfirmation = useCallback(async () => {
-    if (!activeSessionId) return;
+    if (!activeSessionId) return false;
+    if (!finalizePickupTimeLocal || !String(finalizePickupTimeLocal).trim()) {
+      showToast('Vui lòng chọn thời gian nhận hàng.', 'warning');
+      return false;
+    }
+    const pickupMs = new Date(finalizePickupTimeLocal).getTime();
+    if (!Number.isFinite(pickupMs) || pickupMs <= Date.now()) {
+      showToast('Thời gian nhận hàng phải sau thời điểm hiện tại.', 'warning');
+      return false;
+    }
     const title = listingTitleForFinalize || (activeSession?.listingId ? `Tin #${activeSession.listingId}` : 'Tin đăng');
     const when = finalizePickupTimeLocal ? fmtDatetime(finalizePickupTimeLocal) : '—';
     const where =
@@ -1300,7 +1400,7 @@ function ChatPageInner() {
       const price = parseDealPriceNumber(dealPriceTextForConfirm);
       if (listingId == null || buyerId == null || !Number.isFinite(price)) {
         showToast('Thiếu thông tin để chốt đơn (tin / người mua / giá).', 'warning');
-        return;
+        return false;
       }
       let resolvedOfferId = null;
       const acceptedOffer = latestAcceptedOfferForConfirm;
@@ -1332,9 +1432,11 @@ function ChatPageInner() {
       fetchSessions();
       scrollToBottom('smooth');
       setNewOpponentMsgCount(0);
+      return true;
     } catch (err) {
       const detail = err?.response?.data?.message || err?.message || 'Lỗi không xác định';
       showToast(`Chốt đơn thất bại: ${detail}`, 'error');
+      return false;
     }
   }, [
     activeSession?.listingId,
@@ -1478,19 +1580,29 @@ function ChatPageInner() {
     if (listingClosedForBuyer) setOfferOpen(false);
   }, [listingClosedForBuyer]);
 
-  /** Người bán đã gửi tin chốt đơn (XÁC NHẬN GIAO DỊCH) và chưa bị hủy → người mua không trả giá thêm. */
+  /**
+   * Chặn nút trả giá khi còn tin chốt đơn đang chờ mua phản hồi hoặc mua đã chấp nhận.
+   * Đã hủy (CANCEL) hoặc phản hồi không phân loại (DONE) → không chặn (chỉ sau ACCEPT mới khóa lâu dài).
+   */
   const buyerBlockedByDealSeal = useMemo(() => {
     if (isSellerInActiveChat) return false;
     return displayMessages.some((m) => {
       if (m.messageType !== 'DEAL_CONFIRMATION') return false;
       const c = typeof m.content === 'string' ? m.content : '';
       if (!c.toUpperCase().includes('XÁC NHẬN GIAO DỊCH')) return false;
-      return m.dealDecision !== 'CANCEL';
+      if (m.dealDecision === 'CANCEL') return false;
+      if (m.dealDecision === 'ACCEPT') return true;
+      if (m.dealDecision == null) return true;
+      return false;
     });
   }, [displayMessages, isSellerInActiveChat]);
 
   const draftChatReady =
       Boolean(listingIdFromUrl) && Boolean(draftListing) && !draftListingError && !draftListingLoading;
+
+  const freeListingBuyerHint =
+      !isSellerInActiveChat && Boolean(activeSessionId || draftChatReady) && listingIsFreeOrGiveaway;
+
   const priceOfferDisabled =
       Boolean(activeSessionId || draftChatReady) &&
       (isSellerInActiveChat ||
@@ -1505,8 +1617,10 @@ function ChatPageInner() {
               : 'Tin đăng đã được bán'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
+          : freeListingBuyerHint
+              ? 'Hàng này free bạn nhé, không cần mặc cả đâu ^^'
           : buyerBlockedByDealSeal
-              ? 'Người bán đã chốt giao dịch — không gửi trả giá mới cho đến khi giao dịch bị hủy'
+              ? 'Đang chờ bạn Chấp nhận/Hủy giao dịch đã chốt, hoặc đã chấp nhận — không gửi trả giá mới'
               : hasOpenOfferAwaitingSeller
                   ? 'Đang có lượt trả giá chờ người bán — chờ chấp nhận hoặc từ chối rồi mới gửi lượt mới'
                   : 'Trả giá / đề xuất giá';
@@ -1528,6 +1642,16 @@ function ChatPageInner() {
     },
     [setSearchParams]
   );
+
+  /** MUI v5 + native picker: `inputProps.min` chặn chọn quá khứ; cập nhật theo mỗi lần render khi dialog mở. */
+  const minPickupDatetimeLocal = finalizeOpen ? toDatetimeLocal(new Date().toISOString()) : '';
+  const finalizePickupMs = finalizePickupTimeLocal
+      ? new Date(finalizePickupTimeLocal).getTime()
+      : NaN;
+  const finalizePickupIsFuture =
+      Boolean(finalizePickupTimeLocal?.trim()) &&
+      Number.isFinite(finalizePickupMs) &&
+      finalizePickupMs > Date.now();
 
   // ── render ────────────────────────────────────────────────────────────────
   const showConversationMobile = Boolean(activeSessionId || draftChatReady);
@@ -1668,8 +1792,11 @@ function ChatPageInner() {
                   <ChatMessagesPanel
                       theme={theme}
                       messagesScrollRef={messagesScrollRef}
+                      onScroll={handleMessagesScroll}
                       updateJumpToLatestVisibility={updateJumpToLatestVisibility}
                       historyLoading={historyLoading}
+                      loadingOlderHistory={loadingOlderHistory}
+                      historyHasMore={historyHasMore}
                       displayMessages={displayMessages}
                       currentUserId={currentUserId}
                       highlightedMessageId={highlightedMessageId}
@@ -1704,6 +1831,10 @@ function ChatPageInner() {
                       setOfferOpen={setOfferOpen}
                       priceOfferDisabled={priceOfferDisabled}
                       priceOfferTooltip={priceOfferTooltip}
+                      freeListingBuyerHint={freeListingBuyerHint}
+                      onFreeListingOfferHint={() =>
+                          showToast('Hàng này free bạn nhé, không cần mặc cả đâu ^^', 'info')
+                      }
                       suggestBtnRef={suggestBtnRef}
                       inputRef={inputRef}
                       inputText={inputText}
@@ -1914,7 +2045,22 @@ function ChatPageInner() {
                   size="small"
                   fullWidth
                   type="datetime-local"
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  InputLabelProps={{ shrink: true }}
+                  inputProps={
+                    minPickupDatetimeLocal
+                        ? { min: minPickupDatetimeLocal, step: 60 }
+                        : { step: 60 }
+                  }
+                  error={
+                    Boolean(finalizePickupTimeLocal?.trim()) &&
+                    (!Number.isFinite(finalizePickupMs) || finalizePickupMs <= Date.now())
+                  }
+                  helperText={
+                    finalizePickupTimeLocal?.trim() &&
+                    (!Number.isFinite(finalizePickupMs) || finalizePickupMs <= Date.now())
+                        ? 'Chọn thời gian sau thời điểm hiện tại — không dùng thời gian quá khứ.'
+                        : undefined
+                  }
                   sx={{
                     '& .MuiInputBase-root': {
                       backgroundColor: DEAL_UI.surface,
@@ -2030,6 +2176,7 @@ function ChatPageInner() {
             </Button>
             <Button
                 variant="contained"
+                disabled={!finalizePickupIsFuture || finalizeListingLoading}
                 sx={{
                   textTransform: 'none',
                   borderRadius: 2.5,
@@ -2049,8 +2196,8 @@ function ChatPageInner() {
                   },
                 }}
                 onClick={async () => {
-                  setFinalizeOpen(false);
-                  await sendDealConfirmation();
+                  const ok = await sendDealConfirmation();
+                  if (ok) setFinalizeOpen(false);
                 }}
             >
               Chốt đơn
