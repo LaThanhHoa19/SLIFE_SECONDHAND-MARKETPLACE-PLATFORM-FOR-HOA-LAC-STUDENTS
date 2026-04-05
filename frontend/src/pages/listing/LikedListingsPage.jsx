@@ -7,7 +7,7 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 import GridViewIcon from '@mui/icons-material/GridView';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ListingsFeed from '../../components/listing/ListingsFeed';
-import { getSavedListings } from '../../api/listingApi';
+import { getLikedListings } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 
 const UNAVAILABLE_STATUSES = new Set(['HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
@@ -45,7 +45,7 @@ export default function LikedListingsPage() {
         setIsLoading(true);
         setError('');
         try {
-            const res = await getSavedListings({ page: 0, size: 200 });
+            const res = await getLikedListings({ page: 0, size: 200 });
             const payload = unwrapApiData(res);
             const normalized = normalizeLikedList(payload);
             setData(normalized.data);
