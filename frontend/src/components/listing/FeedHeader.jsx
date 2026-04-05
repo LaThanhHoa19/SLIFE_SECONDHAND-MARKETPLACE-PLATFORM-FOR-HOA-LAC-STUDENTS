@@ -5,7 +5,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 
-export default function FeedHeader() {
+export default function FeedHeader({ feedType = 'NEWEST', onFeedTypeChange, onRefetch }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
     const handleClick = (event) => {
@@ -14,6 +14,15 @@ export default function FeedHeader() {
 
     const handleClose = () => {
         setAnchorEl(null);
+    };
+
+    const handleSelect = (type) => {
+        if (feedType === type && onRefetch) {
+            onRefetch();
+        } else {
+            onFeedTypeChange(type);
+        }
+        handleClose();
     };
 
     const open = Boolean(anchorEl);
@@ -43,7 +52,10 @@ export default function FeedHeader() {
                     }}
                 >
                     <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff' }}>
-                        Mới nhất
+                        {feedType === 'NEWEST' && 'Mới nhất'}
+                        {feedType === 'POPULAR' && 'Nổi bật'}
+                        {feedType === 'FOLLOWING' && 'Đang theo dõi'}
+                        {feedType === 'GIVEAWAY' && 'Trao tặng'}
                     </Typography>
                     <Box
                         sx={{
@@ -90,11 +102,26 @@ export default function FeedHeader() {
                 >
                     <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 
-                        <DropdownItem title="Mới nhất" rightIcon={<CheckIcon sx={{ fontSize: 20 }} />} />
-                        <DropdownItem title="Nổi bật" />
-                        <DropdownItem title="Đang theo dõi" />
-                        <DropdownItem title="Trao tặng" />
-
+                        <DropdownItem 
+                            title="Mới nhất" 
+                            rightIcon={feedType === 'NEWEST' ? <CheckIcon sx={{ fontSize: 20 }} /> : null} 
+                            onClick={() => handleSelect('NEWEST')} 
+                        />
+                        <DropdownItem 
+                            title="Nổi bật" 
+                            rightIcon={feedType === 'POPULAR' ? <CheckIcon sx={{ fontSize: 20 }} /> : null} 
+                            onClick={() => handleSelect('POPULAR')}
+                        />
+                        <DropdownItem 
+                            title="Đang theo dõi" 
+                            rightIcon={feedType === 'FOLLOWING' ? <CheckIcon sx={{ fontSize: 20 }} /> : null} 
+                            onClick={() => handleSelect('FOLLOWING')}
+                        />
+                        <DropdownItem 
+                            title="Trao tặng" 
+                            rightIcon={feedType === 'GIVEAWAY' ? <CheckIcon sx={{ fontSize: 20 }} /> : null} 
+                            onClick={() => handleSelect('GIVEAWAY')}
+                        />
 
                     </Box>
                 </Popover>
@@ -103,9 +130,10 @@ export default function FeedHeader() {
     );
 }
 
-function DropdownItem({ title, subtitle, rightIcon, rightContent }) {
+function DropdownItem({ title, subtitle, rightIcon, rightContent, onClick }) {
     return (
         <Box
+            onClick={onClick}
             sx={{
                 display: 'flex',
                 alignItems: 'center',

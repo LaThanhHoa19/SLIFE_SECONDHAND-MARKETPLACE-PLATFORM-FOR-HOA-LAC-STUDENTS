@@ -10,13 +10,15 @@ import useListings from '../../hooks/useListings';
 
 export default function ListingsPage() {
     const [searchParams] = useSearchParams();
-    const { data, isLoading, isLoadingMore, hasMore, loadMore, patchListing } = useListings({
+    const [feedType, setFeedType] = useState('NEWEST');
+    const { data, isLoading, isLoadingMore, hasMore, loadMore, patchListing, refetch } = useListings({
         q: searchParams.get('q') || '',
         category: searchParams.get('category') || '',
         location: searchParams.get('location') || '',
         condition: searchParams.get('condition') || '',
         sort: searchParams.get('sort') || 'createdAt,desc',
         size: 10,
+        feedType,
     });
 
     // IntersectionObserver sentinel for infinite scroll
@@ -52,7 +54,7 @@ export default function ListingsPage() {
         <Box sx={{ display: 'flex', gap: { xs: 2, lg: 3 }, p: 2, alignItems: 'flex-start', maxWidth: 1040, mx: 'auto', width: '100%', justifyContent: 'center' }}>
             {/* Feed chính */}
             <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 400 }, maxWidth: 680, display: 'flex', flexDirection: 'column' }}>
-                <FeedHeader />
+                <FeedHeader feedType={feedType} onFeedTypeChange={setFeedType} onRefetch={refetch} />
                 <ListingsFeed listings={data} isLoading={isLoading} onPatchListing={patchListing} />
 
                 {/* Infinite scroll sentinel */}

@@ -169,7 +169,10 @@ public class ListingService {
             int size,
             User currentUser,
             Long sellerId,
-            boolean prioritizeFollowing) {
+            boolean prioritizeFollowing,
+            String feedType) {
+        
+        // Mặc định Mới nhất: sắp xếp theo createdAt DESC
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,

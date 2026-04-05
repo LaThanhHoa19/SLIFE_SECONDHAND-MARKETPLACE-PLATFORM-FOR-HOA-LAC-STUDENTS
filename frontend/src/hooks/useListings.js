@@ -117,11 +117,13 @@ export default function useListings(initialParams = {}) {
                 condition: initialParams?.condition ?? prev.condition,
                 minPrice: initialParams?.minPrice ?? prev.minPrice,
                 maxPrice: initialParams?.maxPrice ?? prev.maxPrice,
+                feedType: initialParams?.feedType ?? prev.feedType,
             };
             const same =
                 next.size === prev.size && next.category === prev.category &&
                 next.location === prev.location && next.sort === prev.sort && next.q === prev.q &&
-                next.condition === prev.condition && next.minPrice === prev.minPrice && next.maxPrice === prev.maxPrice;
+                next.condition === prev.condition && next.minPrice === prev.minPrice && next.maxPrice === prev.maxPrice &&
+                next.feedType === prev.feedType;
             return same ? prev : next;
         });
     }, [
@@ -133,6 +135,7 @@ export default function useListings(initialParams = {}) {
         initialParams?.condition,
         initialParams?.minPrice,
         initialParams?.maxPrice,
+        initialParams?.feedType,
     ]);
 
     const fetchData = useCallback(async (currentParams, query, append = false) => {
@@ -232,6 +235,7 @@ export default function useListings(initialParams = {}) {
         params.condition,
         params.minPrice,
         params.maxPrice,
+        params.feedType,
         debouncedQuery,
         fetchData,
     ]);
