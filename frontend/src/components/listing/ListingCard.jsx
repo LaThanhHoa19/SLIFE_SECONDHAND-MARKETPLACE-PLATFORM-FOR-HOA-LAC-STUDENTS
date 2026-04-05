@@ -144,6 +144,7 @@ export default function ListingCard({
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const id = listing?.id ?? listing?.listingId ?? listing?.listing_id;
+    const isSavedPage = location.pathname.startsWith('/saved');
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
     const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
@@ -359,6 +360,31 @@ export default function ListingCard({
         setReportOpen(true);
     };
 
+    const handleUnsaveFromMenu = async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleMoreClose();
+        if (!id || saveSubmitting || !isSavedPage) return;
+        if (!token) {
+            showToast('Bạn cần đăng nhập để tiếp tục.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        const wasSaved = isSaved;
+        setIsSaved(false);
+        setSaveSubmitting(true);
+        try {
+            await unsaveListing(id);
+            onPatchListing?.(id, { isSaved: false });
+            showToast('Đã bỏ lưu tin.', 'success');
+        } catch {
+            setIsSaved(wasSaved);
+            showToast('Không cập nhật được trạng thái lưu.', 'error');
+        } finally {
+            setSaveSubmitting(false);
+        }
+    };
+
     const conditionText = getConditionText(listing);
     const locationText = getLocationText(listing);
     const showFollowBtn = sellerId && !isMe;
@@ -389,11 +415,11 @@ export default function ListingCard({
                                 to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
                                 src={fullImageUrl(seller?.avatarUrl)}
                                 alt={seller?.fullName || 'seller'}
-                                sx={{ 
-                                    width: 44, 
-                                    height: 44, 
-                                    cursor: isUnavailable ? 'default' : 'pointer', 
-                                    textDecoration: 'none', 
+                                sx={{
+                                    width: 44,
+                                    height: 44,
+                                    cursor: isUnavailable ? 'default' : 'pointer',
+                                    textDecoration: 'none',
                                     bgcolor: '#9D6EED', // Màu Tím Slife
                                     border: '1px solid rgba(255,255,255,0.1)'
                                 }}
@@ -762,7 +788,7 @@ export default function ListingCard({
                             </Box>
                         </Tooltip>
 
-                        {/* Bookmark (Moved to right) */}
+                        {/* Bookmark */}
                         <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
                             <IconButton
                                 size="small"
@@ -805,6 +831,14 @@ export default function ListingCard({
                             }
                         }}
                     >
+                        {isSavedPage && isSaved && (
+                            <MenuItem onClick={handleUnsaveFromMenu} disabled={saveSubmitting}>
+                                <ListItemIcon sx={{ color: '#E9D5FF', minWidth: '32px !important' }}>
+                                    <BookmarkIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText primary="Bỏ lưu" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
+                            </MenuItem>
+                        )}
                         <MenuItem onClick={handleReportClick}>
                             <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
                                 <ReportIcon fontSize="small" />

@@ -26,6 +26,8 @@ export const saveListing = (id) => axiosClient.post(`/api/listings/${id}/save`);
 export const unsaveListing = (id) => axiosClient.delete(`/api/listings/${id}/save`);
 export const getSavedListings = (params = {}) =>
     axiosClient.get('/api/me/saved-listings', { params: sanitizeQueryParams(params) });
+export const getLikedListings = (params = {}) =>
+    axiosClient.get('/api/me/liked-listings', { params: sanitizeQueryParams(params) });
 export const createListing = (payload) => axiosClient.post('/api/listings', payload);
 /** Tạo tin + ảnh một lần (multipart) — đồng bộ với BE transaction, tránh tin đã tạo khi upload lỗi. */
 export const createListingWithImages = (payload, imageFiles = []) => {
