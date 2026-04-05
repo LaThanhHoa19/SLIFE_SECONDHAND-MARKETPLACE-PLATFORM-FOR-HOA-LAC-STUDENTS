@@ -33,7 +33,9 @@ import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { uiTokens } from '../../theme/uiTokens';
+
 
 const HEADER_BG = uiTokens.colors.surface.appHeader;
 const ACCENT = uiTokens.colors.brand.textSoft;
@@ -162,6 +164,8 @@ export default function Header({ onToggleSidebar }) {
     const [searchValue, setSearchValue] = useState('');
     const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+    const { checkVerification } = usePhoneVerification();
+
     const userAvatar = user?.avatarUrl || user?.avatar || '';
 
     const handleSearch = (e) => {
@@ -192,8 +196,10 @@ export default function Header({ onToggleSidebar }) {
             });
             return;
         }
-        navigate('/listings/new');
+
+        checkVerification(() => navigate('/listings/new'));
     };
+
 
     const handleUserMenuOpen = (e) => {
         setUserMenuAnchor(e.currentTarget);
@@ -467,3 +473,5 @@ export default function Header({ onToggleSidebar }) {
         </AppBar>
     );
 }
+
+
