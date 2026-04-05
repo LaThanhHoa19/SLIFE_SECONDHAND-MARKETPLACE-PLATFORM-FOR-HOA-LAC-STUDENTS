@@ -256,6 +256,15 @@ public class ChatService {
                     String oe = other.getEmail() != null ? other.getEmail().trim().toLowerCase() : "";
                     return oe.isEmpty() || !oe.equals(currentEmail);
                 })
+                .filter(c -> {
+                    User u1 = c.getUserId1();
+                    User u2 = c.getUserId2();
+                    User other = isCurrentParticipant(u1, user) ? u2 : u1;
+                    if (other == null || other.getId() == null) {
+                        return true;
+                    }
+                    return !blockService.isBlockedEitherDirection(user.getId(), other.getId());
+                })
                 .collect(Collectors.toList());
     }
 
@@ -305,6 +314,7 @@ public class ChatService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         User current = userService.getCurrentUser();
         ensureParticipant(conv, current);
+        assertNoBlockWithConversationPeer(conv, current);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sentAt"));
         Page<Message> msgPage = messageRepository.findByConversation_IdOrderBySentAtDesc(conv.getId(), pageable);
         Map<Long, Offer> offerByMessageId = mapOfferProposalsToOffers(msgPage.getContent(), conv);
@@ -334,6 +344,7 @@ public class ChatService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         User current = userService.getCurrentUser();
         ensureParticipant(conv, current);
+        assertNoBlockWithConversationPeer(conv, current);
         int safeSize = Math.min(30, Math.max(5, size));
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "sentAt"));
         Page<Message> msgPage = messageRepository
@@ -660,6 +671,7 @@ public class ChatService {
         Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, reader);
+        assertNoBlockWithConversationPeer(conv, reader);
         int updated = messageRepository.markAllReadInConversation(conv.getId(), reader.getId());
         if (updated > 0) {
             log.debug("markSessionAsRead session={} reader={} updated={}", sessionId, reader.getId(), updated);
@@ -704,6 +716,14 @@ public class ChatService {
         if (blockService.isBlockedEitherDirection(a.getId(), b.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN, "Chat is blocked between these users");
         }
+    }
+
+    private void assertNoBlockWithConversationPeer(Conversation conv, User current) {
+        User other = getOtherParticipant(conv, current);
+        if (other == null || other.getId() == null) {
+            return;
+        }
+        assertNoBlockBetween(current, other);
     }
 
     private Message resolveReferenceMessage(Long refId, Conversation conv) {

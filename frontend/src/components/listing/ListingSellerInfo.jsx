@@ -1,8 +1,8 @@
-import { Avatar, Box, Button, Chip, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
-import StarIcon from '@mui/icons-material/Star';
+import { Avatar, Box, Button, CircularProgress, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import PersonIcon from '@mui/icons-material/Person';
+import BlockIcon from '@mui/icons-material/Block';
 import { useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 
@@ -18,11 +18,13 @@ export default function ListingSellerInfo({
                                               isFollowed,
                                               followLoading,
                                               onFollowClick,
+                                              showBlock = false,
+                                              onBlockClick,
                                           }) {
     const navigate = useNavigate();
 
     const handleNavigateProfile = () => {
-        const targetId = sellerId ?? seller?.id;
+        const targetId = sellerId ?? seller?.id ?? seller?.userId;
         if (!targetId) return;
         const currentUserData = localStorage.getItem('user');
         const currentUser = currentUserData ? JSON.parse(currentUserData) : null;
@@ -134,34 +136,73 @@ export default function ListingSellerInfo({
                     </Box>
 
                     {/* View Profile Button - Compact pill like Cho Tot */}
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={handleNavigateProfile}
+                    <Box
                         sx={{
-                            color: TEXT_PRI,
-                            borderColor: 'rgba(255,255,255,0.15)',
-                            textTransform: 'none',
-                            fontSize: 13,
-                            fontWeight: 800,
-                            borderRadius: '24px',
-                            px: 2.5,
-                            height: 34,
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                                bgcolor: 'rgba(255,255,255,0.08)',
-                                borderColor: PURPLE,
-                                color: PURPLE,
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                transform: 'translateY(-1px)'
-                            },
-                            '&:active': {
-                                transform: 'translateY(0)'
-                            }
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: 0.75,
+                            flexShrink: 0,
+                            flexWrap: 'wrap',
                         }}
                     >
-                        Xem trang
-                    </Button>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={handleNavigateProfile}
+                            sx={{
+                                color: TEXT_PRI,
+                                borderColor: 'rgba(255,255,255,0.15)',
+                                textTransform: 'none',
+                                fontSize: 13,
+                                fontWeight: 800,
+                                borderRadius: '24px',
+                                px: 2.5,
+                                height: 34,
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    bgcolor: 'rgba(255,255,255,0.08)',
+                                    borderColor: PURPLE,
+                                    color: PURPLE,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    transform: 'translateY(-1px)'
+                                },
+                                '&:active': {
+                                    transform: 'translateY(0)'
+                                }
+                            }}
+                        >
+                            Xem trang
+                        </Button>
+                        {showBlock && typeof onBlockClick === 'function' && (
+                            <Tooltip title="Hai bên sẽ không còn thấy tin và nhắn tin với nhau">
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => onBlockClick()}
+                                    startIcon={<BlockIcon sx={{ fontSize: 18 }} />}
+                                    aria-label="Chặn người bán"
+                                    sx={{
+                                        color: 'rgba(255,255,255,0.88)',
+                                        borderColor: 'rgba(255,255,255,0.18)',
+                                        textTransform: 'none',
+                                        fontSize: 13,
+                                        fontWeight: 800,
+                                        borderRadius: '24px',
+                                        px: 1.75,
+                                        height: 34,
+                                        '&:hover': {
+                                            borderColor: 'rgba(255,71,87,0.55)',
+                                            color: '#ffb3b8',
+                                            bgcolor: 'rgba(255,71,87,0.08)',
+                                        },
+                                    }}
+                                >
+                                    Chặn
+                                </Button>
+                            </Tooltip>
+                        )}
+                    </Box>
                 </Box>
             </Box>
         </Box>

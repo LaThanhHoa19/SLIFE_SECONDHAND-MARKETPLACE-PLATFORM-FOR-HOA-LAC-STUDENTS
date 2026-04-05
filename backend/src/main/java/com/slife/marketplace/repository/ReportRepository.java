@@ -54,4 +54,16 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     Page<Report> findAdminReportsOther(@Param("status") String status, Pageable pageable);
 
     long countByTargetTypeAndTargetIdAndStatus(String targetType, Long targetId, String status);
+
+    long countByStatus(String status);
+
+    /** Số báo cáo mới mỗi ngày trong N ngày gần nhất. */
+    @Query(value = """
+            SELECT DATE(r.created_at) AS day, COUNT(*) AS cnt
+            FROM reports r
+            WHERE r.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+            GROUP BY DATE(r.created_at)
+            ORDER BY day ASC
+            """, nativeQuery = true)
+    java.util.List<Object[]> countReportsByDayLast(@Param("days") int days);
 }

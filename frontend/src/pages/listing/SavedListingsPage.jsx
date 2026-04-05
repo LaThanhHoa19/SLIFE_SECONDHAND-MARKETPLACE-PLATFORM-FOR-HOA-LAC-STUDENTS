@@ -81,6 +81,15 @@ export default function SavedListingsPage() {
 
     const patchListing = useCallback((listingId, patch) => {
         if (listingId == null || !patch || typeof patch !== 'object') return;
+        if (patch.removeFromList === true) {
+            setData((prev) =>
+                prev.filter((item) => {
+                    const lid = item?.id ?? item?.listingId ?? item?.listing_id;
+                    return lid == null || String(lid) !== String(listingId);
+                }),
+            );
+            return;
+        }
         setData((prev) =>
             prev
                 .map((item) => {

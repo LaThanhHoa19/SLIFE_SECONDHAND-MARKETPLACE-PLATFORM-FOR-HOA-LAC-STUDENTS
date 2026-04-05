@@ -45,6 +45,8 @@ import {
   buyerRejectPendingDeal,
 } from '../../api/dealApi';
 import { useToast } from '../../context/ToastContext';
+import { useBlockActions } from '../../hooks/useBlockActions';
+import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDialog';
 import { fullImageUrl } from '../../utils/constants';
 import ChatSidebar from './components/ChatSidebar';
 import ListingContextBanner from './components/ListingContextBanner';
@@ -78,6 +80,7 @@ function ChatPageInner() {
   const navigate = useNavigate();
   const { user: currentUser, token: authToken } = useAuth();
   const { showToast } = useToast();
+  const { blockUserById } = useBlockActions();
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionIdFromUrl = searchParams.get('sessionId');
   const messageIdFromUrl = searchParams.get('messageId');
@@ -96,6 +99,7 @@ function ChatPageInner() {
   const [nextHistoryPage, setNextHistoryPage] = useState(1);
   const [loadingOlderHistory, setLoadingOlderHistory] = useState(false);
   const [inChatSearchOpen, setInChatSearchOpen] = useState(false);
+  const [chatBlockDialogOpen, setChatBlockDialogOpen] = useState(false);
   const [bubbleSearchHighlight, setBubbleSearchHighlight] = useState(null);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
@@ -604,6 +608,23 @@ function ChatPageInner() {
   const isSellerInActiveChat = useMemo(() => {
     if (!activeSession || currentUserId == null) return false;
     return Number(activeSession.sellerId) === Number(currentUserId);
+  }, [activeSession, currentUserId]);
+
+  /** Đối phương trong phiên (để chặn) — gồm cả draft chat từ listingId. */
+  const chatBlockTargetUserId = useMemo(() => {
+    if (!activeSession || currentUserId == null) return null;
+    const me = Number(currentUserId);
+    const bid = activeSession.buyerId != null ? Number(activeSession.buyerId) : NaN;
+    const sid = activeSession.sellerId != null ? Number(activeSession.sellerId) : NaN;
+    if (!Number.isFinite(me)) return null;
+    const isDraft = !activeSession.sessionId || activeSession.status === 'DRAFT';
+    if (isDraft) {
+      if (Number.isFinite(sid) && sid !== me) return sid;
+      return null;
+    }
+    if (Number.isFinite(bid) && bid === me && Number.isFinite(sid)) return sid;
+    if (Number.isFinite(sid) && sid === me && Number.isFinite(bid)) return bid;
+    return null;
   }, [activeSession, currentUserId]);
 
   const hydrateSessionFromFirstMessage = useCallback(
@@ -1771,6 +1792,8 @@ function ChatPageInner() {
                       wsConnected={wsConnected}
                       showInChatSearch={Boolean(activeSessionId)}
                       onOpenInChatSearch={() => setInChatSearchOpen(true)}
+                      showBlockUser={chatBlockTargetUserId != null}
+                      onOpenBlockUser={() => setChatBlockDialogOpen(true)}
                   />
 
                   {/* Tin đang trao đổi (giống banner chợ) */}
@@ -1887,6 +1910,20 @@ function ChatPageInner() {
             onClose={() => setInChatSearchOpen(false)}
             sessionId={activeSessionId}
             onPickMessage={handleInChatSearchPick}
+        />
+
+        <BlockUserConfirmDialog
+            open={chatBlockDialogOpen}
+            onClose={() => setChatBlockDialogOpen(false)}
+            displayName={activeSession?.otherParticipantName || 'Người dùng'}
+            onConfirm={() =>
+                chatBlockTargetUserId
+                    ? blockUserById(chatBlockTargetUserId).then(() => {
+                        setActiveSessionId(null);
+                        fetchSessions();
+                      })
+                    : Promise.resolve()
+            }
         />
 
         <OfferDialog

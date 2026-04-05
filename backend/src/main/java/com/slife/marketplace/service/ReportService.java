@@ -12,6 +12,8 @@ import com.slife.marketplace.dto.request.ReportRequest;
 import com.slife.marketplace.dto.response.ReportResponse;
 import com.slife.marketplace.dto.response.ReportResponseDTO;
 import com.slife.marketplace.entity.Comment;
+import com.slife.marketplace.entity.CommunityPost;
+import com.slife.marketplace.entity.CommunityPostComment;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.Message;
 import com.slife.marketplace.entity.Report;
@@ -20,6 +22,8 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommentRepository;
+import com.slife.marketplace.repository.CommunityPostCommentRepository;
+import com.slife.marketplace.repository.CommunityPostRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.MessageRepository;
 import com.slife.marketplace.repository.ReportImageRepository;
@@ -42,7 +46,9 @@ import java.util.Set;
 public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
-    private static final Set<String> VALID_TARGET_TYPES = Set.of("LISTING", "POST", "USER", "COMMENT", "MESSAGE");
+    private static final Set<String> VALID_TARGET_TYPES = Set.of(
+            "LISTING", "POST", "USER", "COMMENT", "MESSAGE",
+            "COMMUNITY_POST", "COMMUNITY_POST_COMMENT");
     private static final Set<String> VALID_MODERATION_ACTIONS = Set.of("HIDE_LISTING_APPROVE", "BAN_USER_APPROVE");
     private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
@@ -53,6 +59,8 @@ public class ReportService {
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+    private final CommunityPostRepository communityPostRepository;
+    private final CommunityPostCommentRepository communityPostCommentRepository;
     private final MessageRepository messageRepository;
     private final NotificationService notificationService;
     private final ConfigService configService;
@@ -63,6 +71,8 @@ public class ReportService {
                          ListingRepository listingRepository,
                          UserRepository userRepository,
                          CommentRepository commentRepository,
+                         CommunityPostRepository communityPostRepository,
+                         CommunityPostCommentRepository communityPostCommentRepository,
                          MessageRepository messageRepository,
                          NotificationService notificationService,
                          ConfigService configService,
@@ -72,6 +82,8 @@ public class ReportService {
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
+        this.communityPostRepository = communityPostRepository;
+        this.communityPostCommentRepository = communityPostCommentRepository;
         this.messageRepository = messageRepository;
         this.notificationService = notificationService;
         this.configService = configService;
@@ -97,6 +109,8 @@ public class ReportService {
             case "USER" -> createUserReport(reporter, request, targetType);
             case "COMMENT" -> createCommentReport(reporter, request, targetType);
             case "MESSAGE" -> createMessageReport(reporter, request, targetType);
+            case "COMMUNITY_POST" -> createCommunityPostReport(reporter, request, targetType);
+            case "COMMUNITY_POST_COMMENT" -> createCommunityPostCommentReport(reporter, request, targetType);
             default -> throw new SlifeException(ErrorCode.REPORT_INVALID_TARGET);
         };
     }
@@ -234,6 +248,36 @@ public class ReportService {
         Long listingId = comment.getListing() != null ? comment.getListing().getId() : null;
         log.info("Comment report created: reportId={} commentId={} listingId={} by userId={}",
                 saved.getId(), comment.getId(), listingId, reporter.getId());
+        return ReportResponse.from(saved);
+    }
+
+    private ReportResponse createCommunityPostReport(User reporter, ReportRequest request, String targetType) {
+        CommunityPost post = communityPostRepository.findById(request.getTargetId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
+        if (post.getAuthor() != null && post.getAuthor().getId().equals(reporter.getId())) {
+            throw new SlifeException(ErrorCode.REPORT_SELF);
+        }
+        Report report = buildReport(reporter, targetType, request);
+        Report saved = persistReportWithEvidence(report, request.getEvidenceImage());
+        log.info("Community post report created: reportId={} postId={} by userId={}",
+                saved.getId(), post.getId(), reporter.getId());
+        maybeAutoHideAfterReport("COMMUNITY_POST", post.getId());
+        return ReportResponse.from(saved);
+    }
+
+    private ReportResponse createCommunityPostCommentReport(User reporter, ReportRequest request, String targetType) {
+        CommunityPostComment comment = communityPostCommentRepository.findById(request.getTargetId())
+                .orElseThrow(() -> new SlifeException(ErrorCode.COMMUNITY_POST_COMMENT_NOT_FOUND));
+        if (comment.getUser() != null && comment.getUser().getId() != null
+                && comment.getUser().getId().equals(reporter.getId())) {
+            throw new SlifeException(ErrorCode.REPORT_SELF);
+        }
+        Report report = buildReport(reporter, targetType, request);
+        Report saved = persistReportWithEvidence(report, request.getEvidenceImage());
+        Long postId = comment.getPost() != null ? comment.getPost().getId() : null;
+        log.info("Community post comment report created: reportId={} commentId={} postId={} by userId={}",
+                saved.getId(), comment.getId(), postId, reporter.getId());
+        maybeAutoHideAfterReport("COMMUNITY_POST_COMMENT", comment.getId());
         return ReportResponse.from(saved);
     }
 
@@ -464,6 +508,22 @@ public class ReportService {
                         .map(u -> new TargetContext(u.getFullName(), null, null, u.getAvatarUrl()))
                         .orElse(new TargetContext("[User not found]", null, null, null));
             }
+            if ("COMMUNITY_POST".equals(targetType)) {
+                return communityPostRepository.findById(targetId)
+                        .map(p -> new TargetContext(truncate(p.getTitle(), 120), p.getId(), null, null))
+                        .orElse(new TargetContext("[Community post not found]", null, null, null));
+            }
+            if ("COMMUNITY_POST_COMMENT".equals(targetType)) {
+                return communityPostCommentRepository.findById(targetId)
+                        .map(c -> {
+                            Long postId = c.getPost() != null ? c.getPost().getId() : null;
+                            String preview = (c.getContent() == null || c.getContent().isBlank())
+                                    ? "[Image-only comment]"
+                                    : truncate(c.getContent(), 120);
+                            return new TargetContext(preview, postId, null, null);
+                        })
+                        .orElse(new TargetContext("[Community comment not found]", null, null, null));
+            }
         } catch (Exception ex) {
             log.warn("resolveTargetContext failed reportId={} type={} targetId={}: {}",
                     report.getId(), targetType, targetId, ex.getMessage());
@@ -523,6 +583,32 @@ public class ReportService {
                 commentRepository.save(comment);
                 auditLogService.logAutoHideComment(targetId, (int) pending, threshold);
                 log.warn("Comment auto-hidden by report count. commentId={}, pendingReports={}, threshold={}",
+                        targetId, pending, threshold);
+            });
+            return;
+        }
+        if ("COMMUNITY_POST".equals(targetType)) {
+            communityPostRepository.findById(targetId).ifPresent(post -> {
+                if (post.getHiddenAt() != null) {
+                    return;
+                }
+                post.setHiddenAt(Instant.now());
+                post.setUpdatedAt(Instant.now());
+                communityPostRepository.save(post);
+                log.warn("Community post auto-hidden by report count. postId={}, pendingReports={}, threshold={}",
+                        targetId, pending, threshold);
+            });
+            return;
+        }
+        if ("COMMUNITY_POST_COMMENT".equals(targetType)) {
+            communityPostCommentRepository.findById(targetId).ifPresent(comment -> {
+                if (comment.getHiddenAt() != null) {
+                    return;
+                }
+                comment.setHiddenAt(Instant.now());
+                comment.setUpdatedAt(Instant.now());
+                communityPostCommentRepository.save(comment);
+                log.warn("Community post comment auto-hidden by report count. commentId={}, pendingReports={}, threshold={}",
                         targetId, pending, threshold);
             });
         }

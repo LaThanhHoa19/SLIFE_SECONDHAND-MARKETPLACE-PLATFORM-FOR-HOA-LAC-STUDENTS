@@ -41,19 +41,22 @@ public class OfferService {
     private final DealRepository dealRepository;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final BlockService blockService;
 
     public OfferService(OfferRepository offerRepository,
                         ListingRepository listingRepository,
                         ConversationRepository conversationRepository,
                         DealRepository dealRepository,
                         UserService userService,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        BlockService blockService) {
         this.offerRepository = offerRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
         this.dealRepository = dealRepository;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.blockService = blockService;
     }
 
     /**
@@ -79,6 +82,10 @@ public class OfferService {
         }
         if (listing.getSeller() != null && listing.getSeller().getId().equals(buyer.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Người bán không thể trả giá cho bài đăng của chính mình");
+        }
+        if (listing.getSeller() != null && listing.getSeller().getId() != null
+                && blockService.isBlockedEitherDirection(buyer.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
         }
 
         BigDecimal proposed = request.getProposedPrice();
@@ -189,6 +196,10 @@ public class OfferService {
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
         boolean isSeller = listing.getSeller() != null && listing.getSeller().getId().equals(currentUser.getId());
+        if (listing.getSeller() != null && listing.getSeller().getId() != null && !isSeller
+                && blockService.isBlockedEitherDirection(currentUser.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
 
         Long effectiveBuyerId = buyerId;
         if (!isSeller) {
@@ -240,6 +251,9 @@ public class OfferService {
         if (listing.getSeller().getId().equals(current.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Người bán không thể trả giá cho bài đăng của chính mình");
         }
+        if (blockService.isBlockedEitherDirection(current.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
+        }
         long pendingOffers = offerRepository.countByBuyer_IdAndListing_IdAndStatus(
                 current.getId(), listing.getId(), STATUS_PENDING);
         if (pendingOffers > 0) {
@@ -270,6 +284,11 @@ public class OfferService {
         if (!STATUS_PENDING.equals(offer.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer is not pending");
         }
+        User buyerUser = offer.getBuyer();
+        if (buyerUser != null && buyerUser.getId() != null
+                && blockService.isBlockedEitherDirection(current.getId(), buyerUser.getId())) {
+            throw new SlifeException(ErrorCode.OFFER_NOT_FOUND);
+        }
         offer.setStatus(STATUS_ACCEPTED);
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
@@ -298,7 +317,11 @@ public class OfferService {
         int safeSize = Math.min(50, Math.max(1, size));
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Offer> offerPage = offerRepository.findByListing_IdOrderByCreatedAtDesc(listingId, pageable);
-        List<OfferResponse> content = offerPage.getContent().stream().map(this::toResponse).toList();
+        List<OfferResponse> content = offerPage.getContent().stream()
+                .filter(o -> o.getBuyer() == null || o.getBuyer().getId() == null
+                        || !blockService.isBlockedEitherDirection(currentUser.getId(), o.getBuyer().getId()))
+                .map(this::toResponse)
+                .toList();
         return new PagedResponse<>(
                 content,
                 offerPage.getNumber(),
@@ -321,6 +344,11 @@ public class OfferService {
 
         if (!STATUS_PENDING.equals(offer.getStatus())) {
             throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
+        }
+        User offerBuyer = offer.getBuyer();
+        if (offerBuyer != null && offerBuyer.getId() != null
+                && blockService.isBlockedEitherDirection(currentUser.getId(), offerBuyer.getId())) {
+            throw new SlifeException(ErrorCode.OFFER_NOT_FOUND);
         }
 
         Instant now = Instant.now();
@@ -375,6 +403,11 @@ public class OfferService {
 
         if (!STATUS_PENDING.equals(offer.getStatus())) {
             throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
+        }
+        User offerBuyerReject = offer.getBuyer();
+        if (offerBuyerReject != null && offerBuyerReject.getId() != null
+                && blockService.isBlockedEitherDirection(currentUser.getId(), offerBuyerReject.getId())) {
+            throw new SlifeException(ErrorCode.OFFER_NOT_FOUND);
         }
 
         offer.setStatus(STATUS_REJECTED);
