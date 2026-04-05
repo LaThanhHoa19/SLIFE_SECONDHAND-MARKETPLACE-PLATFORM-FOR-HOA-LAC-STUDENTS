@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -33,4 +35,19 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             ORDER BY day ASC
             """, nativeQuery = true)
     List<Object[]> countDealsByDayLast(@Param("days") int days);
+
+    /**
+     * Deal có giờ giao, chưa gửi nhắc, pickup trong khoảng [lower, upper] (tính theo mốc "còn ~3 giờ").
+     */
+    @EntityGraph(attributePaths = {"listing", "listing.seller", "proposedBy"})
+    @Query("""
+            SELECT d FROM Deal d
+            WHERE d.deletedAt IS NULL
+              AND d.reminderSent = false
+              AND d.pickupTime IS NOT NULL
+              AND d.status IN ('PENDING', 'CONFIRMED')
+              AND d.pickupTime >= :lower
+              AND d.pickupTime <= :upper
+            """)
+    List<Deal> findDealsForPickupReminder(@Param("lower") LocalDateTime lower, @Param("upper") LocalDateTime upper);
 }

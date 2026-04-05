@@ -74,3 +74,15 @@ curl -k https://<server-domain>/actuator/health
 - Dùng firewall (UFW/security group) chỉ mở 80/443.
 - Backup volume `mysql_data` định kỳ.
 - Cập nhật image theo chu kỳ bảo mật.
+
+### Windows PowerShell + `docker compose`
+
+Docker ghi progress ra **stderr**; PowerShell có thể hiện dòng đỏ `NativeCommandError` dù **build vẫn thành công** (exit code 0). Có thể bỏ qua hoặc chạy qua **cmd**: `cmd /c "docker compose -f docker-compose.dev.yml build backend"`.
+
+### `deploy/.env` (không commit)
+
+Sau `cp .env.example .env`, tạo file `deploy/.env` local. Repo đã `.gitignore` file này.
+
+### Mail dev (HTTP relay)
+
+Profile **dev** tắt `management.health.mail.enabled` để không kiểm tra SMTP khi mail đi qua Cloud Function hoặc chưa cấu hình `SPRING_MAIL_*`.

@@ -12,4 +12,12 @@ frontend/dist/
 
 cleanup_data.sql
 
+# Chứa secret thật — không bao giờ commit (dùng deploy/.env.example làm mẫu).
+deploy/.env
+
+firebase/functions/node_modules/
+firebase/functions/.env
+firebase/functions/.env.*
+!firebase/functions/.env.example
+
 AGENTS.md

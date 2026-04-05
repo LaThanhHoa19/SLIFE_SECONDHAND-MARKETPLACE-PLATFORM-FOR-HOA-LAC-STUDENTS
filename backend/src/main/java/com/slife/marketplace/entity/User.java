@@ -92,6 +92,10 @@ public class User {
     @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
     private LocalDateTime updatedAt;
 
+    /** Thời điểm đã gửi email chào mừng (Google SSO lần đầu). */
+    @Column(name = "welcome_email_sent_at", columnDefinition = "DATETIME(6)")
+    private LocalDateTime welcomeEmailSentAt;
+
     @Column(name = "deleted_at", columnDefinition = "DATETIME")
     private LocalDateTime deletedAt;
 

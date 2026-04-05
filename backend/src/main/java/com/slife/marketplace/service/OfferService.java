@@ -41,6 +41,7 @@ public class OfferService {
     private final DealRepository dealRepository;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final SystemEmailService systemEmailService;
     private final BlockService blockService;
 
     public OfferService(OfferRepository offerRepository,
@@ -49,6 +50,7 @@ public class OfferService {
                         DealRepository dealRepository,
                         UserService userService,
                         NotificationService notificationService,
+                        SystemEmailService systemEmailService,
                         BlockService blockService) {
         this.offerRepository = offerRepository;
         this.listingRepository = listingRepository;
@@ -56,6 +58,7 @@ public class OfferService {
         this.dealRepository = dealRepository;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.systemEmailService = systemEmailService;
         this.blockService = blockService;
     }
 
@@ -117,6 +120,8 @@ public class OfferService {
         if (listing.getSeller() != null) {
             notificationService.notifyOfferProposal(listing.getSeller(), buyer, listing.getId(),
                     listing.getTitle(), proposed);
+            systemEmailService.sendOfferProposalEmail(
+                    listing.getSeller(), emailDisplayName(buyer), listing.getTitle(), listing.getId(), proposed);
         }
         return toResponse(saved);
     }
@@ -300,7 +305,16 @@ public class OfferService {
         deal.setOffer(offer);
         deal.setOfferedPrice(offer.getAmount());
         deal.setStatus("PENDING");
-        return dealRepository.save(deal);
+        Deal savedDeal = dealRepository.save(deal);
+        Listing listing = offer.getListing();
+        Long convId = savedDeal.getConversation() != null ? savedDeal.getConversation().getId() : null;
+        if (listing != null && buyerUser != null && listing.getSeller() != null) {
+            notificationService.notifyDealConfirmed(
+                    buyerUser, listing.getSeller(), listing.getId(), listing.getTitle(), convId);
+            systemEmailService.sendOfferAcceptedEmails(
+                    buyerUser, listing.getSeller(), listing.getTitle(), listing.getId(), convId);
+        }
+        return savedDeal;
     }
 
     @Transactional(readOnly = true)
@@ -387,6 +401,13 @@ public class OfferService {
                 listing.getTitle(),
                 convId
         );
+        systemEmailService.sendOfferAcceptedEmails(
+                offer.getBuyer(),
+                listing.getSeller(),
+                listing.getTitle(),
+                listing.getId(),
+                convId
+        );
         return toResponse(offer);
     }
 
@@ -418,8 +439,27 @@ public class OfferService {
         if (buyer != null && listing.getSeller() != null && offer.getAmount() != null) {
             notificationService.notifyOfferRejected(buyer, listing.getSeller(), listing.getId(),
                     listing.getTitle(), offer.getAmount());
+            systemEmailService.sendOfferRejectedEmail(
+                    buyer,
+                    emailDisplayName(listing.getSeller()),
+                    listing.getTitle(),
+                    listing.getId(),
+                    offer.getAmount());
         }
         return toResponse(offer);
+    }
+
+    private static String emailDisplayName(User u) {
+        if (u == null) {
+            return "Người dùng";
+        }
+        if (u.getFullName() != null && !u.getFullName().isBlank()) {
+            return u.getFullName().trim();
+        }
+        if (u.getEmail() != null && !u.getEmail().isBlank()) {
+            return u.getEmail().trim();
+        }
+        return "Người dùng";
     }
 
     private void assertSellerCanReview(User currentUser, Listing listing) {
