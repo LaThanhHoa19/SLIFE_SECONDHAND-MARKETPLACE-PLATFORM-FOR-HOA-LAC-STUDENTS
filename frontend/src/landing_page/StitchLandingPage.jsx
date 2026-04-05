@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { getLanding } from '../api/landingApi';
 import { unwrapApiData } from '../utils/apiPayload';
 import { fullImageUrl } from '../utils/constants';
+import { usePhoneVerification } from '../context/PhoneVerificationContext';
+import { useAuth } from '../hooks/useAuth';
 
 /** Ảnh hero cố định — khuôn viên FPT Hòa Lạc (public/fpt.jpg). */
 const HERO_SECTION_IMAGE = '/fpt.jpg';
@@ -28,6 +30,8 @@ function formatLinePrice(item) {
 
 export default function StitchLandingPage() {
   const navigate = useNavigate();
+  const { checkVerification } = usePhoneVerification();
+  const { isAuthenticated } = useAuth();
   const [landing, setLanding] = useState(null);
   const [landingError, setLandingError] = useState(null);
 
@@ -153,10 +157,16 @@ export default function StitchLandingPage() {
                       Khám phá ngay
                     </button>
                     <button
-                        onClick={() => navigate('/listings/new')}
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            navigate('/login', { state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' } });
+                            return;
+                          }
+                          checkVerification(() => navigate('/listings/new'));
+                        }}
                         className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 hover:-translate-y-1 hover:shadow-lg active:translate-y-0 active:scale-95 transition-all duration-300 animate-sparkle"
                     >
-                      Đăng tin bán
+                        Đăng tin bán
                     </button>
                   </div>
                 </div>

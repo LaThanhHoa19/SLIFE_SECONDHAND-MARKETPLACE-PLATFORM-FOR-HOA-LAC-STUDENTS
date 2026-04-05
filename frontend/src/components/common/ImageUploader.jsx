@@ -30,11 +30,17 @@ const LISTING_IMAGE_MIME = new Set([
 const LISTING_IMAGE_ACCEPT =
     'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp';
 
-function isAllowedListingImage(file, maxBytes) {
+/** Bài cộng đồng — khớp CommunityPostImageService (chỉ JPG/PNG). */
+const COMMUNITY_IMAGE_MIME = new Set(['image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png']);
+const COMMUNITY_IMAGE_ACCEPT = 'image/jpeg,image/png,.jpg,.jpeg,.png';
+
+function isAllowedImage(file, maxBytes, profile) {
     if (!file || file.size <= 0 || file.size > maxBytes) return false;
     const t = (file.type || '').toLowerCase().trim();
-    if (t && LISTING_IMAGE_MIME.has(t)) return true;
-    return /\.(jpe?g|png|gif|webp)$/i.test(file.name || '');
+    const mimeSet = profile === 'community' ? COMMUNITY_IMAGE_MIME : LISTING_IMAGE_MIME;
+    const extRe = profile === 'community' ? /\.(jpe?g|png)$/i : /\.(jpe?g|png|gif|webp)$/i;
+    if (t && mimeSet.has(t)) return true;
+    return extRe.test(file.name || '');
 }
 
 const TILE = {
@@ -62,6 +68,8 @@ export default function ImageUploader({
                                           existingImageUrls = [],
                                           onRemoveExistingImage,
                                           variant = 'default',
+                                          /** 'listing' | 'community' — community chỉ JPG/PNG (đồng bộ BE). */
+                                          imageProfile = 'listing',
                                       }) {
     const inputId = useId();
     const [files, setFiles] = useState([]);
@@ -75,6 +83,9 @@ export default function ImageUploader({
             MAX_FILES_CEILING,
         ),
     );
+    const acceptAttr = imageProfile === 'community' ? COMMUNITY_IMAGE_ACCEPT : LISTING_IMAGE_ACCEPT;
+    const formatsLabel =
+        imageProfile === 'community' ? 'JPG, PNG' : 'JPG, PNG, GIF, WebP';
 
     const resolvedExisting = useMemo(
         () => normalizeExisting(existingImages, existingImageUrls),
@@ -128,7 +139,7 @@ export default function ImageUploader({
         e.target.value = '';
 
         const maxBytes = maxSizeMB * 1024 * 1024;
-        const validFiles = selected.filter((file) => isAllowedListingImage(file, maxBytes));
+        const validFiles = selected.filter((file) => isAllowedImage(file, maxBytes, imageProfile));
 
         setFiles((prev) => {
             const room = Math.max(0, cap - prev.length);
@@ -146,7 +157,9 @@ export default function ImageUploader({
             }
             if (invalidCount > 0) {
                 setCapNotice(
-                    `Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP (tối đa ${maxSizeMB}MB/file). Có ${invalidCount} file không hợp lệ đã bỏ qua.`,
+                    imageProfile === 'community'
+                        ? `Chỉ chấp nhận ảnh JPG hoặc PNG (tối đa ${maxSizeMB}MB/file). Có ${invalidCount} file không hợp lệ đã bỏ qua.`
+                        : `Chỉ chấp nhận ảnh JPG, PNG, GIF hoặc WebP (tối đa ${maxSizeMB}MB/file). Có ${invalidCount} file không hợp lệ đã bỏ qua.`,
                 );
             } else {
                 setCapNotice('');
@@ -209,7 +222,12 @@ export default function ImageUploader({
         <Box>
             {!studioHero ? (
                 <Typography variant="subtitle2" color="text.secondary" sx={{ mb: capNotice ? 0.5 : 1.5 }}>
-                    Ảnh sản phẩm — JPG, PNG, GIF, WebP (tối đa {cap} ảnh, mỗi file ≤ {maxSizeMB}MB)
+                    Ảnh sản phẩm — {formatsLabel} (tối đa {cap} ảnh, mỗi file ≤ {maxSizeMB}MB)
+                </Typography>
+            ) : null}
+            {studioHero && imageProfile === 'community' ? (
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: capNotice ? 0.75 : 1.25 }}>
+                    Định dạng: {formatsLabel} · tối đa {cap} ảnh · mỗi file ≤ {maxSizeMB}MB
                 </Typography>
             ) : null}
             {capNotice ? (
@@ -220,7 +238,7 @@ export default function ImageUploader({
 
             <input
                 type="file"
-                accept={LISTING_IMAGE_ACCEPT}
+                accept={acceptAttr}
                 multiple
                 id={inputId}
                 hidden
@@ -529,4 +547,5 @@ ImageUploader.propTypes = {
     existingImageUrls: PropTypes.arrayOf(PropTypes.string),
     onRemoveExistingImage: PropTypes.func,
     variant: PropTypes.oneOf(['default', 'studioHero']),
+    imageProfile: PropTypes.oneOf(['listing', 'community']),
 };
