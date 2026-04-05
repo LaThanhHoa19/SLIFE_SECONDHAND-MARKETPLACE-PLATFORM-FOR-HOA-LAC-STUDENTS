@@ -58,7 +58,12 @@ const ReportDialog = ({ open, onClose, targetType, targetId, targetTitle }) => {
             PaperProps={DARK_DIALOG_PAPER_PROPS}
         >
             <DialogTitle sx={{ fontWeight: 700 }}>
-                Báo cáo {targetType === 'LISTING' ? 'tin đăng' : 'người dùng'}
+                Báo cáo{' '}
+                {targetType === 'LISTING'
+                    ? 'tin đăng'
+                    : targetType === 'COMMUNITY_POST'
+                      ? 'bài cộng đồng'
+                      : 'người dùng'}
             </DialogTitle>
             <DialogContent dividers sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
                 {targetTitle && (

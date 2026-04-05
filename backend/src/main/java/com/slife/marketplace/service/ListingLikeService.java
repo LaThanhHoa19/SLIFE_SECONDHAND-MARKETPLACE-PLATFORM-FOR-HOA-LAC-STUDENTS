@@ -1,5 +1,7 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.response.ListingResponse;
+import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.dto.response.ToggleLikeResponse;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.ListingLike;
@@ -10,8 +12,14 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +27,7 @@ public class ListingLikeService {
 
     private final ListingLikeRepository listingLikeRepository;
     private final ListingRepository listingRepository;
+    private final ListingService listingService;
 
     /**
      * Một endpoint: bấm lần 1 = like, lần 2 = unlike.
@@ -59,5 +68,19 @@ public class ListingLikeService {
     @Transactional(readOnly = true)
     public boolean isLikedBy(Long userId, Long listingId) {
         return listingLikeRepository.existsByUser_IdAndListing_Id(userId, listingId);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<ListingResponse> getLikedListings(User user, int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 20));
+        Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<ListingLike> likedPage = listingLikeRepository.findByUser_IdOrderByCreatedAtDesc(user.getId(), pageable);
+
+        List<ListingResponse> content = likedPage.getContent().stream()
+                .map(ll -> listingService.buildListingResponse(ll.getListing(), user, false))
+                .toList();
+
+        return new PagedResponse<>(content, likedPage.getNumber(), likedPage.getSize(),
+                likedPage.getTotalElements(), likedPage.getTotalPages());
     }
 }

@@ -28,6 +28,7 @@ import MyListingCard from './myListings/MyListingCard';
 import MyListingsAddPlaceholder from './myListings/MyListingsAddPlaceholder';
 import MyListingsEmptyState from './myListings/MyListingsEmptyState';
 import MyListingsGridCardSkeleton from './myListings/MyListingsGridCardSkeleton';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import {
     ALL_TAB_STATUSES,
     pageFromSearchParams,
@@ -98,6 +99,7 @@ const menuProps = {
 
 export default function MyListingsPage() {
     const navigate = useNavigate();
+    const { checkVerification } = usePhoneVerification();
     const [searchParams, setSearchParams] = useSearchParams();
 
     const [activeTab,      setActiveTab]      = useState(() => tabFromSearchParams(searchParams));
@@ -405,7 +407,7 @@ export default function MyListingsPage() {
                     </Box>
                     <Button
                         type="button"
-                        onClick={() => navigate('/listings/new')}
+                        onClick={() => checkVerification(() => navigate('/listings/new'))}
                         startIcon={<AddIcon sx={{ fontSize: 20, color: '#fff' }} />}
                         sx={{
                             alignSelf: { xs: 'stretch', sm: 'center' },
@@ -709,7 +711,7 @@ export default function MyListingsPage() {
                                     onDeleteDraft={handleDeleteDraft}
                                 />
                             ))}
-                            <MyListingsAddPlaceholder onClick={() => navigate('/listings/new')} />
+                            <MyListingsAddPlaceholder onClick={() => checkVerification(() => navigate('/listings/new'))} />
                         </Box>
                     </>
                 )}

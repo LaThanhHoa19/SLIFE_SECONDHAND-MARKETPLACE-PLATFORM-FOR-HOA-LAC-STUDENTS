@@ -103,7 +103,7 @@ class ListingControllerTest {
         response.setPage(0);
         response.setSize(20);
 
-        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any(), anyBoolean()))
+        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any(), anyBoolean(), any()))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/listings")
@@ -127,7 +127,7 @@ class ListingControllerTest {
 
     @Test
     void getListings_whenServiceThrows_shouldReturn500WithErrorPayloadNot403() throws Exception {
-        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any(), anyBoolean()))
+        when(listingService.getActiveListingCards(eq(0), eq(10), any(), any(), anyBoolean(), any()))
                 .thenThrow(new RuntimeException("Simulated DB failure"));
 
         mockMvc.perform(get("/api/listings")

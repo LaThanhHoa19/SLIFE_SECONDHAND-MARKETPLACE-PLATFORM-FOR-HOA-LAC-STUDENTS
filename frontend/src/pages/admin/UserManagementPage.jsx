@@ -122,13 +122,50 @@ const ADMIN_USER_STATUS_FILTER = {
   RESTRICTED: 'RESTRICTED',
 };
 
+/** Cả khung Select (ô đóng) và menu xổ — cùng nền, chữ trắng */
+const ADMIN_SELECT_SURFACE = '#0F0E13';
+
 const selectFieldSx = {
   minWidth: 200,
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: ADMIN_SELECT_SURFACE,
+    color: '#fff',
+    '&:hover': { backgroundColor: ADMIN_SELECT_SURFACE },
+    '&.Mui-focused': { backgroundColor: ADMIN_SELECT_SURFACE },
+  },
   '& .MuiOutlinedInput-notchedOutline': { borderColor: USER_TABLE_BORDER },
   '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.35)' },
   '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+  '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
   '& .MuiSelect-icon': { color: 'rgba(255,255,255,0.7)' },
   '& .MuiSelect-select': { color: '#fff' },
+};
+
+const adminSelectMenuProps = {
+  MenuListProps: {
+    sx: {
+      bgcolor: ADMIN_SELECT_SURFACE,
+      py: 0.5,
+      '& .MuiMenuItem-root': {
+        color: '#fff',
+        bgcolor: ADMIN_SELECT_SURFACE,
+      },
+      '& .MuiMenuItem-root:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+      '& .MuiMenuItem-root.Mui-selected': {
+        bgcolor: 'rgba(157, 110, 237, 0.22)',
+        color: '#fff',
+        '&:hover': { bgcolor: 'rgba(157, 110, 237, 0.3)' },
+      },
+    },
+  },
+  PaperProps: {
+    sx: {
+      bgcolor: ADMIN_SELECT_SURFACE,
+      color: '#fff',
+      backgroundImage: 'none',
+      boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+    },
+  },
 };
 
 /** Viền thanh search — #9D6EED; khi focus thêm halo cùng tông */
@@ -182,7 +219,6 @@ export default function UserManagementPage() {
   const [sortDir, setSortDir] = useState('desc');
   const [statusFilter, setStatusFilter] = useState(ADMIN_USER_STATUS_FILTER.ALL);
   const [searchQuery, setSearchQuery] = useState('');
-  const sortDisabled = sortBy === ADMIN_USER_SORT_BY.NONE;
 
   const loadUsers = useCallback(async () => {
     try {
@@ -358,75 +394,95 @@ export default function UserManagementPage() {
             direction={{ xs: 'column', md: 'row' }}
             spacing={1.5}
             alignItems={{ xs: 'stretch', md: 'center' }}
+            justifyContent="space-between"
             flexWrap="wrap"
             useFlexGap
           >
-            <TextField
-              size="small"
-              placeholder="Tìm theo email hoặc họ tên"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              sx={searchFieldSx}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <FormControl size="small" sx={selectFieldSx}>
-              <InputLabel id="admin-users-status-filter">Trạng thái</InputLabel>
-              <Select
-                labelId="admin-users-status-filter"
-                label="Trạng thái"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <MenuItem value={ADMIN_USER_STATUS_FILTER.ALL}>Tất cả</MenuItem>
-                <MenuItem value={ADMIN_USER_STATUS_FILTER.ACTIVE}>Hoạt động</MenuItem>
-                <MenuItem value={ADMIN_USER_STATUS_FILTER.BANNED}>Bị khóa</MenuItem>
-                <MenuItem value={ADMIN_USER_STATUS_FILTER.RESTRICTED}>Hạn chế</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={selectFieldSx}>
-              <InputLabel id="admin-users-sort-by">Sắp xếp theo</InputLabel>
-              <Select
-                labelId="admin-users-sort-by"
-                label="Sắp xếp theo"
-                value={sortBy}
-                onChange={(e) => {
-                  setPage(0);
-                  setSortBy(e.target.value);
+            <Stack
+              direction="row"
+              flexWrap="wrap"
+              spacing={1.5}
+              useFlexGap
+              alignItems="center"
+              sx={{ flex: 1, minWidth: 0 }}
+            >
+              <TextField
+                size="small"
+                placeholder="Tìm theo email hoặc họ tên"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={searchFieldSx}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 20 }} />
+                    </InputAdornment>
+                  ),
                 }}
-              >
-                <MenuItem value={ADMIN_USER_SORT_BY.NONE}>Không chọn</MenuItem>
-                <MenuItem value={ADMIN_USER_SORT_BY.CREATED_AT}>Ngày tạo</MenuItem>
-                <MenuItem value={ADMIN_USER_SORT_BY.REPUTATION}>Uy tín</MenuItem>
-                <MenuItem value={ADMIN_USER_SORT_BY.VIOLATION}>Vi phạm</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ ...selectFieldSx, minWidth: 220 }} disabled={sortDisabled}>
-              <InputLabel id="admin-users-sort-dir">Thứ tự</InputLabel>
-              <Select
-                labelId="admin-users-sort-dir"
-                label="Thứ tự"
-                value={sortDir}
-                disabled={sortDisabled}
-                onChange={(e) => {
-                  setPage(0);
-                  setSortDir(e.target.value);
-                }}
-              >
-                <MenuItem value="asc">Từ thấp đến cao</MenuItem>
-                <MenuItem value="desc">Từ cao đến thấp</MenuItem>
-              </Select>
-            </FormControl>
+              />
+              <FormControl size="small" sx={selectFieldSx}>
+                <InputLabel id="admin-users-status-filter">Trạng thái</InputLabel>
+                <Select
+                  labelId="admin-users-status-filter"
+                  label="Trạng thái"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  MenuProps={adminSelectMenuProps}
+                >
+                  <MenuItem value={ADMIN_USER_STATUS_FILTER.ALL}>Tất cả</MenuItem>
+                  <MenuItem value={ADMIN_USER_STATUS_FILTER.ACTIVE}>Hoạt động</MenuItem>
+                  <MenuItem value={ADMIN_USER_STATUS_FILTER.BANNED}>Bị khóa</MenuItem>
+                  <MenuItem value={ADMIN_USER_STATUS_FILTER.RESTRICTED}>Hạn chế</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={selectFieldSx}>
+                <InputLabel id="admin-users-sort-by">Sắp xếp theo</InputLabel>
+                <Select
+                  labelId="admin-users-sort-by"
+                  label="Sắp xếp theo"
+                  value={sortBy}
+                  onChange={(e) => {
+                    setPage(0);
+                    setSortBy(e.target.value);
+                  }}
+                  MenuProps={adminSelectMenuProps}
+                >
+                  <MenuItem value={ADMIN_USER_SORT_BY.NONE}>Không chọn</MenuItem>
+                  <MenuItem value={ADMIN_USER_SORT_BY.CREATED_AT}>Ngày tạo</MenuItem>
+                  <MenuItem value={ADMIN_USER_SORT_BY.REPUTATION}>Uy tín</MenuItem>
+                  <MenuItem value={ADMIN_USER_SORT_BY.VIOLATION}>Vi phạm</MenuItem>
+                </Select>
+              </FormControl>
+              {sortBy !== ADMIN_USER_SORT_BY.NONE && (
+                <FormControl size="small" sx={{ ...selectFieldSx, minWidth: 220 }}>
+                  <InputLabel id="admin-users-sort-dir">Thứ tự</InputLabel>
+                  <Select
+                    labelId="admin-users-sort-dir"
+                    label="Thứ tự"
+                    value={sortDir}
+                    onChange={(e) => {
+                      setPage(0);
+                      setSortDir(e.target.value);
+                    }}
+                    MenuProps={adminSelectMenuProps}
+                  >
+                    <MenuItem value="asc">Từ thấp đến cao</MenuItem>
+                    <MenuItem value="desc">Từ cao đến thấp</MenuItem>
+                  </Select>
+                </FormControl>
+              )}
+            </Stack>
             <Button
-                variant="contained"
-                onClick={loadUsers}
-                disabled={isLoading}
-                sx={{ borderRadius: 999, textTransform: 'none', px: 3, alignSelf: { xs: 'stretch', md: 'center' } }}
+              variant="contained"
+              onClick={loadUsers}
+              disabled={isLoading}
+              sx={{
+                borderRadius: 999,
+                textTransform: 'none',
+                px: 3,
+                alignSelf: { xs: 'stretch', md: 'center' },
+                flexShrink: 0,
+              }}
             >
               Tải lại dữ liệu
             </Button>

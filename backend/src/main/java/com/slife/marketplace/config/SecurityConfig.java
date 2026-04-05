@@ -70,6 +70,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/listings/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/community/posts/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/community/hashtags/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/community-posts/*/comments").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/*/comments").permitAll()
 

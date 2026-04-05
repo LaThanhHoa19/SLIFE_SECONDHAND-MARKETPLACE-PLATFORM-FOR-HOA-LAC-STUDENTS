@@ -10,6 +10,9 @@ import org.springframework.stereotype.Repository;
 import java.util.Collection;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 @Repository
 public interface ListingLikeRepository extends JpaRepository<ListingLike, ListingLikeId> {
 
@@ -24,4 +27,6 @@ public interface ListingLikeRepository extends JpaRepository<ListingLike, Listin
 
     @Query("SELECT ll.listing.id FROM ListingLike ll WHERE ll.user.id = :userId AND ll.listing.id IN :ids")
     List<Long> findLikedListingIds(@Param("userId") Long userId, @Param("ids") Collection<Long> ids);
+
+    Page<ListingLike> findByUser_IdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 }
