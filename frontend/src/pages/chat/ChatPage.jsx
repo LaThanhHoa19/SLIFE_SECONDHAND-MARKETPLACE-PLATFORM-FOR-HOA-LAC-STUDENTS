@@ -1313,7 +1313,7 @@ function ChatPageInner() {
   useEffect(() => {
     if (!finalizeOpen) return;
     if (!finalizePriceText) {
-      const offerText = pendingOfferForFinalize?.content;
+      const offerText = latestAcceptedOfferForFinalize?.content;
       const offerNum = offerText ? Number(String(offerText).replace(/[^\d]/g, '')) : NaN;
       if (Number.isFinite(offerNum) && offerNum >= 0) {
         setFinalizePriceText(String(offerNum));
@@ -1334,7 +1334,7 @@ function ChatPageInner() {
     finalizePriceText,
     finalizePickupTimeLocal,
     finalizePickupLocationText,
-    pendingOfferForFinalize?.content,
+    latestAcceptedOfferForFinalize?.content,
     activeListingPrice,
     toDatetimeLocal,
     finalizeListing?.pickupAddress,
@@ -2033,7 +2033,6 @@ function ChatPageInner() {
                 label="Giá thỏa thuận"
                 value={
                   offerContentToPriceText(latestAcceptedOfferForFinalize?.content) ||
-                  offerContentToPriceText(pendingOfferForFinalize?.content) ||
                   fmtPrice(listingPriceForFinalize)
                 }
                 icon={<AttachMoneyIcon />}
