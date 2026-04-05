@@ -187,7 +187,11 @@ export default function ListingDetailPage() {
     // Load tin khac cua nguoi ban + tin tuong tu
     useEffect(() => {
         if (!listing) return;
-        const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+        const sellerId =
+            listing?.seller?.id ??
+            listing?.seller?.userId ??
+            listing?.sellerSummary?.userId ??
+            listing?.sellerSummary?.id;
         const currentId = Number(id);
 
         setLoadingRelated(true);
@@ -342,7 +346,11 @@ export default function ListingDetailPage() {
 
     const handleSellerFollowClick = useCallback(async () => {
         if (!listing) return;
-        const sid = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+        const sid =
+            listing?.seller?.id ??
+            listing?.seller?.userId ??
+            listing?.sellerSummary?.userId ??
+            listing?.sellerSummary?.id;
         if (!sid) return;
         await toggleFollow({
             targetUserId: sid,
@@ -484,7 +492,12 @@ export default function ListingDetailPage() {
     // Dan xuat du lieu
     const images = (listing?.images ?? []).map((p) => fullImageUrl(p)).filter(Boolean);
     const seller = getSeller(listing);
-    const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id ?? listing?.sellerId;
+    const sellerId =
+        listing?.seller?.id ??
+        listing?.seller?.userId ??
+        listing?.sellerSummary?.userId ??
+        listing?.sellerSummary?.id ??
+        listing?.sellerId;
     const conditionInfo = getConditionInfo(listing.itemCondition);
     const locationText = getLocation(listing);
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);

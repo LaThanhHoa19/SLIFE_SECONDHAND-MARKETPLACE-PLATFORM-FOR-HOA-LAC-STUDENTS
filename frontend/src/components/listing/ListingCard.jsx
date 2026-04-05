@@ -22,6 +22,7 @@ import {
     Favorite as FavoriteFilledIcon,
     MoreHoriz as MoreIcon,
     Flag as ReportIcon,
+    Block as BlockIcon,
     Add as AddIcon,
     Check as CheckIcon,
     Person as PersonIcon,
@@ -39,6 +40,8 @@ import { useToast } from '../../context/ToastContext';
 import { getListingShareInfo, saveListing, toggleListingLike, unsaveListing } from '../../api/listingApi';
 import CommentModal from './CommentModal';
 import ReportDialog from '../report/ReportDialog';
+import BlockUserConfirmDialog from '../social/BlockUserConfirmDialog';
+import { useBlockActions } from '../../hooks/useBlockActions';
 
 const LIKE_RED = '#FF4757';
 const PURPLE = '#9D6EED';
@@ -147,7 +150,12 @@ export default function ListingCard({
     const isSavedPage = location.pathname.startsWith('/saved');
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
-    const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
+    const sellerId =
+        listing?.sellerId ??
+        seller?.userId ??
+        seller?.id ??
+        listing?.seller?.id ??
+        listing?.seller?.userId;
     const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
     const [followed, setFollowed] = useState(!!listing?.isFollowed);
     const [commentOpen, setCommentOpen] = useState(false);
@@ -160,6 +168,8 @@ export default function ListingCard({
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+    const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+    const { blockUserById } = useBlockActions();
 
     const isDraggingRef = useRef(false);
     const startXRef = useRef(0);
@@ -358,6 +368,22 @@ export default function ListingCard({
             return;
         }
         setReportOpen(true);
+    };
+
+    const handleBlockMenuClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleMoreClose();
+        if (!isAuthenticated) {
+            showToast('Bạn cần đăng nhập để chặn người bán.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        if (!sellerId) {
+            showToast('Không xác định được người bán.', 'error');
+            return;
+        }
+        setBlockDialogOpen(true);
     };
 
     const handleUnsaveFromMenu = async (e) => {
@@ -841,6 +867,14 @@ export default function ListingCard({
                                 <ListItemText primary="Bỏ lưu" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
                             </MenuItem>
                         )}
+                        {!isMe && !!sellerId && (
+                            <MenuItem onClick={handleBlockMenuClick}>
+                                <ListItemIcon sx={{ color: 'rgba(255,180,180,0.95)', minWidth: '32px !important' }}>
+                                    <BlockIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText primary="Chặn người bán" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
+                            </MenuItem>
+                        )}
                         {!isMe && (
                             <MenuItem onClick={handleReportClick}>
                                 <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
@@ -858,6 +892,21 @@ export default function ListingCard({
                         targetId={id}
                         targetTitle={listing?.title}
                     />
+
+                    {!isMe && sellerId && (
+                        <BlockUserConfirmDialog
+                            open={blockDialogOpen}
+                            onClose={() => setBlockDialogOpen(false)}
+                            displayName={seller?.fullName || 'Người bán'}
+                            onConfirm={() =>
+                                blockUserById(sellerId).then(() => {
+                                    onPatchListing?.(id, { removeFromList: true });
+                                    const onListingDetail = /^\/listings\/[^/]+$/.test(location.pathname);
+                                    if (onListingDetail) navigate('/feed');
+                                })
+                            }
+                        />
+                    )}
                 </>
             )}
         </Card>

@@ -1,10 +1,8 @@
-import { Avatar, Box, Button, CircularProgress, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, CircularProgress, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import PersonIcon from '@mui/icons-material/Person';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 
@@ -24,10 +22,9 @@ export default function ListingSellerInfo({
                                               onBlockClick,
                                           }) {
     const navigate = useNavigate();
-    const [menuAnchor, setMenuAnchor] = useState(null);
 
     const handleNavigateProfile = () => {
-        const targetId = sellerId ?? seller?.id;
+        const targetId = sellerId ?? seller?.id ?? seller?.userId;
         if (!targetId) return;
         const currentUserData = localStorage.getItem('user');
         const currentUser = currentUserData ? JSON.parse(currentUserData) : null;
@@ -139,7 +136,16 @@ export default function ListingSellerInfo({
                     </Box>
 
                     {/* View Profile Button - Compact pill like Cho Tot */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: 0.75,
+                            flexShrink: 0,
+                            flexWrap: 'wrap',
+                        }}
+                    >
                         <Button
                             size="small"
                             variant="outlined"
@@ -169,43 +175,32 @@ export default function ListingSellerInfo({
                             Xem trang
                         </Button>
                         {showBlock && typeof onBlockClick === 'function' && (
-                            <>
-                                <Tooltip title="Thêm tùy chọn">
-                                    <IconButton
-                                        size="small"
-                                        aria-label="Tùy chọn người bán"
-                                        onClick={(e) => setMenuAnchor(e.currentTarget)}
-                                        sx={{ color: TEXT_SEC }}
-                                    >
-                                        <MoreVertIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
-                                <Menu
-                                    anchorEl={menuAnchor}
-                                    open={Boolean(menuAnchor)}
-                                    onClose={() => setMenuAnchor(null)}
-                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                                    PaperProps={{
-                                        sx: {
-                                            bgcolor: CARD_BG2,
-                                            border: '1px solid rgba(255,255,255,0.08)',
-                                            '& .MuiMenuItem-root': { fontSize: 14 },
+                            <Tooltip title="Hai bên sẽ không còn thấy tin và nhắn tin với nhau">
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => onBlockClick()}
+                                    startIcon={<BlockIcon sx={{ fontSize: 18 }} />}
+                                    aria-label="Chặn người bán"
+                                    sx={{
+                                        color: 'rgba(255,255,255,0.88)',
+                                        borderColor: 'rgba(255,255,255,0.18)',
+                                        textTransform: 'none',
+                                        fontSize: 13,
+                                        fontWeight: 800,
+                                        borderRadius: '24px',
+                                        px: 1.75,
+                                        height: 34,
+                                        '&:hover': {
+                                            borderColor: 'rgba(255,71,87,0.55)',
+                                            color: '#ffb3b8',
+                                            bgcolor: 'rgba(255,71,87,0.08)',
                                         },
                                     }}
                                 >
-                                    <MenuItem
-                                        onClick={() => {
-                                            setMenuAnchor(null);
-                                            onBlockClick();
-                                        }}
-                                        sx={{ color: 'rgba(255,255,255,0.9)', gap: 1 }}
-                                    >
-                                        <BlockIcon fontSize="small" />
-                                        Chặn người bán
-                                    </MenuItem>
-                                </Menu>
-                            </>
+                                    Chặn
+                                </Button>
+                            </Tooltip>
                         )}
                     </Box>
                 </Box>

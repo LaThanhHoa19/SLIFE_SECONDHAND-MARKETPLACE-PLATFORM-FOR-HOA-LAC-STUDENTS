@@ -265,9 +265,18 @@ export default function useListings(initialParams = {}) {
         setParams((p) => ({ ...p, page: p.page + 1 }));
     }, [isLoadingMore, isLoading, hasMore]);
 
-    /** Cập nhật một tin trong feed (vd. sau like). */
+    /** Cập nhật một tin trong feed (vd. sau like); removeFromList — bỏ khỏi danh sách (sau chặn người bán). */
     const patchListing = useCallback((listingId, patch) => {
         if (listingId == null || !patch || typeof patch !== 'object') return;
+        if (patch.removeFromList === true) {
+            setData((prev) =>
+                prev.filter((item) => {
+                    const lid = item?.id ?? item?.listingId ?? item?.listing_id;
+                    return lid == null || String(lid) !== String(listingId);
+                }),
+            );
+            return;
+        }
         setData((prev) =>
             prev.map((item) => {
                 const lid = item?.id ?? item?.listingId ?? item?.listing_id;
