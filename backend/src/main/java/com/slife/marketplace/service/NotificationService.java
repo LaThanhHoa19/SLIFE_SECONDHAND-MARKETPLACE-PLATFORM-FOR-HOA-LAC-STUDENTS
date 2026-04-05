@@ -191,6 +191,31 @@ public class NotificationService {
         return "Người dùng";
     }
 
+    /** Notify listing owner when a deal is finalized (SUCCESS) or cancelled by buyer. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyDealFinalized(User seller, User buyer, Long listingId, String listingTitle, boolean isSuccess) {
+        try {
+            String buyerName = displayName(buyer);
+            String title = (listingTitle != null && !listingTitle.isBlank()) ? listingTitle.trim() : "tin đăng của bạn";
+            String text;
+            if (isSuccess) {
+                text = "Giao dịch thành công! " + buyerName + " đã xác nhận nhận hàng và để lại đánh giá cho bạn về sản phẩm «" + truncate(title, 40) + "».";
+            } else {
+                text = buyerName + " đã hủy chốt đơn cho sản phẩm «" + truncate(title, 40) + "». Tin đăng đã khả dụng trở lại.";
+            }
+
+            Long convId = resolveConversationId(listingId, buyer, seller);
+            String refType = convId != null ? "DEAL" : "LISTING";
+            Long refId = convId != null ? convId : listingId;
+            
+            Notification n = buildNotification(seller, TYPE_DEAL, refType, refId, text);
+            notificationRepository.save(n);
+            pushNotificationCount(seller);
+        } catch (Exception ex) {
+            log.error("notifyDealFinalized failed sellerId={} listingId={}", seller.getId(), listingId, ex);
+        }
+    }
+
     /** Notify listing owner when their listing is reported. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyListingReported(User listingOwner, User reporter, Long listingId, String listingTitle) {

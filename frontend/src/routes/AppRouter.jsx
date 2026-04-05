@@ -35,6 +35,7 @@ import {
     SuspenseConfigurationManagementPage,
     SuspenseReportPage,
     SuspenseChatPage,
+    SuspenseOrderHistoryPage,
     SuspenseBackendTestPage,
     SuspenseGoogleCallbackPage,
     SuspenseStitchLandingPage,
@@ -197,6 +198,14 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseChatPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/order-history"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseOrderHistoryPage />
                         </RouteGuard>
                     }
                 />

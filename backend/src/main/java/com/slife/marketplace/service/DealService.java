@@ -1,6 +1,7 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.DealRequest;
+import com.slife.marketplace.dto.request.FinalizeDealRequest;
 import com.slife.marketplace.dto.request.SealDealRequest;
 import com.slife.marketplace.dto.response.DealResponse;
 import com.slife.marketplace.entity.Address;
@@ -8,6 +9,7 @@ import com.slife.marketplace.entity.Conversation;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.Offer;
+import com.slife.marketplace.entity.Review;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
@@ -16,6 +18,9 @@ import com.slife.marketplace.repository.ConversationRepository;
 import com.slife.marketplace.repository.DealRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
+import com.slife.marketplace.repository.ReviewRepository;
+import com.slife.marketplace.service.NotificationService;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +40,8 @@ public class DealService {
     public static final String STATUS_CONFIRMED = "CONFIRMED";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_CANCELLED = "CANCELLED";
+    /** Trạng thái đơn hàng đã được người mua xác nhận hoàn tất thành công. */
+    public static final String STATUS_SUCCESS = "SUCCESS";
     /** Người mua từ chối sau khi người bán chốt đơn (deal đang PENDING). */
     public static final String STATUS_REJECTED = "REJECTED";
 
@@ -43,20 +50,26 @@ public class DealService {
     private final ConversationRepository conversationRepository;
     private final OfferRepository offerRepository;
     private final AddressRepository addressRepository;
+    private final ReviewRepository reviewRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
 
     public DealService(DealRepository dealRepository,
                        ListingRepository listingRepository,
                        ConversationRepository conversationRepository,
                        OfferRepository offerRepository,
                        AddressRepository addressRepository,
-                       UserService userService) {
+                       ReviewRepository reviewRepository,
+                       UserService userService,
+                       NotificationService notificationService) {
         this.dealRepository = dealRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
         this.offerRepository = offerRepository;
         this.addressRepository = addressRepository;
+        this.reviewRepository = reviewRepository;
         this.userService = userService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -275,6 +288,64 @@ public class DealService {
         dealRepository.save(deal);
     }
 
+    @Transactional
+    public DealResponse finalizeByBuyer(Long dealId, FinalizeDealRequest request) {
+        User buyer = userService.getCurrentUser();
+        Deal deal = dealRepository.findByIdAndDeletedAtIsNull(dealId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND));
+
+        if (deal.getBuyer() == null || !deal.getBuyer().getId().equals(buyer.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Chỉ người mua mới có quyền thực hiện hành động này");
+        }
+
+        if (request.isCompleted()) {
+            // Mark listing as SOLD
+            Listing listing = deal.getListing();
+            listing.setStatus("SOLD");
+            listingRepository.save(listing);
+
+            // Create Review only if rating is provided, or a default one
+            if (request.getRating() != null) {
+                Review review = new Review();
+                review.setConversation(deal.getConversation());
+                review.setReviewer(buyer);
+                review.setReviewee(deal.getSeller());
+                review.setRating(request.getRating());
+                
+                StringBuilder fullComment = new StringBuilder();
+                if (request.getComment() != null && !request.getComment().trim().isEmpty()) {
+                    fullComment.append(request.getComment().trim());
+                }
+                
+                if (request.getTags() != null && !request.getTags().isEmpty()) {
+                    String tagsStr = String.join(", ", request.getTags());
+                    if (fullComment.length() > 0) {
+                        fullComment.append("\n\nTiêu chí nổi bật: ").append(tagsStr);
+                    } else {
+                        fullComment.append("Tiêu chí nổi bật: ").append(tagsStr);
+                    }
+                }
+                
+                review.setComment(fullComment.toString());
+                review.setCreatedAt(Instant.now());
+                reviewRepository.save(review);
+            }
+            
+            deal.setStatus(STATUS_SUCCESS);
+            
+            // Notify seller
+            notificationService.notifyDealFinalized(deal.getSeller(), buyer, listing.getId(), listing.getTitle(), true);
+        } else {
+            // Cancel deal
+            deal.setStatus(STATUS_CANCELLED);
+            // Notify seller
+            notificationService.notifyDealFinalized(deal.getSeller(), buyer, deal.getListing().getId(), deal.getListing().getTitle(), false);
+        }
+        
+        deal.setUpdatedAt(LocalDateTime.now());
+        return mapToResponse(dealRepository.save(deal));
+    }
+
     @Transactional(readOnly = true)
     public DealResponse getDealById(Long dealId) {
         User current = userService.getCurrentUser();
@@ -332,22 +403,86 @@ public class DealService {
     }
 
     private DealResponse mapToResponse(Deal deal) {
+        if (deal == null) return null;
+        
         Long offerId = deal.getOffer() != null ? deal.getOffer().getId() : null;
         Long addressId = deal.getAddress() != null ? deal.getAddress().getId() : null;
+        
+        Listing listing = deal.getListing();
+        String title = (listing != null) ? listing.getTitle() : "Tin đăng";
+        String image = null;
+        
+        if (listing != null && listing.getImages() != null && !listing.getImages().isEmpty()) {
+            image = listing.getImages().get(0).getImageUrl();
+        }
+        
+        Long listingId = (listing != null) ? listing.getId() : null;
+        Long buyerId = (deal.getBuyer() != null) ? deal.getBuyer().getId() : null;
+        
+        User seller = deal.getSeller();
+        Long sellerId = (seller != null) ? seller.getId() : null;
+        String sName = (seller != null) ? seller.getFullName() : "Người bán";
+        String sAvatar = (seller != null) ? seller.getAvatarUrl() : null;
+        
+        // Check if deal is reviewed
+        boolean reviewed = reviewRepository.existsByConversation_IdAndReviewer_Id(
+            deal.getConversation() != null ? deal.getConversation().getId() : -1L,
+            deal.getBuyer() != null ? deal.getBuyer().getId() : -1L
+        );
+
         return DealResponse.builder()
                 .dealId(deal.getId())
                 .offerId(offerId)
                 .addressId(addressId)
-                .listingId(deal.getListing().getId())
-                .buyerId(deal.getBuyer().getId())
-                .sellerId(deal.getSeller().getId())
+                .listingId(listingId)
+                .buyerId(buyerId)
+                .sellerId(sellerId)
                 .price(deal.getOfferedPrice())
                 .status(deal.getStatus())
                 .confirmedAt(deal.getConfirmedAt())
                 .pickupTime(deal.getPickupTime())
                 .reminderSent(deal.getReminderSent())
+                .listingTitle(title)
+                .listingImage(image)
+                .sellerName(sName)
+                .sellerAvatar(sAvatar)
+                .isReviewed(reviewed)
                 .createdAt(deal.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * Tự động hoàn thành các deal ở trạng thái COMPLETED (đã chốt trong chat)
+     * mà người mua không bấm gì sau 7 ngày.
+     */
+    @Scheduled(cron = "0 0 1 * * ?") // Chạy lúc 1:00 AM hàng ngày
+    @Transactional
+    public void autoFinalizeDeals() {
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        List<Deal> pendingDeals = dealRepository.findAllByStatusAndCreatedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
+        
+        for (Deal deal : pendingDeals) {
+            try {
+                // Tương đương hành động Buyer bấm "Hoàn thành"
+                Listing listing = deal.getListing();
+                if (listing != null) {
+                    listing.setStatus("SOLD");
+                    listingRepository.save(listing);
+                }
+                
+                deal.setStatus(STATUS_SUCCESS);
+                deal.setUpdatedAt(LocalDateTime.now());
+                dealRepository.save(deal);
+                
+                // Gửi thông báo cho Seller
+                notificationService.notifyDealFinalized(deal.getSeller(), deal.getBuyer(), 
+                    listing != null ? listing.getId() : null, 
+                    listing != null ? listing.getTitle() : "tin đăng", true);
+                
+            } catch (Exception e) {
+                // Log and continue
+            }
+        }
     }
 
     /**

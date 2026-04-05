@@ -24,3 +24,13 @@ export const buyerAcceptPendingDeal = (listingId) =>
 /** Người mua từ chối → REJECTED */
 export const buyerRejectPendingDeal = (listingId) =>
   axiosClient.put(`/api/listings/${listingId}/deals/pending/reject`);
+
+/** List deals related to current user. type=proposed|received|all */
+export const listMyDeals = (type = 'all') =>
+  axiosClient.get(`/api/deals`, { params: { type } });
+
+/** Hoàn thành/Hủy giao dịch từ phía người mua (sau khi nhận hàng). 
+ * payload: { completed: boolean, rating?: number, comment?: string, tags?: string[] } 
+ */
+export const finalizeDeal = (id, payload) =>
+  axiosClient.post(`/api/deals/${id}/finalize`, payload);
