@@ -2,7 +2,7 @@
   "functions": [
     {
       "source": "firebase/functions",
-      "codebase": "default",
+      "codebase": "slife-mail",
       "ignore": [
         "node_modules",
         ".git",

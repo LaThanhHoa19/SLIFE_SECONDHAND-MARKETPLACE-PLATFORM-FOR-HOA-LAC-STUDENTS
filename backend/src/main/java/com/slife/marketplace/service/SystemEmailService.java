@@ -90,7 +90,7 @@ public class SystemEmailService {
                     "<p>Xin chào " + esc(name) + ",</p>"
                             + "<p>Tài khoản SLIFE của bạn đã được kích hoạt qua Google. "
                             + "Bạn có thể đăng tin, trả giá và trao đổi an toàn trên chợ đồ cũ sinh viên.</p>"
-                            + "<p><a href=\"" + esc(frontendUrl) + "\">Mở SLIFE</a></p>"
+                            + "<p><a href=\"" + esc(welcomeAppLink()) + "\">Mở SLIFE</a></p>"
                             + "<p style=\"color:#666;font-size:12px\">Đây là email hệ thống, vui lòng không trả lời.</p>");
             send(user.getEmail(), subject, body);
             user.setWelcomeEmailSentAt(LocalDateTime.now());
@@ -204,6 +204,11 @@ public class SystemEmailService {
         } catch (Exception ex) {
             log.warn("sendPickupReminderEmails dealId={}: {}", deal.getId(), ex.getMessage());
         }
+    }
+
+    /** Trang mặc định sau đăng nhập (email welcome). */
+    private String welcomeAppLink() {
+        return frontendUrl.replaceAll("/$", "") + "/feed";
     }
 
     private boolean useHttpRelay() {

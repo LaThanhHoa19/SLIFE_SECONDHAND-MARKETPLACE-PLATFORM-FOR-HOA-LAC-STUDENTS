@@ -1,6 +1,6 @@
 /**
- * Firebase Cloud Function (Gen 2): nhận POST JSON từ backend SLIFE, gửi mail qua SMTP.
- * Firebase không có dịch vụ SMTP riêng — bạn vẫn cần Gmail / SendGrid / v.v. trong biến môi trường.
+ * Cloud Functions Gen 2 (cần Blaze). Codebase: slife-mail — không xung đột function cũ.
+ * POST { to, subject, html, from? } + Authorization: Bearer <MAIL_API_SECRET>
  */
 const {onRequest} = require("firebase-functions/v2/https");
 const {setGlobalOptions} = require("firebase-functions/v2");
@@ -12,13 +12,6 @@ setGlobalOptions({
   maxInstances: 10,
 });
 
-/**
- * POST body: { "to", "subject", "html", "from"? }
- * Header: Authorization: Bearer <MAIL_API_SECRET>
- *
- * Env (functions/.env khi deploy bằng Firebase CLI, hoặc cấu hình trong Console):
- *   MAIL_API_SECRET, MAIL_FROM, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
- */
 exports.sendSlifeMail = onRequest(
     {
       cors: false,

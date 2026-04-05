@@ -42,6 +42,7 @@ services:
       APP_MAIL_HTTP_URL: ${APP_MAIL_HTTP_URL:-}
       APP_MAIL_HTTP_SECRET: ${APP_MAIL_HTTP_SECRET:-}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-noreply@slife.local}
+      FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
