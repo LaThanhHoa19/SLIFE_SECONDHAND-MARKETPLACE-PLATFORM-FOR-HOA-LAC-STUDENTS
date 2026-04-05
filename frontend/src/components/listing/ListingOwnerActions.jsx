@@ -1,39 +1,21 @@
-import { Box, Button, CircularProgress, Tooltip } from '@mui/material';
+import { Box, Button, CircularProgress } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { markSold, hideListing } from '../../api/listingApi';
+import { hideListing } from '../../api/listingApi';
+import ConfirmDialog from '../common/ConfirmDialog';
 
-const CARD_BG = '#201D26';
-const CARD_BG2 = '#252230';
 const BORDER = 'rgba(255,255,255,0.07)';
 const TEXT_PRI = 'rgba(255,255,255,0.95)';
 const PURPLE = '#9D6EED';
-const GREEN = '#2ED573';
 
 export default function ListingOwnerActions({ listingId, onNotify, status }) {
     const navigate = useNavigate();
     const [submitting, setSubmitting] = useState(false);
+    const [confirmHideOpen, setConfirmHideOpen] = useState(false);
 
     const handleEdit = () => {
         navigate(`/listings/${listingId}/edit`);
-    };
-
-    const handleMarkSold = async () => {
-        if (submitting) return;
-        setSubmitting(true);
-        try {
-            await markSold(listingId);
-            onNotify('Đã đánh dấu đã bán thành công', 'success');
-            // Redirect to my-listings instead of profile to prevent further interaction
-            navigate('/my-listings?status=SOLD');
-        } catch (err) {
-            onNotify(err?.message || 'Không thể đánh dấu đã bán', 'error');
-        } finally {
-            setSubmitting(false);
-        }
     };
 
     const handleHide = async () => {
@@ -58,11 +40,7 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
             {/* Single Hide Button with Confirmation */}
             <Button
                 fullWidth
-                onClick={() => {
-                    if (window.confirm('Bạn có chắc chắn muốn ẩn tin bài này này không? Các bài đăng bị ẩn sẽ không hiển thị trên bảng tin.')) {
-                        handleHide();
-                    }
-                }}
+                onClick={() => setConfirmHideOpen(true)}
                 disabled={submitting || isSoldOrHidden}
                 sx={{
                     py: 1.5,
@@ -74,8 +52,8 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
                     fontWeight: 700,
                     textTransform: 'none',
                     transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    '&:hover': { 
-                        bgcolor: 'rgba(157, 110, 237, 0.05)', 
+                    '&:hover': {
+                        bgcolor: 'rgba(157, 110, 237, 0.05)',
                         borderColor: 'rgba(157, 110, 237, 0.8)',
                         transform: 'translateY(-2px)',
                         boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
@@ -93,15 +71,15 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
                 onClick={handleEdit}
                 startIcon={<EditIcon />}
                 sx={{
-                    py: 1.5, 
-                    borderRadius: '12px', 
-                    bgcolor: PURPLE, 
+                    py: 1.5,
+                    borderRadius: '12px',
+                    bgcolor: PURPLE,
                     color: '#fff',
-                    fontSize: 15, 
+                    fontSize: 15,
                     fontWeight: 700,
                     textTransform: 'none',
                     transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                    '&:hover': { 
+                    '&:hover': {
                         bgcolor: '#835cd4',
                         transform: 'translateY(-2px)',
                         boxShadow: `0 8px 25px rgba(157, 110, 237, 0.4)`,
@@ -111,6 +89,22 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
             >
                 Sửa tin
             </Button>
+            <ConfirmDialog
+                open={confirmHideOpen}
+                variant="warning"
+                title="Xác nhận ẩn tin"
+                content="Bạn có chắc chắn muốn ẩn tin bài này không? Tin bị ẩn sẽ không hiển thị trên bảng tin."
+                confirmLabel="Ẩn tin"
+                cancelLabel="Hủy"
+                loading={submitting}
+                onClose={() => {
+                    if (!submitting) setConfirmHideOpen(false);
+                }}
+                onConfirm={async () => {
+                    await handleHide();
+                    setConfirmHideOpen(false);
+                }}
+            />
         </Box>
     );
 }

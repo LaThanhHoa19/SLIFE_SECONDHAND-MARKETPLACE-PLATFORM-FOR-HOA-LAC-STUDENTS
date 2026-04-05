@@ -191,7 +191,13 @@ export default function ListingDetailPage() {
             : Promise.resolve();
 
         // Fetch general listings for "Similar" items
-        const fetchSimilarListings = getListings({ size: 20 }).then((res) => {
+        // Loc theo Danh muc lon (parentId) neu co, neu khong dung danh muc hien tai
+        const mainCatId = listing?.category?.parentId || listing?.category?.id || listing?.categoryId;
+
+        const fetchSimilarListings = getListings({ 
+            category: mainCatId, 
+            size: 20 
+        }).then((res) => {
             const data = getPayload(res);
             const allList = data?.content || data || [];
 
@@ -206,9 +212,15 @@ export default function ListingDetailPage() {
 
                     const lCond = l?.condition ?? l?.itemCondition;
                     const lPrice = Number(l?.price ?? 0);
+                    
+                    // Logic lọc chặt chẽ: cùng danh mục, cùng tình trạng hoặc giá tương đương
+                    const itemCatId = l?.category?.id || l?.categoryId;
+                    const isSameCategory = String(itemCatId) === String(mainCatId) || String(l?.category?.parentId) === String(mainCatId);
                     const sameCondition = condition && lCond === condition;
                     const similarPrice = price > 0 && lPrice > 0 && lPrice >= price * 0.5 && lPrice <= price * 1.5;
-                    return sameCondition || similarPrice || true;
+
+                    // Tuyệt đối loại bỏ '|| true' để không bị lọc "linh tinh"
+                    return isSameCategory || sameCondition || similarPrice;
                 })
                 .slice(0, 4);
             setSimilarListings(similar);

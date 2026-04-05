@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { getLanding } from '../api/landingApi';
 import { unwrapApiData } from '../utils/apiPayload';
 import { fullImageUrl } from '../utils/constants';
+import { usePhoneVerification } from '../context/PhoneVerificationContext';
+import { useAuth } from '../hooks/useAuth';
 
 /** Ảnh hero cố định — khuôn viên FPT Hòa Lạc (public/fpt.jpg). */
 const HERO_SECTION_IMAGE = '/fpt.jpg';
 
 const CAROUSEL_PLACEHOLDER_IMG =
-  'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&q=80';
+    'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&q=80';
 
 
 const CATEGORY_IMAGES = [
@@ -28,6 +30,8 @@ function formatLinePrice(item) {
 
 export default function StitchLandingPage() {
   const navigate = useNavigate();
+  const { checkVerification } = usePhoneVerification();
+  const { isAuthenticated } = useAuth();
   const [landing, setLanding] = useState(null);
   const [landingError, setLandingError] = useState(null);
 
@@ -52,10 +56,10 @@ export default function StitchLandingPage() {
   const hero = landing?.heroListing;
   const heroImg = HERO_SECTION_IMAGE;
   const heroLine = loadingLanding
-    ? 'Đang tải tin mới...'
-    : hero
-      ? `${hero.title} — ${formatLinePrice(hero)}`
-      : 'Chưa có tin nào — hãy đăng bán đầu tiên!';
+      ? 'Đang tải tin mới...'
+      : hero
+          ? `${hero.title} — ${formatLinePrice(hero)}`
+          : 'Chưa có tin nào — hãy đăng bán đầu tiên!';
 
   const t = landing?.totals;
   const statUsers = t?.registeredUsers ?? 0;
@@ -130,9 +134,9 @@ export default function StitchLandingPage() {
           {/* Top Navigation Bar */}
           <main className="flex-1">
             {landingError && (
-              <div className="px-6 pt-4 text-center text-amber-200 text-sm" role="status">
-                {landingError} — hiển thị nội dung mặc định.
-              </div>
+                <div className="px-6 pt-4 text-center text-amber-200 text-sm" role="status">
+                  {landingError} — hiển thị nội dung mặc định.
+                </div>
             )}
             {/* Hero Section */}
             <section className="relative overflow-hidden px-6 py-16 md:py-24 lg:px-20">
@@ -153,18 +157,24 @@ export default function StitchLandingPage() {
                       Khám phá ngay
                     </button>
                     <button
-                        onClick={() => navigate('/listings/new')}
+                        onClick={() => {
+                          if (!isAuthenticated) {
+                            navigate('/login', { state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' } });
+                            return;
+                          }
+                          checkVerification(() => navigate('/listings/new'));
+                        }}
                         className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 hover:-translate-y-1 hover:shadow-lg active:translate-y-0 active:scale-95 transition-all duration-300 animate-sparkle"
                     >
-                      Đăng tin bán
+                        Đăng tin bán
                     </button>
                   </div>
                 </div>
                 <div className="relative w-full lg:w-[55%] aspect-video md:aspect-[16/10] lg:aspect-[4/3] rounded-3xl overflow-hidden shadow-[0_20px_80px_-15px_rgba(124,58,237,0.4)] border border-white/20 ring-1 ring-white/10 group">
                   <img
-                    className="w-full h-full object-cover object-[20%_center] transition-transform duration-1000 group-hover:scale-105"
-                    alt="Khuôn viên Đại học FPT Hòa Lạc"
-                    src={heroImg}
+                      className="w-full h-full object-cover object-[20%_center] transition-transform duration-1000 group-hover:scale-105"
+                      alt="Khuôn viên Đại học FPT Hòa Lạc"
+                      src={heroImg}
                   />
                 </div>
               </div>
@@ -202,10 +212,10 @@ export default function StitchLandingPage() {
               <div className="max-w-7xl mx-auto px-6"><div className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-bold" style={{ color: '#F8FAFC' }}>Danh mục nổi bật</h2>
                 <button
-                  type="button"
-                  className="font-bold hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer"
-                  style={{ color: '#C4B5FD' }}
-                  onClick={() => navigate('/feed')}
+                    type="button"
+                    className="font-bold hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer"
+                    style={{ color: '#C4B5FD' }}
+                    onClick={() => navigate('/feed')}
                 >
                   Xem tất cả <span className="material-symbols-outlined">trending_flat</span>
                 </button>
@@ -213,26 +223,26 @@ export default function StitchLandingPage() {
                 <div className="overflow-hidden relative">
                   <div className="py-4 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
                     {(landing?.categoryStats ?? []).length === 0 ? (
-                      <p className="text-slate-400 text-sm col-span-full text-center py-6">Chưa có thống kê danh mục.</p>
+                        <p className="text-slate-400 text-sm col-span-full text-center py-6">Chưa có thống kê danh mục.</p>
                     ) : (
-                      landing.categoryStats.map((c, idx) => (
-                        <button
-                          type="button"
-                          key={c.categoryId ?? idx}
-                          onClick={() => navigate(`/feed?category=${c.categoryId}`)}
-                          className="relative group cursor-pointer overflow-hidden rounded-2xl w-full aspect-square text-left"
-                        >
-                          <img
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            alt=""
-                            src={CATEGORY_IMAGES[idx % CATEGORY_IMAGES.length]}
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-left items-start">
-                            <h4 className="text-white font-bold text-sm md:text-lg">{c.name}</h4>
-                            <p className="text-white/80 text-xs mt-1">{Number(c.listingCount ?? 0).toLocaleString('vi-VN')} tin đăng</p>
-                          </div>
-                        </button>
-                      ))
+                        landing.categoryStats.map((c, idx) => (
+                            <button
+                                type="button"
+                                key={c.categoryId ?? idx}
+                                onClick={() => navigate(`/feed?category=${c.categoryId}`)}
+                                className="relative group cursor-pointer overflow-hidden rounded-2xl w-full aspect-square text-left"
+                            >
+                              <img
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                  alt=""
+                                  src={CATEGORY_IMAGES[idx % CATEGORY_IMAGES.length]}
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-left items-start">
+                                <h4 className="text-white font-bold text-sm md:text-lg">{c.name}</h4>
+                                <p className="text-white/80 text-xs mt-1">{Number(c.listingCount ?? 0).toLocaleString('vi-VN')} tin đăng</p>
+                              </div>
+                            </button>
+                        ))
                     )}
                   </div>
                 </div></div>
@@ -243,9 +253,9 @@ export default function StitchLandingPage() {
                 <div className="flex items-center justify-between mb-10">
                   <h2 className="text-3xl font-bold">Tin mới nhất</h2>
                   <button
-                    type="button"
-                    className="text-primary font-bold hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer"
-                    onClick={() => navigate('/feed')}
+                      type="button"
+                      className="text-primary font-bold hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer"
+                      onClick={() => navigate('/feed')}
                   >
                     Xem tất cả <span className="material-symbols-outlined">trending_flat</span>
                   </button>
@@ -257,34 +267,34 @@ export default function StitchLandingPage() {
                       const items = raw.length ? [...raw, ...raw] : [];
                       if (!items.length) {
                         return (
-                          <p className="text-slate-500 py-8 w-full text-center col-span-full">Chưa có tin đăng nào.</p>
+                            <p className="text-slate-500 py-8 w-full text-center col-span-full">Chưa có tin đăng nào.</p>
                         );
                       }
                       return items.map((item, idx) => (
-                        <div
-                          key={`${item.id}-${idx}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => navigate(`/listings/${item.id}`)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') navigate(`/listings/${item.id}`);
-                          }}
-                          className="w-72 flex-shrink-0 bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 hover:scale-105 transition-all duration-300 cursor-pointer"
-                        >
-                          <div className="relative aspect-square">
-                            <img
-                              className="w-full h-full object-cover"
-                              alt=""
-                              src={fullImageUrl(item.thumbnailUrl || (item.imageUrls && item.imageUrls[0])) || CAROUSEL_PLACEHOLDER_IMG}
-                            />
+                          <div
+                              key={`${item.id}-${idx}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => navigate(`/listings/${item.id}`)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') navigate(`/listings/${item.id}`);
+                              }}
+                              className="w-72 flex-shrink-0 bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 hover:scale-105 transition-all duration-300 cursor-pointer"
+                          >
+                            <div className="relative aspect-square">
+                              <img
+                                  className="w-full h-full object-cover"
+                                  alt=""
+                                  src={fullImageUrl(item.thumbnailUrl || (item.imageUrls && item.imageUrls[0])) || CAROUSEL_PLACEHOLDER_IMG}
+                              />
+                            </div>
+                            <div className="p-4">
+                              <h4 className="font-bold truncate">{item.title}</h4>
+                              <p className={item.isGiveaway || item.purpose === 'GIVEAWAY' ? 'text-green-600 font-bold' : 'text-primary font-bold'}>
+                                {formatLinePrice(item)}
+                              </p>
+                            </div>
                           </div>
-                          <div className="p-4">
-                            <h4 className="font-bold truncate">{item.title}</h4>
-                            <p className={item.isGiveaway || item.purpose === 'GIVEAWAY' ? 'text-green-600 font-bold' : 'text-primary font-bold'}>
-                              {formatLinePrice(item)}
-                            </p>
-                          </div>
-                        </div>
                       ));
                     })()}
                   </div>
@@ -322,8 +332,8 @@ export default function StitchLandingPage() {
             <section className="py-16 relative z-10 bg-primary">
               <div className="max-w-7xl mx-auto px-6">
                 <div
-                  key={`stats-${statUsers}-${statDeals}-${statRep}`}
-                  className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-white text-center"
+                    key={`stats-${statUsers}-${statDeals}-${statRep}`}
+                    className="grid grid-cols-2 lg:grid-cols-4 gap-8 text-white text-center"
                 >
                   <div className="stat-counter transition-all duration-700 ease-out">
                     <p className="text-4xl md:text-6xl font-black mb-2 stat-number text-white" data-suffix="+" data-target={statUsers}>0+</p>
@@ -415,7 +425,7 @@ export default function StitchLandingPage() {
           </main>
           {/* Footer */}
         </div>
-        
+
       </>
   );
 }

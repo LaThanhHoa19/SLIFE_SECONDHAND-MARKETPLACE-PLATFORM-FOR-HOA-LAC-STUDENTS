@@ -33,7 +33,9 @@ import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { uiTokens } from '../../theme/uiTokens';
+
 
 const HEADER_BG = uiTokens.colors.surface.appHeader;
 const ACCENT = uiTokens.colors.brand.textSoft;
@@ -162,6 +164,8 @@ export default function Header({ onToggleSidebar }) {
     const [searchValue, setSearchValue] = useState('');
     const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+    const { checkVerification } = usePhoneVerification();
+
     const userAvatar = user?.avatarUrl || user?.avatar || '';
 
     const handleSearch = (e) => {
@@ -192,8 +196,10 @@ export default function Header({ onToggleSidebar }) {
             });
             return;
         }
-        navigate('/listings/new');
+
+        checkVerification(() => navigate('/listings/new'));
     };
+
 
     const handleUserMenuOpen = (e) => {
         setUserMenuAnchor(e.currentTarget);
@@ -225,13 +231,14 @@ export default function Header({ onToggleSidebar }) {
     return (
         <AppBar
             className="user-header-root"
-            position="static"
+            position="sticky"
             sx={{
                 background: HEADER_BG,
-                boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
-                borderBottom: '1px solid rgba(255,255,255,0.03)',
-                zIndex: theme.zIndex.drawer + 1,
+                boxShadow: '0 12px 24px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.04)',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                zIndex: (theme) => theme.zIndex.drawer + 1,
                 top: 0,
+                backdropFilter: 'blur(8px)',
             }}
         >
             <Toolbar sx={{ gap: 1, py: 0, px: 3, minHeight: '64px' }}>
@@ -466,3 +473,5 @@ export default function Header({ onToggleSidebar }) {
         </AppBar>
     );
 }
+
+
