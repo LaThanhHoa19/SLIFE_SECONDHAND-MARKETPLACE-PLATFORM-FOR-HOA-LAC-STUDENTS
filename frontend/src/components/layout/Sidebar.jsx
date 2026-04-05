@@ -3,7 +3,6 @@ import { Box, Typography, Tooltip, Button, Divider, useTheme, useMediaQuery } fr
 import {
     Home as HomeIcon,
     Bookmark as BookmarkIcon,
-    CampaignOutlined as CampaignIcon,
     Chat as ChatIcon,
     PeopleAlt as PeopleIcon,
     Add as AddIcon,
@@ -15,7 +14,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { APP_SHELL_BG, SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
-const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/chat'];
+const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/community/new', '/chat'];
 
 export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
