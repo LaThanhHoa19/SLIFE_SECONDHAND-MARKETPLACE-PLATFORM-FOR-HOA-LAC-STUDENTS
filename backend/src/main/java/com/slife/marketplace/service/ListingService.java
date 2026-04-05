@@ -178,10 +178,17 @@ public class ListingService {
                 size > 0 ? Math.min(size, 20) : 20,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
-                listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
+        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult;
 
-        List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = prioritizeFollowing
+        if ("GIVEAWAY".equalsIgnoreCase(feedType)) {
+            pageResult = listingRepository.findGiveawayActiveListingCards(sellerId, Instant.now(), pageable);
+        } else {
+            pageResult = listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
+        }
+
+        boolean shouldPrioritize = prioritizeFollowing && "NEWEST".equalsIgnoreCase(feedType);
+
+        List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = shouldPrioritize
                 ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
                 : pageResult.getContent();
 
