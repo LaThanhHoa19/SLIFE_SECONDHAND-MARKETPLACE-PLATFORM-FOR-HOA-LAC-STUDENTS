@@ -28,6 +28,7 @@ import { useAuth } from '../../hooks/useAuth';
 import CommunityPostCard from '../../components/community/CommunityPostCard';
 import { getCommunityPosts } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
+import useCommunityFeedRealtime from '../../hooks/useCommunityFeedRealtime';
 
 /** Nhãn hiển thị + slug hashtag (chữ thường, không dấu cách — khớp normalize backend). */
 const PLACEHOLDER_TAGS = [
@@ -146,6 +147,25 @@ export default function CommunityFeedPage() {
     const handlePatchPost = useCallback((postId, patch) => {
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
     }, []);
+
+    const handleRealtimeStats = useCallback(
+        ({ postId, likeCount, commentCount }) => {
+            setPosts((prev) =>
+                prev.map((p) =>
+                    Number(p.id) === Number(postId)
+                        ? {
+                              ...p,
+                              likeCount,
+                              commentCount,
+                          }
+                        : p,
+                ),
+            );
+        },
+        [],
+    );
+
+    useCommunityFeedRealtime(true, handleRealtimeStats);
 
     const hasMore = totalPages > 0 && page + 1 < totalPages;
 

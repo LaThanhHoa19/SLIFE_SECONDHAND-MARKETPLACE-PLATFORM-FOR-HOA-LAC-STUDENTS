@@ -65,6 +65,8 @@ import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
 import ReportDialog from '../../components/report/ReportDialog';
 import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
+import CatalogItemUnavailableScreen from '../../components/common/CatalogItemUnavailableScreen';
+import { shouldShowCatalogUnavailableForNotifLink } from '../../utils/catalogAvailability';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#141225';
@@ -126,6 +128,7 @@ export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const fromNotification = Boolean(location.state?.fromNotification);
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -436,6 +439,12 @@ export default function ListingDetailPage() {
                 </Box>
             </Box>
         );
+    }
+    if (
+        fromNotification &&
+        (Boolean(error) || (listing && shouldShowCatalogUnavailableForNotifLink(listing, currentUser, true)))
+    ) {
+        return <CatalogItemUnavailableScreen />;
     }
     if (error || !listing) {
         return (

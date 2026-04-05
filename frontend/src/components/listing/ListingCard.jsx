@@ -187,7 +187,15 @@ export default function ListingCard({
     }, [listing?.id, listing?.isSaved, listing?.is_saved]);
 
     const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
-    const unavailableStatuses = new Set(['SOLD', 'HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
+    const unavailableStatuses = new Set([
+        'SOLD',
+        'HIDDEN',
+        'MOD_HIDDEN',
+        'DELETED',
+        'BANNED',
+        'EXPIRED',
+        'GIVEN_AWAY',
+    ]);
     const isUnavailable = unavailableStatuses.has(normalizedStatus) || listing?.isUnavailable === true;
 
     const handleClick = () => {
@@ -223,6 +231,10 @@ export default function ListingCard({
     const handleLikeClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id) return;
         // Dùng token (axios cũng gắn Bearer) — tránh trường hợp có JWT nhưng user object chưa hydrate.
         if (!token) {
@@ -260,6 +272,10 @@ export default function ListingCard({
     const handleShareClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id || shareSubmitting) return;
         setShareSubmitting(true);
         let shareUrl = `${window.location.origin}/listings/${id}`;
@@ -296,6 +312,10 @@ export default function ListingCard({
     const handleSaveClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id || saveSubmitting) return;
         if (!token) {
             showToast('Bạn cần đăng nhập để tiếp tục.', 'warning');
@@ -325,6 +345,10 @@ export default function ListingCard({
     const handleMessageClick = (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id) return;
         if (!token) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
@@ -352,6 +376,10 @@ export default function ListingCard({
         e.stopPropagation();
         e.preventDefault();
         handleMoreClose();
+        if (isUnavailable) {
+            showToast('Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
             navigate('/login', { state: { from: location.pathname } });
@@ -725,18 +753,20 @@ export default function ListingCard({
                         {/* Like */}
                         <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: -1 }}>
-                                <IconButton
-                                    size="small"
-                                    disabled={likeSubmitting}
-                                    onClick={handleLikeClick}
-                                    sx={{
-                                        color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.1)' },
-                                    }}
-                                >
-                                    {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
-                                </IconButton>
+                                <Box component="span" sx={{ display: 'inline-flex' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable || likeSubmitting}
+                                        onClick={handleLikeClick}
+                                        sx={{
+                                            color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
+                                            p: 1,
+                                            '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.1)' },
+                                        }}
+                                    >
+                                        {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
+                                    </IconButton>
+                                </Box>
                                 <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
                                     {likeCount || 0}
                                 </Typography>
@@ -746,13 +776,23 @@ export default function ListingCard({
                         {/* Comment */}
                         <Tooltip title="Bình luận">
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <IconButton
-                                    size="small"
-                                    onClick={(e) => { e.stopPropagation(); setCommentOpen(true); }}
-                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
-                                >
-                                    <CommentIconOutlined sx={{ fontSize: 18 }} />
-                                </IconButton>
+                                <Box component="span" sx={{ display: 'inline-flex' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isUnavailable) {
+                                                showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+                                                return;
+                                            }
+                                            setCommentOpen(true);
+                                        }}
+                                        sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
+                                    >
+                                        <CommentIconOutlined sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                </Box>
                                 <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
                                     {listing?.commentCount || 0}
                                 </Typography>
@@ -762,9 +802,10 @@ export default function ListingCard({
                         {/* Message Seller - hide for own listing */}
                         {!isMe && (
                             <Tooltip title="Tin nhắn">
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
                                     <IconButton
                                         size="small"
+                                        disabled={isUnavailable}
                                         onClick={handleMessageClick}
                                         sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#00BA7C', bgcolor: 'rgba(0,186,124,0.1)' } }}
                                     >
@@ -776,11 +817,11 @@ export default function ListingCard({
 
                         {/* Share */}
                         <Tooltip title="Chia sẻ">
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
                                 <IconButton
                                     size="small"
                                     onClick={handleShareClick}
-                                    disabled={shareSubmitting}
+                                    disabled={isUnavailable || shareSubmitting}
                                     sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#1D9BF0', bgcolor: 'rgba(29,155,240,0.1)' } }}
                                 >
                                     <ShareIconOutlined sx={{ fontSize: 19 }} />
@@ -791,19 +832,20 @@ export default function ListingCard({
                         {/* Bookmark */}
                         {!isSavedPage && (
                             <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
-                                <IconButton
-                                    size="small"
-                                    disabled={saveSubmitting}
-                                    onClick={handleSaveClick}
-                                    sx={{
-                                        ml: 'auto',
-                                        color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
-                                    }}
-                                >
-                                    {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
-                                </IconButton>
+                                <Box component="span" sx={{ display: 'inline-flex', ml: 'auto' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable || saveSubmitting}
+                                        onClick={handleSaveClick}
+                                        sx={{
+                                            color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
+                                            p: 1,
+                                            '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
+                                        }}
+                                    >
+                                        {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+                                    </IconButton>
+                                </Box>
                             </Tooltip>
                         )}
                     </Box>

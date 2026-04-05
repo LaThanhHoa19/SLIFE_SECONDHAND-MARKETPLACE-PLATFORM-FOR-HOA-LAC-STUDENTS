@@ -48,6 +48,8 @@ export function deriveNotificationTab(n) {
     /** Chat: refId = message_id, refType MESSAGE — vẫn là thông báo tin nhắn. */
     if (type === 'MESSAGE' && ref === 'MESSAGE') return NOTIF_TAB.MESSAGE;
     if (type === 'MESSAGE' && ref === 'LISTING') return NOTIF_TAB.COMMENT;
+    /** Cộng đồng: thích / bình luận — cùng tab tương tác. */
+    if (type === 'MESSAGE' && ref === 'COMMUNITY_POST') return NOTIF_TAB.COMMENT;
 
     if (type === 'SYSTEM' && ref === 'LISTING_PUBLISHED') return NOTIF_TAB.PUBLISH;
     /** Đề xuất giá (refType OFFER / fallback nội dung cũ). */

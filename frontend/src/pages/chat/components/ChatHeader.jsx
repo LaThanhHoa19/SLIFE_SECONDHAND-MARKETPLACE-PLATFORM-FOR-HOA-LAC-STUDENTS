@@ -31,6 +31,8 @@ export default function ChatHeader({
                                        wsConnected,
                                        onOpenInChatSearch,
                                        showInChatSearch,
+                                       /** Tin gắn phiên không còn trên chợ — không link sang /listings/:id */
+                                       listingUnavailable = false,
                                    }) {
     const listingTitle = activeSession?.listingTitle || '';
     const otherName = activeSession?.otherParticipantName || '';
@@ -92,7 +94,7 @@ export default function ChatHeader({
             <Box sx={{ flex: 1, minWidth: 0 }}>
                 {hasListing ? (
                     <>
-                        {listingTo ? (
+                        {listingTo && !listingUnavailable ? (
                             <Link
                                 component={RouterLink}
                                 to={listingTo}
@@ -138,7 +140,7 @@ export default function ChatHeader({
                                     fontWeight: 700,
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.04em',
-                                    color: 'primary.main',
+                                    color: listingUnavailable ? 'text.disabled' : 'primary.main',
                                     lineHeight: 1.35,
                                     fontSize: '0.8rem',
                                     overflow: 'hidden',

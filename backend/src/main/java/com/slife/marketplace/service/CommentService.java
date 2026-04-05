@@ -59,9 +59,7 @@ public class CommentService {
         List<String> savedUrls = saveImages(saved, imageUrls);
 
         if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            notificationService.notifyListingCommented(
-                    listing.getSeller(), currentUser,
-                    listing.getId(), listing.getTitle());
+            notificationService.notifyListingCommented(listing.getSeller(), currentUser, listing.getId());
         }
         commentRateLimitService.recordSuccess(currentUser.getId());
 
@@ -96,10 +94,17 @@ public class CommentService {
         Comment saved = commentRepository.save(reply);
         List<String> savedUrls = saveImages(saved, imageUrls);
 
-        if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            notificationService.notifyListingCommented(
-                    listing.getSeller(), currentUser,
-                    listing.getId(), listing.getTitle());
+        User parentAuthor = parent.getUser();
+        if (parentAuthor != null && parentAuthor.getId() != null
+                && !parentAuthor.getId().equals(currentUser.getId())) {
+            notificationService.notifyListingCommentReply(parentAuthor, currentUser, listing.getId());
+        }
+        User seller = listing.getSeller();
+        if (seller != null && seller.getId() != null && !seller.getId().equals(currentUser.getId())) {
+            Long parentAuthorId = parentAuthor != null ? parentAuthor.getId() : null;
+            if (parentAuthorId == null || !seller.getId().equals(parentAuthorId)) {
+                notificationService.notifyListingDiscussionJoined(seller, currentUser, listing.getId());
+            }
         }
         commentRateLimitService.recordSuccess(currentUser.getId());
 

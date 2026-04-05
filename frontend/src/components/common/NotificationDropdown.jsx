@@ -80,8 +80,14 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
         }
 
         if (n?.refType === 'LISTING' && n?.refId) {
-            navigate(`/listings/${n.refId}`);
-        } else if (n.refType === 'USER' && n.refId) {
+            navigate(`/listings/${n.refId}`, { state: { fromNotification: true } });
+            return;
+        }
+        if (n?.refType === 'COMMUNITY_POST' && n?.refId) {
+            navigate(`/community/posts/${n.refId}`, { state: { fromNotification: true } });
+            return;
+        }
+        if (n.refType === 'USER' && n.refId) {
             navigate(`/profile/${n.refId}`);
         }
     };
