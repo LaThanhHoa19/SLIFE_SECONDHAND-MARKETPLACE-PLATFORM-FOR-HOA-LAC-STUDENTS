@@ -18,8 +18,11 @@ public class SearchRequest {
     @Size(max = 100, message = "Keyword must not exceed 100 characters")
     private String q;
 
-    /** Filter theo category */
+    /** Filter theo category cha */
     private Long categoryId;
+
+    /** Filter theo subcategory (ưu tiên nếu có) */
+    private Long subcategoryId;
 
     /** Filter theo pickup location */
     private String location;

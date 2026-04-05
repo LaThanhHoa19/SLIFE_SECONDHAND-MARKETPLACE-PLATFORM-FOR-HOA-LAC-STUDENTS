@@ -488,7 +488,7 @@ export default function ListingCard({
                                 {formatRelativeShort(listing?.createdAt) || 'Vừa đăng'}
                             </Typography>
                         </Stack>
-                        {!isMe && (
+                        {(!isMe || isSavedPage) && (
                             <Tooltip title="Tùy chọn">
                                 <IconButton
                                     size="small"
@@ -789,21 +789,23 @@ export default function ListingCard({
                         </Tooltip>
 
                         {/* Bookmark */}
-                        <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
-                            <IconButton
-                                size="small"
-                                disabled={saveSubmitting}
-                                onClick={handleSaveClick}
-                                sx={{
-                                    ml: 'auto',
-                                    color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
-                                    p: 1,
-                                    '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
-                                }}
-                            >
-                                {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
-                            </IconButton>
-                        </Tooltip>
+                        {!isSavedPage && (
+                            <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
+                                <IconButton
+                                    size="small"
+                                    disabled={saveSubmitting}
+                                    onClick={handleSaveClick}
+                                    sx={{
+                                        ml: 'auto',
+                                        color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
+                                        p: 1,
+                                        '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
+                                    }}
+                                >
+                                    {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+                                </IconButton>
+                            </Tooltip>
+                        )}
                     </Box>
                 </Box>
             </Box>
@@ -814,7 +816,7 @@ export default function ListingCard({
                 listing={listing}
             />
 
-            {!isMe && (
+            {(!isMe || isSavedPage) && (
                 <>
                     <Menu
                         anchorEl={moreAnchorEl}
@@ -839,12 +841,14 @@ export default function ListingCard({
                                 <ListItemText primary="Bỏ lưu" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
                             </MenuItem>
                         )}
-                        <MenuItem onClick={handleReportClick}>
-                            <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
-                                <ReportIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
-                        </MenuItem>
+                        {!isMe && (
+                            <MenuItem onClick={handleReportClick}>
+                                <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
+                                    <ReportIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
+                            </MenuItem>
+                        )}
                     </Menu>
 
                     <ReportDialog
