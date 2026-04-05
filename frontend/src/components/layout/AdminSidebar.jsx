@@ -67,9 +67,6 @@ export default function AdminSidebar() {
             <Box sx={{ borderBottom: `1px solid ${t.borderSubtle}`, mb: 2 }} />
 
             <Box
-                component="button"
-                type="button"
-                onClick={() => navigate('/admin/profile')}
                 sx={{
                     width: '100%',
                     p: 1.5,
@@ -81,13 +78,7 @@ export default function AdminSidebar() {
                     alignItems: 'center',
                     gap: 1.5,
                     mb: 2,
-                    cursor: 'pointer',
                     textAlign: 'left',
-                    transition: 'background 0.2s, border-color 0.2s',
-                    '&:hover': {
-                        bgcolor: t.bgCard,
-                        borderColor: t.borderAccentStrong,
-                    },
                 }}
             >
                 <Avatar
