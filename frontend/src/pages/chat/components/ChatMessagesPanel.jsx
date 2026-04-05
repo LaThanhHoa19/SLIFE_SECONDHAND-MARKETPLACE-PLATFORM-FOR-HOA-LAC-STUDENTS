@@ -14,8 +14,11 @@ import {
 export default function ChatMessagesPanel({
                                               theme,
                                               messagesScrollRef,
+                                              onScroll,
                                               updateJumpToLatestVisibility,
                                               historyLoading,
+                                              loadingOlderHistory,
+                                              historyHasMore,
                                               displayMessages,
                                               currentUserId,
                                               highlightedMessageId,
@@ -60,7 +63,7 @@ export default function ChatMessagesPanel({
             )}
             <Box
                 ref={messagesScrollRef}
-                onScroll={updateJumpToLatestVisibility}
+                onScroll={onScroll ?? updateJumpToLatestVisibility}
                 sx={{
                     flex: 1,
                     overflow: 'auto',
@@ -94,6 +97,20 @@ export default function ChatMessagesPanel({
                     },
                 }}
             >
+                {loadingOlderHistory && !showHistorySkeleton && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 1.25 }}>
+                        <CircularProgress size={22} thickness={4} />
+                    </Box>
+                )}
+                {historyHasMore && !loadingOlderHistory && !showHistorySkeleton && displayMessages.length > 0 && (
+                    <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', textAlign: 'center', pb: 1, opacity: 0.85 }}
+                    >
+                        Cuộn lên để tải tin cũ hơn
+                    </Typography>
+                )}
                 {showHistorySkeleton ? (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25, py: 0.5 }}>
                         {[0, 1, 2, 3, 4, 5].map((i) => (

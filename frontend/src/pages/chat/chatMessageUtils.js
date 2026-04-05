@@ -3,6 +3,52 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 /** Khoảng cách từ đáy vùng scroll để coi là “đang xem tin mới nhất” */
 export const CHAT_NEAR_BOTTOM_PX = 80;
 
+/** Cuộn gần đỉnh danh sách → kích hoạt tải thêm tin cũ */
+export const CHAT_LOAD_OLDER_THRESHOLD_PX = 120;
+
+/** Kích thước trang history REST (khớp tối đa BE: 50). */
+export const CHAT_HISTORY_PAGE_SIZE = 30;
+
+/**
+ * Parse body Spring Page từ GET /chats/{id}/history.
+ * @returns {{ content: unknown[], last: boolean }}
+ */
+export function parseChatHistoryResponse(res) {
+  const body = res?.data;
+  const page = body?.data ?? body;
+  const content = Array.isArray(page?.content)
+    ? page.content
+    : Array.isArray(page)
+      ? page
+      : [];
+  const last = page?.last === true;
+  return { content, last };
+}
+
+/**
+ * Gộp “cửa sổ” tin mới nhất (API trả DESC) vào state đã có (gồm cả tin cũ đã tải thêm).
+ * Giữ thứ tự thời gian tăng dần.
+ */
+export function mergeChatHistoryPage(prev, newestFirstChunk) {
+  const chunkAsc = Array.isArray(newestFirstChunk) ? [...newestFirstChunk].reverse() : [];
+  const byId = new Map();
+  for (const m of prev) {
+    if (m == null || m.id == null) continue;
+    byId.set(String(m.id), m);
+  }
+  for (const m of chunkAsc) {
+    if (m == null || m.id == null) continue;
+    byId.set(String(m.id), m);
+  }
+  const list = Array.from(byId.values());
+  list.sort((a, b) => {
+    const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return ta - tb;
+  });
+  return list;
+}
+
 /** Ảnh chat lưu tại /uploads/** — không được gắn prefix /api (sẽ 403 qua nginx/Spring) */
 export function resolveChatImageSrc(fileUrl) {
   if (!fileUrl) return '';
@@ -274,21 +320,24 @@ export function enrichMessagesForDisplay(msgs) {
           .filter((t) => t.trim() !== '');
         const joined = texts.join('\n').toLowerCase();
         if (joined) {
-          if (
-            joined.includes('đồng ý') ||
-            joined.includes('chap nhan') ||
-            joined.includes('chấp nhận') ||
-            joined.includes('✅')
-          ) {
-            dealDecision = 'ACCEPT';
-          } else if (
-            joined.includes('hủy') ||
-            joined.includes('huy') ||
+          // Hủy / từ chối TRƯỚC: "không đồng ý" vẫn chứa chuỗi "đồng ý" → không được nhận nhầm ACCEPT sau F5.
+          const isReject =
             joined.includes('không đồng ý') ||
             joined.includes('khong dong y') ||
-            joined.includes('❌')
-          ) {
+            joined.includes('❌') ||
+            joined.includes('hủy') ||
+            joined.includes('huy');
+          const isAccept =
+            joined.includes('✅') ||
+            joined.includes('chấp nhận') ||
+            joined.includes('chap nhan') ||
+            (joined.includes('đồng ý') &&
+              !joined.includes('không đồng ý') &&
+              !joined.includes('khong dong y'));
+          if (isReject) {
             dealDecision = 'CANCEL';
+          } else if (isAccept) {
+            dealDecision = 'ACCEPT';
           } else if (candidates.length > 0) {
             dealDecision = 'DONE';
           }
