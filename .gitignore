@@ -12,4 +12,9 @@ frontend/dist/
 
 cleanup_data.sql
 
+firebase/functions/node_modules/
+firebase/functions/.env
+firebase/functions/.env.*
+!firebase/functions/.env.example
+
 AGENTS.md

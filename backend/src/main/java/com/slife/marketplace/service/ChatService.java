@@ -49,6 +49,7 @@ public class ChatService {
     private final BlockService blockService;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
     private final Path uploadBasePath;
 
@@ -62,6 +63,7 @@ public class ChatService {
                        BlockService blockService,
                        UserService userService,
                        NotificationService notificationService,
+                       SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
                        Path uploadBasePath) {
         this.conversationRepository = conversationRepository;
@@ -71,6 +73,7 @@ public class ChatService {
         this.blockService = blockService;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
         this.uploadBasePath = uploadBasePath;
     }
@@ -256,6 +259,15 @@ public class ChatService {
                     String oe = other.getEmail() != null ? other.getEmail().trim().toLowerCase() : "";
                     return oe.isEmpty() || !oe.equals(currentEmail);
                 })
+                .filter(c -> {
+                    User u1 = c.getUserId1();
+                    User u2 = c.getUserId2();
+                    User other = isCurrentParticipant(u1, user) ? u2 : u1;
+                    if (other == null || other.getId() == null) {
+                        return true;
+                    }
+                    return !blockService.isBlockedEitherDirection(user.getId(), other.getId());
+                })
                 .collect(Collectors.toList());
     }
 
@@ -305,6 +317,7 @@ public class ChatService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         User current = userService.getCurrentUser();
         ensureParticipant(conv, current);
+        assertNoBlockWithConversationPeer(conv, current);
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sentAt"));
         Page<Message> msgPage = messageRepository.findByConversation_IdOrderBySentAtDesc(conv.getId(), pageable);
         Map<Long, Offer> offerByMessageId = mapOfferProposalsToOffers(msgPage.getContent(), conv);
@@ -334,6 +347,7 @@ public class ChatService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         User current = userService.getCurrentUser();
         ensureParticipant(conv, current);
+        assertNoBlockWithConversationPeer(conv, current);
         int safeSize = Math.min(30, Math.max(5, size));
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "sentAt"));
         Page<Message> msgPage = messageRepository
@@ -547,6 +561,8 @@ public class ChatService {
         if (seller != null) {
             // Chỉ thông báo đề xuất giá — không gửi thêm "tin nhắn mới" (cùng một bubble OFFER_PROPOSAL).
             notificationService.notifyOfferProposal(seller, buyer, listing.getId(), listing.getTitle(), amount);
+            systemEmailService.sendOfferProposalEmail(
+                    seller, emailDisplayNameForMail(buyer), listing.getTitle(), listing.getId(), amount);
         }
         broadcastToSession(sessionId, response);
 
@@ -629,6 +645,8 @@ public class ChatService {
             if (listing != null) {
                 notificationService.notifyDealConfirmed(acceptedBuyer, seller,
                         listing.getId(), listing.getTitle(), conv.getId());
+                systemEmailService.sendOfferAcceptedEmails(
+                        acceptedBuyer, seller, listing.getTitle(), listing.getId(), conv.getId());
             }
             log.info("respondToOffer ACCEPTED offerId={} listingId={}", offerId,
                     listing != null ? listing.getId() : null);
@@ -645,6 +663,12 @@ public class ChatService {
                 User rejSeller = rejListing.getSeller() != null ? rejListing.getSeller() : seller;
                 notificationService.notifyOfferRejected(buyer, rejSeller, rejListing.getId(),
                         rejListing.getTitle(), offer.getAmount());
+                systemEmailService.sendOfferRejectedEmail(
+                        buyer,
+                        emailDisplayNameForMail(rejSeller),
+                        rejListing.getTitle(),
+                        rejListing.getId(),
+                        offer.getAmount());
             }
             log.info("respondToOffer REJECTED offerId={}", offerId);
         }
@@ -660,6 +684,7 @@ public class ChatService {
         Conversation conv = conversationRepository.findBySessionUuid(sessionId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND));
         ensureParticipant(conv, reader);
+        assertNoBlockWithConversationPeer(conv, reader);
         int updated = messageRepository.markAllReadInConversation(conv.getId(), reader.getId());
         if (updated > 0) {
             log.debug("markSessionAsRead session={} reader={} updated={}", sessionId, reader.getId(), updated);
@@ -704,6 +729,14 @@ public class ChatService {
         if (blockService.isBlockedEitherDirection(a.getId(), b.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN, "Chat is blocked between these users");
         }
+    }
+
+    private void assertNoBlockWithConversationPeer(Conversation conv, User current) {
+        User other = getOtherParticipant(conv, current);
+        if (other == null || other.getId() == null) {
+            return;
+        }
+        assertNoBlockBetween(current, other);
     }
 
     private Message resolveReferenceMessage(Long refId, Conversation conv) {
@@ -897,6 +930,19 @@ public class ChatService {
                 .quoteMessageId(quoteId)
                 .quote(toReference(quoteMsg))
                 .build();
+    }
+
+    private static String emailDisplayNameForMail(User u) {
+        if (u == null) {
+            return "Người dùng";
+        }
+        if (u.getFullName() != null && !u.getFullName().isBlank()) {
+            return u.getFullName().trim();
+        }
+        if (u.getEmail() != null && !u.getEmail().isBlank()) {
+            return u.getEmail().trim();
+        }
+        return "Người dùng";
     }
 
     private static String truncate(String s, int max) {

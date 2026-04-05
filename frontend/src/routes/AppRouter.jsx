@@ -44,6 +44,7 @@ import {
     SuspenseCommunityFeedPage,
     SuspenseCommunityCreatePostPage,
     SuspenseCommunityPostDetailPage,
+    SuspenseBlockedUsersPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -210,6 +211,15 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseChatPage />
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/settings/blocked"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseBlockedUsersPage />
                         </RouteGuard>
                     }
                 />
