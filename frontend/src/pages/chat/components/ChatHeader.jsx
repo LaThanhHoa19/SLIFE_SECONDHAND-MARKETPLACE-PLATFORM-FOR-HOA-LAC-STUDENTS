@@ -2,6 +2,7 @@ import { Box, Chip, IconButton, Link, Tooltip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
+import BlockIcon from '@mui/icons-material/Block';
 import { Link as RouterLink } from 'react-router-dom';
 import ChatParticipantAvatar from './ChatParticipantAvatar';
 
@@ -31,6 +32,8 @@ export default function ChatHeader({
                                        wsConnected,
                                        onOpenInChatSearch,
                                        showInChatSearch,
+                                       showBlockUser = false,
+                                       onOpenBlockUser,
                                    }) {
     const listingTitle = activeSession?.listingTitle || '';
     const otherName = activeSession?.otherParticipantName || '';
@@ -233,6 +236,13 @@ export default function ChatHeader({
                         : 'Nhắn trực tiếp với người bán — an toàn hơn khi giao dịch trong app'}
                 </Typography>
             </Box>
+            {showBlockUser && typeof onOpenBlockUser === 'function' && (
+                <Tooltip title="Chặn người dùng này">
+                    <IconButton size="small" aria-label="Chặn người dùng" onClick={() => onOpenBlockUser()}>
+                        <BlockIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            )}
             {showInChatSearch && (
                 <Tooltip title="Tìm trong cuộc trò chuyện">
                     <IconButton

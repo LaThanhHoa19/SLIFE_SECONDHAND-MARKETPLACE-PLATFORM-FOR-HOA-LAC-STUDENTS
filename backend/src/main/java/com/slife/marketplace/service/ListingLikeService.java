@@ -28,6 +28,7 @@ public class ListingLikeService {
     private final ListingLikeRepository listingLikeRepository;
     private final ListingRepository listingRepository;
     private final ListingService listingService;
+    private final BlockService blockService;
 
     /**
      * Một endpoint: bấm lần 1 = like, lần 2 = unlike.
@@ -44,6 +45,12 @@ public class ListingLikeService {
             listingLikeRepository.deleteByUser_IdAndListing_Id(user.getId(), listingId);
             long count = listingLikeRepository.countByListing_Id(listingId);
             return new ToggleLikeResponse(false, count);
+        }
+
+        if (listing.getSeller() != null && listing.getSeller().getId() != null
+                && !listing.getSeller().getId().equals(user.getId())
+                && blockService.isBlockedEitherDirection(user.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
         }
 
         ListingLikeId id = new ListingLikeId();

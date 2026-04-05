@@ -8,13 +8,14 @@ import {
     Add as AddIcon,
     ListAlt as ListAltIcon,
     Logout as LogoutIcon,
+    Block as BlockIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { APP_SHELL_BG, SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
-const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/community/new', '/chat'];
+const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/community/new', '/chat', '/settings/blocked'];
 
 export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
@@ -31,6 +32,7 @@ export default function Sidebar({ open = true }) {
         { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
         { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
         ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
+        ...(isAuthenticated ? [{ label: 'Đã chặn', icon: BlockIcon, path: '/settings/blocked' }] : []),
     ];
 
     // Thêm nút Đăng tin vào sidebar nếu màn hình nhỏ (khi nút trên header ẩn đi)
@@ -74,8 +76,10 @@ export default function Sidebar({ open = true }) {
         const current = location.pathname;
         if (path === '/feed') return current === '/feed' || (current.startsWith('/listings/') && !current.includes('/new'));
         if (path.startsWith('/profile')) {
-            // Check if both are profile paths
             return current.startsWith('/profile');
+        }
+        if (path === '/settings/blocked') {
+            return current === '/settings/blocked';
         }
         return current === path || current.startsWith(path + '/');
     };
