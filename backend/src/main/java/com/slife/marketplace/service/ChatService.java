@@ -49,6 +49,7 @@ public class ChatService {
     private final BlockService blockService;
     private final UserService userService;
     private final NotificationService notificationService;
+    private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
     private final Path uploadBasePath;
 
@@ -62,6 +63,7 @@ public class ChatService {
                        BlockService blockService,
                        UserService userService,
                        NotificationService notificationService,
+                       SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
                        Path uploadBasePath) {
         this.conversationRepository = conversationRepository;
@@ -71,6 +73,7 @@ public class ChatService {
         this.blockService = blockService;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
         this.uploadBasePath = uploadBasePath;
     }
@@ -558,6 +561,8 @@ public class ChatService {
         if (seller != null) {
             // Chỉ thông báo đề xuất giá — không gửi thêm "tin nhắn mới" (cùng một bubble OFFER_PROPOSAL).
             notificationService.notifyOfferProposal(seller, buyer, listing.getId(), listing.getTitle(), amount);
+            systemEmailService.sendOfferProposalEmail(
+                    seller, emailDisplayNameForMail(buyer), listing.getTitle(), listing.getId(), amount);
         }
         broadcastToSession(sessionId, response);
 
@@ -640,6 +645,8 @@ public class ChatService {
             if (listing != null) {
                 notificationService.notifyDealConfirmed(acceptedBuyer, seller,
                         listing.getId(), listing.getTitle(), conv.getId());
+                systemEmailService.sendOfferAcceptedEmails(
+                        acceptedBuyer, seller, listing.getTitle(), listing.getId(), conv.getId());
             }
             log.info("respondToOffer ACCEPTED offerId={} listingId={}", offerId,
                     listing != null ? listing.getId() : null);
@@ -656,6 +663,12 @@ public class ChatService {
                 User rejSeller = rejListing.getSeller() != null ? rejListing.getSeller() : seller;
                 notificationService.notifyOfferRejected(buyer, rejSeller, rejListing.getId(),
                         rejListing.getTitle(), offer.getAmount());
+                systemEmailService.sendOfferRejectedEmail(
+                        buyer,
+                        emailDisplayNameForMail(rejSeller),
+                        rejListing.getTitle(),
+                        rejListing.getId(),
+                        offer.getAmount());
             }
             log.info("respondToOffer REJECTED offerId={}", offerId);
         }
@@ -917,6 +930,19 @@ public class ChatService {
                 .quoteMessageId(quoteId)
                 .quote(toReference(quoteMsg))
                 .build();
+    }
+
+    private static String emailDisplayNameForMail(User u) {
+        if (u == null) {
+            return "Người dùng";
+        }
+        if (u.getFullName() != null && !u.getFullName().isBlank()) {
+            return u.getFullName().trim();
+        }
+        if (u.getEmail() != null && !u.getEmail().isBlank()) {
+            return u.getEmail().trim();
+        }
+        return "Người dùng";
     }
 
     private static String truncate(String s, int max) {
