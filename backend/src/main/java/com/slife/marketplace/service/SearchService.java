@@ -48,9 +48,13 @@ public class SearchService {
         BigDecimal priceMin = request.getPriceMin();
         BigDecimal priceMax = request.getPriceMax();
 
+        Long effectiveCategoryId = request.getSubcategoryId() != null
+                ? request.getSubcategoryId()
+                : request.getCategoryId();
+
         return listingRepository.findByFilters(
                 q,
-                request.getCategoryId(),
+                effectiveCategoryId,
                 location,
                 purpose,
                 itemCond,
