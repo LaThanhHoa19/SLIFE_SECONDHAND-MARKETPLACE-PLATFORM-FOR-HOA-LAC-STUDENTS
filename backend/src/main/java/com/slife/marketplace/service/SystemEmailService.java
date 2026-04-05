@@ -1,5 +1,6 @@
 package com.slife.marketplace.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
@@ -7,6 +8,7 @@ import com.slife.marketplace.repository.UserRepository;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -14,10 +16,16 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import org.springframework.beans.factory.ObjectProvider;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Email giao dịch (welcome, offer, deal, nhắc giờ giao). Gửi bất đồng bộ; lỗi SMTP chỉ ghi log.
@@ -28,8 +36,13 @@ public class SystemEmailService {
     private static final Logger log = LoggerFactory.getLogger(SystemEmailService.class);
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.mail.enabled:true}")
     private boolean mailEnabled;
@@ -40,9 +53,22 @@ public class SystemEmailService {
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
 
-    public SystemEmailService(ObjectProvider<JavaMailSender> mailSenderProvider, UserRepository userRepository) {
+    @Value("${app.mail.transport:smtp}")
+    private String mailTransport;
+
+    @Value("${app.mail.http.url:}")
+    private String mailHttpUrl;
+
+    @Value("${app.mail.http.secret:}")
+    private String mailHttpSecret;
+
+    public SystemEmailService(
+            ObjectProvider<JavaMailSender> mailSenderProvider,
+            UserRepository userRepository,
+            ObjectMapper objectMapper) {
         this.mailSenderProvider = mailSenderProvider;
         this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Async("emailTaskExecutor")
@@ -180,10 +206,18 @@ public class SystemEmailService {
         }
     }
 
+    private boolean useHttpRelay() {
+        return mailTransport != null && "http".equalsIgnoreCase(mailTransport.trim());
+    }
+
     private void send(String to, String subject, String htmlBody) {
+        if (useHttpRelay()) {
+            sendViaHttpRelay(to, subject, htmlBody);
+            return;
+        }
         JavaMailSender sender = mailSenderProvider.getIfAvailable();
         if (sender == null) {
-            log.debug("JavaMailSender not configured, skip email to {}", to);
+            log.warn("JavaMailSender bean missing — add spring-boot-starter-mail properties or set app.mail.transport=http. Skip email to {}", to);
             return;
         }
         try {
@@ -194,9 +228,41 @@ public class SystemEmailService {
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             sender.send(message);
-            log.debug("Email sent to {} subject={}", to, subject);
+            log.debug("Email sent (SMTP) to {} subject={}", to, subject);
         } catch (Exception ex) {
             log.warn("send email failed to {}: {}", to, ex.getMessage());
+            throw new RuntimeException(ex);
+        }
+    }
+
+    private void sendViaHttpRelay(String to, String subject, String htmlBody) {
+        String url = mailHttpUrl != null ? mailHttpUrl.trim() : "";
+        String secret = mailHttpSecret != null ? mailHttpSecret.trim() : "";
+        if (url.isEmpty() || secret.isEmpty()) {
+            log.warn("app.mail.http.url or app.mail.http.secret empty — skip email to {}", to);
+            return;
+        }
+        try {
+            Map<String, String> payload = new LinkedHashMap<>();
+            payload.put("to", to);
+            payload.put("subject", subject);
+            payload.put("html", htmlBody);
+            payload.put("from", mailFrom);
+            String json = objectMapper.writeValueAsString(payload);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(45))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + secret)
+                    .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new RuntimeException("HTTP " + response.statusCode() + ": " + response.body());
+            }
+            log.debug("Email sent (HTTP relay) to {} subject={}", to, subject);
+        } catch (Exception ex) {
+            log.warn("send email via HTTP relay failed to {}: {}", to, ex.getMessage());
             throw new RuntimeException(ex);
         }
     }

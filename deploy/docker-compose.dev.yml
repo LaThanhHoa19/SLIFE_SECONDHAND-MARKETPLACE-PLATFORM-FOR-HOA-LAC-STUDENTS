@@ -38,6 +38,10 @@ services:
       FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY:-AIzaSyDMQRxyUXZkj5_UF2s24hRQK6UJWnt031I}
       VIETMAP_SERVICES_KEY: "f611ec02555463b634e15ce9863f305bb81a68f088bed048"
       APP_UPLOAD_DIR: /app/uploads
+      APP_MAIL_TRANSPORT: ${APP_MAIL_TRANSPORT:-smtp}
+      APP_MAIL_HTTP_URL: ${APP_MAIL_HTTP_URL:-}
+      APP_MAIL_HTTP_SECRET: ${APP_MAIL_HTTP_SECRET:-}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-noreply@slife.local}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
