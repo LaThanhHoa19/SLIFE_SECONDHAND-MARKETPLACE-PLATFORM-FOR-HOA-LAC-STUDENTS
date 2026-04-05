@@ -138,7 +138,7 @@ public class ListingService {
                 : Set.of();
 
         List<Listing> listings = pageResult.getContent().stream()
-                .filter(l -> !isSellerBlockingViewer(l.getSeller(), currentUser))
+                .filter(l -> !isHiddenByBlockBetweenSellerAndViewer(l.getSeller(), currentUser))
                 .toList();
         Set<Long> followedSellerIds = resolveFollowedSellerIds(currentUser, listings);
 
@@ -210,7 +210,7 @@ public class ListingService {
         List<com.slife.marketplace.dto.response.ListingCardResponse> content = prioritized.stream()
                 .filter(card -> currentUser == null
                         || card.getSellerId() == null
-                        || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
+                        || !blockService.isBlockedEitherDirection(card.getSellerId(), currentUser.getId()))
                 .collect(Collectors.toCollection(java.util.ArrayList::new));
         if (currentUser != null && !content.isEmpty()) {
             Set<Long> sellerIds = content.stream()
@@ -780,14 +780,17 @@ public class ListingService {
                 followerIds);
     }
 
-    private boolean isSellerBlockingViewer(User seller, User viewer) {
+    /**
+     * Ẩn tin khi có block theo bất kỳ chiều nào giữa người bán và người xem (cùng mô hình chat).
+     */
+    private boolean isHiddenByBlockBetweenSellerAndViewer(User seller, User viewer) {
         if (seller == null || viewer == null || seller.getId() == null || viewer.getId() == null) {
             return false;
         }
         if (seller.getId().equals(viewer.getId())) {
             return false;
         }
-        return blockService.isBlockedByCurrentUser(seller.getId(), viewer.getId());
+        return blockService.isBlockedEitherDirection(seller.getId(), viewer.getId());
     }
 
     private Object buildSellerSummary(Listing listing) {

@@ -55,8 +55,7 @@ public class UserController {
         Long viewerId = userService.getCurrentUserOptional().map(User::getId).orElse(null);
         if (viewerId != null
                 && !viewerId.equals(user.getId())
-                && blockService.isBlockedByCurrentUser(user.getId(), viewerId)) {
-            // Hide profile as if it doesn't exist for blocked viewer.
+                && blockService.isBlockedEitherDirection(user.getId(), viewerId)) {
             throw new SlifeException(ErrorCode.USER_NOT_FOUND);
         }
         UserProfileResponse body = followService.buildProfileForViewer(user, viewerId);

@@ -1,8 +1,10 @@
-import { Avatar, Box, Button, Chip, CircularProgress, IconButton, Tooltip, Typography } from '@mui/material';
-import StarIcon from '@mui/icons-material/Star';
+import { Avatar, Box, Button, CircularProgress, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import PersonIcon from '@mui/icons-material/Person';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import BlockIcon from '@mui/icons-material/Block';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 
@@ -18,8 +20,11 @@ export default function ListingSellerInfo({
                                               isFollowed,
                                               followLoading,
                                               onFollowClick,
+                                              showBlock = false,
+                                              onBlockClick,
                                           }) {
     const navigate = useNavigate();
+    const [menuAnchor, setMenuAnchor] = useState(null);
 
     const handleNavigateProfile = () => {
         const targetId = sellerId ?? seller?.id;
@@ -134,34 +139,75 @@ export default function ListingSellerInfo({
                     </Box>
 
                     {/* View Profile Button - Compact pill like Cho Tot */}
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={handleNavigateProfile}
-                        sx={{
-                            color: TEXT_PRI,
-                            borderColor: 'rgba(255,255,255,0.15)',
-                            textTransform: 'none',
-                            fontSize: 13,
-                            fontWeight: 800,
-                            borderRadius: '24px',
-                            px: 2.5,
-                            height: 34,
-                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                                bgcolor: 'rgba(255,255,255,0.08)',
-                                borderColor: PURPLE,
-                                color: PURPLE,
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                                transform: 'translateY(-1px)'
-                            },
-                            '&:active': {
-                                transform: 'translateY(0)'
-                            }
-                        }}
-                    >
-                        Xem trang
-                    </Button>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={handleNavigateProfile}
+                            sx={{
+                                color: TEXT_PRI,
+                                borderColor: 'rgba(255,255,255,0.15)',
+                                textTransform: 'none',
+                                fontSize: 13,
+                                fontWeight: 800,
+                                borderRadius: '24px',
+                                px: 2.5,
+                                height: 34,
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    bgcolor: 'rgba(255,255,255,0.08)',
+                                    borderColor: PURPLE,
+                                    color: PURPLE,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                                    transform: 'translateY(-1px)'
+                                },
+                                '&:active': {
+                                    transform: 'translateY(0)'
+                                }
+                            }}
+                        >
+                            Xem trang
+                        </Button>
+                        {showBlock && typeof onBlockClick === 'function' && (
+                            <>
+                                <Tooltip title="Thêm tùy chọn">
+                                    <IconButton
+                                        size="small"
+                                        aria-label="Tùy chọn người bán"
+                                        onClick={(e) => setMenuAnchor(e.currentTarget)}
+                                        sx={{ color: TEXT_SEC }}
+                                    >
+                                        <MoreVertIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <Menu
+                                    anchorEl={menuAnchor}
+                                    open={Boolean(menuAnchor)}
+                                    onClose={() => setMenuAnchor(null)}
+                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                    transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                                    PaperProps={{
+                                        sx: {
+                                            bgcolor: CARD_BG2,
+                                            border: '1px solid rgba(255,255,255,0.08)',
+                                            '& .MuiMenuItem-root': { fontSize: 14 },
+                                        },
+                                    }}
+                                >
+                                    <MenuItem
+                                        onClick={() => {
+                                            setMenuAnchor(null);
+                                            onBlockClick();
+                                        }}
+                                        sx={{ color: 'rgba(255,255,255,0.9)', gap: 1 }}
+                                    >
+                                        <BlockIcon fontSize="small" />
+                                        Chặn người bán
+                                    </MenuItem>
+                                </Menu>
+                            </>
+                        )}
+                    </Box>
                 </Box>
             </Box>
         </Box>

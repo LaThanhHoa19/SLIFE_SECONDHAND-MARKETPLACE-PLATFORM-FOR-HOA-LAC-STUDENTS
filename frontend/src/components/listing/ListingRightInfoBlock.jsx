@@ -20,6 +20,8 @@ export default function ListingRightInfoBlock({
                                                   sellerFollowed,
                                                   sellerFollowLoading,
                                                   onSellerFollowClick,
+                                                  showSellerBlock = false,
+                                                  onSellerBlockClick,
                                               }) {
     const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
     const isUnavailable = normalizedStatus === 'SOLD' || normalizedStatus === 'HIDDEN' || normalizedStatus === 'MOD_HIDDEN';
@@ -73,6 +75,8 @@ export default function ListingRightInfoBlock({
                     isFollowed={sellerFollowed}
                     followLoading={sellerFollowLoading}
                     onFollowClick={onSellerFollowClick}
+                    showBlock={showSellerBlock}
+                    onBlockClick={onSellerBlockClick}
                 />
             </Box>
 

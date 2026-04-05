@@ -27,6 +27,9 @@ import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
 import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 import { firebaseAuth } from '../../lib/firebase';
+import { isUserNotFoundError } from '../../utils/apiError';
+import { useBlockActions } from '../../hooks/useBlockActions';
+import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDialog';
 
 // Sub-components
 import ProfileHeader from '../../components/profile/ProfileHeader';
@@ -117,6 +120,8 @@ export default function ProfilePage() {
   const [otpCooldownUntil, setOtpCooldownUntil] = useState(0);
   const [otpCooldownNow, setOtpCooldownNow] = useState(Date.now());
   const [viewMode, setViewMode] = useState('grid');
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const { blockUserById } = useBlockActions();
   const { showToast } = useToast();
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
@@ -171,12 +176,20 @@ export default function ProfilePage() {
           const res = await userApi.getUserById(id);
           const data = getPayload(res);
           if (data) setProfileUser(applyUserProfilePatch(null, data));
-        } catch(err) {
-          setError('Không tải được thông tin người dùng.');
+        } catch (err) {
+          setError(
+            isUserNotFoundError(err)
+              ? 'PROFILE_UNAVAILABLE'
+              : err?.message || 'Không tải được thông tin người dùng.',
+          );
         }
       }
     } catch (err) {
-      setError(err?.message || 'Không tải được thông tin người dùng.');
+      if (isUserNotFoundError(err) && !isMe) {
+        setError('PROFILE_UNAVAILABLE');
+      } else {
+        setError(err?.message || 'Không tải được thông tin người dùng.');
+      }
       if (isMe && currentUser) setProfileUser(currentUser);
     } finally {
       setLoading(false);
@@ -470,18 +483,28 @@ export default function ProfilePage() {
   
   if (!profileUser) {
     const needLogin = !id || id === 'me';
+    const profileUnavailable = error === 'PROFILE_UNAVAILABLE';
     return (
-      <Box p={3} textAlign="center">
-        <Typography>
-          {needLogin ? 'Vui lòng đăng nhập để xem trang cá nhân của bạn.' : 'Không tìm thấy người dùng.'}
+      <Box
+        p={3}
+        textAlign="center"
+        sx={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Typography sx={{ color: 'rgba(255,255,255,0.88)', maxWidth: 440, lineHeight: 1.65 }}>
+          {needLogin
+            ? 'Vui lòng đăng nhập để xem trang cá nhân của bạn.'
+            : profileUnavailable
+              ? 'Không thể hiển thị trang này. Có thể người dùng không tồn tại hoặc một trong hai bên đã chặn — hai phía sẽ không thấy hồ sơ của nhau.'
+              : error || 'Không tìm thấy người dùng.'}
         </Typography>
-        <Button 
-          sx={{ mt: 2 }} 
-          variant="contained" 
-          onClick={() => navigate(needLogin ? '/login' : '/')}
-        >
-          {needLogin ? 'Đăng nhập' : 'Về trang chủ'}
+        <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(needLogin ? '/login' : '/feed')}>
+          {needLogin ? 'Đăng nhập' : 'Về bảng tin'}
         </Button>
+        {!needLogin && profileUnavailable && currentUser && (
+          <Button sx={{ mt: 1 }} variant="text" onClick={() => navigate('/settings/blocked')}>
+            Danh sách đã chặn
+          </Button>
+        )}
       </Box>
     );
   }
@@ -554,6 +577,8 @@ export default function ProfilePage() {
             onVerifyPhoneOtp={handleVerifyPhoneOtp}
             otpCooldownActive={otpCooldownActive}
             otpCooldownLeftSeconds={otpCooldownLeftSeconds}
+            canBlock={!!currentUser && !isMe}
+            onOpenBlockDialog={() => setBlockDialogOpen(true)}
         />
 
         <FollowListDialog
@@ -654,6 +679,15 @@ export default function ProfilePage() {
             targetId={profileUser?.id}
             targetTitle={profileUser?.fullName || profileUser?.full_name}
         />
+
+        {!isMe && profileUser?.id && (
+          <BlockUserConfirmDialog
+            open={blockDialogOpen}
+            onClose={() => setBlockDialogOpen(false)}
+            displayName={fullName}
+            onConfirm={() => blockUserById(profileUser.id).then(() => navigate('/feed'))}
+          />
+        )}
       </Box>
   );
 }
