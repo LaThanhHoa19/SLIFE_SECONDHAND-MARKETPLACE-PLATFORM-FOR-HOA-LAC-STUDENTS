@@ -201,7 +201,7 @@ public class ListingService {
             pageResult = listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
         }
 
-        boolean shouldPrioritize = prioritizeFollowing && "NEWEST".equalsIgnoreCase(feedType);
+        boolean shouldPrioritize = prioritizeFollowing && "FOLLOWING".equalsIgnoreCase(feedType);
 
         List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = shouldPrioritize
                 ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
