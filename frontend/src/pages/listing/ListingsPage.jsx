@@ -4,6 +4,7 @@ import { Box, CircularProgress, Fab, Typography } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { useSearchParams } from 'react-router-dom';
 import ListingsFeed from '../../components/listing/ListingsFeed';
+import FeedHeader from '../../components/listing/FeedHeader';
 import RightPanel from '../../components/layout/RightPanel';
 import useListings from '../../hooks/useListings';
 
@@ -50,7 +51,8 @@ export default function ListingsPage() {
     return (
         <Box sx={{ display: 'flex', gap: { xs: 2, lg: 3 }, p: 2, alignItems: 'flex-start', maxWidth: 1040, mx: 'auto', width: '100%', justifyContent: 'center' }}>
             {/* Feed chính */}
-            <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 400 }, maxWidth: 680 }}>
+            <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 400 }, maxWidth: 680, display: 'flex', flexDirection: 'column' }}>
+                <FeedHeader />
                 <ListingsFeed listings={data} isLoading={isLoading} onPatchListing={patchListing} />
 
                 {/* Infinite scroll sentinel */}
