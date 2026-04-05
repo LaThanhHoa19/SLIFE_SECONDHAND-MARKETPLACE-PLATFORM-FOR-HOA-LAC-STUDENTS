@@ -43,7 +43,12 @@ public class CommunityPostController {
     @GetMapping("/form-config")
     public ResponseEntity<ApiResponse<Map<String, Integer>>> formConfig() {
         int max = communityPostService.getMaxImagesPerPost();
-        return ResponseEntity.ok(ApiResponse.success("OK", Map.of("maxImagesPerPost", max)));
+        return ResponseEntity.ok(ApiResponse.success("OK", Map.of(
+                "maxImagesPerPost", max,
+                "maxImageSizeMB", CommunityPostImageService.MAX_IMAGE_MB,
+                "maxTitleLength", CommunityPostService.MAX_TITLE_LENGTH,
+                "maxDescriptionLength", CommunityPostService.MAX_DESCRIPTION_LENGTH,
+                "maxHashtagOccurrencesFromContent", CommunityPostService.MAX_HASHTAG_OCCURRENCES_FROM_DESCRIPTION)));
     }
 
     @GetMapping

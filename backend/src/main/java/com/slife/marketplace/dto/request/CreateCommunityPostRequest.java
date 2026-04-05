@@ -11,13 +11,13 @@ import java.util.List;
 public class CreateCommunityPostRequest {
 
     @NotBlank
-    @Size(max = 300)
+    @Size(max = 50)
     private String title;
 
-    @Size(max = 8000)
+    @Size(max = 500)
     private String description;
 
-    /** Chuỗi hashtag đã chuẩn hóa phía client hoặc thô — service sẽ normalize. */
-    @Size(max = 20, message = "Tối đa 20 hashtag")
+    /** Chuỗi hashtag gửi kèm API (ít dùng; hashtag chính lấy từ nội dung). */
+    @Size(max = 100, message = "Tối đa 100 hashtag trong payload")
     private List<@Size(max = 100) String> hashtags = new ArrayList<>();
 }

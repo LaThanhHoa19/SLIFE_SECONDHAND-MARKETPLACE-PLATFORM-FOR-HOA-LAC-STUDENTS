@@ -14,9 +14,13 @@ import { createCommunityPostWithImages } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
 import { previewHashtagsFromDescription } from '../../utils/communityHashtagUtils';
-
-const MAX_TITLE = 300;
-const MAX_DESC = 8000;
+import {
+    COMMUNITY_POST_MAX_DESCRIPTION,
+    COMMUNITY_POST_MAX_HASHTAG_OCCURRENCES,
+    COMMUNITY_POST_MAX_IMAGE_MB,
+    COMMUNITY_POST_MAX_TITLE,
+} from '../../utils/communityPostLimits';
+import { validateCommunityPostImages } from '../../utils/communityImageValidation';
 
 export default function CommunityCreatePostPage() {
     const navigate = useNavigate();
@@ -30,12 +34,18 @@ export default function CommunityCreatePostPage() {
     const [error, setError] = useState('');
 
     const canSubmit = useMemo(() => title.trim().length > 0 && !submitting, [title, submitting]);
-    const previewTags = useMemo(() => previewHashtagsFromDescription(description, 20), [description]);
+    const hashtagPreview = useMemo(() => previewHashtagsFromDescription(description), [description]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!canSubmit) return;
         setError('');
+        const imgCheck = validateCommunityPostImages(imageFiles, maxImages, COMMUNITY_POST_MAX_IMAGE_MB);
+        if (!imgCheck.ok) {
+            setError(imgCheck.message);
+            showToast(imgCheck.message, 'error');
+            return;
+        }
         setSubmitting(true);
         try {
             const payload = {
@@ -110,7 +120,8 @@ export default function CommunityCreatePostPage() {
                             fullWidth
                             value={title}
                             onChange={(ev) => setTitle(ev.target.value)}
-                            inputProps={{ maxLength: MAX_TITLE }}
+                            inputProps={{ maxLength: COMMUNITY_POST_MAX_TITLE }}
+                            helperText={`${title.length}/${COMMUNITY_POST_MAX_TITLE}`}
                             placeholder="Ví dụ: Có ai học nhóm môn OS không?"
                         />
                         <Box>
@@ -121,22 +132,25 @@ export default function CommunityCreatePostPage() {
                                 minRows={6}
                                 value={description}
                                 onChange={(ev) => setDescription(ev.target.value)}
-                                inputProps={{ maxLength: MAX_DESC }}
+                                inputProps={{ maxLength: COMMUNITY_POST_MAX_DESCRIPTION }}
+                                helperText={`${description.length}/${COMMUNITY_POST_MAX_DESCRIPTION}`}
                                 placeholder={
                                     'Viết nội dung tại đây. Hashtag: bắt đầu bằng #, không khoảng trắng trong thẻ, chỉ chữ/số/gạch dưới — ví dụ: #slife #kytucxa2026'
                                 }
                             />
                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, lineHeight: 1.5 }}>
                                 Quy tắc hashtag: không khoảng trắng trong thẻ; không ký tự đặc biệt (dấu câu, @, $, %…); # phải
-                                đứng sau đầu dòng hoặc sau dấu cách / dấu câu; có thể dùng số (ví dụ #iphone15).
+                                đứng sau đầu dòng hoặc sau dấu cách / dấu câu; có thể dùng số (ví dụ #iphone15). Hệ thống chỉ xét tối đa{' '}
+                                {COMMUNITY_POST_MAX_HASHTAG_OCCURRENCES} lần bắt # trong nội dung.
                             </Typography>
-                            {previewTags.length > 0 && (
+                            {hashtagPreview.occurrenceCount > 0 && (
                                 <Box sx={{ mt: 1.25 }}>
                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                                        Hashtag sẽ được lưu ({previewTags.length}/20 tối đa):
+                                        Hashtag sẽ được lưu — lượt # trong bài: {hashtagPreview.occurrenceCount}/
+                                        {COMMUNITY_POST_MAX_HASHTAG_OCCURRENCES} (trùng tính), {hashtagPreview.tags.length} thẻ khác nhau:
                                     </Typography>
                                     <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                                        {previewTags.map((t) => (
+                                        {hashtagPreview.tags.map((t) => (
                                             <Chip key={t.toLowerCase()} size="small" label={`#${t}`} color="primary" variant="outlined" />
                                         ))}
                                     </Stack>
@@ -146,9 +160,15 @@ export default function CommunityCreatePostPage() {
 
                         <Box>
                             <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>
-                                Ảnh đính kèm (tối đa {maxImages})
+                                Ảnh đính kèm — JPG/PNG, tối đa {maxImages} ảnh, mỗi file ≤ {COMMUNITY_POST_MAX_IMAGE_MB}MB
                             </Typography>
-                            <ImageUploader onFilesChange={setImageFiles} maxFiles={maxImages} variant="studioHero" />
+                            <ImageUploader
+                                onFilesChange={setImageFiles}
+                                maxFiles={maxImages}
+                                maxSizeMB={COMMUNITY_POST_MAX_IMAGE_MB}
+                                variant="studioHero"
+                                imageProfile="community"
+                            />
                         </Box>
 
                         {error ? (

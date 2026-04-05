@@ -8,12 +8,12 @@ import java.util.List;
 @Data
 public class UpdateCommunityPostRequest {
 
-    @Size(max = 300)
+    @Size(max = 50)
     private String title;
 
-    @Size(max = 8000)
+    @Size(max = 500)
     private String description;
 
-    @Size(max = 20)
+    @Size(max = 100)
     private List<@Size(max = 100) String> hashtags;
 }

@@ -14,24 +14,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PushbackInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
- * Upload/xóa ảnh bài cộng đồng — cùng quy tắc kích thước/giới hạn số ảnh như {@link ListingImageService}.
+ * Upload/xóa ảnh bài cộng đồng — chỉ JPG/PNG, tối đa 5MB/file; số ảnh/bài theo config (giống tin đăng).
  */
 @Service
 public class CommunityPostImageService {
 
     private static final Logger log = LoggerFactory.getLogger(CommunityPostImageService.class);
-    private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+    public static final int MAX_IMAGE_MB = 5;
+    private static final long MAX_IMAGE_SIZE = MAX_IMAGE_MB * 1024L * 1024L;
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
-    private static final String[] ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp"};
+    private static final String[] ALLOWED_EXT = {".jpg", ".jpeg", ".png"};
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
+            "image/jpeg", "image/jpg", "image/pjpeg", "image/png");
 
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostImageRepository communityPostImageRepository;
@@ -73,13 +80,37 @@ public class CommunityPostImageService {
             if (file.getSize() > MAX_IMAGE_SIZE) {
                 throw new SlifeException(ErrorCode.FILE_TOO_LARGE);
             }
-            String ext = getImageExtension(file.getOriginalFilename());
-            String filename = postId + "_" + System.currentTimeMillis() + "_" + displayOrder + ext;
+            validateCommunityImageFilename(file.getOriginalFilename());
+            String rawCt = file.getContentType();
+            if (rawCt == null || !ALLOWED_CONTENT_TYPES.contains(rawCt.trim().toLowerCase(Locale.ROOT))) {
+                throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Chỉ chấp nhận JPG hoặc PNG");
+            }
+
+            String baseName = postId + "_" + System.currentTimeMillis() + "_" + displayOrder;
             Path dir = uploadBasePath.resolve("community-posts");
+            String storedFilename;
             try {
                 Files.createDirectories(dir);
-                Path target = dir.resolve(filename).normalize();
-                try (InputStream in = file.getInputStream()) {
+                try (InputStream raw = file.getInputStream();
+                     PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(raw), 16)) {
+                    byte[] head = new byte[12];
+                    int n = in.read(head);
+                    if (n < 2) {
+                        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "File ảnh không hợp lệ hoặc trống");
+                    }
+                    in.unread(head, 0, n);
+                    boolean jpeg = isJpegMagic(head, n);
+                    boolean png = isPngMagic(head, n);
+                    if (!jpeg && !png) {
+                        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Nội dung không phải JPG hoặc PNG");
+                    }
+                    String ext = jpeg ? ".jpg" : ".png";
+                    storedFilename = baseName + ext;
+                    Path target = dir.resolve(storedFilename).normalize();
+                    Path base = dir.toAbsolutePath().normalize();
+                    if (!target.startsWith(base)) {
+                        throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
+                    }
                     Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
                 }
             } catch (IOException e) {
@@ -87,7 +118,7 @@ public class CommunityPostImageService {
                 throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
             }
 
-            String url = "/uploads/community-posts/" + filename;
+            String url = "/uploads/community-posts/" + storedFilename;
 
             CommunityPostImage image = new CommunityPostImage();
             image.setPost(post);
@@ -98,13 +129,30 @@ public class CommunityPostImageService {
         }
     }
 
-    private String getImageExtension(String filename) {
-        if (filename == null) return ".jpg";
-        String lower = filename.toLowerCase();
-        for (String ext : ALLOWED_EXT) {
-            if (lower.endsWith(ext)) return ext;
+    private void validateCommunityImageFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Thiếu tên file hoặc phần mở rộng không hợp lệ");
         }
-        return ".jpg";
+        String lower = filename.toLowerCase(Locale.ROOT);
+        for (String ext : ALLOWED_EXT) {
+            if (lower.endsWith(ext)) {
+                return;
+            }
+        }
+        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Chỉ chấp nhận ảnh .jpg, .jpeg, .png");
+    }
+
+    /** SOI JPEG: FF D8 (byte tiếp theo là marker khác, không nhất thiết FF). */
+    private static boolean isJpegMagic(byte[] head, int n) {
+        return n >= 2 && (head[0] & 0xFF) == 0xFF && (head[1] & 0xFF) == 0xD8;
+    }
+
+    private static boolean isPngMagic(byte[] head, int n) {
+        return n >= 4
+                && (head[0] & 0xFF) == 0x89
+                && head[1] == 0x50
+                && head[2] == 0x4E
+                && head[3] == 0x47;
     }
 
     @Transactional
