@@ -118,7 +118,8 @@ public class ChatController {
             @PathVariable String sessionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "15") int size) {
-        int safeSize = Math.min(20, Math.max(10, size));
+        // Cho phép tới 50 tin/trang (FE dùng ~30 + tải thêm khi cuộn lên); vẫn chặn trần để tránh abuse.
+        int safeSize = Math.min(50, Math.max(10, size));
         Page<ChatMessageResponse> data = chatService.getHistory(sessionId, page, safeSize);
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }

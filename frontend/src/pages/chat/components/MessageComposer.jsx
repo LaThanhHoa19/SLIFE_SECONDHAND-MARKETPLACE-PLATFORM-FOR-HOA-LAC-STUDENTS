@@ -35,6 +35,8 @@ export default function MessageComposer({
                                             setOfferOpen,
                                             priceOfferDisabled,
                                             priceOfferTooltip,
+                                            freeListingBuyerHint = false,
+                                            onFreeListingOfferHint,
                                             suggestBtnRef,
                                             inputRef,
                                             inputText,
@@ -201,7 +203,13 @@ export default function MessageComposer({
             <span>
               <IconButton
                   size="small"
-                  onClick={() => setOfferOpen(true)}
+                  onClick={() => {
+                      if (freeListingBuyerHint && !priceOfferDisabled) {
+                          onFreeListingOfferHint?.();
+                          return;
+                      }
+                      if (!priceOfferDisabled) setOfferOpen(true);
+                  }}
                   disabled={!activeSessionId || Boolean(priceOfferDisabled)}
                   sx={{ bgcolor: 'action.hover' }}
               >
