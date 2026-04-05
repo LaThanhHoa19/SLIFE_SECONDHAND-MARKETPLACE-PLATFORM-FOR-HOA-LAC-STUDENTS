@@ -1,7 +1,7 @@
 /**
  * Trang Cộng đồng — feed: GET /api/community/posts (bài ACTIVE, chưa xóa/ẩn).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Box,
@@ -12,6 +12,8 @@ import {
     CircularProgress,
     Skeleton,
     Stack,
+    Tab,
+    Tabs,
     Typography,
     useTheme,
 } from '@mui/material';
@@ -20,14 +22,21 @@ import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import PostAddOutlinedIcon from '@mui/icons-material/PostAddOutlined';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import TagOutlinedIcon from '@mui/icons-material/TagOutlined';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import RightPanel from '../../components/layout/RightPanel';
 import { useAuth } from '../../hooks/useAuth';
 import CommunityPostCard from '../../components/community/CommunityPostCard';
 import { getCommunityPosts } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 
-const PLACEHOLDER_TAGS = ['Hỏi đáp', 'Ký túc xá', 'Học bổng', 'Đồ cũ', 'Sự kiện'];
+/** Nhãn hiển thị + slug hashtag (chữ thường, không dấu cách — khớp normalize backend). */
+const PLACEHOLDER_TAGS = [
+    { label: 'Hỏi đáp', tag: 'hoidap' },
+    { label: 'Ký túc xá', tag: 'kytucxa' },
+    { label: 'Học bổng', tag: 'hocbong' },
+    { label: 'Đồ cũ', tag: 'docu' },
+    { label: 'Sự kiện', tag: 'sukien' },
+];
 const PAGE_SIZE = 15;
 
 function normalizePaged(res) {
@@ -57,8 +66,12 @@ function FeedSkeleton() {
 export default function CommunityFeedPage() {
     const theme = useTheme();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { isAuthenticated } = useAuth();
     const isDark = theme.palette.mode === 'dark';
+
+    const hashtagFilter = useMemo(() => (searchParams.get('hashtag') || '').trim(), [searchParams]);
+    const sortFeed = useMemo(() => (searchParams.get('sort') === 'top' ? 'top' : 'latest'), [searchParams]);
 
     const [posts, setPosts] = useState([]);
     const [page, setPage] = useState(0);
@@ -67,6 +80,7 @@ export default function CommunityFeedPage() {
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState('');
     const abortRef = useRef(null);
+    const loadMoreLockRef = useRef(false);
 
     const goCreatePost = () => {
         if (!isAuthenticated) {
@@ -76,15 +90,15 @@ export default function CommunityFeedPage() {
         navigate('/community/new');
     };
 
-    const fetchPage = useCallback(async (pageIndex, append) => {
+    const fetchPage = useCallback(
+        async (pageIndex, append) => {
         abortRef.current?.abort();
         const ac = new AbortController();
         abortRef.current = ac;
         try {
-            const res = await getCommunityPosts(
-                { page: pageIndex, size: PAGE_SIZE },
-                { signal: ac.signal },
-            );
+            const params = { page: pageIndex, size: PAGE_SIZE, sort: sortFeed };
+            if (hashtagFilter) params.hashtag = hashtagFilter;
+            const res = await getCommunityPosts(params, { signal: ac.signal });
             const { content, page: p, totalPages: tp } = normalizePaged(res);
             setError('');
             setPosts((prev) => (append ? [...prev, ...content] : content));
@@ -100,7 +114,9 @@ export default function CommunityFeedPage() {
             );
             if (!append) setPosts([]);
         }
-    }, []);
+    },
+        [hashtagFilter, sortFeed],
+    );
 
     const loadInitial = useCallback(async () => {
         setLoading(true);
@@ -113,20 +129,47 @@ export default function CommunityFeedPage() {
         return () => abortRef.current?.abort();
     }, [loadInitial]);
 
-    const loadMore = async () => {
-        if (loadingMore || page + 1 >= totalPages) return;
+    const loadMore = useCallback(async () => {
+        if (loadMoreLockRef.current || page + 1 >= totalPages) return;
+        loadMoreLockRef.current = true;
         setLoadingMore(true);
-        await fetchPage(page + 1, true);
-        setLoadingMore(false);
-    };
+        try {
+            await fetchPage(page + 1, true);
+        } finally {
+            setLoadingMore(false);
+            loadMoreLockRef.current = false;
+        }
+    }, [fetchPage, page, totalPages]);
 
-    const openPost = (postId) => navigate(`/community/posts/${postId}`);
+    const openPost = useCallback((postId) => navigate(`/community/posts/${postId}`), [navigate]);
 
     const handlePatchPost = useCallback((postId, patch) => {
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
     }, []);
 
     const hasMore = totalPages > 0 && page + 1 < totalPages;
+
+    const setSortTab = (_e, value) => {
+        const next = new URLSearchParams(searchParams);
+        if (value === 'top') next.set('sort', 'top');
+        else next.delete('sort');
+        next.delete('page');
+        setSearchParams(next, { replace: true });
+    };
+
+    const openHashtagFilter = (tag) => {
+        const next = new URLSearchParams(searchParams);
+        next.set('hashtag', tag);
+        next.delete('page');
+        setSearchParams(next, { replace: true });
+    };
+
+    const clearHashtagFilter = () => {
+        const next = new URLSearchParams(searchParams);
+        next.delete('hashtag');
+        next.delete('page');
+        setSearchParams(next, { replace: true });
+    };
 
     return (
         <Box
@@ -162,19 +205,43 @@ export default function CommunityFeedPage() {
                     </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.65 }}>
                         Nơi sinh viên Hòa Lạc chia sẻ, hỏi đáp và bàn luận — tách biệt với{' '}
-                        <strong>Feed mua bán</strong>. Chỉ hiển thị bài đang hoạt động (ACTIVE), chưa bị gỡ hoặc ẩn.
+                        <strong>Feed mua bán</strong>. Chỉ hiển thị bài đang hoạt động (ACTIVE), chưa bị gỡ hoặc ẩn. Ấn
+                        hashtag trong nội dung bài để lọc theo chủ đề.
                     </Typography>
-                    <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-                        {PLACEHOLDER_TAGS.map((t) => (
+                    {hashtagFilter ? (
+                        <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
                             <Chip
-                                key={t}
+                                size="small"
+                                color="primary"
+                                label={`#${hashtagFilter}`}
+                                onDelete={clearHashtagFilter}
+                            />
+                            <Typography variant="caption" color="text.secondary">
+                                Đang lọc theo hashtag — xóa chip để xem toàn bộ feed.
+                            </Typography>
+                        </Stack>
+                    ) : null}
+                    <Tabs
+                        value={sortFeed}
+                        onChange={setSortTab}
+                        sx={{ mb: 2, minHeight: 40, '& .MuiTab-root': { minHeight: 40, py: 0.5, fontWeight: 700 } }}
+                    >
+                        <Tab label="Mới nhất" value="latest" />
+                        <Tab label="Phổ biến" value="top" />
+                    </Tabs>
+                    <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
+                        {PLACEHOLDER_TAGS.map(({ label, tag }) => (
+                            <Chip
+                                key={tag}
                                 size="small"
                                 icon={<TagOutlinedIcon sx={{ fontSize: '16px !important' }} />}
-                                label={t}
+                                label={label}
                                 variant="outlined"
+                                onClick={() => openHashtagFilter(tag)}
                                 sx={{
                                     borderColor: alpha(theme.palette.primary.main, 0.45),
                                     color: 'text.secondary',
+                                    cursor: 'pointer',
                                 }}
                             />
                         ))}

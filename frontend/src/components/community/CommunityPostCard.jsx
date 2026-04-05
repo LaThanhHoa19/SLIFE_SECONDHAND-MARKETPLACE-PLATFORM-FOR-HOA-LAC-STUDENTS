@@ -1,7 +1,7 @@
 /**
  * Thẻ bài cộng đồng — layout đồng bộ ListingCard (dark feed): avatar + follow, media, thích / bình luận / chia sẻ.
  */
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import {
     Avatar,
     Box,
@@ -74,7 +74,7 @@ const formatRelativeShort = (value) => {
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 };
 
-export default function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' }) {
+function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -98,7 +98,6 @@ export default function CommunityPostCard({ post, onOpen, onPatchPost, cardVaria
     const [reportOpen, setReportOpen] = useState(false);
 
     const thumb = post?.thumbUrl ? fullImageUrl(post.thumbUrl) : null;
-    const hashtags = Array.isArray(post?.hashtags) ? post.hashtags : [];
 
     useEffect(() => {
         setLikeCount(Number(post?.likeCount ?? 0));
@@ -343,34 +342,7 @@ export default function CommunityPostCard({ post, onOpen, onPatchPost, cardVaria
                         >
                             {post?.title || 'Không có tiêu đề'}
                         </Typography>
-                        <CommunityPostExpandableDescription text={post?.description} />
-                        {hashtags.length > 0 && (
-                            <Box
-                                sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 0.5, cursor: 'pointer' }}
-                                onClick={goDetail}
-                                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && goDetail()}
-                                role="button"
-                                tabIndex={0}
-                            >
-                                {hashtags.slice(0, 6).map((tag) => (
-                                    <Box
-                                        key={tag}
-                                        sx={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            bgcolor: 'rgba(255,255,255,0.08)',
-                                            px: 1.2,
-                                            py: 0.5,
-                                            borderRadius: '6px',
-                                        }}
-                                    >
-                                        <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
-                                            #{tag}
-                                        </Typography>
-                                    </Box>
-                                ))}
-                            </Box>
-                        )}
+                        <CommunityPostExpandableDescription text={post?.description} lineClamp={2} />
                     </Box>
 
                     {thumb && (
@@ -506,3 +478,5 @@ export default function CommunityPostCard({ post, onOpen, onPatchPost, cardVaria
         </Card>
     );
 }
+
+export default memo(CommunityPostCard);

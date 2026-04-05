@@ -50,11 +50,7 @@ public class CommunityPostService {
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
 
     public static final int MAX_TITLE_LENGTH = 50;
-    public static final int MAX_DESCRIPTION_LENGTH = 500;
-    /** Số lần bắt # trong nội dung (trái → phải); trùng tính; từ lần 101 không lấy. */
-    public static final int MAX_HASHTAG_OCCURRENCES_FROM_DESCRIPTION = 100;
-    /** Số hashtag khác nhau tối đa gắn vào bài (sau khi normalize). */
-    public static final int MAX_UNIQUE_HASHTAGS_PER_POST = 100;
+    public static final int MAX_DESCRIPTION_LENGTH = 1000;
 
     /**
      * # phải đứng sau đầu chuỗi hoặc ký tự không phải chữ/số/_/#; thân tag: chữ (Unicode), số, gạch dưới, tối đa 100.
@@ -102,8 +98,7 @@ public class CommunityPostService {
         post.setUpdatedAt(now);
 
         CommunityPost saved = communityPostRepository.save(post);
-        syncHashtags(saved, mergeHashtagSources(request.getHashtags(), saved.getDescription(),
-                MAX_HASHTAG_OCCURRENCES_FROM_DESCRIPTION));
+        syncHashtags(saved, mergeHashtagSources(request.getHashtags(), saved.getDescription()));
         communityPostRepository.save(saved);
 
         if (!imageParts.isEmpty()) {
@@ -125,8 +120,7 @@ public class CommunityPostService {
         }
         if (request.getDescription() != null || request.getHashtags() != null) {
             List<String> explicit = request.getHashtags() != null ? request.getHashtags() : List.of();
-            syncHashtags(post, mergeHashtagSources(explicit, post.getDescription(),
-                    MAX_HASHTAG_OCCURRENCES_FROM_DESCRIPTION));
+            syncHashtags(post, mergeHashtagSources(explicit, post.getDescription()));
         }
         post.setUpdatedAt(Instant.now());
         communityPostRepository.save(post);
@@ -143,14 +137,34 @@ public class CommunityPostService {
     }
 
     @Transactional(readOnly = true)
-    public PagedResponse<CommunityPostCardResponse> getFeed(int page, int size, User viewer) {
-        Pageable pageable = PageRequest.of(
-                Math.max(page, 0),
-                size > 0 ? Math.min(size, 50) : 20,
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+    public PagedResponse<CommunityPostCardResponse> getFeed(int page, int size, String hashtag, String sort, User viewer) {
+        int pageIdx = Math.max(page, 0);
+        int s = size > 0 ? Math.min(size, 50) : 20;
         Long viewerId = viewer != null ? viewer.getId() : null;
-        Page<CommunityPost> pageResult = communityPostRepository.findVisibleForViewer(
-                CommunityPost.STATUS_ACTIVE, viewerId, pageable);
+        String normSort = sort == null ? "latest" : sort.trim().toLowerCase(Locale.ROOT);
+        boolean top = "top".equals(normSort) || "popular".equals(normSort);
+        String normTag = normalizeHashtagFilterParam(hashtag);
+
+        Pageable pageable;
+        Page<CommunityPost> pageResult;
+        if (normTag != null) {
+            pageable = PageRequest.of(pageIdx, s);
+            if (top) {
+                pageResult = communityPostRepository.findVisibleForViewerByHashtagTop(
+                        CommunityPost.STATUS_ACTIVE, normTag, viewerId, pageable);
+            } else {
+                pageResult = communityPostRepository.findVisibleForViewerByHashtagLatest(
+                        CommunityPost.STATUS_ACTIVE, normTag, viewerId, pageable);
+            }
+        } else if (top) {
+            pageable = PageRequest.of(pageIdx, s);
+            pageResult = communityPostRepository.findVisibleForViewerTop(
+                    CommunityPost.STATUS_ACTIVE, viewerId, pageable);
+        } else {
+            pageable = PageRequest.of(pageIdx, s, Sort.by(Sort.Direction.DESC, "createdAt"));
+            pageResult = communityPostRepository.findVisibleForViewer(
+                    CommunityPost.STATUS_ACTIVE, viewerId, pageable);
+        }
 
         List<CommunityPost> posts = pageResult.getContent();
         List<Long> ids = posts.stream().map(CommunityPost::getId).filter(Objects::nonNull).toList();
@@ -320,9 +334,6 @@ public class CommunityPostService {
             }
         }
         for (String tag : uniq) {
-            if (post.getHashtags().size() >= MAX_UNIQUE_HASHTAGS_PER_POST) {
-                break;
-            }
             Hashtag h = hashtagRepository.findByTag(tag).orElseGet(() -> {
                 Hashtag x = new Hashtag();
                 x.setTag(tag);
@@ -334,35 +345,42 @@ public class CommunityPostService {
     }
 
     /**
-     * Thứ tự: các lần bắt # trong mô tả (trái → phải, tối đa {@code maxOccurrencesFromDescription},
-     * trùng nhau vẫn tính), sau đó hashtag gửi kèm request (API).
+     * Thứ tự: các lần bắt # trong mô tả (trái → phải, trùng nhau vẫn tính), sau đó hashtag gửi kèm request (API).
      */
-    private static List<String> mergeHashtagSources(List<String> explicitFromRequest, String description,
-                                                    int maxOccurrencesFromDescription) {
+    private static List<String> mergeHashtagSources(List<String> explicitFromRequest, String description) {
         List<String> out = new ArrayList<>();
-        out.addAll(extractHashtagBodiesFromDescription(description, maxOccurrencesFromDescription));
+        out.addAll(extractHashtagBodiesFromDescription(description));
         if (explicitFromRequest != null) {
             out.addAll(explicitFromRequest);
         }
         return out;
     }
 
-    /**
-     * @param maxOccurrences tối đa số lần khớp #tag (trùng lặp tính từng lần); lần khớp thứ maxOccurrences+1 trở đi bỏ qua.
-     */
-    private static List<String> extractHashtagBodiesFromDescription(String description, int maxOccurrences) {
-        if (description == null || description.isBlank() || maxOccurrences <= 0) {
+    private static List<String> extractHashtagBodiesFromDescription(String description) {
+        if (description == null || description.isBlank()) {
             return List.of();
         }
         List<String> found = new ArrayList<>();
         Matcher m = DESCRIPTION_HASHTAG_PATTERN.matcher(description);
         while (m.find()) {
             found.add(m.group(1));
-            if (found.size() >= maxOccurrences) {
-                break;
-            }
         }
         return found;
+    }
+
+    /** Chuẩn hóa tham số lọc hashtag (query / path); null nếu không hợp lệ. */
+    private static String normalizeHashtagFilterParam(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String t = raw.trim();
+        if (t.isEmpty()) {
+            return null;
+        }
+        if (!t.startsWith("#")) {
+            t = "#" + t;
+        }
+        return normalizeHashtag(t);
     }
 
     /**

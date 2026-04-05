@@ -32,6 +32,69 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             @Param("viewerId") Long viewerId,
             Pageable pageable);
 
+    @EntityGraph(attributePaths = {"author", "hashtags"})
+    @Query("""
+            SELECT DISTINCT p FROM CommunityPost p
+            JOIN p.hashtags h
+            WHERE p.status = :status
+              AND p.deletedAt IS NULL
+              AND p.hiddenAt IS NULL
+              AND h.tag = :tag
+              AND (:viewerId IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM Block blk
+                  WHERE blk.blocker.id = :viewerId AND blk.blocked.id = p.author.id
+              ))
+            ORDER BY p.createdAt DESC
+            """)
+    Page<CommunityPost> findVisibleForViewerByHashtagLatest(
+            @Param("status") String status,
+            @Param("tag") String tag,
+            @Param("viewerId") Long viewerId,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = {"author", "hashtags"})
+    @Query("""
+            SELECT DISTINCT p FROM CommunityPost p
+            JOIN p.hashtags h
+            WHERE p.status = :status
+              AND p.deletedAt IS NULL
+              AND p.hiddenAt IS NULL
+              AND h.tag = :tag
+              AND (:viewerId IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM Block blk
+                  WHERE blk.blocker.id = :viewerId AND blk.blocked.id = p.author.id
+              ))
+            ORDER BY (
+                (SELECT COUNT(l) FROM CommunityPostLike l WHERE l.post.id = p.id)
+                + (SELECT COUNT(c) FROM CommunityPostComment c WHERE c.post.id = p.id AND c.deletedAt IS NULL)
+            ) DESC, p.createdAt DESC
+            """)
+    Page<CommunityPost> findVisibleForViewerByHashtagTop(
+            @Param("status") String status,
+            @Param("tag") String tag,
+            @Param("viewerId") Long viewerId,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = {"author", "hashtags"})
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.status = :status
+              AND p.deletedAt IS NULL
+              AND p.hiddenAt IS NULL
+              AND (:viewerId IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM Block blk
+                  WHERE blk.blocker.id = :viewerId AND blk.blocked.id = p.author.id
+              ))
+            ORDER BY (
+                (SELECT COUNT(l) FROM CommunityPostLike l WHERE l.post.id = p.id)
+                + (SELECT COUNT(c) FROM CommunityPostComment c WHERE c.post.id = p.id AND c.deletedAt IS NULL)
+            ) DESC, p.createdAt DESC
+            """)
+    Page<CommunityPost> findVisibleForViewerTop(
+            @Param("status") String status,
+            @Param("viewerId") Long viewerId,
+            Pageable pageable);
+
     @Query("""
             SELECT p FROM CommunityPost p
             LEFT JOIN FETCH p.author

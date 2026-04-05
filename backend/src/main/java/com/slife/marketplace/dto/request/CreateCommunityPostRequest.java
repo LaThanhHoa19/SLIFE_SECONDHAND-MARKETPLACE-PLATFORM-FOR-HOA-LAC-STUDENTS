@@ -14,10 +14,10 @@ public class CreateCommunityPostRequest {
     @Size(max = 50)
     private String title;
 
-    @Size(max = 500)
+    @Size(max = 1000)
     private String description;
 
     /** Chuỗi hashtag gửi kèm API (ít dùng; hashtag chính lấy từ nội dung). */
-    @Size(max = 100, message = "Tối đa 100 hashtag trong payload")
+    @Size(max = 2000, message = "Quá nhiều hashtag trong payload")
     private List<@Size(max = 100) String> hashtags = new ArrayList<>();
 }

@@ -110,8 +110,6 @@ export default function CommunityPostDetailPage() {
     const isMe = isAuthenticated && user && authorId && String(user.id) === String(authorId);
     const showFollowBtn = authorId && !isMe;
     const images = Array.isArray(post?.images) ? post.images.map(fullImageUrl).filter(Boolean) : [];
-    const hashtags = Array.isArray(post?.hashtags) ? post.hashtags : [];
-
     const handleLike = async () => {
         if (!id || !token) {
             showToast('Bạn cần đăng nhập để thích bài viết.', 'warning');
@@ -350,26 +348,6 @@ export default function CommunityPostDetailPage() {
                                 moreColor={PURPLE}
                                 fontSize={15}
                             />
-
-                            {hashtags.length > 0 && (
-                                <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-                                    {hashtags.map((tag) => (
-                                        <Box
-                                            key={tag}
-                                            sx={{
-                                                bgcolor: 'rgba(255,255,255,0.08)',
-                                                px: 1.2,
-                                                py: 0.5,
-                                                borderRadius: '6px',
-                                            }}
-                                        >
-                                            <Typography fontSize={12} color="rgba(255,255,255,0.85)">
-                                                #{tag}
-                                            </Typography>
-                                        </Box>
-                                    ))}
-                                </Stack>
-                            )}
 
                             {images.length > 0 && (
                                 <Box

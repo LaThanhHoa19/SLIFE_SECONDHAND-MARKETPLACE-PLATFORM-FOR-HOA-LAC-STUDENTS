@@ -45,7 +45,7 @@ public class CommunityPost {
     @Column(name = "title", nullable = false, length = 300)
     private String title;
 
-    @Size(max = 500)
+    @Size(max = 1000)
     @Lob
     @Column(name = "description")
     private String description;

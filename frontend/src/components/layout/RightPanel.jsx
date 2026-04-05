@@ -27,13 +27,14 @@ import {
     CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { getCategories } from '../../api/categoryApi';
 import { buildCategoryTree } from '../../utils/categoryTree';
 import CategoryTree from '../common/CategoryTree';
 import CommunityCtaCard from '../common/CommunityCtaCard';
+import CommunityTrendingSidebar from '../community/CommunityTrendingSidebar';
 import { uiTokens } from '../../theme/uiTokens';
 
 const CATEGORY_ICONS = {
@@ -73,7 +74,9 @@ const getCategoryIcon = (name = '') => {
 
 export default function RightPanel() {
     const navigate = useNavigate();
+    const { pathname } = useLocation();
     const [searchParams] = useSearchParams();
+    const isCommunityArea = pathname === '/community' || pathname.startsWith('/community/');
     const { isAuthenticated } = useAuth();
     const { checkVerification } = usePhoneVerification();
     const [locations, setLocations] = useState([]);
@@ -154,6 +157,8 @@ export default function RightPanel() {
                 '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 3 },
             }}
         >
+            {isCommunityArea ? <CommunityTrendingSidebar /> : null}
+
             {/* Location selector + refresh */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Box

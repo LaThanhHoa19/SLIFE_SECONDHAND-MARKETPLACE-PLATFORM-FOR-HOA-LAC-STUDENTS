@@ -11,9 +11,9 @@ public class UpdateCommunityPostRequest {
     @Size(max = 50)
     private String title;
 
-    @Size(max = 500)
+    @Size(max = 1000)
     private String description;
 
-    @Size(max = 100)
+    @Size(max = 2000)
     private List<@Size(max = 100) String> hashtags;
 }

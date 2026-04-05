@@ -47,16 +47,17 @@ public class CommunityPostController {
                 "maxImagesPerPost", max,
                 "maxImageSizeMB", CommunityPostImageService.MAX_IMAGE_MB,
                 "maxTitleLength", CommunityPostService.MAX_TITLE_LENGTH,
-                "maxDescriptionLength", CommunityPostService.MAX_DESCRIPTION_LENGTH,
-                "maxHashtagOccurrencesFromContent", CommunityPostService.MAX_HASHTAG_OCCURRENCES_FROM_DESCRIPTION)));
+                "maxDescriptionLength", CommunityPostService.MAX_DESCRIPTION_LENGTH)));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<PagedResponse<CommunityPostCardResponse>>> list(
             @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "20") int size) {
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "hashtag", required = false) String hashtag,
+            @RequestParam(name = "sort", defaultValue = "latest") String sort) {
         User viewer = userService.getCurrentUserOptional().orElse(null);
-        return ResponseEntity.ok(ApiResponse.success("OK", communityPostService.getFeed(page, size, viewer)));
+        return ResponseEntity.ok(ApiResponse.success("OK", communityPostService.getFeed(page, size, hashtag, sort, viewer)));
     }
 
     @GetMapping("/{id}")

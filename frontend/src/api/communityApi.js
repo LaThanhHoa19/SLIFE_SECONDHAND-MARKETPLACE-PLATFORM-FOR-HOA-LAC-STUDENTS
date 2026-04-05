@@ -21,6 +21,14 @@ export const createCommunityPostWithImages = (payload, imageFiles = []) => {
 export const getCommunityPosts = (params = {}, config = {}) =>
     axiosClient.get('/api/community/posts', { params, ...config });
 
+/** Gợi ý hashtag theo tiền tố (q rỗng → trending). */
+export const getCommunityHashtagSuggest = (params = {}, config = {}) =>
+    axiosClient.get('/api/community/hashtags/suggest', { params, ...config });
+
+/** Xu hướng: { tag, postCount } theo số bài ACTIVE có thẻ trong cửa sổ `days`. */
+export const getCommunityHashtagTrending = (params = {}, config = {}) =>
+    axiosClient.get('/api/community/hashtags/trending', { params, ...config });
+
 export const getCommunityPost = (id) => axiosClient.get(`/api/community/posts/${id}`);
 
 export const toggleCommunityPostLike = (id) => axiosClient.post(`/api/community/posts/${id}/like`);
