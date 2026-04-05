@@ -15,7 +15,9 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import ToastProvider from './context/ToastContext';
 import { NotificationProvider } from './providers/NotificationProvider';
+import { PhoneVerificationProvider } from './context/PhoneVerificationContext';
 import AuthErrorBoundary from './components/auth/AuthErrorBoundary';
+
 import theme from './theme/theme';
 import './styles/global.css';
 
@@ -28,8 +30,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
                     <AuthErrorBoundary>
                         <NotificationProvider>
                             <ToastProvider>
-                                <App />
+                                <PhoneVerificationProvider>
+                                    <App />
+                                </PhoneVerificationProvider>
                             </ToastProvider>
+
                         </NotificationProvider>
                     </AuthErrorBoundary>
                 </AuthProvider>

@@ -38,11 +38,13 @@ import { buildCategoryTree } from '../../utils/categoryTree';
 import CommunityCtaCard from '../../components/common/CommunityCtaCard';
 import CategoryTree from '../../components/common/CategoryTree';
 import { uiTokens } from '../../theme/uiTokens';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 
 export default function SearchPage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
+    const { checkVerification } = usePhoneVerification();
 
     const [locations, setLocations] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -656,7 +658,7 @@ export default function SearchPage() {
                                 });
                                 return;
                             }
-                            navigate('/listings/new');
+                            checkVerification(() => navigate('/listings/new'));
                         }}
                     />
                 </Box>

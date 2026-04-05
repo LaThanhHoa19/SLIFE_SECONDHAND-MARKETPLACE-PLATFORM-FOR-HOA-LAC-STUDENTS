@@ -29,6 +29,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { getCategories } from '../../api/categoryApi';
 import { buildCategoryTree } from '../../utils/categoryTree';
 import CategoryTree from '../common/CategoryTree';
@@ -74,6 +75,7 @@ export default function RightPanel() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { isAuthenticated } = useAuth();
+    const { checkVerification } = usePhoneVerification();
     const [locations, setLocations] = useState([]);
     const [categories, setCategories] = useState([]);
     const [catLoading, setCatLoading] = useState(true);
@@ -443,7 +445,7 @@ export default function RightPanel() {
                         navigate('/login', { state: { from: '/listings/new', message: 'Bạn cần đăng nhập để đăng tin' } });
                         return;
                     }
-                    navigate('/listings/new');
+                    checkVerification(() => navigate('/listings/new'));
                 }}
             />
 
