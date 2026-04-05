@@ -277,7 +277,15 @@ export default function PhoneVerificationModal({
                 >
                     <CloseIcon sx={{ fontSize: 20 }} />
                 </IconButton>
-                <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+                <Typography 
+                    component="div" 
+                    sx={{ 
+                        fontWeight: 800, 
+                        fontFamily: "'Outfit', sans-serif", 
+                        fontSize: '1.2rem', 
+                        letterSpacing: '-0.02em' 
+                    }}
+                >
                     {step === 'WARNING' && 'Xác thực tài khoản'}
                     {step === 'PHONE_INPUT' && 'Số điện thoại'}
                     {step === 'OTP_INPUT' && 'Nhập mã OTP'}
