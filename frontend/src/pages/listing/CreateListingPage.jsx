@@ -11,6 +11,8 @@ import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { createListingWithImages } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../hooks/useAuth';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import {
   getListingSubmitErrorMessage,
   isListingImageRelatedApiError,
@@ -46,6 +48,17 @@ export default function CreateListingPage() {
   const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
   const { showToast } = useToast();
   const draftRedirectTimerRef = useRef(null);
+
+  const { checkVerification } = usePhoneVerification();
+  const { user, isAuthLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+        checkVerification(() => {
+            // verified, do nothing and stay on page
+        });
+    }
+  }, [user, isAuthLoading, checkVerification]);
 
   useEffect(() => {
     return () => {

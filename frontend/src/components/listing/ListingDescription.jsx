@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Button, Card, Typography } from '@mui/material';
+import { Box, Button, Card, Typography, alpha } from '@mui/material';
 
 export const CARD_BG = '#201D26';
 export const BORDER = 'rgba(255,255,255,0.07)';
@@ -32,52 +32,67 @@ export default function ListingDescription({ description }) {
                 sx={{
                     position: 'relative',
                     overflow: 'hidden',
-                    maxHeight: isExpanded ? 'none' : '300px',
-                    color: 'rgba(255,255,255,0.82)',
+                    maxHeight: isExpanded ? 'none' : '200px',
+                    color: 'rgba(255,255,255,0.85)',
                     fontSize: 15,
-                    lineHeight: 1.72,
+                    lineHeight: 1.8,
+                    whiteSpace: 'pre-wrap', // Fix for line breaks
+                    wordBreak: 'break-word',
                     '& p': { mb: 1.5, mt: 0 },
                     '& ul': { mb: 1.5, pl: 2.5 },
                     '& li': { mb: 0.6 },
-                    '& img': { maxWidth: '100%', borderRadius: '8px', mt: 1, mb: 1.5 },
-                    '& strong': { color: TEXT_PRI, fontWeight: 700 },
-                    '& em': { color: '#FFC107' },
+                    '& img': { maxWidth: '100%', borderRadius: '12px', mt: 1, mb: 1.5, display: 'block' },
+                    '& strong': { color: '#fff', fontWeight: 700 },
+                    '& em': { color: '#FFC107', fontStyle: 'italic' },
+                    transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
                 dangerouslySetInnerHTML={{ __html: displayHtml }}
             />
 
             {/* Lớp phủ mờ (gradient) khi chưa mở rộng */}
-            {!isExpanded && (
+            {!isExpanded && displayHtml.length > 200 && (
                 <Box
                     sx={{
-                        position: 'relative',
-                        mt: -7,
-                        height: 54,
-                        background: `linear-gradient(rgba(32, 29, 38, 0), rgba(32, 29, 38, 1) 90%)`,
-                        pointerEvents: 'none'
+                        position: 'absolute',
+                        bottom: 60,
+                        left: 0,
+                        right: 0,
+                        height: 80,
+                        background: `linear-gradient(to bottom, rgba(32, 29, 38, 0), #201D26)`,
+                        pointerEvents: 'none',
+                        zIndex: 1
                     }}
                 />
             )}
 
-            {/* Nút Xem thêm / Thu gọn */}
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+            {/* Nút Xem thêm / Thu gọn - Premium Style */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, position: 'relative', zIndex: 2 }}>
                 <Button
                     onClick={() => setIsExpanded(!isExpanded)}
-                    disableRipple
+                    variant="contained"
                     sx={{
-                        color: '#FFB300', // Amber color for high visibility
+                        bgcolor: alpha(PURPLE, 0.1),
+                        color: PURPLE,
+                        borderRadius: '20px',
+                        px: 4,
+                        py: 0.8,
+                        fontSize: 13,
+                        fontWeight: 700,
                         textTransform: 'none',
-                        fontSize: 14,
-                        fontWeight: 800,
-                        transition: 'all 0.2s',
+                        border: `1px solid ${alpha(PURPLE, 0.3)}`,
+                        backdropFilter: 'blur(8px)',
+                        transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                         '&:hover': {
-                            background: 'transparent',
-                            color: '#FFD54F',
-                            textDecoration: 'underline'
-                        }
+                            bgcolor: PURPLE,
+                            color: '#fff',
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 8px 20px ${alpha(PURPLE, 0.4)}`,
+                            borderColor: PURPLE
+                        },
+                        '&:active': { transform: 'scale(0.95)' }
                     }}
                 >
-                    {isExpanded ? 'Thu gọn' : 'Xem thêm'}
+                    {isExpanded ? 'Thu gọn nội dung' : 'Xem thêm mô tả'}
                 </Button>
             </Box>
         </Card>

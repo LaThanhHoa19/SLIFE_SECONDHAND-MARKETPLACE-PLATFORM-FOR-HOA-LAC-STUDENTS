@@ -11,6 +11,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { APP_SHELL_BG, SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
 const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/community/new', '/chat'];
@@ -19,14 +20,15 @@ export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { isAuthenticated, user, logout } = useAuth();
+    const { checkVerification } = usePhoneVerification();
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     let NAV_ITEMS = [
         { label: 'Feed', icon: HomeIcon, path: '/feed' },
-        { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
         { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
+        { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
         { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
         ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
     ];
@@ -52,6 +54,11 @@ export default function Sidebar({ open = true }) {
     const handleNavClick = (path) => {
         if (AUTH_REQUIRED_PATHS.includes(path) && !isAuthenticated) {
             navigate('/login', { state: { from: path, message: 'Bạn cần đăng nhập để truy cập' } });
+            return;
+        }
+
+        if (path === '/listings/new') {
+            checkVerification(() => navigate(path));
             return;
         }
 

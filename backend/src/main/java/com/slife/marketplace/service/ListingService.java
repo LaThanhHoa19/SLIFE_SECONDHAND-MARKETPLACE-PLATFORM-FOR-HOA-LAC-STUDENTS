@@ -78,17 +78,17 @@ public class ListingService {
     private final ListingExpiryBatchService listingExpiryBatchService;
 
     public ListingService(ListingRepository listingRepository,
-                          ListingImageRepository listingImageRepository,
-                          SavedListingRepository savedListingRepository,
-                          CategoryRepository categoryRepository,
-                          AddressRepository addressRepository,
-                          FollowService followService,
-                          BlockService blockService,
-                          ListingLikeRepository listingLikeRepository,
-                          ListingImageService listingImageService,
-                          ConfigService configService,
-                          NotificationService notificationService,
-                          ListingExpiryBatchService listingExpiryBatchService) {
+            ListingImageRepository listingImageRepository,
+            SavedListingRepository savedListingRepository,
+            CategoryRepository categoryRepository,
+            AddressRepository addressRepository,
+            FollowService followService,
+            BlockService blockService,
+            ListingLikeRepository listingLikeRepository,
+            ListingImageService listingImageService,
+            ConfigService configService,
+            NotificationService notificationService,
+            ListingExpiryBatchService listingExpiryBatchService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -126,13 +126,12 @@ public class ListingService {
                 normalizeParam(q),
                 categoryId,
                 normalizeParam(location),
-                null,   // purpose
-                null,   // itemCond
-                null,   // priceMin
-                null,   // priceMax
+                null, // purpose
+                null, // itemCond
+                null, // priceMin
+                null, // priceMax
                 catalogNow,
-                pageable
-        );
+                pageable);
 
         Set<Long> savedIds = currentUser != null
                 ? new HashSet<>(savedListingRepository.findListingIdsByUserId(currentUser.getId()))
@@ -169,16 +168,42 @@ public class ListingService {
             int size,
             User currentUser,
             Long sellerId,
-            boolean prioritizeFollowing) {
+            boolean prioritizeFollowing,
+            String feedType) {
+
+        // Mặc định Mới nhất: sắp xếp theo createdAt DESC
         Pageable pageable = PageRequest.of(
                 Math.max(page, 0),
                 size > 0 ? Math.min(size, 20) : 20,
                 Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult =
-                listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
+        Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult;
 
-        List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = prioritizeFollowing
+        if ("FOLLOWING".equalsIgnoreCase(feedType)) {
+            if (currentUser == null) {
+                pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(), pageable, 0);
+            } else {
+                Set<Long> followedSellerIds = followService.findAllFollowedIds(currentUser.getId());
+                if (followedSellerIds.isEmpty()) {
+                    pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(), pageable, 0);
+                } else {
+                    pageResult = listingRepository.findFollowingActiveListingCards(followedSellerIds, Instant.now(), pageable);
+                }
+            }
+        } else if ("GIVEAWAY".equalsIgnoreCase(feedType)) {
+            pageResult = listingRepository.findGiveawayActiveListingCards(sellerId, Instant.now(), pageable);
+        } else if ("POPULAR".equalsIgnoreCase(feedType)) {
+            Pageable popularPageable = PageRequest.of(
+                    Math.max(page, 0),
+                    size > 0 ? Math.min(size, 20) : 20);
+            pageResult = listingRepository.findPopularActiveListingCards(sellerId, Instant.now(), popularPageable);
+        } else {
+            pageResult = listingRepository.findAllActiveListingCards(sellerId, Instant.now(), pageable);
+        }
+
+        boolean shouldPrioritize = prioritizeFollowing && "FOLLOWING".equalsIgnoreCase(feedType);
+
+        List<com.slife.marketplace.dto.response.ListingCardResponse> prioritized = shouldPrioritize
                 ? prioritizeFollowedListings(pageResult.getContent(), currentUser, sellerId, page)
                 : pageResult.getContent();
 
@@ -846,7 +871,8 @@ public class ListingService {
     // ----------------------------------------------------------------
 
     /**
-     * Chuyển tin ACTIVE đã quá hạn ({@code expirationDate} &lt; now) sang HIDDEN theo từng batch
+     * Chuyển tin ACTIVE đã quá hạn ({@code expirationDate} &lt; now) sang HIDDEN
+     * theo từng batch
      * (transaction riêng mỗi đợt — {@link ListingExpiryBatchService}).
      * Catalog công khai đã lọc lazy expiry; batch đồng bộ DB và My Listings.
      */

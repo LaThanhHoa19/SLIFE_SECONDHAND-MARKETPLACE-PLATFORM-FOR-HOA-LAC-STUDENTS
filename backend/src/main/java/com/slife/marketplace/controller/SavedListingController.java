@@ -32,4 +32,5 @@ public class SavedListingController {
         PagedResponse<ListingResponse> result = savedListingService.getSavedListings(user, page, size);
         return ResponseEntity.ok(ApiResponse.success("OK", result));
     }
+
 }

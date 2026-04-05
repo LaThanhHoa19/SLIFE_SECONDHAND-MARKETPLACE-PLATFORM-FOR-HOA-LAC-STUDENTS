@@ -14,3 +14,4 @@ export { default as Pagination } from './Pagination';
 export { default as SkeletonGrid } from './SkeletonGrid';
 export { default as Tag } from './Tag';
 export { default as ToastContainer } from './ToastContainer';
+export { default as PhoneVerificationModal } from './PhoneVerificationModal';

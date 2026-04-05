@@ -71,15 +71,20 @@ const normalizeListing = (item) => {
     };
 };
 
+const toNumericOrRaw = (value) => (
+    value === '' || value === null || value === undefined
+        ? null
+        : Number.isNaN(Number(value))
+            ? value
+            : Number(value)
+);
+
 const normalizeParams = (params = {}, query = '') => ({
     ...params,
     page: Number.isFinite(Number(params?.page)) ? Number(params.page) : 0,
     size: Number.isFinite(Number(params?.size)) ? Number(params.size) : 10,
-    category: params?.category === '' || params?.category === null || params?.category === undefined
-        ? null
-        : Number.isNaN(Number(params.category))
-            ? params.category
-            : Number(params.category),
+    category: toNumericOrRaw(params?.category),
+    subcategory: toNumericOrRaw(params?.subcategory),
     q: query,
     prioritizeFollowing: params?.prioritizeFollowing !== false,
 });
@@ -111,6 +116,7 @@ export default function useListings(initialParams = {}) {
                 page: 0,
                 size: Number.isFinite(Number(initialParams?.size)) ? Number(initialParams.size) : prev.size,
                 category: initialParams?.category ?? prev.category,
+                subcategory: initialParams?.subcategory ?? prev.subcategory,
                 location: initialParams?.location ?? prev.location,
                 sort: initialParams?.sort ?? prev.sort,
                 q: initialParams?.q ?? prev.q,
@@ -119,13 +125,14 @@ export default function useListings(initialParams = {}) {
                 maxPrice: initialParams?.maxPrice ?? prev.maxPrice,
             };
             const same =
-                next.size === prev.size && next.category === prev.category &&
+                next.size === prev.size && next.category === prev.category && next.subcategory === prev.subcategory &&
                 next.location === prev.location && next.sort === prev.sort && next.q === prev.q &&
                 next.condition === prev.condition && next.minPrice === prev.minPrice && next.maxPrice === prev.maxPrice;
             return same ? prev : next;
         });
     }, [
         initialParams?.category,
+        initialParams?.subcategory,
         initialParams?.location,
         initialParams?.sort,
         initialParams?.size,
@@ -162,6 +169,7 @@ export default function useListings(initialParams = {}) {
                     {
                         q: p.q,
                         categoryId: p.category,
+                        subcategoryId: p.subcategory,
                         location: p.location,
                         itemCondition: normalizeConditionParam(p.condition),
                         priceMin: p.minPrice,
@@ -227,6 +235,7 @@ export default function useListings(initialParams = {}) {
     }, [
         params.size,
         params.category,
+        params.subcategory,
         params.location,
         params.sort,
         params.condition,

@@ -33,7 +33,6 @@ import {
     SuspenseUserManagementPage,
     SuspenseCategoryManagementPage,
     SuspenseConfigurationManagementPage,
-    SuspenseAdminProfilePage,
     SuspenseReportPage,
     SuspenseChatPage,
     SuspenseBackendTestPage,
@@ -94,7 +93,6 @@ export default function AppRouter() {
                 <Route path="users" element={<SuspenseUserManagementPage />} />
                 <Route path="categories" element={<SuspenseCategoryManagementPage />} />
                 <Route path="settings" element={<SuspenseConfigurationManagementPage />} />
-                <Route path="profile" element={<SuspenseAdminProfilePage />} />
             </Route>
 
             <Route element={<MainLayout />}>
