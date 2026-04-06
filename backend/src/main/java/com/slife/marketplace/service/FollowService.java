@@ -10,6 +10,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.BlockRepository;
 import com.slife.marketplace.repository.FollowRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.repository.ReviewRepository;
 import com.slife.marketplace.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,19 +35,22 @@ public class FollowService {
     private final BlockService blockService;
     private final NotificationService notificationService;
     private final ListingRepository listingRepository;
+    private final ReviewRepository reviewRepository;
 
     public FollowService(FollowRepository followRepository,
                          UserRepository userRepository,
                          BlockRepository blockRepository,
                          BlockService blockService,
                          NotificationService notificationService,
-                         ListingRepository listingRepository) {
+                         ListingRepository listingRepository,
+                         ReviewRepository reviewRepository) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.blockRepository = blockRepository;
         this.blockService = blockService;
         this.notificationService = notificationService;
         this.listingRepository = listingRepository;
+        this.reviewRepository = reviewRepository;
     }
 
 
@@ -186,6 +190,17 @@ public class FollowService {
         dto.setFollowerCount(countFollowers(profileUser.getId()));
         dto.setFollowingCount(countFollowing(profileUser.getId()));
         dto.setListingCount(listingRepository.countBySeller_IdAndStatus(profileUser.getId(), "ACTIVE"));
+        long rCount = reviewRepository.countByReviewee_Id(profileUser.getId());
+        dto.setRatingCount(rCount);
+        
+        // Luôn tính toán lại điểm trung bình thật để tránh sai lệch dữ liệu cũ
+        if (rCount > 0) {
+            Double avg = reviewRepository.findAverageRatingByReviewee_Id(profileUser.getId());
+            if (avg != null) {
+                dto.setReputationScore(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
+            }
+        }
+        
         if (viewerUserId != null && !viewerUserId.equals(profileUser.getId())) {
             dto.setIsFollowedByViewer(isFollowing(viewerUserId, profileUser.getId()));
             dto.setIsBlockedByViewer(blockService.isBlockedByCurrentUser(viewerUserId, profileUser.getId()));

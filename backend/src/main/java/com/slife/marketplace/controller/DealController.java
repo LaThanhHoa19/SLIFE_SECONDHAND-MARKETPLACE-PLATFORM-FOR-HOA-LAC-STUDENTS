@@ -1,6 +1,7 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.DealRequest;
+import com.slife.marketplace.dto.request.FinalizeDealRequest;
 import com.slife.marketplace.dto.request.SealDealFullRequest;
 import com.slife.marketplace.dto.request.SealDealRequest;
 import com.slife.marketplace.dto.request.UpdatePickupTimeRequest;
@@ -100,6 +101,24 @@ public class DealController {
     public ResponseEntity<ApiResponse<DealResponse>> getDeal(@PathVariable Long id) {
         DealResponse response = dealService.getDealById(id);
         return ResponseEntity.ok(ApiResponse.success("OK", response));
+    }
+
+    @PostMapping("/deals/{id}/finalize")
+    public ResponseEntity<ApiResponse<DealResponse>> finalizeDeal(
+            @PathVariable Long id,
+            @Valid @RequestBody FinalizeDealRequest request) {
+        DealResponse response = dealService.finalizeByBuyer(id, request);
+        String msg = request.isCompleted() ? "Giao dịch đã hoàn thành" : "Đã hủy giao dịch";
+        return ResponseEntity.ok(ApiResponse.success(msg, response));
+    }
+
+    /** Người mua gửi đánh giá sau khi giao dịch đã SUCCESS. */
+    @PostMapping("/deals/{id}/review")
+    public ResponseEntity<ApiResponse<Void>> submitReview(
+            @PathVariable Long id,
+            @Valid @RequestBody FinalizeDealRequest request) {
+        dealService.submitReview(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi đánh giá thành công", null));
     }
 
     /**

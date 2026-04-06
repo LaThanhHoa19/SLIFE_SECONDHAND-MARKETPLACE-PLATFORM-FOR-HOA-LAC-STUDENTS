@@ -14,6 +14,7 @@ import {
     Tooltip,
     Typography,
     InputAdornment,
+    Rating,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import AddIcon from '@mui/icons-material/Add';
@@ -28,6 +29,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
 import BlockIcon from '@mui/icons-material/Block';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import StarIcon from '@mui/icons-material/Star';
 import { DialogTitle, DialogActions } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import FollowListDialog from './FollowListDialog';
@@ -103,8 +105,9 @@ export default function ProfileHeader({
 
     const oldPhoneRaw = String(user.phoneNumber || user.phone_number || '').trim();
     const newPhoneRaw = editForm.phoneNumber?.trim();
-    const phoneChanged = !!newPhoneRaw && newPhoneRaw !== oldPhoneRaw;
-    const phoneOk = /^0\d{9}$/.test(newPhoneRaw || '');
+    const phoneChanged = !!newPhoneRaw && newPhoneRaw !== oldPhoneRaw && (oldPhoneRaw.endsWith(newPhoneRaw) === false);
+    // Logic mới: phoneOk chỉ cần đủ 9 số và không bắt đầu bằng 0 (vì ta đã gọt 0 ở onChange)
+    const phoneOk = /^[1-9]\d{8}$/.test(newPhoneRaw || '');
     /** Hiện nút gửi OTP cho đến khi server báo đã xác thực (không chỉ khi vừa đổi số). */
     const needsPhoneVerification = isMe && phoneOk && !isPhoneVerified;
 
@@ -122,9 +125,9 @@ export default function ProfileHeader({
         }
 
         // Validate Phone Number
-        const phoneRegex = /^0\d{9}$/;
+        const phoneRegex = /^[1-9]\d{8}$/;
         if (!phoneRegex.test(editForm.phoneNumber?.trim() || '')) {
-            errors.phoneNumber = 'Số điện thoại phải bắt đầu bằng số 0 và gồm đúng 10 chữ số';
+            errors.phoneNumber = 'Số điện thoại phải gồm đúng 9 chữ số thuê bao (không bao gồm số 0 ở đầu)';
             isValid = false;
         }
 
@@ -367,6 +370,15 @@ export default function ProfileHeader({
                         >
                             Đang theo dõi <span style={{ fontWeight: 600 }}>{user.followingCount ?? 0}</span> người dùng
                         </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'white' }}>
+                            <StarIcon sx={{ color: '#fbbf24', fontSize: '1.2rem' }} />
+                            <Typography variant="body2" sx={{ fontSize: '1rem', fontWeight: 600 }}>
+                                {Number(reputationScore || 0).toFixed(1)}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', ml: 0.5 }}>
+                                ({ratingCount ?? 0} đánh giá)
+                            </Typography>
+                        </Box>
                     </Box>
 
                     {/* Bio / Verification / Join Date */}
@@ -504,10 +516,20 @@ export default function ProfileHeader({
                             size="small"
                         />
                         <TextField 
-                            fullWidth label="Số điện thoại" value={editForm.phoneNumber}
+                            fullWidth 
+                            label="Số điện thoại" 
+                            value={editForm.phoneNumber}
+                            placeholder="Nhập 9 số thuê bao"
                             onChange={(e) => {
-                                setEditForm((f) => ({ ...f, phoneNumber: e.target.value }));
+                                let val = e.target.value.replace(/\D/g, ''); // Chỉ lấy số (xóa d cách, chữ)
+                                if (val.startsWith('0')) val = val.slice(1);  // Chặn/gọt số 0 ở đầu
+                                val = val.slice(0, 9); // Giới hạn 9 số
+                                setEditForm((f) => ({ ...f, phoneNumber: val }));
                                 if (fieldErrors.phoneNumber) setFieldErrors(e => ({...e, phoneNumber: ''}));
+                            }}
+                            InputLabelProps={{ shrink: true }}
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { color: 'rgba(255,255,255,0.7)', fontWeight: 700 }, mr: 1 }}>+84</InputAdornment>,
                             }}
                             error={Boolean(fieldErrors.phoneNumber)}
                             helperText={fieldErrors.phoneNumber}
@@ -651,7 +673,7 @@ export default function ProfileHeader({
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-end', gap: 1.5, mb: 3 }}>
                         <Typography sx={{ color: 'white', fontSize: '1.2rem', fontWeight: 700 }}>
-                            {editForm.phoneNumber}
+                            +84{editForm.phoneNumber}
                         </Typography>
                         <Button 
                             variant="text" 

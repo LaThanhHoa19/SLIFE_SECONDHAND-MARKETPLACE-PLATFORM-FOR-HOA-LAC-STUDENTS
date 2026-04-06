@@ -62,7 +62,7 @@ export default function ListingOwnerActions({ listingId, onNotify, status }) {
                     '&.Mui-disabled': { color: 'rgba(255,255,255,0.2)', bgcolor: 'rgba(0,0,0,0.1)', borderColor: 'transparent' }
                 }}
             >
-                {submitting ? <CircularProgress size={20} color="inherit" /> : 'Ẩn tin / Đã bán'}
+                {submitting ? <CircularProgress size={20} color="inherit" /> : 'Ẩn tin'}
             </Button>
 
             {/* Edit Button with Premium Glow */}

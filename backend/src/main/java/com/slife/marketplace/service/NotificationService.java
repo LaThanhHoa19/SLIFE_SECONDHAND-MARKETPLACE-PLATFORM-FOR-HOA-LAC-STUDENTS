@@ -193,6 +193,53 @@ public class NotificationService {
         return "Người dùng";
     }
 
+    /** Notify listing owner when a deal is finalized (SUCCESS) or cancelled by buyer. */
+    @Transactional
+    public void notifyDealFinalized(User seller, User buyer, Long listingId, String listingTitle, boolean isSuccess, boolean rated) {
+        try {
+            String buyerName = displayName(buyer);
+            String title = (listingTitle != null && !listingTitle.isBlank()) ? listingTitle.trim() : "tin đăng của bạn";
+            String text;
+            if (isSuccess) {
+                if (rated) {
+                    text = "Giao dịch thành công! " + buyerName + " đã xác nhận nhận hàng và để lại đánh giá cho bạn về sản phẩm «" + truncate(title, 40) + "».";
+                } else {
+                    text = "Giao dịch thành công! " + buyerName + " đã xác nhận nhận hàng cho sản phẩm «" + truncate(title, 40) + "». Hãy kiểm tra uy tín của bạn!";
+                }
+            } else {
+                text = buyerName + " đã hủy chốt đơn cho sản phẩm «" + truncate(title, 40) + "». Tin đăng đã khả dụng trở lại.";
+            }
+
+            Long convId = resolveConversationId(listingId, buyer, seller);
+            String refType = convId != null ? "DEAL" : "LISTING";
+            Long refId = convId != null ? convId : listingId;
+            
+            Notification n = buildNotification(seller, TYPE_DEAL, refType, refId, text);
+            notificationRepository.save(n);
+            pushNotificationCount(seller);
+        } catch (Exception ex) {
+            log.error("notifyDealFinalized failed sellerId={} listingId={}", seller.getId(), listingId, ex);
+        }
+    }
+
+    /** Thông báo cho người bán khi nhận được đánh giá mới. */
+    @Transactional
+    public void notifyNewReview(User seller, User buyer, Long listingId, String listingTitle, int rating, Long conversationId) {
+        try {
+            String text = displayName(buyer) + " đã gửi đánh giá " + rating + " sao cho bài đăng «" + truncate(listingTitle, 40) + "».";
+            Long refId = (conversationId != null) ? conversationId : resolveConversationId(listingId, buyer, seller);
+            String refType = (refId != null) ? "DEAL" : "LISTING";
+            // refId uses conversation_id if DEAL, listing_id if LISTING
+            Long targetRefId = (refId != null) ? refId : listingId;
+            
+            Notification n = buildNotification(seller, TYPE_DEAL, refType, targetRefId, text);
+            notificationRepository.save(n);
+            pushNotificationCount(seller);
+        } catch (Exception ex) {
+            log.error("notifyNewReview failed sellerId={} listingId={}", seller.getId(), listingId, ex);
+        }
+    }
+
     /** Notify listing owner when their listing is reported. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyListingReported(User listingOwner, User reporter, Long listingId, String listingTitle) {
@@ -499,7 +546,7 @@ public class NotificationService {
 
         String rt = n.getRefType().trim().toUpperCase();
         try {
-            if ("CONVERSATION".equals(rt)) {
+            if ("CONVERSATION".equals(rt) || "DEAL".equals(rt)) {
                 String sessionId = conversationRepository.findById(n.getRefId())
                         .map(Conversation::getSessionUuid)
                         .orElse(null);

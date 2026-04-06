@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { PhoneVerificationModal } from '../components/common';
+import PhoneVerificationModal from '../components/common/PhoneVerificationModal';
 import { useAuth } from '../hooks/useAuth';
 
 const PhoneVerificationContext = createContext(null);

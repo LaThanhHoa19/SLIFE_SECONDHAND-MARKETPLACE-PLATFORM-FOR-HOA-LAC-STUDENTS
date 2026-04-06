@@ -46,21 +46,21 @@ const VARIANTS = {
     },
     warning: {
         Icon: WarningIcon,
-        iconBg: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1))',
-        iconColor: '#f59e0b',
-        glow: alpha('#f59e0b', 0.28),
-        confirmBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-        confirmHoverBg: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+        iconBg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.05))',
+        iconColor: '#f43f5e',
+        glow: alpha('#f43f5e', 0.15),
+        confirmBg: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)',
+        confirmHoverBg: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
         defaultTitle: 'Xác nhận thao tác',
         defaultConfirmLabel: 'Tiếp tục',
     },
     info: {
         Icon: InfoIcon,
-        iconBg: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(79, 70, 229, 0.1))',
-        iconColor: '#6366f1',
-        glow: alpha('#6366f1', 0.28),
-        confirmBg: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-        confirmHoverBg: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+        iconBg: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.05))',
+        iconColor: '#f43f5e',
+        glow: alpha('#f43f5e', 0.15),
+        confirmBg: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)',
+        confirmHoverBg: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
         defaultTitle: 'Xác nhận',
         defaultConfirmLabel: 'Đồng ý',
     },
@@ -164,8 +164,8 @@ export default function ConfirmDialog({
             </Box>
 
             {content && (
-                <DialogContent sx={{ pt: 0.5, pb: 1.5, px: 3 }}>
-                    <DialogContentText sx={{ textAlign: 'center', color: '#334155', fontSize: 14.5, lineHeight: 1.65 }}>
+                <DialogContent sx={{ pt: 0, pb: 1.5, px: 3 }}>
+                    <DialogContentText sx={{ textAlign: 'left', color: '#475569', fontSize: 14.5, lineHeight: 1.6 }}>
                         {content}
                     </DialogContentText>
                 </DialogContent>

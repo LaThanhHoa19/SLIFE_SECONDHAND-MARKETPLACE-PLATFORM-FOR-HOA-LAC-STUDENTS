@@ -31,11 +31,11 @@ import { formatRelativeTimeVi } from './myListingsUtils';
 
 const iconBtnSx = {
     color: 'rgba(255,255,255,0.5)',
-    p: '7px',
+    p: '5px',
     borderRadius: '10px',
     '&:hover': {
         color: STITCH_PURPLE,
-        bgcolor: 'rgba(157, 110, 237, 0.14)',
+        bgcolor: 'rgba(157, 110, 237, 0.12)',
     },
 };
 
@@ -84,7 +84,7 @@ export default function MyListingCard({
                 sx={{
                     position: 'relative',
                     width: '100%',
-                    aspectRatio: '1 / 1',
+                    aspectRatio: '1.7 / 1', // Further reduced height
                     cursor: 'pointer',
                     bgcolor: 'rgba(0,0,0,0.4)',
                     flexShrink: 0,
@@ -143,38 +143,38 @@ export default function MyListingCard({
                 </Box>
             </Box>
 
-            <Stack sx={{ p: 2, pt: 1.75, flex: 1, gap: 1 }}>
-                <Typography
-                    onClick={goDetail}
-                    fontSize={15}
-                    fontWeight={700}
-                    color="rgba(255,255,255,0.96)"
-                    sx={{
-                        cursor: 'pointer',
-                        lineHeight: 1.4,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        minHeight: 42,
-                        letterSpacing: '-0.01em',
-                        '&:hover': { color: STITCH_PURPLE },
-                    }}
-                >
-                    {listing?.title || 'Không có tiêu đề'}
-                </Typography>
-
-                <Typography
-                    fontSize={18}
-                    fontWeight={800}
-                    color={listing?.isGiveaway ? '#5CE1A8' : STITCH_PRICE_CYAN}
-                    sx={{
-                        letterSpacing: '-0.02em',
-                        textShadow: listing?.isGiveaway ? 'none' : '0 0 20px rgba(92, 225, 230, 0.22)',
-                    }}
-                >
-                    {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
-                </Typography>
+            <Stack sx={{ p: 1.25, pt: 1, pb: 1.25, flex: 1, gap: 0.5 }}>
+                 <Typography
+                     onClick={goDetail}
+                     fontSize={14}
+                     fontWeight={700}
+                     color="rgba(255,255,255,0.95)"
+                     sx={{
+                         cursor: 'pointer',
+                         lineHeight: 1.3,
+                         display: '-webkit-box',
+                         WebkitLineClamp: 2,
+                         WebkitBoxOrient: 'vertical',
+                         overflow: 'hidden',
+                         minHeight: 32,
+                         letterSpacing: '-0.01em',
+                         '&:hover': { color: STITCH_PURPLE },
+                     }}
+                 >
+                     {listing?.title || 'Không có tiêu đề'}
+                 </Typography>
+ 
+                 <Typography
+                     fontSize={16}
+                     fontWeight={800}
+                     color={listing?.isGiveaway ? '#5CE1A8' : STITCH_PRICE_CYAN}
+                     sx={{
+                         letterSpacing: '-0.02em',
+                         textShadow: listing?.isGiveaway ? 'none' : '0 0 12px rgba(92, 225, 230, 0.18)',
+                     }}
+                 >
+                     {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
+                 </Typography>
 
                 {(listing?.expirationDate || listing?.reportCount > 0) && (
                     <Stack gap={0.35}>
@@ -241,11 +241,11 @@ export default function MyListingCard({
                                 </Tooltip>
                             ) : (
                                 <Tooltip title="Tin đang đăng không xóa trực tiếp — dùng Ẩn tin để gỡ khỏi feed.">
-                                    <span>
+                                    <Box component="span" sx={{ display: 'inline-block' }}>
                                         <IconButton type="button" size="small" disabled sx={{ ...iconBtnSx, opacity: 0.35 }}>
                                             <DeleteIcon sx={{ fontSize: 19 }} />
                                         </IconButton>
-                                    </span>
+                                    </Box>
                                 </Tooltip>
                             )}
                         </>
