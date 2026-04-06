@@ -38,7 +38,8 @@ const PALETTE = {
 
 const numberVi = new Intl.NumberFormat('vi-VN');
 const fmt = (n) => (n != null ? numberVi.format(n) : '—');
-const fmtPct = (n, total) => (total ? `${((n / total) * 100).toFixed(1)}%` : '—');
+const fmtPct = (n, total) => (total ? `${((n / total) * 100).toFixed(1)}%` : '0.0%');
+const fmtScore = (n) => (Number.isFinite(n) ? Number(n).toFixed(2) : '0.00');
 
 function StatCard({ icon, label, value, sub, color, loading }) {
     return (
@@ -294,23 +295,46 @@ function DonutChart({ segments, size = 160 }) {
 function VerticalBarChart({ items, height = 180 }) {
     const max = Math.max(1, ...items.map((i) => i.value));
     return (
-        <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: 0.5, height, pt: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'stretch', justifyContent: 'space-around', gap: 1, height, pt: 1 }}>
             {items.map((it) => (
-                <Box key={it.name} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 0 }}>
+                <Box
+                    key={it.name}
+                    sx={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        minWidth: 0,
+                        justifyContent: 'flex-end',
+                    }}
+                >
                     <Typography variant="caption" sx={{ color: TEXT, fontWeight: 700, mb: 0.25 }}>
                         {fmt(it.value)}
                     </Typography>
                     <Box
                         sx={{
                             width: '100%',
-                            maxWidth: 36,
-                            height: `${(it.value / max) * 100}%`,
-                            minHeight: it.value > 0 ? 4 : 0,
-                            bgcolor: it.color,
-                            borderRadius: '4px 4px 0 0',
-                            transition: 'height 0.2s',
+                            maxWidth: 38,
+                            height: 110,
+                            borderRadius: 999,
+                            bgcolor: 'rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            overflow: 'hidden',
+                            border: `1px solid ${BORDER}`,
                         }}
-                    />
+                    >
+                        <Box
+                            sx={{
+                                width: '100%',
+                                height: `${(it.value / max) * 100}%`,
+                                minHeight: it.value > 0 ? 6 : 2,
+                                bgcolor: it.color,
+                                borderRadius: 999,
+                                transition: 'height 0.2s',
+                            }}
+                        />
+                    </Box>
                     <Typography
                         variant="caption"
                         sx={{ color: TEXT_MUTED, mt: 0.75, textAlign: 'center', fontSize: 9, lineHeight: 1.2 }}
@@ -460,7 +484,7 @@ export default function DashboardPage() {
               { name: 'Đang ẩn', value: stats.listingHidden + (stats.listingModHidden ?? 0), color: PALETTE.orange },
               { name: 'Hết hạn', value: stats.listingExpired, color: PALETTE.red },
               { name: 'Bản nháp', value: stats.listingDraft, color: 'rgba(255,255,255,0.25)' },
-          ].filter((d) => d.value > 0)
+          ]
         : [];
 
     const userStatusData = stats
@@ -468,7 +492,7 @@ export default function DashboardPage() {
               { name: 'Hoạt động', value: stats.userActive, color: PALETTE.green },
               { name: 'Bị khóa', value: stats.userBanned, color: PALETTE.red },
               { name: 'Hạn chế', value: stats.userRestricted, color: PALETTE.orange },
-          ].filter((d) => d.value > 0)
+          ]
         : [];
 
     const dealStatusData = stats
@@ -477,7 +501,7 @@ export default function DashboardPage() {
               { name: 'Đã xác nhận', value: stats.dealConfirmed, color: PALETTE.blue },
               { name: 'Hoàn thành', value: stats.dealCompleted, color: PALETTE.green },
               { name: 'Đã hủy', value: stats.dealCancelled, color: PALETTE.red },
-          ].filter((d) => d.value > 0)
+          ]
         : [];
 
     const reportStatusData = stats
@@ -485,7 +509,7 @@ export default function DashboardPage() {
               { name: 'Chờ xử lý', value: stats.reportPending, color: PALETTE.orange },
               { name: 'Đã xử lý', value: stats.reportResolved, color: PALETTE.green },
               { name: 'Từ chối', value: stats.reportRejected, color: PALETTE.red },
-          ].filter((d) => d.value > 0)
+          ]
         : [];
 
     const growthData = useMemo(() => {
@@ -598,7 +622,7 @@ export default function DashboardPage() {
                     <StatCard
                         icon={<StarHalfOutlinedIcon fontSize="small" />}
                         label="Reputation TB"
-                        value={stats ? stats.avgReputationScore.toFixed(2) : '—'}
+                        value={fmtScore(stats?.avgReputationScore)}
                         sub="điểm uy tín người dùng"
                         color={PALETTE.indigo}
                         loading={statsLoading}
@@ -634,11 +658,28 @@ export default function DashboardPage() {
                         ) : (
                             <>
                                 <DonutChart segments={listingStatusData} size={168} />
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mt: 2 }}>
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        flexWrap: 'wrap',
+                                        gap: 1,
+                                        justifyContent: 'center',
+                                        mt: 2,
+                                    }}
+                                >
                                     {listingStatusData.map((d) => (
-                                        <Box key={d.name} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Box
+                                            key={d.name}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 0.5,
+                                                minWidth: 132,
+                                                maxWidth: '48%',
+                                            }}
+                                        >
                                             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: d.color }} />
-                                            <Typography variant="caption" sx={{ color: TEXT_MUTED }}>
+                                            <Typography variant="caption" sx={{ color: TEXT_MUTED }} noWrap>
                                                 {d.name} ({fmt(d.value)})
                                             </Typography>
                                         </Box>
