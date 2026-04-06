@@ -14,6 +14,7 @@ import {
     Tooltip,
     Typography,
     InputAdornment,
+    Rating,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,6 +28,7 @@ import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import StarIcon from '@mui/icons-material/Star';
 import { DialogTitle, DialogActions } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import FollowListDialog from './FollowListDialog';
@@ -351,6 +353,15 @@ export default function ProfileHeader({
                         >
                             Đang theo dõi <span style={{ fontWeight: 600 }}>{user.followingCount ?? 0}</span> người dùng
                         </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'white' }}>
+                            <StarIcon sx={{ color: '#fbbf24', fontSize: '1.2rem' }} />
+                            <Typography variant="body2" sx={{ fontSize: '1rem', fontWeight: 600 }}>
+                                {Number(reputationScore || 0).toFixed(1)}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', ml: 0.5 }}>
+                                ({ratingCount ?? 0} đánh giá)
+                            </Typography>
+                        </Box>
                     </Box>
 
                     {/* Bio / Verification / Join Date */}

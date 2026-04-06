@@ -1,254 +1,248 @@
-import React from 'react';
 import {
     Box,
-    Card,
-    Typography,
     Button,
+    Card,
     Stack,
-    alpha,
+    Typography,
+    alpha
 } from '@mui/material';
 import {
-    CheckCircleOutline as CompleteIcon,
-    CancelOutlined as CancelIcon,
     AccessTime as TimeIcon,
-    RateReviewOutlined as RateIcon,
+    Cancel as CancelIcon,
+    CheckCircle as CompleteIcon,
+    ImageNotSupported as NoImageIcon,
+    RateReview as ReviewIcon
 } from '@mui/icons-material';
 import { fullImageUrl } from '../../utils/constants';
+import { Link } from 'react-router-dom';
 
-const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
+const toCurrency = (value) => {
+    if (!value && value !== 0) return '0 ₫';
+    return value.toLocaleString('vi-VN') + ' ₫';
+};
 
-export default function DealCard({ deal, onComplete, onCancel }) {
-    // Handle both camelCase and snake_case for robustness
-    const dealId = deal.dealId || deal.deal_id;
-    const price = deal.price;
-    const status = deal.status;
-    const createdAt = deal.createdAt || deal.created_at;
-    const listingTitle = deal.listingTitle || deal.listing_title || 'Tin đăng';
-    const listingImage = deal.listingImage || deal.listing_image;
-    const isReviewed = deal.isReviewed || deal.is_reviewed;
+const STATUS_CONFIG = {
+    'COMPLETED': { label: 'ĐÃ HOÀN TẤT', color: '#10B981' },
+    'SUCCESS': { label: 'GIAO DỊCH THÀNH CÔNG', color: '#10B981' },
+    'CANCELLED': { label: 'ĐÃ HỦY', color: '#EF4444' }
+};
 
-    // Tính toán thời gian 7 ngày
-    const createdDate = new Date(createdAt);
-    const now = new Date();
-    const diffTime = Math.abs(now - createdDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const isExpired = diffDays > 7;
+export default function DealCard({ deal, onComplete, onCancel, onRate }) {
+    const {
+        listingTitle,
+        listingImage, // Fixed: was thumbnail
+        price,
+        status,
+        createdAt,
+        sellerName,
+        sellerId,
+        isReviewed, // Added to check for rating button
+        updatedAt,
+        confirmedAt
+    } = deal;
 
-    // Helper to render badge based on status
-    const renderStatusBadge = () => {
-        switch (status) {
-            case 'SUCCESS':
-                return (
-                    <Box sx={{ 
-                        px: 1.5, py: 0.5, borderRadius: '8px', 
-                        bgcolor: alpha('#10B981', 0.1), color: '#10B981',
-                        fontSize: '0.75rem', fontWeight: 800, border: '1px solid currentColor'
-                    }}>
-                        ĐÃ HOÀN TẤT
-                    </Box>
-                );
-            case 'CANCELLED':
-                return (
-                    <Box sx={{ 
-                        px: 1.5, py: 0.5, borderRadius: '8px', 
-                        bgcolor: alpha('#EF4444', 0.1), color: '#EF4444',
-                        fontSize: '0.75rem', fontWeight: 800, border: '1px solid currentColor'
-                    }}>
-                        ĐÃ HỦY
-                    </Box>
-                );
-            case 'COMPLETED':
-            default:
-                return (
-                    <Box sx={{ 
-                        px: 1.5, py: 0.5, borderRadius: '8px', 
-                        bgcolor: alpha('#A78BFA', 0.1), color: '#A78BFA',
-                        fontSize: '0.75rem', fontWeight: 800, border: '1px solid currentColor'
-                    }}>
-                        CHỜ HOÀN THÀNH
-                    </Box>
-                );
-        }
-    };
+    const config = STATUS_CONFIG[status] || { label: status, color: '#9D6EED' };
+
+    // Logic hiển thị nút:
+    // 1. SUCCESS -> Hiện "Đánh giá ngay" (nếu chưa đánh giá)
+    // 2. COMPLETED -> Hiện "Hủy" và "Đã nhận"
+    // 3. CANCELLED -> Không hiện gì
+    // Logic hiển thị nút:
+    const showReview = status === 'SUCCESS';
+    const showActions = status === 'COMPLETED';
+
+    // Logic 7 ngày đánh giá kể từ lúc "Chốt trong chat" (confirmedAt hoặc createdAt)
+    let reviewDaysLeft = null;
+    const startPoint = confirmedAt || createdAt;
+    if (showReview && startPoint) {
+        const deadline = new Date(startPoint);
+        deadline.setDate(deadline.getDate() + 7);
+        reviewDaysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+    }
 
     return (
         <Card
+            elevation={0}
             sx={{
-                p: 2,
-                mb: 2,
-                display: 'flex',
+                borderRadius: '16px',
+                overflow: 'hidden',
                 bgcolor: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '20px',
-                backdropFilter: 'blur(20px)',
-                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%',
+                transition: 'transform 0.22s ease, box-shadow 0.22s ease',
                 '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.06)',
-                    transform: 'translateY(-4px)',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                    borderColor: 'rgba(167, 139, 250, 0.3)'
+                    transform: 'translateY(-3px)',
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.4)',
+                    borderColor: 'rgba(167, 139, 250, 0.2)'
                 }
             }}
         >
-            {/* Image Preview */}
-            <Box
-                sx={{
-                    width: 110,
-                    height: 110,
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    flexShrink: 0,
-                    mr: 2.5,
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    position: 'relative',
-                    bgcolor: '#000'
-                }}
-            >
-                <Box
-                    component="img"
-                    src={fullImageUrl(listingImage)}
-                    alt={listingTitle}
-                    sx={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        display: 'block',
-                        objectFit: 'cover',
-                        objectPosition: 'center',
-                        transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&:hover': { transform: 'scale(1.15)' }
-                    }}
-                />
-            </Box>
-
-            {/* Content Section */}
-            <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography 
-                        variant="h6" 
-                        fontWeight={900} 
-                        color="#fff" 
-                        noWrap 
-                        sx={{ 
-                            fontSize: '1.15rem',
-                            letterSpacing: '-0.02em',
-                            textShadow: '0 2px 10px rgba(0,0,0,0.5)'
-                        }}
-                    >
-                        {listingTitle}
-                    </Typography>
-                    {renderStatusBadge()}
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
-                    <Typography variant="h5" fontWeight={900} color="#FF6B6B" sx={{ mr: 1, letterSpacing: '-0.03em' }}>
-                        {toCurrency(price)}
-                    </Typography>
-                </Box>
-
-                <Stack direction="row" spacing={3} alignItems="center" sx={{ mb: 1.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, color: 'rgba(255,255,255,0.4)' }}>
-                        <TimeIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="caption" fontWeight={600}>
-                            Ngày chốt: {new Date(createdAt).toLocaleDateString('vi-VN')}
-                        </Typography>
+            {/* Image Section - Compact Aspect Ratio matching MyListings (1.7/1) */}
+            <Box sx={{ position: 'relative', width: '100%', aspectRatio: '1.7 / 1', flexShrink: 0, bgcolor: 'rgba(0,0,0,0.2)' }}>
+                {listingImage ? (
+                    <Box
+                        component="img"
+                        src={fullImageUrl(listingImage)}
+                        alt={listingTitle}
+                        sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                ) : (
+                    <Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+                        <NoImageIcon sx={{ fontSize: 32, color: 'rgba(255,255,255,0.1)' }} />
                     </Box>
-                </Stack>
-
-                {/* Case 1: Chờ xác nhận (Chưa quá 7 ngày) */}
-                {status === 'COMPLETED' && !isExpired && (
-                    <Stack direction="row" spacing={2} sx={{ mt: 'auto' }}>
-                        <Button
-                            variant="outlined"
-                            startIcon={<CancelIcon />}
-                            onClick={() => onCancel(deal)}
-                            sx={{
-                                flex: 1,
-                                py: 1.2,
-                                borderRadius: '14px',
-                                textTransform: 'none',
-                                fontWeight: 800,
-                                fontSize: '0.9rem',
-                                borderColor: 'rgba(239, 68, 68, 0.4)',
-                                color: '#EF4444',
-                                '&:hover': {
-                                    bgcolor: alpha('#EF4444', 0.12),
-                                    borderColor: '#EF4444',
-                                }
-                            }}
-                        >
-                            Hủy chốt
-                        </Button>
-                        <Button
-                            variant="contained"
-                            startIcon={<CompleteIcon />}
-                            onClick={() => onComplete(deal)}
-                            sx={{
-                                flex: 1,
-                                py: 1.2,
-                                borderRadius: '14px',
-                                textTransform: 'none',
-                                fontWeight: 900,
-                                fontSize: '0.9rem',
-                                background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)',
-                                color: '#fff',
-                                boxShadow: '0 8px 20px rgba(139, 92, 246, 0.3)',
-                                '&:hover': {
-                                    background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)',
-                                }
-                            }}
-                        >
-                            Đã nhận hàng
-                        </Button>
-                    </Stack>
-                )}
-
-                {/* Case 2: Đã thành công nhưng CHƯA ĐÁNH GIÁ (Còn hạn 7 ngày) */}
-                {status === 'SUCCESS' && !isReviewed && !isExpired && (
-                    <Box sx={{ mt: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>
-                            Bạn chưa đánh giá người bán này
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={<RateIcon />}
-                            onClick={() => onComplete(deal)} // Mở RatingModal
-                            sx={{
-                                borderRadius: '10px',
-                                textTransform: 'none',
-                                fontWeight: 800,
-                                px: 2,
-                                bgcolor: alpha('#A78BFA', 0.2),
-                                color: '#A78BFA',
-                                border: '1px solid currentColor',
-                                '&:hover': { bgcolor: alpha('#A78BFA', 0.3) }
-                            }}
-                        >
-                            Đánh giá ngay
-                        </Button>
-                    </Box>
-                )}
-
-                {/* Case 3: Đã chốt thành công và ĐÃ ĐÁNH GIÁ */}
-                {status === 'SUCCESS' && isReviewed && (
-                    <Typography variant="caption" sx={{ mt: 'auto', color: '#10B981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <CompleteIcon sx={{ fontSize: 16 }} /> Bạn đã đánh giá người bán này. Cảm ơn bạn!
-                    </Typography>
-                )}
-
-                {/* Case 4: Mọi trường hợp nếu đã quá 7 ngày */}
-                {isExpired && status !== 'SUCCESS' && (
-                    <Typography variant="caption" sx={{ mt: 'auto', color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>
-                        Giao dịch này đã tự động kết thúc sau 7 ngày.
-                    </Typography>
                 )}
                 
-                {isExpired && status === 'SUCCESS' && !isReviewed && (
-                    <Typography variant="caption" sx={{ mt: 'auto', color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>
-                        Đã hết thời hạn đánh giá giao dịch này.
+                {/* Status Badge */}
+                <Box sx={{ 
+                    position: 'absolute', top: 8, left: 8, 
+                    px: 1, py: 0.35, borderRadius: '999px',
+                    bgcolor: alpha(config.color, 0.95),
+                    backdropFilter: 'blur(4px)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                }}>
+                    <Typography fontSize={8.5} fontWeight={900} color="#fff" letterSpacing={0.5}>
+                        {config.label}
                     </Typography>
-                )}
+                </Box>
             </Box>
+
+            {/* Info Section - Tighter padding and smaller fonts matching MyListings 20% reduction */}
+            <Stack sx={{ p: 1.25, pt: 1, flexGrow: 1, gap: 0.5 }}>
+                <Typography
+                    fontSize={14}
+                    fontWeight={700}
+                    color="#fff"
+                    sx={{
+                        lineHeight: 1.3,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        minHeight: 32,
+                        mb: 0.25
+                    }}
+                >
+                    {listingTitle}
+                </Typography>
+                
+                <Typography fontSize={16} fontWeight={800} color="#FF6B6B">
+                    {toCurrency(price)}
+                </Typography>
+
+                <Stack sx={{ gap: 0.25, mt: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'rgba(255,255,255,0.3)' }}>
+                        <TimeIcon sx={{ fontSize: 13 }} />
+                        <Typography variant="caption" fontWeight={600} fontSize={9}>
+                            Chốt trong chat: <strong>{new Date(createdAt).toLocaleDateString('vi-VN')}</strong>
+                        </Typography>
+                    </Box>
+
+                    {(status === 'SUCCESS' || status === 'CANCELLED') && updatedAt && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'rgba(255,255,255,0.3)' }}>
+                            <CompleteIcon sx={{ fontSize: 13, color: status === 'SUCCESS' ? '#10B981' : '#EF4444' }} />
+                            <Typography variant="caption" fontWeight={600} fontSize={9}>
+                                {status === 'SUCCESS' ? 'Hoàn tất lúc' : 'Hủy lúc'}: <strong>{new Date(updatedAt).toLocaleDateString('vi-VN')}</strong>
+                            </Typography>
+                        </Box>
+                    )}
+                </Stack>
+
+                <Typography variant="caption" color="rgba(255,255,255,0.35)" fontSize={9.5} sx={{ mt: 'auto', pt: 1 }}>
+                    Người bán: {' '}
+                    <Link 
+                        to={`/profile/${sellerId}`}
+                        style={{ 
+                            color: '#A78BFA', 
+                            textDecoration: 'none', 
+                            fontWeight: 800,
+                            transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => e.target.style.textDecoration = 'underline'}
+                        onMouseOut={(e) => e.target.style.textDecoration = 'none'}
+                    >
+                        {sellerName}
+                    </Link>
+                </Typography>
+            </Stack>
+
+            {/* Actions Bar - Consistent compact buttons */}
+            {showReview && (
+                <Stack spacing={0.5} sx={{ p: 1, pt: 0 }}>
+                    {!isReviewed ? (
+                        <>
+                            <Button
+                                fullWidth
+                                size="small"
+                                variant="contained"
+                                startIcon={<ReviewIcon sx={{ fontSize: '14px !important' }} />}
+                                onClick={() => onRate(deal)}
+                                disabled={reviewDaysLeft !== null && reviewDaysLeft <= 0}
+                                sx={{
+                                    borderRadius: '8px',
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    py: 0.75,
+                                    background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)',
+                                    boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
+                                    '&:hover': { background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)' },
+                                    '&.Mui-disabled': { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)', boxShadow: 'none' }
+                                }}
+                            >
+                                Đánh giá ngay
+                            </Button>
+                            {reviewDaysLeft !== null && (
+                                <Typography textAlign="center" fontSize={9.5} color={(reviewDaysLeft <= 2 && reviewDaysLeft > 0) ? '#EF4444' : 'rgba(255,255,255,0.45)'} fontWeight={600} letterSpacing={0.2}>
+                                    {reviewDaysLeft > 0 ? `Còn ${reviewDaysLeft} ngày để đánh giá` : 'Đã quá thời hạn đánh giá'}
+                                </Typography>
+                            )}
+                        </>
+                    ) : (
+                        <Box sx={{ 
+                            py: 1, px: 1.5, borderRadius: '8px', 
+                            bgcolor: 'rgba(16, 185, 129, 0.08)',
+                            border: '1px solid rgba(16, 185, 129, 0.2)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75
+                        }}>
+                            <CompleteIcon sx={{ fontSize: 14, color: '#10B981' }} />
+                            <Typography fontSize={11} fontWeight={700} color="#10B981">ĐÃ ĐÁNH GIÁ</Typography>
+                        </Box>
+                    )}
+                </Stack>
+            )}
+
+            {showActions && (
+                <Stack direction="row" spacing={1} sx={{ p: 1, pt: 0 }}>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => onCancel(deal)}
+                        sx={{
+                            flex: 1, borderRadius: '8px', textTransform: 'none',
+                            fontSize: '0.7rem', fontWeight: 700, color: '#EF4444', 
+                            borderColor: 'rgba(239, 68, 68, 0.3)', py: 0.5,
+                            '&:hover': { borderColor: '#EF4444', bgcolor: 'rgba(239, 68, 68, 0.05)' }
+                        }}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => onComplete(deal)}
+                        sx={{
+                            flex: 1.5, borderRadius: '8px', textTransform: 'none',
+                            fontSize: '0.7rem', fontWeight: 700, bgcolor: '#10B981',
+                            py: 0.5,
+                            '&:hover': { bgcolor: '#059669' }
+                        }}
+                    >
+                        Đã nhận
+                    </Button>
+                </Stack>
+            )}
         </Card>
     );
 }

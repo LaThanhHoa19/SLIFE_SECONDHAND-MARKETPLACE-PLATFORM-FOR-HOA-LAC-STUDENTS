@@ -16,7 +16,7 @@ export default function MyListingsAddPlaceholder({ onClick }) {
             }}
             sx={{
                 borderRadius: '16px',
-                minHeight: 280,
+                minHeight: 180,
                 border: '2px dashed rgba(124, 92, 252, 0.35)',
                 bgcolor: 'rgba(124, 92, 252, 0.04)',
                 display: 'flex',

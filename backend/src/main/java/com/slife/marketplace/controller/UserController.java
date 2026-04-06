@@ -11,6 +11,7 @@ import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.service.BlockService;
 import com.slife.marketplace.service.FirebasePhoneVerificationService;
 import com.slife.marketplace.service.FollowService;
+import com.slife.marketplace.service.ReviewService;
 import com.slife.marketplace.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -25,17 +26,20 @@ public class UserController {
     private final FollowService followService;
     private final BlockService blockService;
     private final UserService userService;
+    private final ReviewService reviewService;
     private final FirebasePhoneVerificationService firebasePhoneVerificationService;
 
     public UserController(UserRepository userRepository,
                           FollowService followService,
                           BlockService blockService,
                           UserService userService,
+                          ReviewService reviewService,
                           FirebasePhoneVerificationService firebasePhoneVerificationService) {
         this.userRepository = userRepository;
         this.followService = followService;
         this.blockService = blockService;
         this.userService = userService;
+        this.reviewService = reviewService;
         this.firebasePhoneVerificationService = firebasePhoneVerificationService;
     }
 
@@ -102,4 +106,8 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("Phone number verified", body));
     }
 
+    @GetMapping("/api/users/{id}/reviews")
+    public ResponseEntity<?> getUserReviews(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success("Success", reviewService.getUserReviews(id)));
+    }
 }

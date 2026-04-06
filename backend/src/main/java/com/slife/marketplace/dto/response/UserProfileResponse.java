@@ -37,6 +37,9 @@ public class UserProfileResponse {
 
     /** Total number of ACTIVE listings by this user. SCRUM-216 */
     private long listingCount;
+    
+    /** Number of reviews this user has received. */
+    private long ratingCount;
 
     /**
      * Whether the authenticated viewer follows this user.

@@ -112,6 +112,15 @@ public class DealController {
         return ResponseEntity.ok(ApiResponse.success(msg, response));
     }
 
+    /** Người mua gửi đánh giá sau khi giao dịch đã SUCCESS. */
+    @PostMapping("/deals/{id}/review")
+    public ResponseEntity<ApiResponse<Void>> submitReview(
+            @PathVariable Long id,
+            @Valid @RequestBody FinalizeDealRequest request) {
+        dealService.submitReview(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi đánh giá thành công", null));
+    }
+
     /**
      * List deals related to current user.
      * type=proposed: deals do current user đề xuất (proposed_by)

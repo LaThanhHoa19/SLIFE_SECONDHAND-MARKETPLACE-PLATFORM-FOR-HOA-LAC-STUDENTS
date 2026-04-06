@@ -13,7 +13,7 @@ import {
     StorefrontOutlined as ShoppingIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { listMyDeals, finalizeDeal } from '../../api/dealApi';
+import { listMyDeals, finalizeDeal, submitDealReview } from '../../api/dealApi';
 import DealCard from '../../components/history/DealCard';
 import RatingModal from '../../components/common/RatingModal';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -71,6 +71,11 @@ export default function OrderHistoryPage() {
         setCompleteConfirmOpen(true);
     };
 
+    const handleRateClick = (deal) => {
+        setSelectedDeal(deal);
+        setRatingOpen(true);
+    };
+
     // BƯỚC 2: Buyer Xác nhận trong Popup -> Chuyển trạng thái ngay
     const handleCompleteConfirm = async () => {
         if (!selectedDeal) return;
@@ -95,18 +100,16 @@ export default function OrderHistoryPage() {
         }
     };
 
-    // BƯỚC 4: Xử lý lưu Đánh giá (nếu user điền và nhấn Gửi)
+    // BƯỚC 4: Xử lý lưu Đánh giá riêng biệt (deal đã SUCCESS)
     const handleRatingSubmit = async (ratingData) => {
         if (!selectedDeal) return;
         try {
             setActionLoading(true);
-            await finalizeDeal(selectedDeal.dealId, {
-                completed: true,
-                ...ratingData
-            });
+            // Gọi endpoint /review riêng, KHÔNG finalize lại
+            await submitDealReview(selectedDeal.dealId, ratingData);
             showToast('Cảm ơn bạn đã để lại đánh giá!', 'success');
             setRatingOpen(false);
-            fetchDeals();
+            fetchDeals(); // Refresh để ẩn nút đánh giá
         } catch (error) {
             console.error('Rating failed:', error);
             showToast('Không thể gửi đánh giá. Vui lòng thử lại!', 'error');
@@ -141,50 +144,24 @@ export default function OrderHistoryPage() {
     return (
         <Box sx={{ 
             minHeight: '100vh', 
-            background: 'linear-gradient(135deg, #0f1014 0%, #1a1b23 100%)',
-            pt: { xs: 2, md: 4 },
-            pb: 8
+            bgcolor: 'transparent',
+            py: { xs: 2.5, md: 3.5 },
+            px: { xs: 0, sm: 0 },
         }}>
-            <Container maxWidth="md">
-                {/* Header Section */}
-                <Box sx={{ 
-                    mb: 4, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between',
-                    p: 3,
-                    borderRadius: '24px',
-                    bgcolor: 'rgba(255,255,255,0.02)',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <IconButton 
-                            onClick={() => navigate(-1)} 
-                            sx={{ 
-                                mr: 2.5, 
-                                color: '#fff',
-                                bgcolor: 'rgba(255,255,255,0.05)',
-                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' }
-                            }}
-                        >
-                            <ArrowBackIcon />
-                        </IconButton>
-                        <Box>
-                            <Typography variant="h4" fontWeight={950} color="#fff" sx={{ 
-                                fontSize: { xs: '1.5rem', md: '2rem' },
-                                letterSpacing: '-0.04em',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1.5
-                            }}>
-                                Lịch sử chốt đơn <HistoryIcon sx={{ fontSize: '1.2em', color: '#A78BFA' }} />
-                            </Typography>
-                            <Typography variant="body2" color="rgba(255,255,255,0.4)" sx={{ fontWeight: 500, mt: 0.5 }}>
-                                Xác nhận nhận hàng và đánh giá người bán để tích lũy uy tín.
-                            </Typography>
-                        </Box>
-                    </Box>
+            <Container maxWidth={1360}>
+                {/* Header Section — Identical to MyListings style */}
+                <Box sx={{ mb: 4 }}>
+                    <Typography
+                        fontSize={{ xs: 24, md: 30 }}
+                        fontWeight={800}
+                        color="#fff"
+                        sx={{ letterSpacing: '-0.04em', lineHeight: 1.12 }}
+                    >
+                        Lịch sử chốt đơn
+                    </Typography>
+                    <Typography fontSize={14} lineHeight={1.55} color="rgba(255,255,255,0.45)" sx={{ mt: 1, maxWidth: 640 }}>
+                        Theo dõi lịch sử mua hàng, xác nhận nhận hàng và đánh giá người bán để tích lũy uy tín cho cộng đồng.
+                    </Typography>
                 </Box>
 
                 {/* Content List */}
@@ -196,16 +173,28 @@ export default function OrderHistoryPage() {
                         </Typography>
                     </Box>
                 ) : deals.length > 0 ? (
-                    <Stack spacing={3}>
-                        {deals.map(deal => (
-                            <DealCard 
-                                key={deal.dealId} 
-                                deal={deal} 
-                                onComplete={handleCompleteClick}
-                                onCancel={handleCancelClick}
-                            />
-                        ))}
-                    </Stack>
+                        <Box
+                            sx={{
+                                display: 'grid',
+                                gap: 2.5,
+                                gridTemplateColumns: {
+                                    xs: '1fr',
+                                    sm: 'repeat(2, 1fr)',
+                                    md: 'repeat(3, 1fr)',
+                                    lg: 'repeat(4, 1fr)',
+                                },
+                            }}
+                        >
+                            {deals.map(deal => (
+                                <DealCard 
+                                    key={deal.dealId} 
+                                    deal={deal} 
+                                    onComplete={handleCompleteClick}
+                                    onCancel={handleCancelClick}
+                                    onRate={handleRateClick}
+                                />
+                            ))}
+                        </Box>
                 ) : (
                     <Box sx={{ 
                         textAlign: 'center', 
@@ -257,6 +246,7 @@ export default function OrderHistoryPage() {
                     onClose={() => setRatingOpen(false)}
                     onConfirm={handleRatingSubmit}
                     loading={actionLoading}
+                    sellerName={selectedDeal?.sellerName}
                 />
 
                 {/* 3. Popup xác nhận hủy */}

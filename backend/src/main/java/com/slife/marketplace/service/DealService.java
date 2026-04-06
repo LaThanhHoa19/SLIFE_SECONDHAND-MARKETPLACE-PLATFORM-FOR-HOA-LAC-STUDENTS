@@ -19,7 +19,7 @@ import com.slife.marketplace.repository.DealRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
 import com.slife.marketplace.repository.ReviewRepository;
-import com.slife.marketplace.service.NotificationService;
+import com.slife.marketplace.repository.UserRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +51,7 @@ public class DealService {
     private final OfferRepository offerRepository;
     private final AddressRepository addressRepository;
     private final ReviewRepository reviewRepository;
+    private final UserRepository userRepository;
     private final UserService userService;
     private final NotificationService notificationService;
 
@@ -60,6 +61,7 @@ public class DealService {
                        OfferRepository offerRepository,
                        AddressRepository addressRepository,
                        ReviewRepository reviewRepository,
+                       UserRepository userRepository,
                        UserService userService,
                        NotificationService notificationService) {
         this.dealRepository = dealRepository;
@@ -68,6 +70,7 @@ public class DealService {
         this.offerRepository = offerRepository;
         this.addressRepository = addressRepository;
         this.reviewRepository = reviewRepository;
+        this.userRepository = userRepository;
         this.userService = userService;
         this.notificationService = notificationService;
     }
@@ -298,6 +301,11 @@ public class DealService {
             throw new SlifeException(ErrorCode.FORBIDDEN, "Chỉ người mua mới có quyền thực hiện hành động này");
         }
 
+        // Không cho finalize deal đã ở trạng thái SUCCESS hoặc CANCELLED
+        if (STATUS_SUCCESS.equals(deal.getStatus()) || STATUS_CANCELLED.equals(deal.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch này đã được xử lý rồi");
+        }
+
         if (request.isCompleted()) {
             // Mark listing as SOLD
             Listing listing = deal.getListing();
@@ -329,6 +337,8 @@ public class DealService {
                 review.setComment(fullComment.toString());
                 review.setCreatedAt(Instant.now());
                 reviewRepository.save(review);
+                reviewRepository.flush(); // Đẩy xuống DB ngay để tính trung bình chính xác
+                refreshUserReputation(deal.getSeller());
             }
             
             deal.setStatus(STATUS_SUCCESS);
@@ -424,11 +434,19 @@ public class DealService {
         String sName = (seller != null) ? seller.getFullName() : "Người bán";
         String sAvatar = (seller != null) ? seller.getAvatarUrl() : null;
         
-        // Check if deal is reviewed
-        boolean reviewed = reviewRepository.existsByConversation_IdAndReviewer_Id(
-            deal.getConversation() != null ? deal.getConversation().getId() : -1L,
-            deal.getBuyer() != null ? deal.getBuyer().getId() : -1L
-        );
+        // Kiểm tra xem người mua đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu)
+        boolean reviewed = false;
+        if (deal.getConversation() != null && deal.getBuyer() != null) {
+            // Lấy mốc thời gian chốt hoặc tạo làm chuẩn (tránh dùng review của deal trước đó)
+            java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
+            java.time.Instant after = startPoint.atZone(java.time.ZoneId.systemDefault()).toInstant();
+            
+            reviewed = reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+                deal.getConversation().getId(),
+                deal.getBuyer().getId(),
+                after
+            );
+        }
 
         return DealResponse.builder()
                 .dealId(deal.getId())
@@ -448,6 +466,7 @@ public class DealService {
                 .sellerAvatar(sAvatar)
                 .isReviewed(reviewed)
                 .createdAt(deal.getCreatedAt())
+                .updatedAt(deal.getUpdatedAt())
                 .build();
     }
 
@@ -455,11 +474,13 @@ public class DealService {
      * Tự động hoàn thành các deal ở trạng thái COMPLETED (đã chốt trong chat)
      * mà người mua không bấm gì sau 7 ngày.
      */
-    @Scheduled(cron = "0 0 1 * * ?") // Chạy lúc 1:00 AM hàng ngày
+    @Scheduled(cron = "0 0 1 * * ?") // Runs daily at 1:00 AM
     @Transactional
     public void autoFinalizeDeals() {
+        // Auto-finalize deals that were confirmed (accepted) by buyer but not finalized after 7 days
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-        List<Deal> pendingDeals = dealRepository.findAllByStatusAndCreatedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
+        // We use confirmedAt if available, otherwise createdAt
+        List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
         
         for (Deal deal : pendingDeals) {
             try {
@@ -486,9 +507,75 @@ public class DealService {
     }
 
     /**
-     * Chốt đơn: gắn {@link Deal#setOffer(Offer)} nếu có {@code offerId} hợp lệ hoặc tự khớp lượt PENDING/ACCEPTED cùng giá.
+     * Người mua gửi đánh giá cho deal đã hoàn thành (SUCCESS).
+     * Tách riêng với finalizeByBuyer để tránh gọi lại API finalize lần 2.
+     */
+    @Transactional
+    public void submitReview(Long dealId, FinalizeDealRequest request) {
+        User buyer = userService.getCurrentUser();
+        Deal deal = dealRepository.findByIdAndDeletedAtIsNull(dealId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.DEAL_NOT_FOUND));
+
+        if (deal.getBuyer() == null || !deal.getBuyer().getId().equals(buyer.getId())) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "Chỉ người mua mới có quyền đánh giá");
+        }
+
+        if (!STATUS_SUCCESS.equals(deal.getStatus())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh giá giao dịch đã hoàn thành");
+        }
+
+        // Kiểm tra đã đánh giá chưa
+        if (deal.getConversation() != null &&
+                reviewRepository.existsByConversation_IdAndReviewer_Id(
+                        deal.getConversation().getId(), buyer.getId())) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Bạn đã đánh giá giao dịch này rồi");
+        }
+
+        if (request.getRating() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Vui lòng chọn số sao đánh giá");
+        }
+
+        Review review = new Review();
+        review.setConversation(deal.getConversation());
+        review.setReviewer(buyer);
+        review.setReviewee(deal.getSeller());
+        review.setRating(request.getRating());
+
+        StringBuilder fullComment = new StringBuilder();
+        if (request.getComment() != null && !request.getComment().trim().isEmpty()) {
+            fullComment.append(request.getComment().trim());
+        }
+        if (request.getTags() != null && !request.getTags().isEmpty()) {
+            String tagsStr = String.join(", ", request.getTags());
+            if (fullComment.length() > 0) {
+                fullComment.append("\n\nTiêu chí nổi bật: ").append(tagsStr);
+            } else {
+                fullComment.append("Tiêu chí nổi bật: ").append(tagsStr);
+            }
+        }
+        review.setComment(fullComment.toString());
+        review.setCreatedAt(Instant.now());
+        reviewRepository.save(review);
+        reviewRepository.flush(); // Đẩy xuống DB ngay để tính trung bình chính xác
+
+        // Cập nhật điểm đánh giá cho người bán
+        refreshUserReputation(deal.getSeller());
+    }
+
+    private void refreshUserReputation(User user) {
+        if (user == null || user.getId() == null) return;
+        Double avg = reviewRepository.findAverageRatingByReviewee_Id(user.getId());
+        if (avg != null) {
+            user.setReputationScore(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
+            userRepository.saveAndFlush(user);
+        }
+    }
+
+    /**
+     * Chốt đơn: gắn Offer nếu có offerId hợp lệ hoặc tự khớp lượt PENDING/ACCEPTED cùng giá.
      */
     private Optional<Offer> resolveOfferForSeal(Long listingId, User seller, User buyer, BigDecimal price, Long explicitOfferId) {
+
         if (explicitOfferId != null) {
             Offer offer = offerRepository.findById(explicitOfferId)
                     .orElseThrow(() -> new SlifeException(ErrorCode.OFFER_NOT_FOUND));

@@ -3,6 +3,7 @@ import axiosClient from './axiosClient';
 
 export const getUser = () => axiosClient.get('/api/users/me');
 export const getUserById = (id) => axiosClient.get(`/api/users/${id}`);
+export const getUserReviews = (id) => axiosClient.get(`/api/users/${id}/reviews`);
 export const updateUser = (payload) => axiosClient.put('/api/users/me', payload);
 export const verifyPhoneWithFirebase = (payload) =>
   axiosClient.post('/api/users/me/phone-verification/firebase', payload);

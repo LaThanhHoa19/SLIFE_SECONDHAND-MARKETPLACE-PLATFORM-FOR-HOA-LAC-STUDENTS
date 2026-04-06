@@ -34,3 +34,9 @@ export const listMyDeals = (type = 'all') =>
  */
 export const finalizeDeal = (id, payload) =>
   axiosClient.post(`/api/deals/${id}/finalize`, payload);
+
+/** Người mua gửi đánh giá sau khi giao dịch đã SUCCESS (Tách riêng khỏi finalize). 
+ * payload: { rating: number, comment?: string, tags?: string[] }
+ */
+export const submitDealReview = (id, payload) =>
+  axiosClient.post(`/api/deals/${id}/review`, payload);

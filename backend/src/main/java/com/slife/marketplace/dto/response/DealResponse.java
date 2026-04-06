@@ -64,4 +64,7 @@ public class DealResponse {
     
     @JsonProperty("createdAt")
     private LocalDateTime createdAt;
+
+    @JsonProperty("updatedAt")
+    private LocalDateTime updatedAt;
 }

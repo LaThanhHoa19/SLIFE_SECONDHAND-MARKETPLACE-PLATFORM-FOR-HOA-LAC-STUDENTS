@@ -20,4 +20,10 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     List<Deal> findByProposedBy_IdAndDeletedAtIsNullOrderByCreatedAtDesc(Long proposedById);
 
     List<Deal> findByListing_Seller_IdAndDeletedAtIsNullOrderByCreatedAtDesc(Long sellerId);
-}
+
+    // Tìm deal cần tự động hoàn tất (theo status và thời gian tạo)
+    List<Deal> findAllByStatusAndCreatedAtBefore(String status, LocalDateTime createdAt);
+
+    // Tìm deal cần tự động hoàn tất (theo status và thời gian xác nhận)
+    List<Deal> findAllByStatusAndConfirmedAtBefore(String status, LocalDateTime confirmedAt);
+}
