@@ -317,4 +317,8 @@ public class AuthService {
     private static String blankToNull(String value) {
         return value != null && !value.isBlank() ? value : null;
     }
+
+    public long getRefreshTokenTtlSeconds() {
+        return Math.max(1L, jwtTokenProvider.getRefreshExpirationMs() / 1000L);
+    }
 }

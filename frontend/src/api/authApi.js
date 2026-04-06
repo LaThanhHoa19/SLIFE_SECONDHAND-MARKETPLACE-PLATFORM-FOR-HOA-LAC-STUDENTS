@@ -9,7 +9,10 @@
  * Tests cần viết: login thành công/thất bại, refresh token.
  */
 import axiosClient from './axiosClient';
-export const login = (payload) => axiosClient.post('/api/auth/login', payload);
+import authHttp from './authHttp';
+
+/** Login/Google không gắn Bearer — tránh gửi nhầm phiên user/admin. */
+export const login = (payload) => authHttp.post('/api/auth/login', payload);
 export const logout = (payload) => axiosClient.post('/api/auth/logout', payload);
 export const refreshToken = (payload) => axiosClient.post('/api/auth/refresh', payload);
-export const googleOAuth = (payload) => axiosClient.post('/api/auth/google', payload);
+export const googleOAuth = (payload) => authHttp.post('/api/auth/google', payload);
