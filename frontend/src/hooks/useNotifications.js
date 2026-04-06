@@ -7,7 +7,13 @@
 import { useEffect, useState } from 'react';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
-import { getNotifications, markNotificationRead, markAllRead as apiMarkAllRead } from '../api/notificationApi';
+import {
+  getNotificationsPage,
+  searchNotificationsPage,
+  getUnreadNotificationCount,
+  markNotificationRead,
+  markAllRead as apiMarkAllRead,
+} from '../api/notificationApi';
 import { useAuth } from './useAuth';
 import { API_BASE_URL } from '../utils/constants';
 
@@ -25,27 +31,42 @@ function getChatSockJsUrl(token) {
 
 export default function useNotifications() {
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { token } = useAuth();
 
   useEffect(() => {
     let stompClient;
-    const fetchData = async () => {
+    const fetchFirstPage = async () => {
       if (!token) {
         setNotifications([]);
+        setUnreadCount(0);
         return;
       }
 
       try {
-        const response = await getNotifications();
-        const raw = response?.data?.data ?? response?.data;
-        setNotifications(Array.isArray(raw) ? raw : []);
+        const response = await getNotificationsPage({ limit: 30 });
+        const page = response?.data?.data ?? response?.data;
+        const items = page?.items ?? [];
+        setNotifications(Array.isArray(items) ? items : []);
       } catch (error) {
         console.error('Failed to load notifications:', error);
         setNotifications([]);
       }
     };
 
-    fetchData();
+    const fetchUnreadCount = async () => {
+      if (!token) return;
+      try {
+        const resp = await getUnreadNotificationCount();
+        const n = resp?.data?.data ?? resp?.data;
+        if (typeof n === 'number') setUnreadCount(n);
+      } catch {
+        // ignore
+      }
+    };
+
+    fetchFirstPage();
+    fetchUnreadCount();
 
     if (token) {
       // Backend WebSocket: Spring STOMP + SockJS endpoint `/chat`
@@ -60,7 +81,9 @@ export default function useNotifications() {
           stompClient.subscribe('/user/queue/notifications', (message) => {
             // Payload is unread count (number). We refetch notifications to keep UI consistent.
             if (!token) return;
-            fetchData();
+            const maybe = Number(message?.body);
+            if (!Number.isNaN(maybe)) setUnreadCount(maybe);
+            fetchFirstPage();
           });
         },
         onStompError: (frame) => {
@@ -72,7 +95,12 @@ export default function useNotifications() {
       stompClient.activate();
     }
 
-    const pollingId = token ? setInterval(fetchData, 30000) : null;
+    const pollingId = token
+      ? setInterval(() => {
+          fetchFirstPage();
+          fetchUnreadCount();
+        }, 30000)
+      : null;
     return () => {
       clearInterval(pollingId);
       if (stompClient && stompClient.active) {
@@ -84,19 +112,26 @@ export default function useNotifications() {
   const markRead = async (id) => {
     await markNotificationRead(id);
     setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    setUnreadCount((c) => Math.max(0, (typeof c === 'number' ? c : 0) - 1));
   };
 
   const markAllRead = async () => {
     await apiMarkAllRead();
     setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
   };
 
   const refetch = async () => {
     if (!token) return;
     try {
-      const response = await getNotifications();
-      const raw = response?.data?.data ?? response?.data;
-      setNotifications(Array.isArray(raw) ? raw : []);
+      const response = await getNotificationsPage({ limit: 30 });
+      const page = response?.data?.data ?? response?.data;
+      const items = page?.items ?? [];
+      setNotifications(Array.isArray(items) ? items : []);
+      // Prefer true count from BE
+      const resp2 = await getUnreadNotificationCount();
+      const n = resp2?.data?.data ?? resp2?.data;
+      if (typeof n === 'number') setUnreadCount(n);
     } catch (error) {
       console.error('Failed to reload notifications:', error);
     }
@@ -105,7 +140,7 @@ export default function useNotifications() {
   const list = Array.isArray(notifications) ? notifications : [];
   return {
     notifications: list,
-    unreadCount: list.filter((n) => !n.isRead).length,
+    unreadCount,
     markRead,
     markAllRead,
     refetch,

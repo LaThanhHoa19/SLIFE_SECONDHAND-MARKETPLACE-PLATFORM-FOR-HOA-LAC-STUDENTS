@@ -12,6 +12,8 @@ import com.slife.marketplace.repository.NotificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -415,16 +417,61 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    public com.slife.marketplace.dto.response.CursorPageResponse<NotificationResponse> getNotificationResponsesPage(
+            Long userId,
+            int limit,
+            String cursor
+    ) {
+        int size = Math.max(1, Math.min(limit, 50));
+        NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
+        Instant cursorCreatedAt = c != null ? c.createdAt() : null;
+        Long cursorId = c != null ? c.id() : null;
+        Pageable pageable = PageRequest.of(0, size);
+        List<Notification> list = notificationRepository.findPageByUser(userId, cursorCreatedAt, cursorId, pageable);
+        List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
+        boolean hasMore = list.size() == size;
+        String nextCursor = null;
+        if (hasMore) {
+            Notification last = list.get(list.size() - 1);
+            nextCursor = NotificationCursorCodec.encode(last.getCreatedAt(), last.getId());
+        }
+        return new com.slife.marketplace.dto.response.CursorPageResponse<>(items, nextCursor, hasMore);
+    }
+
+    @Transactional(readOnly = true)
+    public com.slife.marketplace.dto.response.CursorPageResponse<NotificationResponse> searchNotificationResponsesPage(
+            Long userId,
+            String q,
+            int limit,
+            String cursor
+    ) {
+        String query = q != null ? q.trim() : "";
+        if (query.length() > 100) query = query.substring(0, 100);
+        int size = Math.max(1, Math.min(limit, 50));
+        NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
+        Instant cursorCreatedAt = c != null ? c.createdAt() : null;
+        Long cursorId = c != null ? c.id() : null;
+        Pageable pageable = PageRequest.of(0, size);
+        List<Notification> list = notificationRepository.searchPageByUser(userId, query, cursorCreatedAt, cursorId, pageable);
+        List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
+        boolean hasMore = list.size() == size;
+        String nextCursor = null;
+        if (hasMore) {
+            Notification last = list.get(list.size() - 1);
+            nextCursor = NotificationCursorCodec.encode(last.getCreatedAt(), last.getId());
+        }
+        return new com.slife.marketplace.dto.response.CursorPageResponse<>(items, nextCursor, hasMore);
+    }
+
+    @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUser_IdAndIsReadFalse(userId);
     }
 
     @Transactional
-    public void markRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setIsRead(true);
-            notificationRepository.save(n);
-        });
+    public void markRead(Long userId, Long notificationId) {
+        if (userId == null || notificationId == null) return;
+        notificationRepository.markReadForUser(notificationId, userId);
     }
 
     @Transactional

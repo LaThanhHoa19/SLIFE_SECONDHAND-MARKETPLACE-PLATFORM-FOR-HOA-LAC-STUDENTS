@@ -1,14 +1,13 @@
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.response.ApiResponse;
+import com.slife.marketplace.dto.response.CursorPageResponse;
 import com.slife.marketplace.dto.response.NotificationResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.NotificationService;
 import com.slife.marketplace.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 public class NotificationController {
@@ -22,11 +21,24 @@ public class NotificationController {
     }
 
     @GetMapping("/api/notifications")
-    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications() {
+    public ResponseEntity<ApiResponse<CursorPageResponse<NotificationResponse>>> getNotifications(
+            @RequestParam(value = "limit", required = false, defaultValue = "30") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor
+    ) {
         User user = userService.getCurrentUser();
-        // Use service mapping to include deep-link fields (e.g., sessionId for chat notifications)
-        List<NotificationResponse> list = notificationService.getNotificationResponses(user.getId());
-        return ResponseEntity.ok(ApiResponse.success("OK", list));
+        CursorPageResponse<NotificationResponse> page = notificationService.getNotificationResponsesPage(user.getId(), limit, cursor);
+        return ResponseEntity.ok(ApiResponse.success("OK", page));
+    }
+
+    @GetMapping("/api/notifications/search")
+    public ResponseEntity<ApiResponse<CursorPageResponse<NotificationResponse>>> searchNotifications(
+            @RequestParam("q") String q,
+            @RequestParam(value = "limit", required = false, defaultValue = "30") int limit,
+            @RequestParam(value = "cursor", required = false) String cursor
+    ) {
+        User user = userService.getCurrentUser();
+        CursorPageResponse<NotificationResponse> page = notificationService.searchNotificationResponsesPage(user.getId(), q, limit, cursor);
+        return ResponseEntity.ok(ApiResponse.success("OK", page));
     }
 
     @GetMapping("/api/notifications/unread-count")
@@ -37,7 +49,8 @@ public class NotificationController {
 
     @PatchMapping("/api/notifications/{id}/read")
     public ResponseEntity<ApiResponse<Void>> markRead(@PathVariable Long id) {
-        notificationService.markRead(id);
+        User user = userService.getCurrentUser();
+        notificationService.markRead(user.getId(), id);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
