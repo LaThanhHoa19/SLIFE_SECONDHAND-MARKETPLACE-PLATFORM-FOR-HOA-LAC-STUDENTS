@@ -30,7 +30,6 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
 
     // Tìm deal cần tự động hoàn tất (theo status và thời gian xác nhận)
     List<Deal> findAllByStatusAndConfirmedAtBefore(String status, LocalDateTime confirmedAt);
-}
 
     /** Số giao dịch mới mỗi ngày trong N ngày gần nhất. */
     @Query(value = """

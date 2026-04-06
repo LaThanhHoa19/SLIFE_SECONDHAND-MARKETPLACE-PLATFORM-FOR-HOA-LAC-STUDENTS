@@ -194,7 +194,7 @@ public class NotificationService {
     }
 
     /** Notify listing owner when a deal is finalized (SUCCESS) or cancelled by buyer. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void notifyDealFinalized(User seller, User buyer, Long listingId, String listingTitle, boolean isSuccess, boolean rated) {
         try {
             String buyerName = displayName(buyer);
@@ -223,14 +223,16 @@ public class NotificationService {
     }
 
     /** Thông báo cho người bán khi nhận được đánh giá mới. */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyNewReview(User seller, User buyer, Long listingId, String listingTitle, int rating) {
+    @Transactional
+    public void notifyNewReview(User seller, User buyer, Long listingId, String listingTitle, int rating, Long conversationId) {
         try {
             String text = displayName(buyer) + " đã gửi đánh giá " + rating + " sao cho bài đăng «" + truncate(listingTitle, 40) + "».";
-            Long convId = resolveConversationId(listingId, buyer, seller);
-            String refType = convId != null ? "DEAL" : "LISTING";
-            Long refId = convId != null ? convId : listingId;
-            Notification n = buildNotification(seller, TYPE_DEAL, refType, refId, text);
+            Long refId = (conversationId != null) ? conversationId : resolveConversationId(listingId, buyer, seller);
+            String refType = (refId != null) ? "DEAL" : "LISTING";
+            // refId uses conversation_id if DEAL, listing_id if LISTING
+            Long targetRefId = (refId != null) ? refId : listingId;
+            
+            Notification n = buildNotification(seller, TYPE_DEAL, refType, targetRefId, text);
             notificationRepository.save(n);
             pushNotificationCount(seller);
         } catch (Exception ex) {
@@ -544,7 +546,7 @@ public class NotificationService {
 
         String rt = n.getRefType().trim().toUpperCase();
         try {
-            if ("CONVERSATION".equals(rt)) {
+            if ("CONVERSATION".equals(rt) || "DEAL".equals(rt)) {
                 String sessionId = conversationRepository.findById(n.getRefId())
                         .map(Conversation::getSessionUuid)
                         .orElse(null);

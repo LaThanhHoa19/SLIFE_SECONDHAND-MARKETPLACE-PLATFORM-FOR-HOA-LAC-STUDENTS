@@ -94,7 +94,8 @@ export default function OrderHistoryPage() {
             setRatingOpen(true);
         } catch (error) {
             console.error('Finalize failed:', error);
-            showToast('Không thể hoàn thành giao dịch. Vui lòng thử lại!', 'error');
+            const msg = error.response?.data?.message || error.message || 'Không thể xác nhận nhận hàng. Vui lòng thử lại!';
+            showToast(msg, 'error');
         } finally {
             setActionLoading(false);
         }
@@ -112,7 +113,13 @@ export default function OrderHistoryPage() {
             fetchDeals(); // Refresh để ẩn nút đánh giá
         } catch (error) {
             console.error('Rating failed:', error);
-            showToast('Không thể gửi đánh giá. Vui lòng thử lại!', 'error');
+            let msg = 'Không thể gửi đánh giá. Vui lòng thử lại!';
+            if (error.message && error.message.includes('timeout')) {
+                msg = 'Hệ thống đang bận (Timeout). Vui lòng thử lại sau giây lát!';
+            } else {
+                msg = error.response?.data?.message || msg;
+            }
+            showToast(msg, 'error');
         } finally {
             setActionLoading(false);
         }

@@ -64,7 +64,7 @@ public class DealService {
                        ReviewRepository reviewRepository,
                        UserRepository userRepository,
                        UserService userService,
-                       NotificationService notificationService) {
+                       NotificationService notificationService,
                        BlockService blockService) {
         this.dealRepository = dealRepository;
         this.listingRepository = listingRepository;
@@ -580,11 +580,15 @@ public class DealService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh giá giao dịch đã hoàn thành");
         }
 
-        // Kiểm tra đã đánh giá chưa
-        if (deal.getConversation() != null &&
-                reviewRepository.existsByConversation_IdAndReviewer_Id(
-                        deal.getConversation().getId(), buyer.getId())) {
-            throw new SlifeException(ErrorCode.INVALID_INPUT, "Bạn đã đánh giá giao dịch này rồi");
+        // Kiểm tra đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu để tránh conflict với deal cũ)
+        if (deal.getConversation() != null && deal.getBuyer() != null) {
+            java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
+            java.time.Instant after = startPoint.atZone(java.time.ZoneId.systemDefault()).toInstant();
+            
+            if (reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+                    deal.getConversation().getId(), buyer.getId(), after)) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT, "Bạn đã đánh giá giao dịch này rồi");
+            }
         }
 
         if (request.getRating() == null) {
@@ -618,8 +622,9 @@ public class DealService {
         refreshUserReputation(deal.getSeller());
         
         // Gửi thông báo "Có đánh giá mới" cho Người bán
+        Long convId = (deal.getConversation() != null) ? deal.getConversation().getId() : null;
         notificationService.notifyNewReview(deal.getSeller(), buyer, 
-            deal.getListing().getId(), deal.getListing().getTitle(), request.getRating());
+            deal.getListing().getId(), deal.getListing().getTitle(), request.getRating(), convId);
     }
 
     private void refreshUserReputation(User user) {
