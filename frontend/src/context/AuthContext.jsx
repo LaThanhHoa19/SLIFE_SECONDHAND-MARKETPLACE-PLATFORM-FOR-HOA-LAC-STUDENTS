@@ -18,7 +18,13 @@ import * as userApi from '../api/userApi';
 const TOKEN_KEY = 'slife_access_token';
 const REFRESH_TOKEN_KEY = 'slife_refresh_token';
 const USER_KEY = 'slife_user';
+const SESSION_STARTED_AT_KEY = 'slife_session_started_at';
+const LAST_ACTIVITY_AT_KEY = 'slife_last_activity_at';
 const TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000; // 5 minutes before expiry
+const DEFAULT_MAX_SESSION_MS = 12 * 60 * 60 * 1000; // 12h
+const DEFAULT_IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000; // 4h
+const MAX_SESSION_MS = Number(import.meta.env.VITE_AUTH_MAX_SESSION_MS || DEFAULT_MAX_SESSION_MS);
+const IDLE_TIMEOUT_MS = Number(import.meta.env.VITE_AUTH_IDLE_TIMEOUT_MS || DEFAULT_IDLE_TIMEOUT_MS);
 
 const unwrapApiData = (response) => {
   const body = response?.data;
@@ -27,6 +33,13 @@ const unwrapApiData = (response) => {
 
 const getAccessTokenFromPayload = (payload) =>
   payload?.accessToken || payload?.token || null;
+
+const nowMs = () => Date.now();
+
+const readTs = (key) => {
+  const value = Number(localStorage.getItem(key));
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
 
 export const AuthContext = createContext(null);
 
@@ -43,6 +56,7 @@ export function AuthProvider({ children }) {
 
   // Refs for intervals
   const refreshIntervalRef = useRef(null);
+  const idleTimeoutRef = useRef(null);
 
   /**
    * Token utilities
@@ -68,16 +82,47 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const clearAuthState = useCallback(() => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(SESSION_STARTED_AT_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
+    setToken(null);
+    setRefreshToken(null);
+    setUser(null);
+  }, []);
+
+  const touchSessionActivity = useCallback(() => {
+    localStorage.setItem(LAST_ACTIVITY_AT_KEY, String(nowMs()));
+  }, []);
+
+  const ensureSessionLifecycle = useCallback(() => {
+    const startedAt = readTs(SESSION_STARTED_AT_KEY);
+    const lastActivityAt = readTs(LAST_ACTIVITY_AT_KEY);
+    const now = nowMs();
+
+    if (startedAt && now - startedAt > MAX_SESSION_MS) {
+      clearAuthState();
+      setAuthError('Session reached maximum lifetime. Please login again.');
+      return false;
+    }
+
+    if (lastActivityAt && now - lastActivityAt > IDLE_TIMEOUT_MS) {
+      clearAuthState();
+      setAuthError('Session expired due to inactivity. Please login again.');
+      return false;
+    }
+
+    return true;
+  }, [clearAuthState]);
+
   /**
    * Auto refresh token
    */
   const refreshAccessToken = useCallback(async () => {
-    if (!refreshToken || isTokenExpired(refreshToken)) {
-      return false;
-    }
-
     try {
-      const payload = unwrapApiData(await authApi.refreshToken({ refreshToken }));
+      const payload = unwrapApiData(await authApi.refreshToken({}));
       const nextAccessToken = getAccessTokenFromPayload(payload);
 
       // Update tokens
@@ -88,9 +133,9 @@ export function AuthProvider({ children }) {
       setToken(nextAccessToken);
 
       if (payload?.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
         setRefreshToken(payload.refreshToken);
       }
+      touchSessionActivity();
 
       setAuthError(null);
       return true;
@@ -98,17 +143,12 @@ export function AuthProvider({ children }) {
       console.error('Token refresh failed:', error);
 
       // Clear invalid tokens
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-      setToken(null);
-      setRefreshToken(null);
-      setUser(null);
+      clearAuthState();
       setAuthError('Session expired. Please login again.');
 
       return false;
     }
-  }, [refreshToken, isTokenExpired]);
+  }, [touchSessionActivity, clearAuthState]);
 
   /**
    * Setup auto refresh timer
@@ -152,10 +192,10 @@ export function AuthProvider({ children }) {
       }
 
       localStorage.setItem(TOKEN_KEY, accessToken);
-      if (payload.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
-      }
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
+      localStorage.setItem(SESSION_STARTED_AT_KEY, String(nowMs()));
+      touchSessionActivity();
 
       setToken(accessToken);
       setRefreshToken(payload.refreshToken ?? null);
@@ -183,7 +223,7 @@ export function AuthProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [setupTokenRefresh]);
+  }, [setupTokenRefresh, touchSessionActivity]);
 
   const googleLogin = useCallback(async (credential, options = {}) => {
     try {
@@ -197,12 +237,10 @@ export function AuthProvider({ children }) {
       }
 
       localStorage.setItem(TOKEN_KEY, accessToken);
-      if (payload.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
-      } else {
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
-      }
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
+      localStorage.setItem(SESSION_STARTED_AT_KEY, String(nowMs()));
+      touchSessionActivity();
 
       setToken(accessToken);
       setRefreshToken(payload.refreshToken ?? null);
@@ -224,7 +262,7 @@ export function AuthProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [setupTokenRefresh]);
+  }, [setupTokenRefresh, touchSessionActivity]);
 
   /**
    * Enhanced logout
@@ -237,13 +275,14 @@ export function AuthProvider({ children }) {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
 
       // Call logout API (if token exists)
       if (token) {
         try {
-          await authApi.logout(
-            refreshToken ? { refreshToken } : undefined
-          );
+          await authApi.logout();
         } catch (error) {
           // Ignore logout API errors, continue with local cleanup
           console.warn('Logout API failed:', error);
@@ -251,14 +290,8 @@ export function AuthProvider({ children }) {
       }
 
       // Clear local storage
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-
       // Clear state
-      setToken(null);
-      setRefreshToken(null);
-      setUser(null);
+      clearAuthState();
       setAuthError(null);
 
       // Success callback
@@ -271,17 +304,14 @@ export function AuthProvider({ children }) {
       console.error('Logout error:', error);
 
       // Force clear even if API fails
-      localStorage.clear();
-      setToken(null);
-      setRefreshToken(null);
-      setUser(null);
+      clearAuthState();
       setAuthError(null);
 
       return { success: false, error: error.message };
     } finally {
       setAuthLoading(false);
     }
-  }, [token, refreshToken]);
+  }, [token, clearAuthState]);
 
   /**
    * Update user profile
@@ -307,23 +337,17 @@ export function AuthProvider({ children }) {
       try {
         setAuthLoading(true);
 
+        // Session policy check before token validation/refresh
+        if (!ensureSessionLifecycle()) {
+          setAuthLoading(false);
+          return;
+        }
+
         // Check if token exists and is valid
         if (!token || isTokenExpired(token)) {
-          // Try to refresh token
-          if (refreshToken && !isTokenExpired(refreshToken)) {
-            const refreshSuccess = await refreshAccessToken();
-            if (!refreshSuccess) {
-              setAuthLoading(false);
-              return;
-            }
-          } else {
-            // No valid tokens, clear everything
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-            setToken(null);
-            setRefreshToken(null);
-            setUser(null);
+          const refreshSuccess = await refreshAccessToken();
+          if (!refreshSuccess) {
+            clearAuthState();
             setAuthLoading(false);
             return;
           }
@@ -335,16 +359,12 @@ export function AuthProvider({ children }) {
             const userData = unwrapApiData(await userApi.getUser());
             setUser(userData);
             localStorage.setItem(USER_KEY, JSON.stringify(userData));
+            touchSessionActivity();
             setupTokenRefresh(token);
           } catch (error) {
             console.error('Failed to fetch user (403/401):', error);
             // clear local storage immediately to stop spamming 403/401s
-            localStorage.removeItem(TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
-            localStorage.removeItem(USER_KEY);
-            setToken(null);
-            setRefreshToken(null);
-            setUser(null);
+            clearAuthState();
             // Don't call full logout() as it might try to call the auth/logout API with the same bad token.
           }
         }
@@ -364,7 +384,36 @@ export function AuthProvider({ children }) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, []);
+  }, [token, refreshToken, isTokenExpired, refreshAccessToken, setupTokenRefresh, ensureSessionLifecycle, clearAuthState, touchSessionActivity]);
+
+  /**
+   * Session inactivity watchdog
+   */
+  useEffect(() => {
+    if (!token || !user) return undefined;
+
+    const scheduleIdleLogout = () => {
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+      idleTimeoutRef.current = setTimeout(() => {
+        clearAuthState();
+        setAuthError('Session expired due to inactivity. Please login again.');
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const onActivity = () => {
+      touchSessionActivity();
+      scheduleIdleLogout();
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((evt) => window.addEventListener(evt, onActivity, { passive: true }));
+
+    scheduleIdleLogout();
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, onActivity));
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+    };
+  }, [token, user, clearAuthState, touchSessionActivity]);
 
   // Context value
   const value = useMemo(() => ({

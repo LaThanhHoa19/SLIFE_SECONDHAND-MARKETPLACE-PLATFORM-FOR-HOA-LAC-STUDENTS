@@ -19,8 +19,8 @@ function normalizeApiBaseUrl(baseUrl) {
     return (baseUrl || '').replace(/\/api\/?$/, '');
 }
 
-const axiosClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000 });
-const refreshClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000 });
+const axiosClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000, withCredentials: true });
+const refreshClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000, withCredentials: true });
 
 function dedupeApiPrefix(config) {
     const base = (config.baseURL || '').replace(/\/+$/, '');
@@ -54,19 +54,14 @@ let refreshInFlight = null;
 async function refreshAccessToken() {
     if (refreshInFlight) return refreshInFlight;
 
-    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-    if (!storedRefreshToken) return null;
-
     refreshInFlight = (async () => {
-        const response = await refreshClient.post('/api/auth/refresh', { refreshToken: storedRefreshToken });
+        // Refresh token ưu tiên HttpOnly cookie; body refreshToken để trống (backend fallback body cho legacy clients).
+        const response = await refreshClient.post('/api/auth/refresh', {});
         const payload = response?.data?.data ?? response?.data ?? null;
         const nextAccessToken = payload?.accessToken || payload?.token || null;
         if (!nextAccessToken) throw new Error('Missing access token in refresh response');
 
         localStorage.setItem(ACCESS_TOKEN_KEY, nextAccessToken);
-        if (payload?.refreshToken) {
-            localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
-        }
         return nextAccessToken;
     })().finally(() => {
         refreshInFlight = null;
