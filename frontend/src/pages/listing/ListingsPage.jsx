@@ -16,6 +16,7 @@ export default function ListingsPage() {
         if (short === 'n') return 'NEWEST';
         if (short === 'p') return 'POPULAR';
         if (short === 'g') return 'GIVEAWAY';
+        if (short === 'w') return 'FOLLOWING';
 
         // Backward-compat với URL cũ
         const fromFeedType = String(params.get('feedType') || '').toUpperCase();
@@ -23,7 +24,12 @@ export default function ListingsPage() {
             return fromFeedType;
         }
 
-        return String(params.get('prioritizeFollowing') || '').toLowerCase() === 'false' ? 'NEWEST' : 'FOLLOWING';
+        const prioritizeFollowing = String(params.get('prioritizeFollowing') || '').toLowerCase();
+        if (prioritizeFollowing === 'true') return 'FOLLOWING';
+        if (prioritizeFollowing === 'false') return 'NEWEST';
+
+        // Mặc định mới: vào Feed ở tab Mới nhất
+        return 'NEWEST';
     }, []);
 
     const [feedType, setFeedType] = useState(() => resolveFeedTypeFromParams(searchParams));
@@ -93,7 +99,7 @@ export default function ListingsPage() {
         if (nextFeedType === 'POPULAR') params.set('f', 'p');
         if (nextFeedType === 'GIVEAWAY') params.set('f', 'g');
         if (nextFeedType === 'NEWEST') params.set('f', 'n');
-        // FOLLOWING là mặc định => không cần param
+        if (nextFeedType === 'FOLLOWING') params.set('f', 'w');
 
         setSearchParams(params);
     }, [searchParams, setSearchParams]);
