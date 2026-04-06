@@ -4,17 +4,17 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAdminAuth } from '../../hooks/useAdminAuth';
 import { ADMIN_THEME as t } from '../../theme/adminTheme';
 
 export default function AdminHeader() {
     const navigate = useNavigate();
-    const { user, logout } = useAuth() || {};
-    const displayName = user?.fullName || user?.name || user?.email || '';
+    const { adminUser, adminLogout } = useAdminAuth();
+    const displayName = adminUser?.fullName || adminUser?.name || adminUser?.email || '';
 
     const handleLogout = async () => {
         try {
-            await logout?.();
+            await adminLogout?.();
         } catch {
             /* bỏ qua lỗi API, vẫn xóa session local */
         }

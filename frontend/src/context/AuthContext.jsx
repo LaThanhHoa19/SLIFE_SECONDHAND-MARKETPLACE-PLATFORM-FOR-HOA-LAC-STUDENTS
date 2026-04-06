@@ -13,7 +13,9 @@
 import { createContext, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import * as authApi from '../api/authApi';
 import * as userApi from '../api/userApi';
+import { setAdminAccessToken } from '../api/adminAxiosClient';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../api/axiosClient';
+import { setAdminUserSnapshot } from '../adminSessionStore';
 
 // Constants
 const TOKEN_KEY = 'slife_access_token';
@@ -34,6 +36,8 @@ const unwrapApiData = (response) => {
 
 const getAccessTokenFromPayload = (payload) =>
   payload?.accessToken || payload?.token || null;
+
+const isStaffRole = (role) => role === 'ADMIN' || role === 'MODERATOR';
 
 const nowMs = () => Date.now();
 
@@ -93,6 +97,32 @@ export function AuthProvider({ children }) {
     setToken(null);
     setRefreshToken(null);
     setUser(null);
+  }, []);
+
+  /** Chỉ xóa phiên người dùng (khi đăng nhập admin). Không xóa phiên admin. */
+  const clearUserSessionOnly = useCallback(() => {
+    clearAccessToken();
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(SESSION_STARTED_AT_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
+    if (refreshIntervalRef.current) {
+      clearTimeout(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  }, []);
+
+  const promoteStaffToAdminSession = useCallback((userData, accessToken) => {
+    setAdminAccessToken(accessToken);
+    clearAccessToken();
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(SESSION_STARTED_AT_KEY);
+    localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
+    setAdminUserSnapshot(userData);
+    window.dispatchEvent(new CustomEvent('slife-admin-bootstrap', { detail: userData }));
   }, []);
 
   const touchSessionActivity = useCallback(() => {
@@ -160,7 +190,7 @@ export function AuthProvider({ children }) {
    */
   const setupTokenRefresh = useCallback((tokenString) => {
     if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
+      clearTimeout(refreshIntervalRef.current);
     }
 
     if (!tokenString) return;
@@ -196,6 +226,16 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid auth response');
       }
 
+      window.dispatchEvent(new CustomEvent('slife-clear-admin-session'));
+
+      if (isStaffRole(payload.user.role)) {
+        promoteStaffToAdminSession(payload.user, accessToken);
+        if (options.onSuccess) {
+          options.onSuccess(payload);
+        }
+        return { success: true, data: payload, staffSession: true };
+      }
+
       setAccessToken(accessToken);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
@@ -228,7 +268,7 @@ export function AuthProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [setupTokenRefresh, touchSessionActivity]);
+  }, [setupTokenRefresh, touchSessionActivity, promoteStaffToAdminSession]);
 
   const googleLogin = useCallback(async (credential, options = {}) => {
     try {
@@ -239,6 +279,16 @@ export function AuthProvider({ children }) {
       const accessToken = getAccessTokenFromPayload(payload);
       if (!accessToken || !payload?.user) {
         throw new Error('Invalid Google auth response');
+      }
+
+      window.dispatchEvent(new CustomEvent('slife-clear-admin-session'));
+
+      if (isStaffRole(payload.user.role)) {
+        promoteStaffToAdminSession(payload.user, accessToken);
+        if (options.onSuccess) {
+          options.onSuccess(payload);
+        }
+        return { success: true, data: payload, staffSession: true };
       }
 
       setAccessToken(accessToken);
@@ -267,7 +317,7 @@ export function AuthProvider({ children }) {
     } finally {
       setAuthLoading(false);
     }
-  }, [setupTokenRefresh, touchSessionActivity]);
+  }, [setupTokenRefresh, touchSessionActivity, promoteStaffToAdminSession]);
 
   /**
    * Enhanced logout
@@ -276,9 +326,10 @@ export function AuthProvider({ children }) {
     try {
       setAuthLoading(true);
 
-      // Clear refresh interval
+      // Clear refresh timer
       if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
+        clearTimeout(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
       }
       if (idleTimeoutRef.current) {
         clearTimeout(idleTimeoutRef.current);
@@ -293,6 +344,8 @@ export function AuthProvider({ children }) {
           console.warn('Logout API failed:', error);
         }
       }
+
+      window.dispatchEvent(new CustomEvent('slife-clear-admin-session'));
 
       // Clear local storage
       // Clear state
@@ -334,6 +387,12 @@ export function AuthProvider({ children }) {
     setAuthError(null);
   }, []);
 
+  useEffect(() => {
+    const onClearUserOnly = () => clearUserSessionOnly();
+    window.addEventListener('slife-clear-user-session', onClearUserOnly);
+    return () => window.removeEventListener('slife-clear-user-session', onClearUserOnly);
+  }, [clearUserSessionOnly]);
+
   /**
    * Initialize auth state on app start
    */
@@ -351,36 +410,44 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        // Check if token exists and is valid
-        if (!token || isTokenExpired(token)) {
+        let currentToken = getAccessToken();
+        if (!currentToken || isTokenExpired(currentToken)) {
           const refreshSuccess = await refreshAccessToken({ silent: true });
           if (!refreshSuccess) {
             clearAuthState();
             setAuthLoading(false);
             return;
           }
+          currentToken = getAccessToken();
         }
 
-        // Fetch latest user data if we have a valid token
-        if (token && !isTokenExpired(token)) {
-          try {
-            const userData = unwrapApiData(await userApi.getUser());
-            setUser(userData);
-            localStorage.setItem(USER_KEY, JSON.stringify(userData));
-            touchSessionActivity();
-            setupTokenRefresh(token);
-          } catch (error) {
-            console.error('Failed to fetch user (403/401):', error);
-            // clear local storage immediately to stop spamming 403/401s
-            clearAuthState();
-            // Don't call full logout() as it might try to call the auth/logout API with the same bad token.
+        if (!currentToken || isTokenExpired(currentToken)) {
+          clearAuthState();
+          setAuthLoading(false);
+          return;
+        }
+
+        try {
+          const userData = unwrapApiData(await userApi.getUser());
+          if (isStaffRole(userData.role)) {
+            promoteStaffToAdminSession(userData, currentToken);
+            setAuthLoading(false);
+            return;
           }
+          setUser(userData);
+          localStorage.setItem(USER_KEY, JSON.stringify(userData));
+          touchSessionActivity();
+          setupTokenRefresh(currentToken);
+        } catch (error) {
+          console.error('Failed to fetch user (403/401):', error);
+          clearAuthState();
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         setAuthError('Failed to initialize authentication');
       } finally {
         setAuthLoading(false);
+        window.dispatchEvent(new CustomEvent('slife-auth-bootstrap-complete'));
       }
     };
 
@@ -389,10 +456,11 @@ export function AuthProvider({ children }) {
     // Cleanup interval on unmount
     return () => {
       if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
+        clearTimeout(refreshIntervalRef.current);
       }
     };
-  }, [token, refreshToken, isTokenExpired, refreshAccessToken, setupTokenRefresh, ensureSessionLifecycle, clearAuthState, touchSessionActivity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ bootstrap một lần khi mount
+  }, []);
 
   /**
    * Session inactivity watchdog

@@ -65,7 +65,13 @@ export default function LoginPage() {
                     client_id: GOOGLE_CLIENT_ID,
                     callback: async (response) => {
                         const result = await googleLogin(response.credential, {
-                            onSuccess: () => navigate(getRedirectTarget()),
+                            onSuccess: (payload) => {
+                                if (payload?.staffSession) {
+                                    navigate('/admin');
+                                } else {
+                                    navigate(getRedirectTarget());
+                                }
+                            },
                         });
                         if (!result.success && !cancelled) {
                             setGoogleError(result.error || 'Đăng nhập Google thất bại.');
