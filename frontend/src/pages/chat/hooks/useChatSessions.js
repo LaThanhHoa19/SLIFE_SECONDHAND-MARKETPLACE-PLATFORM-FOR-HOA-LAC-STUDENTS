@@ -121,9 +121,20 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
                     const thumb = Array.isArray(data?.images) ? data.images[0] : null;
                     const price = data?.price != null ? Number(data.price) : null;
                     const isGiveaway = Boolean(data?.isGiveaway);
-                    return [id, { thumb: thumb || null, price, isGiveaway }];
+                    const st = String(data?.status ?? data?.itemStatus ?? '').toUpperCase();
+                    const listingUnavailable = st !== '' && st !== 'ACTIVE';
+                    return [id, { thumb: thumb || null, price, isGiveaway, status: st, listingUnavailable }];
                 } catch {
-                    return [id, { thumb: null, price: null, isGiveaway: false }];
+                    return [
+                        id,
+                        {
+                            thumb: null,
+                            price: null,
+                            isGiveaway: false,
+                            status: 'NOT_FOUND',
+                            listingUnavailable: true,
+                        },
+                    ];
                 }
             }),
         ).then((pairs) => {
@@ -171,6 +182,16 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         return Number(activeSession.sellerId) === Number(currentUserId);
     }, [activeSession, currentUserId]);
 
+    const listingUnavailableByListingId = useMemo(() => {
+        const out = {};
+        Object.entries(listingMetaById).forEach(([key, meta]) => {
+            if (meta?.listingUnavailable) {
+                out[Number(key)] = true;
+            }
+        });
+        return out;
+    }, [listingMetaById]);
+
     const suggestedChatPhrases = useMemo(() => {
         const localFirst = isSellerInActiveChat ? LOCAL_SELLER_CHIPS : LOCAL_BUYER_CHIPS;
         const fromApi = Array.isArray(quickRepliesFromApi) ? quickRepliesFromApi : [];
@@ -203,5 +224,6 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         fetchSessions,
         scheduleFetchSessions,
         setSessions,
+        listingUnavailableByListingId,
     };
 }

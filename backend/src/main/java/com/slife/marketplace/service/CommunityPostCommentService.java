@@ -39,6 +39,8 @@ public class CommunityPostCommentService {
     private final UserService userService;
     private final CommentRateLimitService commentRateLimitService;
     private final AuditLogService auditLogService;
+    private final NotificationService notificationService;
+    private final CommunityPostStatsBroadcastService communityPostStatsBroadcastService;
 
     @Transactional
     public CommentResponse createComment(Long postId, CreateCommunityPostCommentRequest request) {
@@ -65,7 +67,14 @@ public class CommunityPostCommentService {
 
         CommunityPostComment saved = communityPostCommentRepository.save(comment);
         List<String> savedUrls = saveImages(saved, imageUrls);
+
+        if (post.getAuthor() != null && post.getAuthor().getId() != null
+                && !post.getAuthor().getId().equals(currentUser.getId())) {
+            notificationService.notifyCommunityPostCommented(post.getAuthor(), currentUser, postId);
+        }
+
         commentRateLimitService.recordSuccess(currentUser.getId());
+        communityPostStatsBroadcastService.broadcastStats(postId);
         return toResponse(saved, savedUrls, Collections.emptyList());
     }
 
@@ -103,7 +112,22 @@ public class CommunityPostCommentService {
 
         CommunityPostComment saved = communityPostCommentRepository.save(reply);
         List<String> savedUrls = saveImages(saved, imageUrls);
+
+        User parentAuthor = parent.getUser();
+        if (parentAuthor != null && parentAuthor.getId() != null
+                && !parentAuthor.getId().equals(currentUser.getId())) {
+            notificationService.notifyCommunityCommentReply(parentAuthor, currentUser, post.getId());
+        }
+        User postAuthor = post.getAuthor();
+        if (postAuthor != null && postAuthor.getId() != null && !postAuthor.getId().equals(currentUser.getId())) {
+            Long parentAuthorId = parentAuthor != null ? parentAuthor.getId() : null;
+            if (parentAuthorId == null || !postAuthor.getId().equals(parentAuthorId)) {
+                notificationService.notifyCommunityDiscussionJoined(postAuthor, currentUser, post.getId());
+            }
+        }
+
         commentRateLimitService.recordSuccess(currentUser.getId());
+        communityPostStatsBroadcastService.broadcastStats(post.getId());
         return toResponse(saved, savedUrls, Collections.emptyList());
     }
 
@@ -126,8 +150,14 @@ public class CommunityPostCommentService {
             auditLogService.logAdminCommentDelete(currentUser, commentId, comment.getPost() != null ? comment.getPost().getId() : null);
         }
 
+        Long postIdForBroadcast = comment.getPost() != null ? comment.getPost().getId() : null;
+
         communityPostCommentImageRepository.deleteAllByComment_Id(commentId);
         communityPostCommentRepository.delete(comment);
+
+        if (postIdForBroadcast != null) {
+            communityPostStatsBroadcastService.broadcastStats(postIdForBroadcast);
+        }
     }
 
     @Transactional

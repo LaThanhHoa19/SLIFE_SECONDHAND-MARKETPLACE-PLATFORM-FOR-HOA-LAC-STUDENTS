@@ -1,7 +1,7 @@
 /**
  * Thẻ bài cộng đồng — layout đồng bộ ListingCard (dark feed): avatar + follow, media, thích / bình luận / chia sẻ.
  */
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import {
     Avatar,
     Box,
@@ -96,8 +96,41 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
     const [shareSubmitting, setShareSubmitting] = useState(false);
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+    const [likePop, setLikePop] = useState(false);
+    const [commentPop, setCommentPop] = useState(false);
+    const prevLikeFromPost = useRef(undefined);
+    const prevCommentFromPost = useRef(undefined);
 
     const thumb = post?.thumbUrl ? fullImageUrl(post.thumbUrl) : null;
+
+    useEffect(() => {
+        prevLikeFromPost.current = undefined;
+        prevCommentFromPost.current = undefined;
+    }, [post?.id]);
+
+    useEffect(() => {
+        const v = Number(post?.likeCount ?? 0);
+        if (prevLikeFromPost.current !== undefined && v > prevLikeFromPost.current) {
+            setLikePop(true);
+            const t = window.setTimeout(() => setLikePop(false), 420);
+            prevLikeFromPost.current = v;
+            return () => clearTimeout(t);
+        }
+        prevLikeFromPost.current = v;
+        return undefined;
+    }, [post?.likeCount]);
+
+    useEffect(() => {
+        const v = Number(post?.commentCount ?? 0);
+        if (prevCommentFromPost.current !== undefined && v > prevCommentFromPost.current) {
+            setCommentPop(true);
+            const t = window.setTimeout(() => setCommentPop(false), 420);
+            prevCommentFromPost.current = v;
+            return () => clearTimeout(t);
+        }
+        prevCommentFromPost.current = v;
+        return undefined;
+    }, [post?.commentCount]);
 
     useEffect(() => {
         setLikeCount(Number(post?.likeCount ?? 0));
@@ -388,7 +421,17 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
                                 >
                                     {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
                                 </IconButton>
-                                <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
+                                <Typography
+                                    fontSize={13}
+                                    fontWeight={700}
+                                    color={likePop ? LIKE_RED : 'rgba(255,255,255,0.6)'}
+                                    sx={{
+                                        display: 'inline-block',
+                                        minWidth: '1ch',
+                                        transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s',
+                                        transform: likePop ? 'scale(1.35)' : 'scale(1)',
+                                    }}
+                                >
                                     {likeCount || 0}
                                 </Typography>
                             </Box>
@@ -409,7 +452,17 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
                                 >
                                     <CommentIconOutlined sx={{ fontSize: 18 }} />
                                 </IconButton>
-                                <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
+                                <Typography
+                                    fontSize={13}
+                                    fontWeight={700}
+                                    color={commentPop ? PURPLE : 'rgba(255,255,255,0.6)'}
+                                    sx={{
+                                        display: 'inline-block',
+                                        minWidth: '1ch',
+                                        transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s',
+                                        transform: commentPop ? 'scale(1.35)' : 'scale(1)',
+                                    }}
+                                >
                                     {commentCount || 0}
                                 </Typography>
                             </Box>

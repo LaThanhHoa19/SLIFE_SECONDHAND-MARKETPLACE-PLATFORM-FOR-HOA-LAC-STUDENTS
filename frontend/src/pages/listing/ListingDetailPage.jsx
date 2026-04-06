@@ -68,6 +68,8 @@ import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
 import { isFollowBlockedError, isListingNotFoundError } from '../../utils/apiError';
 import { useBlockActions } from '../../hooks/useBlockActions';
 import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDialog';
+import CatalogItemUnavailableScreen from '../../components/common/CatalogItemUnavailableScreen';
+import { shouldShowCatalogUnavailableForNotifLink } from '../../utils/catalogAvailability';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#141225';
@@ -129,6 +131,7 @@ export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const fromNotification = Boolean(location.state?.fromNotification);
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -463,6 +466,12 @@ export default function ListingDetailPage() {
                 </Box>
             </Box>
         );
+    }
+    if (
+        fromNotification &&
+        (Boolean(error) || (listing && shouldShowCatalogUnavailableForNotifLink(listing, currentUser, true)))
+    ) {
+        return <CatalogItemUnavailableScreen />;
     }
     if (error || !listing) {
         const listingUnavailable = error === 'LISTING_UNAVAILABLE';

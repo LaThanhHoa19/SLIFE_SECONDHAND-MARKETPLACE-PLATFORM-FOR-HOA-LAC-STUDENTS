@@ -363,6 +363,7 @@ export default function ListingForm({
                                         defaultValues = {},
                                         onSubmit,
                                         onSaveDraft,
+                                        onDirtyChange,
                                         submitting = false,
                                         savingDraft = false,
                                         mode = 'create',
@@ -406,11 +407,12 @@ export default function ListingForm({
 
     // Map
     const [mapReady, setMapReady] = useState(false);
+    const [mapEnabled, setMapEnabled] = useState(false);
     const mapRef = useRef(null);
     const markerRef = useRef(null);       // marker đã xác nhận (đỏ mặc định Vietmap)
     const pendingMarkerRef = useRef(null); // marker đang chờ xác nhận (vàng SVG)
 
-    const { register, handleSubmit, watch, setValue, clearErrors, getValues, formState: { errors } } = useForm({
+    const { register, handleSubmit, watch, setValue, clearErrors, getValues, formState: { errors, isDirty } } = useForm({
         defaultValues: {
             title: '',
             description: '',
@@ -618,20 +620,20 @@ export default function ListingForm({
             }
             if (prevGiveawayRef.current !== isGiveaway) {
                 if (isGiveaway) {
-                    setValue('price', '0');
+                    setValue('price', '0', { shouldDirty: true, shouldValidate: true });
                     clearErrors('price');
                 } else {
-                    setValue('price', '');
+                    setValue('price', '', { shouldDirty: true, shouldValidate: true });
                 }
                 prevGiveawayRef.current = isGiveaway;
             }
             return;
         }
         if (isGiveaway) {
-            setValue('price', '0');
+            setValue('price', '0', { shouldDirty: true, shouldValidate: true });
             clearErrors('price');
         } else {
-            setValue('price', '');
+            setValue('price', '', { shouldDirty: true, shouldValidate: true });
         }
     }, [isGiveaway, setValue, clearErrors, mode]);
 
@@ -679,6 +681,11 @@ export default function ListingForm({
     }, [onDismissServerSubmitError]);
 
     useEffect(() => {
+        const dirty = Boolean(isDirty || (imageFiles && imageFiles.length > 0));
+        onDirtyChange?.(dirty);
+    }, [isDirty, imageFiles, onDirtyChange]);
+
+    useEffect(() => {
         if (!serverSubmitError) return;
         const t = window.setTimeout(() => {
             const el =
@@ -709,7 +716,7 @@ export default function ListingForm({
 
     // ── Vietmap GL: khởi tạo MỘT LẦN (không có adminLocation trong deps) ──
     useEffect(() => {
-        if (!vietmapTileKey) return;
+        if (!vietmapTileKey || !mapEnabled) return;
 
         let cancelled = false;
 
@@ -892,7 +899,7 @@ export default function ListingForm({
             pendingMarkerRef.current = null;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [vietmapTileKey]); // Chỉ khởi tạo lại khi key thay đổi; adminLocation đọc qua ref
+    }, [vietmapTileKey, mapEnabled]); // Lazy-init: chỉ tạo map khi user mở
 
     // Đồng bộ marker xác nhận + camera
     useEffect(() => {
@@ -921,20 +928,20 @@ export default function ListingForm({
     const handleConfirmPin = useCallback(() => {
         if (!pendingPin) return;
         const { lat, lng, addressText } = pendingPin;
-        setValue('pickupLat', lat.toFixed(6));
-        setValue('pickupLng', lng.toFixed(6));
+        setValue('pickupLat', lat.toFixed(6), { shouldDirty: true, shouldValidate: true });
+        setValue('pickupLng', lng.toFixed(6), { shouldDirty: true, shouldValidate: true });
         const admin = adminLocationRef.current;
         const fromAdmin = buildPickupLocationNameFromAdmin(admin);
         // DB: location_name = 3 cấp đã chọn; ghim chỉ cần lat/lng (không đổ reverse vào location_name)
         const locationName = fromAdmin
             ? truncateUtf(fromAdmin, 200)
             : truncateUtf(addressText, 200);
-        setValue('pickupLocationName', locationName);
-        setValue('pickupAddressText', '');
+        setValue('pickupLocationName', locationName, { shouldDirty: true, shouldValidate: true });
+        setValue('pickupAddressText', '', { shouldDirty: true, shouldValidate: false });
         if (admin) {
-            setValue('pickupProvince', admin.province?.name || '');
-            setValue('pickupDistrict', admin.district?.name || '');
-            setValue('pickupWard', admin.ward?.name || '');
+            setValue('pickupProvince', admin.province?.name || '', { shouldDirty: true, shouldValidate: false });
+            setValue('pickupDistrict', admin.district?.name || '', { shouldDirty: true, shouldValidate: false });
+            setValue('pickupWard', admin.ward?.name || '', { shouldDirty: true, shouldValidate: false });
         }
         clearErrors(['pickupLocationName', 'pickupLat']);
         // Chuyển marker pending → marker đỏ xác nhận
@@ -963,6 +970,7 @@ export default function ListingForm({
     const [gpsLoading, setGpsLoading] = useState(false);
     const handleGpsClick = useCallback(async () => {
         if (!navigator.geolocation) { alert('Trình duyệt không hỗ trợ GPS.'); return; }
+        if (!mapEnabled) setMapEnabled(true);
         setGpsLoading(true);
         navigator.geolocation.getCurrentPosition(
             async (pos) => {
@@ -1051,7 +1059,7 @@ export default function ListingForm({
             (err) => { setGpsLoading(false); alert(`Không lấy được GPS: ${err.message}`); },
             { enableHighAccuracy: true, timeout: 10000 }
         );
-    }, []);
+    }, [mapEnabled]);
 
     const outerFormSx = isStudioLayout
         ? {
@@ -1427,7 +1435,7 @@ export default function ListingForm({
                                     })}
                                     value={formatPrice(watch('price'))}
                                     disabled={isGiveaway}
-                                    onChange={(e) => setValue('price', e.target.value.replace(/\D/g, ""), { shouldValidate: true })}
+                                    onChange={(e) => setValue('price', e.target.value.replace(/\D/g, ""), { shouldValidate: true, shouldDirty: true })}
                                     error={!!errors.price}
                                     helperText={errors.price?.message}
                                     InputProps={{
@@ -1472,7 +1480,7 @@ export default function ListingForm({
                                 <ToggleButtonGroup
                                     exclusive
                                     value={currentCondition}
-                                    onChange={(_, val) => val && setValue('condition', val)}
+                                    onChange={(_, val) => val && setValue('condition', val, { shouldDirty: true, shouldValidate: true })}
                                     fullWidth
                                     sx={{ width: '100%' }}
                                 >
@@ -1701,18 +1709,61 @@ export default function ListingForm({
                             </Button>
                         </Stack>
 
-                        <Box
-                            id="vietmap-container"
-                            sx={{
-                                mt: 1.5,
-                                width: '100%',
-                                height: 340,
-                                borderRadius: 2,
-                                overflow: 'hidden',
-                                border: '1px solid rgba(148, 163, 184, 0.35)',
-                                bgcolor: '#1A1721',
-                            }}
-                        />
+                        {!mapEnabled ? (
+                            <Box
+                                sx={{
+                                    mt: 1.5,
+                                    borderRadius: 2,
+                                    border: '1px dashed rgba(148, 163, 184, 0.35)',
+                                    bgcolor: 'rgba(255,255,255,0.03)',
+                                    p: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 2,
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                <Box sx={{ minWidth: 240 }}>
+                                    <Typography fontWeight={700} color="rgba(255,255,255,0.9)" fontSize={13}>
+                                        Bản đồ chưa được mở
+                                    </Typography>
+                                    <Typography fontSize={12} color="rgba(255,255,255,0.45)" sx={{ mt: 0.5, lineHeight: 1.45 }}>
+                                        Chỉ tải bản đồ khi bạn cần ghim vị trí để tránh lỗi khi quay lại trang nhiều lần.
+                                    </Typography>
+                                </Box>
+                                <Button
+                                    type="button"
+                                    variant="contained"
+                                    onClick={() => setMapEnabled(true)}
+                                    sx={{
+                                        bgcolor: '#9D6EED',
+                                        color: '#fff',
+                                        fontWeight: 800,
+                                        textTransform: 'none',
+                                        borderRadius: '12px',
+                                        px: 2.25,
+                                        py: 1,
+                                        '&:hover': { bgcolor: '#B794F6' },
+                                    }}
+                                >
+                                    Mở bản đồ để ghim vị trí
+                                </Button>
+                            </Box>
+                        ) : (
+                            <Box
+                                id="vietmap-container"
+                                sx={{
+                                    mt: 1.5,
+                                    width: '100%',
+                                    height: 340,
+                                    borderRadius: 2,
+                                    overflow: 'hidden',
+                                    border: '1px solid rgba(148, 163, 184, 0.35)',
+                                    bgcolor: '#1A1721',
+                                }}
+                            />
+                        )}
                         {errors.pickupLat && (
                             <Typography color="error" sx={{ mt: 1, fontSize: "13px" }}>
                                 {errors.pickupLat.message}
@@ -1844,8 +1895,8 @@ export default function ListingForm({
                         const isExpanded = expandedCatId === parentId;
 
                         const selectCategory = (id, name) => {
-                            setValue('categoryId', id);
-                            setValue('categoryName', name);
+                            setValue('categoryId', id, { shouldDirty: true, shouldValidate: true });
+                            setValue('categoryName', name, { shouldDirty: true, shouldValidate: false });
                             clearErrors('categoryId');
                             setOpenCategory(false);
                             setExpandedCatId(null);

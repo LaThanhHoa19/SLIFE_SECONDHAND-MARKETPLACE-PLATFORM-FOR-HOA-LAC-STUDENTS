@@ -29,6 +29,7 @@ public class ListingLikeService {
     private final ListingRepository listingRepository;
     private final ListingService listingService;
     private final BlockService blockService;
+    private final NotificationService notificationService;
 
     /**
      * Một endpoint: bấm lần 1 = like, lần 2 = unlike.
@@ -37,6 +38,10 @@ public class ListingLikeService {
     public ToggleLikeResponse toggle(User user, Long listingId) {
         if (user == null) {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+        if (user.getStatus() != null
+                && ("BANNED".equalsIgnoreCase(user.getStatus()) || "RESTRICTED".equalsIgnoreCase(user.getStatus()))) {
+            throw new SlifeException(ErrorCode.USER_BANNED_OR_RESTRICTED);
         }
         Listing listing = listingRepository.findById(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
@@ -62,6 +67,11 @@ public class ListingLikeService {
         row.setUser(user);
         row.setListing(listing);
         listingLikeRepository.save(row);
+
+        if (listing.getSeller() != null && listing.getSeller().getId() != null
+                && !listing.getSeller().getId().equals(user.getId())) {
+            notificationService.notifyListingLiked(listing.getSeller(), user, listingId);
+        }
 
         long count = listingLikeRepository.countByListing_Id(listingId);
         return new ToggleLikeResponse(true, count);

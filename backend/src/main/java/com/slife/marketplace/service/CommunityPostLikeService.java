@@ -19,11 +19,17 @@ public class CommunityPostLikeService {
 
     private final CommunityPostLikeRepository communityPostLikeRepository;
     private final CommunityPostRepository communityPostRepository;
+    private final NotificationService notificationService;
+    private final CommunityPostStatsBroadcastService communityPostStatsBroadcastService;
 
     @Transactional
     public ToggleLikeResponse toggle(User user, Long postId) {
         if (user == null) {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+        if (user.getStatus() != null
+                && ("BANNED".equalsIgnoreCase(user.getStatus()) || "RESTRICTED".equalsIgnoreCase(user.getStatus()))) {
+            throw new SlifeException(ErrorCode.USER_BANNED_OR_RESTRICTED);
         }
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -35,6 +41,7 @@ public class CommunityPostLikeService {
         if (communityPostLikeRepository.existsByUser_IdAndPost_Id(user.getId(), postId)) {
             communityPostLikeRepository.deleteByUser_IdAndPost_Id(user.getId(), postId);
             long count = communityPostLikeRepository.countByPost_Id(postId);
+            communityPostStatsBroadcastService.broadcastStats(postId);
             return new ToggleLikeResponse(false, count);
         }
 
@@ -48,7 +55,13 @@ public class CommunityPostLikeService {
         row.setPost(post);
         communityPostLikeRepository.save(row);
 
+        if (post.getAuthor() != null && post.getAuthor().getId() != null
+                && !post.getAuthor().getId().equals(user.getId())) {
+            notificationService.notifyCommunityPostLiked(post.getAuthor(), user, postId);
+        }
+
         long count = communityPostLikeRepository.countByPost_Id(postId);
+        communityPostStatsBroadcastService.broadcastStats(postId);
         return new ToggleLikeResponse(true, count);
     }
 
