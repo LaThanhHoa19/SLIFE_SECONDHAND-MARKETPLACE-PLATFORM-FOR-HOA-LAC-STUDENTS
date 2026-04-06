@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getLanding } from '../api/landingApi';
 import { unwrapApiData } from '../utils/apiPayload';
@@ -12,14 +12,54 @@ const HERO_SECTION_IMAGE = '/fpt.jpg';
 const CAROUSEL_PLACEHOLDER_IMG =
     'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&q=80';
 
+function giveawayScore(item) {
+  const likeCount = Number(item?.likeCount ?? item?.likes ?? item?.totalLikes ?? 0);
+  const commentCount = Number(item?.commentCount ?? item?.comments ?? item?.totalComments ?? 0);
+  const viewCount = Number(item?.viewCount ?? item?.views ?? item?.totalViews ?? 0);
+  return likeCount * 3 + commentCount * 2 + viewCount;
+}
 
-const CATEGORY_IMAGES = [
-  'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=600&q=80',
-  'https://images.unsplash.com/photo-1512820790800-1bec6b6b0659?w=600&q=80',
-  'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=600&q=80',
-  'https://images.unsplash.com/photo-1445205170230-053b83016050?w=600&q=80',
-  'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80',
-];
+function extractSellerMeta(item) {
+  const user = item?.seller || item?.owner || item?.user || item?.author || item?.postedBy || null;
+
+  const sellerId =
+      user?.id ??
+      user?.userId ??
+      item?.sellerId ??
+      item?.ownerId ??
+      item?.userId ??
+      item?.authorId ??
+      item?.postedById ??
+      null;
+
+  const sellerName =
+      user?.displayName ??
+      user?.fullName ??
+      user?.name ??
+      item?.sellerName ??
+      item?.ownerName ??
+      item?.userName ??
+      item?.authorName ??
+      item?.postedByName ??
+      'Người dùng SLife';
+
+  const sellerAvatar =
+      user?.avatarUrl ??
+      user?.avatar ??
+      user?.profileImageUrl ??
+      user?.photoUrl ??
+      item?.sellerAvatarUrl ??
+      item?.ownerAvatarUrl ??
+      item?.userAvatarUrl ??
+      item?.authorAvatarUrl ??
+      null;
+
+  return {
+    sellerId: sellerId != null ? String(sellerId) : null,
+    sellerName,
+    sellerAvatar,
+  };
+}
 
 function formatLinePrice(item) {
   if (item?.isGiveaway || item?.purpose === 'GIVEAWAY') return '0đ (Giveaway)';
@@ -51,20 +91,52 @@ export default function StitchLandingPage() {
     };
   }, []);
 
-  const loadingLanding = landing === null && !landingError;
-
-  const hero = landing?.heroListing;
   const heroImg = HERO_SECTION_IMAGE;
-  const heroLine = loadingLanding
-      ? 'Đang tải tin mới...'
-      : hero
-          ? `${hero.title} — ${formatLinePrice(hero)}`
-          : 'Chưa có tin nào — hãy đăng bán đầu tiên!';
 
   const t = landing?.totals;
   const statUsers = t?.registeredUsers ?? 0;
   const statDeals = t?.completedDeals ?? 0;
   const statRep = t?.averageReputation != null ? Number(t.averageReputation) : 4.9;
+
+  const topSellerRankings = useMemo(() => {
+    const source = Array.isArray(landing?.recentListings) ? landing.recentListings : [];
+
+    const giveawayListings = source.filter((item) => item?.isGiveaway || item?.purpose === 'GIVEAWAY');
+    const sellerMap = new Map();
+
+    giveawayListings.forEach((item) => {
+      const score = giveawayScore(item);
+      const { sellerId, sellerName, sellerAvatar } = extractSellerMeta(item);
+      const sellerKey = sellerId || sellerName;
+      if (!sellerKey) return;
+
+      const prev = sellerMap.get(sellerKey);
+      if (!prev) {
+        sellerMap.set(sellerKey, {
+          sellerId,
+          sellerName,
+          sellerAvatar,
+          score,
+          listingCount: 1,
+        });
+        return;
+      }
+
+      prev.score += score;
+      prev.listingCount += 1;
+      if (!prev.sellerAvatar && sellerAvatar) prev.sellerAvatar = sellerAvatar;
+      if (prev.sellerName === 'Người dùng SLife' && sellerName) prev.sellerName = sellerName;
+    });
+
+    return Array.from(sellerMap.values())
+        .sort((a, b) => (b.listingCount - a.listingCount) || (b.score - a.score))
+        .slice(0, 3)
+        .map((seller, index) => ({
+          rank: index + 1,
+          ...seller,
+        }));
+  }, [landing?.recentListings]);
+
 
   useEffect(() => {
     // Scroll reveal animation
@@ -166,7 +238,7 @@ export default function StitchLandingPage() {
                         }}
                         className="px-8 py-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-700 rounded-full font-bold text-lg hover:bg-slate-50 hover:-translate-y-1 hover:shadow-lg active:translate-y-0 active:scale-95 transition-all duration-300 animate-sparkle"
                     >
-                        Đăng tin bán
+                      Đăng tin bán
                     </button>
                   </div>
                 </div>
@@ -207,45 +279,76 @@ export default function StitchLandingPage() {
                 </div>
               </div>
             </section>
-            {/* Featured Categories */}
-            <section className="py-8">
-              <div className="max-w-7xl mx-auto px-6"><div className="flex items-center justify-between mb-10">
-                <h2 className="text-3xl font-bold" style={{ color: '#F8FAFC' }}>Danh mục nổi bật</h2>
-                <button
-                    type="button"
-                    className="font-bold hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer"
-                    style={{ color: '#C4B5FD' }}
-                    onClick={() => navigate('/feed')}
-                >
-                  Xem tất cả <span className="material-symbols-outlined">trending_flat</span>
-                </button>
-              </div>
-                <div className="overflow-hidden relative">
-                  <div className="py-4 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-                    {(landing?.categoryStats ?? []).length === 0 ? (
-                        <p className="text-slate-400 text-sm col-span-full text-center py-6">Chưa có thống kê danh mục.</p>
-                    ) : (
-                        landing.categoryStats.map((c, idx) => (
+            {/* Top Sellers Leaderboard (replaces Featured Categories) */}
+            <section className="py-10 bg-[#0b0f24]">
+              <div className="max-w-5xl mx-auto px-6">
+                <div className="rounded-[26px] border border-white/10 bg-gradient-to-br from-[#121b3a] via-[#0f1732] to-[#0b1228] p-5 md:p-7 shadow-[0_18px_60px_-30px_rgba(2,6,23,0.95)]">
+                  <div className="flex items-center justify-between gap-4 mb-5">
+                    <div>
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-[0.22em] text-violet-300/85">Bảng xếp hạng</p>
+                      <h2 className="text-2xl md:text-[32px] leading-tight font-extrabold text-white">Top Giveaway nổi bật</h2>
+                    </div>
+                    <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-violet-200 hover:text-white transition bg-transparent border-none cursor-pointer"
+                        onClick={() => navigate('/feed?f=g')}
+                    >
+                      Xem tất cả <span className="material-symbols-outlined text-base">arrow_forward</span>
+                    </button>
+                  </div>
+
+                  {topSellerRankings.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-300">
+                        Chưa có dữ liệu xếp hạng người bán giveaway.
+                      </div>
+                  ) : topSellerRankings.length === 1 ? (
+                      <button
+                          type="button"
+                          onClick={() => navigate('/feed?f=g')}
+                          className="w-full rounded-2xl border border-violet-300/25 bg-white/[0.06] px-5 py-6 hover:bg-white/[0.1] transition"
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <span className="inline-flex items-center justify-center size-9 rounded-full bg-amber-300 text-amber-900 font-black mb-3">#1</span>
+                          <img
+                              className="size-16 rounded-full object-cover border-2 border-violet-300/70 mb-3"
+                              alt=""
+                              src={fullImageUrl(topSellerRankings[0].sellerAvatar) || CAROUSEL_PLACEHOLDER_IMG}
+                          />
+                          <p className="text-white font-bold text-lg">{topSellerRankings[0].sellerName}</p>
+                          <p className="text-slate-300 text-sm mt-1">{topSellerRankings[0].listingCount} lượt trao tặng</p>
+                        </div>
+                      </button>
+                  ) : (
+                      <div className="space-y-3">
+                        {topSellerRankings.map(({ rank, sellerName, sellerAvatar, listingCount }) => (
                             <button
                                 type="button"
-                                key={c.categoryId ?? idx}
-                                onClick={() => navigate(`/feed?category=${c.categoryId}`)}
-                                className="relative group cursor-pointer overflow-hidden rounded-2xl w-full aspect-square text-left"
+                                key={`${sellerName}-${rank}`}
+                                onClick={() => navigate('/feed?f=g')}
+                                className="w-full text-left rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.1] transition"
                             >
-                              <img
-                                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                  alt=""
-                                  src={CATEGORY_IMAGES[idx % CATEGORY_IMAGES.length]}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-4 text-left items-start">
-                                <h4 className="text-white font-bold text-sm md:text-lg">{c.name}</h4>
-                                <p className="text-white/80 text-xs mt-1">{Number(c.listingCount ?? 0).toLocaleString('vi-VN')} tin đăng</p>
+                              <div className="grid grid-cols-[38px_1fr] md:grid-cols-[48px_1fr] items-center gap-3">
+                            <span className={`text-xl md:text-2xl font-black ${rank === 1 ? 'text-amber-300' : rank === 2 ? 'text-slate-200' : 'text-orange-300'}`}>
+                              {String(rank).padStart(2, '0')}
+                            </span>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <img
+                                      className="size-11 rounded-full object-cover border border-white/20"
+                                      alt=""
+                                      src={fullImageUrl(sellerAvatar) || CAROUSEL_PLACEHOLDER_IMG}
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-white font-semibold truncate">{sellerName}</p>
+                                    <p className="text-xs text-slate-300">{listingCount} lượt trao tặng</p>
+                                  </div>
+                                </div>
                               </div>
                             </button>
-                        ))
-                    )}
-                  </div>
-                </div></div>
+                        ))}
+                      </div>
+                  )}
+                </div>
+              </div>
             </section>
             {/* Live Feed / Active Listings */}
             <section className="py-16 bg-slate-50 dark:bg-slate-800/20">
