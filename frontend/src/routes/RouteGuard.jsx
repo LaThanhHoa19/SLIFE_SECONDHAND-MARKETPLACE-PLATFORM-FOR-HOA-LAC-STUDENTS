@@ -7,6 +7,7 @@
  * - Loading states
  */
 import { useAuth } from '../hooks/useAuth';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Paper } from '@mui/material';
 
@@ -32,11 +33,15 @@ export const emailVerifiedGuard = {
     message: 'Vui lòng xác thực email'
 };
 
+const STAFF_ROLES = ['ADMIN', 'MODERATOR'];
+
+/** Phiên admin: Bearer + user trong AdminAuthContext (không dùng user feed). */
 export const adminGuard = {
     name: 'admin',
-    check: ({ user }) => user?.role === 'ADMIN',
-    redirect: '/feed',
-    message: 'Cần quyền admin'
+    check: ({ adminToken, adminUser }) =>
+        !!(adminToken && adminUser && STAFF_ROLES.includes(adminUser.role)),
+    redirect: '/admin/login',
+    message: 'Cần quyền quản trị'
 };
 
 export const moderatorGuard = {
@@ -56,11 +61,47 @@ export default function RouteGuard({
                                        showLoading = true
                                    }) {
     const { user, token, isAuthLoading } = useAuth();
+    const { adminToken, adminUser, isAdminAuthLoading } = useAdminAuth() || {};
     const location = useLocation();
-    const context = { user, token };
+    const context = { user, token, adminToken, adminUser };
 
-    // Loading state
+    const needsAdminGuard = guards.some((g) => g.name === 'admin');
     if (isAuthLoading) {
+        if (!showLoading) return null;
+
+        return (
+            <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center"
+                minHeight="100vh"
+                bgcolor="#1C1B23"
+            >
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: 5,
+                        borderRadius: 3,
+                        textAlign: 'center',
+                        bgcolor: '#1F1D25',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+                    }}
+                >
+                    <CircularProgress size={48} sx={{ mb: 2.5, color: '#a78bfa' }} />
+                    <Typography variant="h6" fontWeight={600} sx={{ color: '#fff' }}>
+                        Đang kiểm tra quyền truy cập...
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', mt: 0.5 }}>
+                        Vui lòng chờ trong giây lát
+                    </Typography>
+                </Paper>
+            </Box>
+        );
+    }
+
+    if (needsAdminGuard && isAdminAuthLoading) {
         if (!showLoading) return null;
 
         return (
@@ -155,8 +196,8 @@ export const GUARD_PRESETS = {
     // User đã verify email
     VERIFIED_USER: [authGuard, emailVerifiedGuard],
 
-    // Admin only
-    ADMIN_ONLY: [authGuard, adminGuard],
+    // Admin only (phiên riêng, không yêu cầu user feed)
+    ADMIN_ONLY: [adminGuard],
 
     // Moderator or Admin
     MODERATOR_PLUS: [authGuard, moderatorGuard]

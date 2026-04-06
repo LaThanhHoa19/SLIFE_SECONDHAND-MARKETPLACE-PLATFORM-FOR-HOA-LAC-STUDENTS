@@ -1,5 +1,6 @@
 /** Mục đích/API: GET /api/users/me, GET /api/users/{id}, PUT /api/users/me, upload avatar/cover, block. */
 import axiosClient from './axiosClient';
+import adminAxiosClient from './adminAxiosClient';
 
 export const getUser = () => axiosClient.get('/api/users/me');
 export const getUserById = (id) => axiosClient.get(`/api/users/${id}`);
@@ -26,8 +27,8 @@ export const unblockUser = (userId) => axiosClient.delete(`/api/users/${userId}/
 export const getBlockStatus = (userId) => axiosClient.get(`/api/users/${userId}/block`);
 export const getMyBlockedUsers = (params = {}) => axiosClient.get('/api/users/me/blocks', { params });
 /** @param {Record<string, string|number>} [params] — sortBy, sortDir; status: ACTIVE|BANNED|RESTRICTED (bỏ qua khi lọc tất cả) */
-export const getAdminUsers = (params = {}) => axiosClient.get('/api/admin/users', { params });
+export const getAdminUsers = (params = {}) => adminAxiosClient.get('/api/admin/users', { params });
 
 /** Admin cập nhật trạng thái user: ACTIVE | BANNED | RESTRICTED */
 export const updateAdminUserStatus = (id, status) =>
-    axiosClient.patch(`/api/admin/users/${id}/status`, { status });
+    adminAxiosClient.patch(`/api/admin/users/${id}/status`, { status });

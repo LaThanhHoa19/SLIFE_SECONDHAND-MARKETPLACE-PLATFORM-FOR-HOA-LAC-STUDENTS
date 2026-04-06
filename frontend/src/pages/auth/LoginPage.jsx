@@ -29,7 +29,7 @@ export default function LoginPage() {
   const [googleError, setGoogleError] = useState('');
   const [googleReady, setGoogleReady] = useState(false);
 
-    const { googleLogin, authError } = useAuth();
+    const { googleLogin, authError, clearAuthError } = useAuth();
     const GOOGLE_CLIENT_ID =
         import.meta.env.VITE_GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID_FALLBACK;
 
@@ -44,6 +44,10 @@ export default function LoginPage() {
   };
 
     const displayError = urlError || googleError || authError || '';
+
+    useEffect(() => {
+        clearAuthError();
+    }, [clearAuthError]);
 
     useEffect(() => {
         let cancelled = false;
@@ -61,7 +65,13 @@ export default function LoginPage() {
                     client_id: GOOGLE_CLIENT_ID,
                     callback: async (response) => {
                         const result = await googleLogin(response.credential, {
-                            onSuccess: () => navigate(getRedirectTarget()),
+                            onSuccess: (payload) => {
+                                if (payload?.staffSession) {
+                                    navigate('/admin');
+                                } else {
+                                    navigate(getRedirectTarget());
+                                }
+                            },
                         });
                         if (!result.success && !cancelled) {
                             setGoogleError(result.error || 'Đăng nhập Google thất bại.');

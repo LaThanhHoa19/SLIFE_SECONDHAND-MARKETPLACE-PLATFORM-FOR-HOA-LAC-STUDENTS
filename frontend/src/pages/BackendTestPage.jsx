@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import { setAccessToken } from '../api/axiosClient';
 
 export default function BackendTestPage() {
   const [healthResult, setHealthResult] = useState(null);
@@ -61,7 +62,7 @@ export default function BackendTestPage() {
       const { data } = res;
       const token = data?.data?.token;
       if (token) {
-        localStorage.setItem('slife_access_token', token);
+        setAccessToken(token);
       }
       setLoginResult(data);
     } catch (err) {
@@ -176,8 +177,7 @@ export default function BackendTestPage() {
             </Button>
           </Stack>
           <Typography variant="caption" color="text.secondary">
-            Nếu login thành công, token sẽ được lưu vào localStorage
-            (&quot;slife_access_token&quot;).
+            Nếu login thành công, access token chỉ giữ trong memory của app.
           </Typography>
 
           <Box mt={2}>

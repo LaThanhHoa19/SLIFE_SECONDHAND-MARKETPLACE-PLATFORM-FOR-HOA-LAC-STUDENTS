@@ -24,11 +24,7 @@ export function useChatRealtime({
 
     useEffect(() => {
         if (!activeSessionId || !currentUser) return;
-        const token =
-            authToken ||
-            localStorage.getItem('slife_access_token') ||
-            localStorage.getItem('token') ||
-            sessionStorage.getItem('token');
+        const token = authToken || null;
 
         const client = new StompClient({
             webSocketFactory: () => {
