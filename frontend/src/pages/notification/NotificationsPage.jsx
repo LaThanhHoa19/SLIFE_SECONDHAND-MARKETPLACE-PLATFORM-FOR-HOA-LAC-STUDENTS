@@ -43,7 +43,11 @@ export default function NotificationsPage() {
         }
 
         if (n?.refType === 'LISTING' && n?.refId) {
-            navigate(`/listings/${n.refId}`);
+            navigate(`/listings/${n.refId}`, { state: { fromNotification: true } });
+            return;
+        }
+        if (n?.refType === 'COMMUNITY_POST' && n?.refId) {
+            navigate(`/community/posts/${n.refId}`, { state: { fromNotification: true } });
         }
     };
 

@@ -1,21 +1,28 @@
 /**
- * Trang "Chỉnh sửa & Đăng" cho bản nháp — đường dẫn: /drafts/:id/publish
- * Không thay đổi logic Create/Edit listing hiện tại, chỉ tách flow dành cho tab DRAFT.
+ * Trang "Đăng lại" (không tạo record mới cho đến khi bấm ĐĂNG TIN).
+ * Route: /listings/:id/repost
+ *
+ * Flow:
+ * - Load listing nguồn (expired/hidden) để prefill form + hiển thị ảnh hiện có (URL).
+ * - Khi submit: gọi POST "repost" để BE clone-to-draft + clone images, sau đó publish (updateListing isDraft=false)
+ *   và upload ảnh mới (nếu người dùng chọn thêm).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Alert, Box, CircularProgress, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, IconButton, Stack, Typography } from '@mui/material';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ListingForm from '../../components/listing/ListingForm';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
 import { useNavigationBlocker } from '../../hooks/useNavigationBlocker';
-import { deleteListingImage, getListing, updateListing, uploadImages } from '../../api/listingApi';
+import { getListing, updateListing, uploadImages } from '../../api/listingApi';
+import { repostListing } from '../../api/myListingApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
-import ConfirmDialog from '../../components/common/ConfirmDialog';
 import {
     getListingSubmitErrorMessage,
     isListingImageRelatedApiError,
@@ -42,9 +49,6 @@ function mapListingToFormDefaults(data) {
         data?.purpose === 'GIVEAWAY' ||
         (priceDigits !== '' && Number(priceDigits) === 0);
 
-    const categoryIdRaw = data?.categoryId ?? data?.category?.id ?? data?.category?.categoryId;
-    const categoryNameRaw = data?.categoryName ?? data?.category?.name;
-
     return {
         title: data?.title ?? '',
         description: data?.description ?? '',
@@ -64,19 +68,16 @@ function mapListingToFormDefaults(data) {
     };
 }
 
-function mapExistingImages(data) {
+function mapExistingImageUrls(data) {
     const items = data?.imageItems;
     if (Array.isArray(items) && items.length > 0) {
         return items
-            .map((x) => ({
-                id: x?.id != null ? x.id : null,
-                url: fullImageUrl(x?.url),
-            }))
-            .filter((x) => x.url);
+            .map((x) => fullImageUrl(x?.url))
+            .filter(Boolean);
     }
     const raw = data?.images;
     if (!Array.isArray(raw)) return [];
-    return raw.map((u) => ({ id: null, url: fullImageUrl(u) })).filter((x) => x.url);
+    return raw.map((u) => fullImageUrl(u)).filter(Boolean);
 }
 
 function buildPublishPayload(values) {
@@ -104,10 +105,11 @@ async function uploadListingImages(listingId, imageFiles) {
     await uploadImages(listingId, formData);
 }
 
-export default function DraftEditPublishPage() {
-    const { id } = useParams();
+export default function RepostPublishPage() {
+    const { id } = useParams(); // source listing id
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { showToast } = useToast();
     const maxImagesPerPost = useMaxImagesPerPost();
 
     const [loading, setLoading] = useState(true);
@@ -115,12 +117,17 @@ export default function DraftEditPublishPage() {
     const [forbidden, setForbidden] = useState(false);
     const [listingData, setListingData] = useState(null);
     const [formDefaults, setFormDefaults] = useState(null);
-    const [existingImages, setExistingImages] = useState([]);
+    const [existingImageUrls, setExistingImageUrls] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
+
     const [isDirty, setIsDirty] = useState(false);
     const [leaveOpen, setLeaveOpen] = useState(false);
-    const { showToast } = useToast();
+
+    const sourceIdNum = useMemo(() => {
+        const n = Number(id);
+        return Number.isFinite(n) ? n : NaN;
+    }, [id]);
 
     const shouldBlock = isDirty && !submitting;
     const blocker = useNavigationBlocker(shouldBlock);
@@ -133,16 +140,12 @@ export default function DraftEditPublishPage() {
 
     const closeLeave = useCallback(() => {
         setLeaveOpen(false);
-        if (blocker.state === 'blocked') {
-            blocker.reset();
-        }
+        if (blocker.state === 'blocked') blocker.reset();
     }, [blocker]);
 
     const confirmLeave = useCallback(() => {
         setLeaveOpen(false);
-        if (blocker.state === 'blocked') {
-            blocker.proceed();
-        }
+        if (blocker.state === 'blocked') blocker.proceed();
     }, [blocker]);
 
     useEffect(() => {
@@ -156,14 +159,13 @@ export default function DraftEditPublishPage() {
         return () => window.removeEventListener('beforeunload', handler);
     }, [shouldBlock]);
 
-    const listingIdNum = useMemo(() => {
-        const n = Number(id);
-        return Number.isFinite(n) ? n : NaN;
-    }, [id]);
+    const handleBack = useCallback(() => {
+        navigate(-1);
+    }, [navigate]);
 
     useEffect(() => {
-        if (!id || Number.isNaN(listingIdNum)) {
-            setError('Mã bản nháp không hợp lệ.');
+        if (!id || Number.isNaN(sourceIdNum)) {
+            setError('Mã tin nguồn không hợp lệ.');
             setLoading(false);
             return;
         }
@@ -174,7 +176,7 @@ export default function DraftEditPublishPage() {
         setSubmitErrorPlacement('top');
         setForbidden(false);
         setFormDefaults(null);
-        setExistingImages([]);
+        setExistingImageUrls([]);
         setListingData(null);
 
         getListing(id)
@@ -183,11 +185,11 @@ export default function DraftEditPublishPage() {
                 const data = getPayload(res);
                 setListingData(data);
                 setFormDefaults(mapListingToFormDefaults(data));
-                setExistingImages(mapExistingImages(data));
+                setExistingImageUrls(mapExistingImageUrls(data));
             })
             .catch((err) => {
                 if (!cancelled) {
-                    const msg = getListingSubmitErrorMessage(err, 'Không tải được bản nháp.');
+                    const msg = getListingSubmitErrorMessage(err, 'Không tải được tin để đăng lại.');
                     setError(msg);
                 }
             })
@@ -198,7 +200,7 @@ export default function DraftEditPublishPage() {
         return () => {
             cancelled = true;
         };
-    }, [id, listingIdNum]);
+    }, [id, sourceIdNum]);
 
     useEffect(() => {
         if (!listingData || user?.id == null) return;
@@ -210,30 +212,31 @@ export default function DraftEditPublishPage() {
         }
     }, [listingData, user?.id]);
 
-    const handleRemoveExistingImage = async (imageId) => {
-        if (imageId == null) return;
-        try {
-            await deleteListingImage(listingIdNum, imageId);
-            setExistingImages((prev) => prev.filter((x) => x.id !== imageId));
-            showToast('Đã xóa ảnh.', 'success');
-        } catch (err) {
-            const msg = err?.response?.data?.message || err?.message || 'Không xóa được ảnh.';
-            showToast(msg, 'error');
-        }
-    };
-
     const handlePublish = async (values, imageFiles) => {
         setError('');
         setSubmitErrorPlacement('top');
         setSubmitting(true);
         try {
-            const payload = buildPublishPayload(values);
-            await updateListing(listingIdNum, payload);
-            await uploadListingImages(listingIdNum, imageFiles);
-            showToast('Đăng tin thành công.', 'success');
-            navigate(`/listings/${listingIdNum}`, { replace: true });
+            // Chỉ tạo record mới tại thời điểm user bấm "ĐĂNG TIN"
+            const { data: body } = await repostListing(sourceIdNum);
+            const payload = body?.data;
+            const newIdRaw =
+                payload != null && typeof payload === 'object' && payload !== null && 'data' in payload
+                    ? payload.data
+                    : payload;
+            const newId = newIdRaw != null && newIdRaw !== '' ? Number(newIdRaw) : NaN;
+            if (!Number.isFinite(newId) || newId <= 0) {
+                throw new Error('Không tạo được bản nháp đăng lại.');
+            }
+
+            const publishPayload = buildPublishPayload(values);
+            await updateListing(newId, publishPayload);
+            await uploadListingImages(newId, imageFiles);
+
+            showToast('Đăng lại tin thành công.', 'success');
+            navigate(`/listings/${newId}`, { replace: true });
         } catch (err) {
-            const msg = getListingSubmitErrorMessage(err, 'Đăng tin thất bại.');
+            const msg = getListingSubmitErrorMessage(err, 'Đăng lại thất bại.');
             const nearImages = isListingImageRelatedApiError(err);
             setSubmitErrorPlacement(nearImages ? 'images' : 'top');
             setError(msg);
@@ -248,7 +251,7 @@ export default function DraftEditPublishPage() {
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 10, gap: 2 }}>
                 <CircularProgress size={36} sx={{ color: '#9D6EED' }} />
                 <Typography variant="body2" color="rgba(255,255,255,0.55)">
-                    Đang tải bản nháp…
+                    Đang tải tin để đăng lại…
                 </Typography>
             </Box>
         );
@@ -258,7 +261,7 @@ export default function DraftEditPublishPage() {
         return (
             <Box sx={{ maxWidth: 680, mx: 'auto', mt: 4, px: 2 }}>
                 <Alert severity="warning" sx={{ mb: 2 }}>
-                    Bạn không phải chủ bản nháp này hoặc không có quyền chỉnh sửa.
+                    Bạn không phải chủ tin này hoặc không có quyền đăng lại.
                 </Alert>
             </Box>
         );
@@ -284,16 +287,40 @@ export default function DraftEditPublishPage() {
                 px: 0,
             }}
         >
+            <Box sx={{ maxWidth: 1360, mx: 'auto', px: { xs: 1, md: 2 } }}>
+                <Stack direction="row" alignItems="center" gap={1} sx={{ py: 1 }}>
+                    <IconButton
+                        type="button"
+                        onClick={handleBack}
+                        sx={{
+                            color: 'rgba(255,255,255,0.75)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            bgcolor: 'rgba(255,255,255,0.04)',
+                            '&:hover': { bgcolor: 'rgba(157,110,237,0.12)', color: '#fff' },
+                        }}
+                    >
+                        <ArrowBackIosNewIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                    <Box>
+                        <Typography fontWeight={800} color="#fff" sx={{ letterSpacing: '-0.02em' }}>
+                            Đăng lại tin
+                        </Typography>
+                        <Typography fontSize={12.5} color="rgba(255,255,255,0.45)">
+                            Tin mới chỉ được tạo khi bạn bấm “Đăng tin”.
+                        </Typography>
+                    </Box>
+                </Stack>
+            </Box>
+
             {formDefaults && (
                 <ListingForm
-                    key={`draft-${String(listingIdNum)}`}
+                    key={`repost-source-${String(sourceIdNum)}`}
                     mode="edit"
                     layoutVariant="createStudio"
-                    studioSidebarTitle="Hoàn thiện & đăng tin"
+                    studioSidebarTitle="Hoàn thiện & đăng lại"
                     submitLabel="ĐĂNG TIN"
                     defaultValues={formDefaults}
-                    existingImages={existingImages}
-                    onRemoveExistingImage={handleRemoveExistingImage}
+                    existingImageUrls={existingImageUrls}
                     maxImagesPerPost={maxImagesPerPost}
                     onSubmit={handlePublish}
                     onDirtyChange={setIsDirty}

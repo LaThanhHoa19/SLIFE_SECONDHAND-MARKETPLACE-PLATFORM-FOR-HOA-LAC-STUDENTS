@@ -469,6 +469,7 @@ function ChatPageInner() {
     suggestedChatPhrases,
     fetchSessions,
     scheduleFetchSessions,
+    listingUnavailableByListingId,
   } = useChatSessions({
     activeSessionId,
     currentUserId,
@@ -641,8 +642,8 @@ function ChatPageInner() {
     activeListingStatusRef.current = activeListingStatus;
   }, [activeListingStatus]);
 
-  // UI gating: when listing becomes SOLD or HIDDEN, disable buyer bidding icon.
-  // Poll periodically while chatting; stop polling once SOLD or HIDDEN.
+  // UI gating: khi tin không còn ACTIVE (ẩn, gỡ, hết hạn, …) — khóa trả giá và đánh dấu trong banner/sidebar.
+  // Poll định kỳ; dừng khi đã có trạng thái khác ACTIVE.
   useEffect(() => {
     if (!activeSession?.listingId) {
       setActiveListingStatus(null);
@@ -657,17 +658,17 @@ function ChatPageInner() {
         const res = await getListing(activeSession.listingId);
         const body = res?.data;
         const data = body?.data ?? body;
-        const raw = data?.status ?? null;
+        const raw = data?.status ?? data?.itemStatus ?? null;
         const status = raw != null ? String(raw).toUpperCase() : null;
         if (!cancelled) setActiveListingStatus(status);
       } catch {
-        if (!cancelled) setActiveListingStatus(null);
+        if (!cancelled) setActiveListingStatus('NOT_FOUND');
       }
     };
 
     const tick = () => {
       const s = activeListingStatusRef.current;
-      if (s === 'SOLD' || s === 'HIDDEN') return;
+      if (s != null && String(s).toUpperCase() !== 'ACTIVE') return;
       void fetchStatus();
     };
 
@@ -705,13 +706,21 @@ function ChatPageInner() {
     setPostSaleBannerBusy(false);
   }, [activeSessionId]);
 
-  /** Sau F5, postSaleBannerOutcome mất; đồng bộ với GET listing (HIDDEN) để vẫn hiện "Tin đã ẩn". */
+  /** Sau F5, postSaleBannerOutcome mất; đồng bộ GET listing (ẩn / mod ẩn / gỡ). */
   const resolvedPostSaleBannerOutcome = useMemo(() => {
     if (postSaleBannerOutcome === 'hidden') return 'hidden';
     const st = String(activeListingStatus || '').toUpperCase();
-    if (st === 'HIDDEN') return 'hidden';
+    if (st === 'HIDDEN' || st === 'MOD_HIDDEN') return 'hidden';
+    if (st === 'NOT_FOUND') return 'gone';
     return null;
   }, [postSaleBannerOutcome, activeListingStatus]);
+
+  /** Tin không còn trên chợ — khóa trả giá, không link sang chi tiết tin. */
+  const listingInactiveForChat = useMemo(() => {
+    const st = String(activeListingStatus || '').toUpperCase();
+    if (!st) return false;
+    return st !== 'ACTIVE';
+  }, [activeListingStatus]);
 
   /** Nút "Đã bán / ẩn tin": chỉ chuyển tin sang HIDDEN (không gọi markSold). */
   const handlePostSaleBannerAction = useCallback(async () => {
@@ -1594,12 +1603,9 @@ function ChatPageInner() {
 
   // Note: popup only previews info; no editing in this screen.
 
-  const listingClosedForBuyer =
-      activeListingStatus === 'SOLD' || activeListingStatus === 'HIDDEN';
-
   useEffect(() => {
-    if (listingClosedForBuyer) setOfferOpen(false);
-  }, [listingClosedForBuyer]);
+    if (listingInactiveForChat) setOfferOpen(false);
+  }, [listingInactiveForChat]);
 
   /**
    * Chặn nút trả giá khi còn tin chốt đơn đang chờ mua phản hồi hoặc mua đã chấp nhận.
@@ -1628,14 +1634,16 @@ function ChatPageInner() {
       Boolean(activeSessionId || draftChatReady) &&
       (isSellerInActiveChat ||
           hasOpenOfferAwaitingSeller ||
-          listingClosedForBuyer ||
+          listingInactiveForChat ||
           buyerBlockedByDealSeal);
   const priceOfferTooltip = !activeSessionId && !draftChatReady
       ? 'Trả giá / đề xuất giá'
-      : listingClosedForBuyer
-          ? activeListingStatus === 'HIDDEN'
-              ? 'Tin đã được ẩn'
-              : 'Tin đăng đã được bán'
+      : listingInactiveForChat
+          ? String(activeListingStatus || '').toUpperCase() === 'NOT_FOUND'
+              ? 'Bài đăng không còn tồn tại trên chợ'
+              : String(activeListingStatus || '').toUpperCase() === 'SOLD'
+                ? 'Tin đăng đã được bán'
+                : 'Bài đăng không còn hiển thị trên chợ'
       : isSellerInActiveChat
           ? 'Chỉ người mua mới có thể trả giá'
           : freeListingBuyerHint
@@ -1725,6 +1733,7 @@ function ChatPageInner() {
               setActiveSessionId={handleSelectChatSession}
               navigate={navigate}
               formatSessionTimeShort={formatSessionTimeShort}
+              listingUnavailableByListingId={listingUnavailableByListingId}
           />
 
           {/* ── Chat panel ── */}
@@ -1792,6 +1801,7 @@ function ChatPageInner() {
                       wsConnected={wsConnected}
                       showInChatSearch={Boolean(activeSessionId)}
                       onOpenInChatSearch={() => setInChatSearchOpen(true)}
+                      listingUnavailable={Boolean(activeSession?.listingId && listingInactiveForChat)}
                       showBlockUser={chatBlockTargetUserId != null}
                       onOpenBlockUser={() => setChatBlockDialogOpen(true)}
                   />
@@ -1810,6 +1820,7 @@ function ChatPageInner() {
                       onFinalizeOrder={() => {
                         setFinalizeOpen(true);
                       }}
+                      listingUnavailable={Boolean(activeSession?.listingId && listingInactiveForChat)}
                   />
 
                   <ChatMessagesPanel
