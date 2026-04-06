@@ -275,11 +275,6 @@ export default function Header({ onToggleSidebar }) {
                     </Typography>
                 </Box>
 
-                {/* Navigation Buttons */}
-                <Box sx={{ display: 'flex', gap: 0.5, ml: 3 }}>
-                    <NavButton onClick={() => navigate('/giveaway')}>Trao tặng</NavButton>
-                    <NavButton onClick={() => navigate('/community')}>Cộng đồng</NavButton>
-                </Box>
 
                 {/* Search Bar */}
                 <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', mx: 3 }}>
