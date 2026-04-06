@@ -224,9 +224,17 @@ export default function ProfilePage() {
   useEffect(() => { if (profileUser?.id) loadListings(); }, [profileUser?.id, loadListings]);
   useEffect(() => {
     if (profileUser) {
+      const rawPhone = String(profileUser.phoneNumber ?? profileUser.phone_number ?? '').trim();
+      let normalizedPhone = rawPhone;
+      if (rawPhone.startsWith('+84')) {
+        normalizedPhone = rawPhone.substring(3);
+      } else if (rawPhone.startsWith('0')) {
+        normalizedPhone = rawPhone.substring(1);
+      }
+      
       setEditForm({
         fullName: profileUser.fullName ?? profileUser.full_name ?? '',
-        phoneNumber: profileUser.phoneNumber ?? profileUser.phone_number ?? '',
+        phoneNumber: normalizedPhone,
         bio: profileUser.bio ?? '',
       });
     }
@@ -243,9 +251,19 @@ export default function ProfilePage() {
   }, [otpCooldownUntil]);
 
   const sourcePhoneForOtp = (editing ? editForm.phoneNumber : (profileUser?.phoneNumber ?? profileUser?.phone_number ?? '')).trim();
-  const normalizePhoneNumber = useCallback((phone) => (
-    phone.startsWith('+') ? phone : phone.replace(/^0/, '+84')
-  ), []);
+  const normalizePhoneNumber = useCallback((phone) => {
+    if (!phone) return '';
+    const clean = phone.replace(/\D/g, '');
+    if (phone.startsWith('+')) {
+      return phone;
+    }
+    // Nếu là chuỗi 9 số (không có 0 đầu), nối +84
+    if (clean.length === 9 && !clean.startsWith('0')) {
+      return '+84' + clean;
+    }
+    // Nếu có 0 đầu, đổi 0 thành +84
+    return clean.replace(/^0/, '+84');
+  }, []);
 
   useEffect(() => {
     if (!lastOtpPhone) return;
@@ -263,7 +281,11 @@ export default function ProfilePage() {
     setSaving(true);
     setError(null);
     try {
-      const res = await userApi.updateUser(editForm);
+      const payloadToSave = {
+        ...editForm,
+        phoneNumber: editForm.phoneNumber ? `+84${editForm.phoneNumber}` : null
+      };
+      const res = await userApi.updateUser(payloadToSave);
       const patch = getPayload(res);
       if (patch == null || typeof patch !== 'object') {
         showToast('Đã lưu nhưng không nhận được dữ liệu người dùng từ máy chủ.', 'warning');

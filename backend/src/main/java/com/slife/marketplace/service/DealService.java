@@ -286,8 +286,15 @@ public class DealService {
             throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT, "Chỉ người mua mới có quyền hủy lượt trả giá này");
         }
 
+
         deal.setStatus(STATUS_CANCELLED);
         deal.setDeletedAt(LocalDateTime.now());
+        
+        // Gửi thông báo cho Seller biết bị hủy đơn
+        notificationService.notifyDealFinalized(deal.getSeller(), buyer, 
+            deal.getListing() != null ? deal.getListing().getId() : null, 
+            deal.getListing() != null ? deal.getListing().getTitle() : "tin đăng của bạn", false, false);
+            
         dealRepository.save(deal);
     }
 
@@ -344,12 +351,12 @@ public class DealService {
             deal.setStatus(STATUS_SUCCESS);
             
             // Notify seller
-            notificationService.notifyDealFinalized(deal.getSeller(), buyer, listing.getId(), listing.getTitle(), true);
+            notificationService.notifyDealFinalized(deal.getSeller(), buyer, listing.getId(), listing.getTitle(), true, request.getRating() != null);
         } else {
             // Cancel deal
             deal.setStatus(STATUS_CANCELLED);
             // Notify seller
-            notificationService.notifyDealFinalized(deal.getSeller(), buyer, deal.getListing().getId(), deal.getListing().getTitle(), false);
+            notificationService.notifyDealFinalized(deal.getSeller(), buyer, deal.getListing().getId(), deal.getListing().getTitle(), false, false);
         }
         
         deal.setUpdatedAt(LocalDateTime.now());
@@ -498,7 +505,7 @@ public class DealService {
                 // Gửi thông báo cho Seller
                 notificationService.notifyDealFinalized(deal.getSeller(), deal.getBuyer(), 
                     listing != null ? listing.getId() : null, 
-                    listing != null ? listing.getTitle() : "tin đăng", true);
+                    listing != null ? listing.getTitle() : "tin đăng", true, false);
                 
             } catch (Exception e) {
                 // Log and continue
@@ -560,6 +567,10 @@ public class DealService {
 
         // Cập nhật điểm đánh giá cho người bán
         refreshUserReputation(deal.getSeller());
+        
+        // Gửi thông báo "Có đánh giá mới" cho Người bán
+        notificationService.notifyNewReview(deal.getSeller(), buyer, 
+            deal.getListing().getId(), deal.getListing().getTitle(), request.getRating());
     }
 
     private void refreshUserReputation(User user) {

@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Box, Button, Stack } from '@mui/material';
 import { useLocation } from 'react-router-dom';
 import AppRouter from './routes/AppRouter';
+import ScrollToTop from './components/common/ScrollToTop';
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false }; }
@@ -85,6 +86,7 @@ export default function App() {
 
   return (
       <ErrorBoundary key={`${location.pathname}${location.search}`}>
+        <ScrollToTop />
         <AppRouter />
       </ErrorBoundary>
   );

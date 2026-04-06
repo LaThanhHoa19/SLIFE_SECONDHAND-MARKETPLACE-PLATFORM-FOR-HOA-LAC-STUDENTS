@@ -76,42 +76,44 @@ export default function ReviewSection({ userId }) {
         <Box sx={{ p: { xs: 1, sm: 2 } }}>
              {/* Stats Box */}
              <Box sx={{ 
-                p: { xs: 2.5, sm: 3 }, 
-                mb: 3,
-                borderRadius: 4, 
-                bgcolor: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                mb: 4,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 2
+                gap: 1.5,
+                pt: 1
             }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <StarIcon sx={{ color: '#fbbf24', fontSize: '2.4rem' }} />
-                        <Typography fontSize="2.8rem" fontWeight={800} color="#fbbf24">
-                            {avgRating.toFixed(1)}
-                        </Typography>
-                    </Box>
-                    <Box>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500, textAlign: { xs: 'center', sm: 'left' } }}>
-                            {reviews.length} đánh giá
-                        </Typography>
-                    </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Typography fontSize="2rem" fontWeight={900} color="white" sx={{ lineHeight: 1 }}>
+                        {avgRating.toFixed(1)}
+                    </Typography>
+                    <Rating 
+                        value={avgRating} 
+                        precision={0.1}
+                        readOnly 
+                        icon={<StarIcon sx={{ color: '#fbbf24', fontSize: '1.3rem' }} />}
+                        emptyIcon={<StarIcon sx={{ color: 'rgba(255,255,255,0.1)', fontSize: '1.3rem' }} />}
+                    />
+                </Box>
 
                 {Object.keys(tagCounts).length > 0 && (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mt: 1 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'center', mt: 0.5 }}>
                         {Object.entries(tagCounts)
                             .sort((a, b) => b[1] - a[1]) // Sắp xếp theo số lượng giảm dần
                             .map(([tag, count]) => (
                             <Chip 
                                 key={tag} 
                                 label={`${tag} (${count})`}
+                                size="small"
                                 sx={{ 
                                     bgcolor: 'rgba(255,255,255,0.05)', 
-                                    color: 'white', 
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '8px',
-                                    fontWeight: 500
+                                    color: 'rgba(255,255,255,0.7)', 
+                                    border: '1px solid rgba(255,255,255,0.08)',
+                                    borderRadius: '6px',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    height: 26,
+                                    '& .MuiChip-label': { px: 1.5 }
                                 }} 
                             />
                         ))}

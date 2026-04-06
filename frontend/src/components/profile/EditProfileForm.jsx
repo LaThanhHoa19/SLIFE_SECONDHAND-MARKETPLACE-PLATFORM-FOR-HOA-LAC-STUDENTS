@@ -7,6 +7,7 @@ import {
   Grid,
   TextField,
   Typography,
+  InputAdornment,
 } from '@mui/material';
 
 // Color tokens matching SLIFE Dark theme
@@ -71,8 +72,18 @@ export default function EditProfileForm({ formData, handleChange, errors, handle
             label="Số điện thoại"
             name="phoneNumber"
             value={formData.phoneNumber}
-            onChange={handleChange}
-            placeholder="Nhập số điện thoại"
+            placeholder="Nhập 9 số thuê bao"
+            onChange={(e) => {
+              let val = e.target.value.replace(/\D/g, '');
+              if (val.startsWith('0')) val = val.slice(1);
+              val = val.slice(0, 9);
+              handleChange({ target: { name: 'phoneNumber', value: val } });
+            }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { color: 'rgba(255,255,255,0.5)', fontWeight: 700 } }}>+84</InputAdornment>,
+            }}
+            error={!!errors.phoneNumber}
+            helperText={errors.phoneNumber}
           />
 
           <StyledTextField

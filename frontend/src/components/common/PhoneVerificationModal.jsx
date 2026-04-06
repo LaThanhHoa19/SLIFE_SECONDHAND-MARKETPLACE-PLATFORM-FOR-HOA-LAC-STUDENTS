@@ -11,7 +11,8 @@ import {
     Typography,
     Stack,
     Fade,
-    alpha
+    alpha,
+    InputAdornment
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -64,7 +65,12 @@ export default function PhoneVerificationModal({
     useEffect(() => {
         if (open) {
             setStep('WARNING');
-            setPhoneNumber(initialPhoneNumber || user?.phoneNumber || user?.phone_number || '');
+            const raw = initialPhoneNumber || user?.phoneNumber || user?.phone_number || '';
+            let normalized = raw;
+            if (raw.startsWith('+84')) normalized = raw.substring(3);
+            else if (raw.startsWith('0')) normalized = raw.substring(1);
+            
+            setPhoneNumber(normalized);
             setOtpCode('');
             setLoading(false);
             setConfirmationResult(null);
@@ -99,14 +105,16 @@ export default function PhoneVerificationModal({
     }, []);
 
     const normalizePhoneNumber = (phone) => {
-        const trimmed = phone.trim();
-        if (trimmed.startsWith('+')) return trimmed;
-        return trimmed.replace(/^0/, '+84');
+        const clean = phone.trim().replace(/\D/g, '');
+        if (phone.startsWith('+')) return phone;
+        // Logic đồng bộ: 9 số -> +84
+        if (clean.length === 9) return '+84' + clean;
+        return clean.replace(/^0/, '+84');
     };
 
     const handleSendOtp = async () => {
-        if (!/^0\d{9}$/.test(phoneNumber)) {
-            showToast('Số điện thoại phải gồm 10 chữ số và bắt đầu bằng số 0.', 'warning');
+        if (!/^[1-9]\d{8}$/.test(phoneNumber)) {
+            showToast('Số điện thoại phải gồm đúng 9 chữ số thuê bao (không gồm số 0 ở đầu).', 'warning');
             return;
         }
 
@@ -182,9 +190,11 @@ export default function PhoneVerificationModal({
             const credential = await confirmationResult.confirm(otpCode);
             const idToken = await credential.user.getIdToken();
             
-            // Cập nhật SĐT lên server
-            if (phoneNumber !== (user?.phoneNumber || user?.phone_number)) {
-                await userApi.updateUser({ phoneNumber });
+            // Cập nhật SĐT lên server (luôn prepend +84)
+            const phoneToUpdate = phoneNumber.startsWith('+') ? phoneNumber : `+84${phoneNumber}`;
+            const currentStored = user?.phoneNumber || user?.phone_number;
+            if (phoneToUpdate !== currentStored) {
+                await userApi.updateUser({ phoneNumber: phoneToUpdate });
             }
             
             // Xác thực với BE
@@ -364,36 +374,51 @@ export default function PhoneVerificationModal({
                             autoFocus
                             variant="outlined"
                             label="Số điện thoại"
-                            placeholder="0xxx xxx xxx"
+                            placeholder="Nhập 9 số thuê bao"
                             value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                            onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                if (val.startsWith('0')) val = val.slice(1);
+                                val = val.slice(0, 9);
+                                setPhoneNumber(val);
+                            }}
+                            InputLabelProps={{ shrink: true }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start" sx={{ mr: 1 }}>
+                                        <Typography sx={{ color: alpha(PURPLE, 0.9), fontWeight: 800, fontSize: '1.1rem' }}>+84</Typography>
+                                    </InputAdornment>
+                                ),
+                            }}
                             sx={{
                                 mb: 4,
                                 '& .MuiOutlinedInput-root': {
                                     color: 'white',
-                                    borderRadius: '14px',
-                                    bgcolor: 'rgba(255,255,255,0.03)',
-                                    px: 1,
+                                    borderRadius: '16px',
+                                    bgcolor: 'rgba(255,255,255,0.02)',
+                                    fontSize: '1.2rem',
+                                    fontWeight: 600,
+                                    height: '64px',
                                     '& fieldset': { borderColor: 'rgba(255,255,255,0.08)' },
                                     '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-                                    '&.Mui-focused fieldset': { borderColor: alpha(PURPLE, 0.5) },
+                                    '&.Mui-focused fieldset': { borderColor: PURPLE, borderWidth: '2px' },
                                 },
-                                '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' },
-                                '& .MuiInput-underline:before': { borderBottom: 'none !important' },
-                                '& .MuiInput-underline:after': { borderBottom: 'none !important' },
-                                '& .MuiInput-underline:hover:not(.Mui-disabled):before': { borderBottom: 'none !important' },
+                                '& .MuiInputLabel-root': { 
+                                    color: 'rgba(255,255,255,0.4)',
+                                    '&.Mui-focused': { color: PURPLE }
+                                },
                             }}
                             inputProps={{
                                 spellCheck: false,
                                 autoComplete: 'off',
                                 inputMode: 'numeric',
-                                style: { textAlign: 'center', fontSize: '1.2rem', fontWeight: 700, letterSpacing: '0.1em' }
+                                style: { paddingLeft: '4px' }
                             }}
                         />
                         <Button
                             fullWidth
                             variant="contained"
-                            disabled={loading || phoneNumber.length < 10}
+                            disabled={loading || phoneNumber.length < 9}
                             onClick={handleSendOtp}
                             sx={{
                                 bgcolor: PURPLE,
@@ -419,7 +444,7 @@ export default function PhoneVerificationModal({
                 {step === 'OTP_INPUT' && (
                     <Box sx={{ pt: 1, textAlign: 'center' }}>
                         <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', mb: 4 }}>
-                            Mã OTP đã được gửi tới <br/> <strong>{phoneNumber}</strong>
+                            Mã OTP đã được gửi tới <br/> <strong>+84{phoneNumber}</strong>
                         </Typography>
 
                         <Box sx={{ display: 'flex', gap: 1.2, justifyContent: 'center', mb: 5, position: 'relative' }}>
