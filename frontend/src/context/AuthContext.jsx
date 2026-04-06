@@ -13,6 +13,7 @@
 import { createContext, useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import * as authApi from '../api/authApi';
 import * as userApi from '../api/userApi';
+import { clearAccessToken, getAccessToken, setAccessToken } from '../api/axiosClient';
 
 // Constants
 const TOKEN_KEY = 'slife_access_token';
@@ -45,8 +46,8 @@ export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   // Core states
-  const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY));
-  const [refreshToken, setRefreshToken] = useState(localStorage.getItem(REFRESH_TOKEN_KEY));
+  const [token, setToken] = useState(getAccessToken());
+  const [refreshToken, setRefreshToken] = useState(null);
   const [user, setUser] = useState(() => {
     const stored = localStorage.getItem(USER_KEY);
     return stored ? JSON.parse(stored) : null;
@@ -88,6 +89,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(SESSION_STARTED_AT_KEY);
     localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
+    clearAccessToken();
     setToken(null);
     setRefreshToken(null);
     setUser(null);
@@ -120,7 +122,8 @@ export function AuthProvider({ children }) {
   /**
    * Auto refresh token
    */
-  const refreshAccessToken = useCallback(async () => {
+  const refreshAccessToken = useCallback(async (options = {}) => {
+    const { silent = false } = options;
     try {
       const payload = unwrapApiData(await authApi.refreshToken({}));
       const nextAccessToken = getAccessTokenFromPayload(payload);
@@ -129,7 +132,7 @@ export function AuthProvider({ children }) {
       if (!nextAccessToken) {
         throw new Error('Missing access token');
       }
-      localStorage.setItem(TOKEN_KEY, nextAccessToken);
+      setAccessToken(nextAccessToken);
       setToken(nextAccessToken);
 
       if (payload?.refreshToken) {
@@ -144,7 +147,9 @@ export function AuthProvider({ children }) {
 
       // Clear invalid tokens
       clearAuthState();
-      setAuthError('Session expired. Please login again.');
+      if (!silent) {
+        setAuthError('Session expired. Please login again.');
+      }
 
       return false;
     }
@@ -171,11 +176,11 @@ export function AuthProvider({ children }) {
       refreshIntervalRef.current = setTimeout(async () => {
         const success = await refreshAccessToken();
         if (success) {
-          setupTokenRefresh(token); // Setup next refresh
+          setupTokenRefresh(getAccessToken()); // Setup next refresh with latest in-memory token
         }
       }, timeout);
     }
-  }, [getTokenExpiry, refreshAccessToken, token]);
+  }, [getTokenExpiry, refreshAccessToken]);
 
   /**
    * Enhanced login với error handling
@@ -191,7 +196,7 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid auth response');
       }
 
-      localStorage.setItem(TOKEN_KEY, accessToken);
+      setAccessToken(accessToken);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
       localStorage.setItem(SESSION_STARTED_AT_KEY, String(nowMs()));
@@ -236,7 +241,7 @@ export function AuthProvider({ children }) {
         throw new Error('Invalid Google auth response');
       }
 
-      localStorage.setItem(TOKEN_KEY, accessToken);
+      setAccessToken(accessToken);
       localStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
       localStorage.setItem(SESSION_STARTED_AT_KEY, String(nowMs()));
@@ -336,6 +341,9 @@ export function AuthProvider({ children }) {
     const initializeAuth = async () => {
       try {
         setAuthLoading(true);
+        // Legacy cleanup: refresh token không còn lưu ở localStorage.
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
 
         // Session policy check before token validation/refresh
         if (!ensureSessionLifecycle()) {
@@ -345,7 +353,7 @@ export function AuthProvider({ children }) {
 
         // Check if token exists and is valid
         if (!token || isTokenExpired(token)) {
-          const refreshSuccess = await refreshAccessToken();
+          const refreshSuccess = await refreshAccessToken({ silent: true });
           if (!refreshSuccess) {
             clearAuthState();
             setAuthLoading(false);

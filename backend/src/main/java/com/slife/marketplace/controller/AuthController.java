@@ -140,8 +140,8 @@ public class AuthController {
         }
         try {
             AuthResponse authResponse = authService.googleCallback(code);
-            String tokenParam = URLEncoder.encode(authResponse.getAccessToken(), StandardCharsets.UTF_8);
-            response.sendRedirect(frontendUrl + "/auth/google/callback?access_token=" + tokenParam);
+            attachRefreshCookie(response, authResponse.getRefreshToken());
+            response.sendRedirect(frontendUrl + "/auth/google/callback");
         } catch (SlifeException e) {
             response.sendRedirect(frontendUrl + "/login?google_error="
                     + URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8));
