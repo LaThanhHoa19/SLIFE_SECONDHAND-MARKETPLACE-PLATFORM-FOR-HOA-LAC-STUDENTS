@@ -12,6 +12,8 @@ import com.slife.marketplace.repository.NotificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -335,15 +337,114 @@ public class NotificationService {
 
     /** Notify listing owner when a new comment is posted on their listing. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyListingCommented(User listingOwner, User commenter, Long listingId, String listingTitle) {
+    public void notifyListingCommented(User listingOwner, User commenter, Long listingId) {
         try {
             Notification n = buildNotification(listingOwner, TYPE_COMMENT,
                     "LISTING", listingId,
-                    commenter.getFullName() + " đã bình luận trên tin \"" + truncate(listingTitle, 40) + "\"");
+                    displayName(commenter) + " đã bình luận về bài viết của bạn");
             notificationRepository.save(n);
             pushNotificationCount(listingOwner);
         } catch (Exception ex) {
             log.error("notifyListingCommented failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify listing owner when someone likes their listing (not self-like). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyListingLiked(User listingOwner, User liker, Long listingId) {
+        try {
+            Notification n = buildNotification(listingOwner, TYPE_MESSAGE,
+                    "LISTING", listingId,
+                    displayName(liker) + " đã thích bài viết của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(listingOwner);
+        } catch (Exception ex) {
+            log.error("notifyListingLiked failed listingId={}", listingId, ex);
+        }
+    }
+
+    /** Notify parent comment author when someone replies to their comment (listing). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyListingCommentReply(User parentCommentAuthor, User replier, Long listingId) {
+        try {
+            Notification n = buildNotification(parentCommentAuthor, TYPE_COMMENT,
+                    "LISTING", listingId,
+                    displayName(replier) + " đã trả lời bình luận của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(parentCommentAuthor);
+        } catch (Exception ex) {
+            log.error("notifyListingCommentReply failed listingId={}", listingId, ex);
+        }
+    }
+
+    /**
+     * Optional: notify listing owner when a third party joins a thread (reply on someone else's comment).
+     * Skipped when owner is the parent author (they already get the reply notification).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyListingDiscussionJoined(User listingOwner, User replier, Long listingId) {
+        try {
+            Notification n = buildNotification(listingOwner, TYPE_COMMENT,
+                    "LISTING", listingId,
+                    displayName(replier) + " đã tham gia thảo luận trong bài viết của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(listingOwner);
+        } catch (Exception ex) {
+            log.error("notifyListingDiscussionJoined failed listingId={}", listingId, ex);
+        }
+    }
+
+    // ── Community post (refType COMMUNITY_POST → FE /community/posts/{id}) ──
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyCommunityPostLiked(User postAuthor, User liker, Long postId) {
+        try {
+            Notification n = buildNotification(postAuthor, TYPE_MESSAGE,
+                    "COMMUNITY_POST", postId,
+                    displayName(liker) + " đã thích bài viết của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(postAuthor);
+        } catch (Exception ex) {
+            log.error("notifyCommunityPostLiked failed postId={}", postId, ex);
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyCommunityPostCommented(User postAuthor, User commenter, Long postId) {
+        try {
+            Notification n = buildNotification(postAuthor, TYPE_COMMENT,
+                    "COMMUNITY_POST", postId,
+                    displayName(commenter) + " đã bình luận về bài viết của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(postAuthor);
+        } catch (Exception ex) {
+            log.error("notifyCommunityPostCommented failed postId={}", postId, ex);
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyCommunityCommentReply(User parentCommentAuthor, User replier, Long postId) {
+        try {
+            Notification n = buildNotification(parentCommentAuthor, TYPE_COMMENT,
+                    "COMMUNITY_POST", postId,
+                    displayName(replier) + " đã trả lời bình luận của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(parentCommentAuthor);
+        } catch (Exception ex) {
+            log.error("notifyCommunityCommentReply failed postId={}", postId, ex);
+        }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyCommunityDiscussionJoined(User postAuthor, User replier, Long postId) {
+        try {
+            Notification n = buildNotification(postAuthor, TYPE_COMMENT,
+                    "COMMUNITY_POST", postId,
+                    displayName(replier) + " đã tham gia thảo luận trong bài viết của bạn");
+            notificationRepository.save(n);
+            pushNotificationCount(postAuthor);
+        } catch (Exception ex) {
+            log.error("notifyCommunityDiscussionJoined failed postId={}", postId, ex);
         }
     }
 
@@ -361,16 +462,61 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    public com.slife.marketplace.dto.response.CursorPageResponse<NotificationResponse> getNotificationResponsesPage(
+            Long userId,
+            int limit,
+            String cursor
+    ) {
+        int size = Math.max(1, Math.min(limit, 50));
+        NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
+        Instant cursorCreatedAt = c != null ? c.createdAt() : null;
+        Long cursorId = c != null ? c.id() : null;
+        Pageable pageable = PageRequest.of(0, size);
+        List<Notification> list = notificationRepository.findPageByUser(userId, cursorCreatedAt, cursorId, pageable);
+        List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
+        boolean hasMore = list.size() == size;
+        String nextCursor = null;
+        if (hasMore) {
+            Notification last = list.get(list.size() - 1);
+            nextCursor = NotificationCursorCodec.encode(last.getCreatedAt(), last.getId());
+        }
+        return new com.slife.marketplace.dto.response.CursorPageResponse<>(items, nextCursor, hasMore);
+    }
+
+    @Transactional(readOnly = true)
+    public com.slife.marketplace.dto.response.CursorPageResponse<NotificationResponse> searchNotificationResponsesPage(
+            Long userId,
+            String q,
+            int limit,
+            String cursor
+    ) {
+        String query = q != null ? q.trim() : "";
+        if (query.length() > 100) query = query.substring(0, 100);
+        int size = Math.max(1, Math.min(limit, 50));
+        NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
+        Instant cursorCreatedAt = c != null ? c.createdAt() : null;
+        Long cursorId = c != null ? c.id() : null;
+        Pageable pageable = PageRequest.of(0, size);
+        List<Notification> list = notificationRepository.searchPageByUser(userId, query, cursorCreatedAt, cursorId, pageable);
+        List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
+        boolean hasMore = list.size() == size;
+        String nextCursor = null;
+        if (hasMore) {
+            Notification last = list.get(list.size() - 1);
+            nextCursor = NotificationCursorCodec.encode(last.getCreatedAt(), last.getId());
+        }
+        return new com.slife.marketplace.dto.response.CursorPageResponse<>(items, nextCursor, hasMore);
+    }
+
+    @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUser_IdAndIsReadFalse(userId);
     }
 
     @Transactional
-    public void markRead(Long notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setIsRead(true);
-            notificationRepository.save(n);
-        });
+    public void markRead(Long userId, Long notificationId) {
+        if (userId == null || notificationId == null) return;
+        notificationRepository.markReadForUser(notificationId, userId);
     }
 
     @Transactional

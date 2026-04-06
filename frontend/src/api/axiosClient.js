@@ -12,15 +12,26 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 
-const ACCESS_TOKEN_KEY = 'slife_access_token';
-const REFRESH_TOKEN_KEY = 'slife_refresh_token';
+let inMemoryAccessToken = null;
+
+export function setAccessToken(token) {
+    inMemoryAccessToken = token || null;
+}
+
+export function getAccessToken() {
+    return inMemoryAccessToken;
+}
+
+export function clearAccessToken() {
+    inMemoryAccessToken = null;
+}
 
 function normalizeApiBaseUrl(baseUrl) {
     return (baseUrl || '').replace(/\/api\/?$/, '');
 }
 
-const axiosClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000 });
-const refreshClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000 });
+const axiosClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000, withCredentials: true });
+const refreshClient = axios.create({ baseURL: normalizeApiBaseUrl(API_BASE_URL), timeout: 15000, withCredentials: true });
 
 function dedupeApiPrefix(config) {
     const base = (config.baseURL || '').replace(/\/+$/, '');
@@ -54,19 +65,14 @@ let refreshInFlight = null;
 async function refreshAccessToken() {
     if (refreshInFlight) return refreshInFlight;
 
-    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-    if (!storedRefreshToken) return null;
-
     refreshInFlight = (async () => {
-        const response = await refreshClient.post('/api/auth/refresh', { refreshToken: storedRefreshToken });
+        // Refresh token ưu tiên HttpOnly cookie; body refreshToken để trống (backend fallback body cho legacy clients).
+        const response = await refreshClient.post('/api/auth/refresh', {});
         const payload = response?.data?.data ?? response?.data ?? null;
         const nextAccessToken = payload?.accessToken || payload?.token || null;
         if (!nextAccessToken) throw new Error('Missing access token in refresh response');
 
-        localStorage.setItem(ACCESS_TOKEN_KEY, nextAccessToken);
-        if (payload?.refreshToken) {
-            localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
-        }
+        setAccessToken(nextAccessToken);
         return nextAccessToken;
     })().finally(() => {
         refreshInFlight = null;
@@ -78,7 +84,7 @@ async function refreshAccessToken() {
 
 axiosClient.interceptors.request.use((config) => {
     dedupeApiPrefix(config);
-    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    const token = getAccessToken();
     setBearerToken(config, token);
     return config;
 });
@@ -116,9 +122,8 @@ axiosClient.interceptors.response.use(
             }
 
             const isAlreadyOnLogin = window.location.pathname === '/login';
-            const hadToken = !!localStorage.getItem(ACCESS_TOKEN_KEY);
-            localStorage.removeItem(ACCESS_TOKEN_KEY);
-            localStorage.removeItem(REFRESH_TOKEN_KEY);
+            const hadToken = !!getAccessToken();
+            clearAccessToken();
             // Chỉ redirect khi: không phải auth endpoint, không đang ở trang login, và trước đó có token
             if (!isAuthEndpoint && !isAlreadyOnLogin && hadToken) {
                 window.location.href = '/login';

@@ -53,6 +53,7 @@ public class DealService {
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final BlockService blockService;
     private final NotificationService notificationService;
 
     public DealService(DealRepository dealRepository,
@@ -64,6 +65,7 @@ public class DealService {
                        UserRepository userRepository,
                        UserService userService,
                        NotificationService notificationService) {
+                       BlockService blockService) {
         this.dealRepository = dealRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
@@ -73,6 +75,7 @@ public class DealService {
         this.userRepository = userRepository;
         this.userService = userService;
         this.notificationService = notificationService;
+        this.blockService = blockService;
     }
 
     @Transactional
@@ -84,6 +87,9 @@ public class DealService {
         // Business Rules
         if (listing.getSeller().getId().equals(buyer.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Không thể trả giá cho bài đăng của chính mình");
+        }
+        if (blockService.isBlockedEitherDirection(buyer.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
         }
         if (Boolean.TRUE.equals(listing.getIsGiveaway()) || (listing.getPrice() != null && listing.getPrice().compareTo(BigDecimal.ZERO) == 0)) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Không thể trả giá cho đồ tặng miễn phí");
@@ -122,6 +128,9 @@ public class DealService {
         User buyer = userService.getUserById(request.getBuyerId());
         if (buyer.getId().equals(seller.getId())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Người mua không hợp lệ");
+        }
+        if (blockService.isBlockedEitherDirection(seller.getId(), buyer.getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
         }
         conversationRepository.findActiveByListingBuyerSeller(listingId, buyer.getId(), seller.getId())
                 .orElseThrow(() -> new SlifeException(ErrorCode.CHAT_SESSION_NOT_FOUND,
@@ -180,6 +189,7 @@ public class DealService {
         if (!STATUS_PENDING.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
         }
+        assertNoBlockBetweenDealParties(deal, buyer);
         deal.setStatus(STATUS_COMPLETED);
         deal.setConfirmedAt(LocalDateTime.now());
         return mapToResponse(dealRepository.save(deal));
@@ -199,6 +209,7 @@ public class DealService {
         if (!STATUS_PENDING.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
         }
+        assertNoBlockBetweenDealParties(deal, buyer);
         deal.setStatus(STATUS_REJECTED);
         deal.setConfirmedAt(LocalDateTime.now());
         return mapToResponse(dealRepository.save(deal));
@@ -216,6 +227,7 @@ public class DealService {
         if (!STATUS_PENDING.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể từ chối lượt trả giá đang chờ (PENDING)");
         }
+        assertNoBlockBetweenDealParties(deal, seller);
 
         // DB schema for deals does not have REJECTED; use CANCELLED for seller rejection.
         deal.setStatus(STATUS_CANCELLED);
@@ -235,6 +247,7 @@ public class DealService {
         if (!STATUS_PENDING.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ giao dịch PENDING mới được xác nhận");
         }
+        assertNoBlockBetweenDealParties(deal, seller);
 
         deal.setStatus(STATUS_CONFIRMED);
         deal.setConfirmedAt(LocalDateTime.now());
@@ -253,6 +266,7 @@ public class DealService {
         if (!isBuyer && !isSeller) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
+        assertNoBlockBetweenDealParties(deal, current);
         deal.setPickupTime(pickupTime);
         deal = dealRepository.save(deal);
         return mapToResponse(deal);
@@ -269,6 +283,7 @@ public class DealService {
         if (!isBuyer && !isSeller) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
+        assertNoBlockBetweenDealParties(deal, current);
         if (!STATUS_CONFIRMED.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ giao dịch CONFIRMED mới gửi được nhắc nhở");
         }
@@ -285,6 +300,7 @@ public class DealService {
         if (!deal.getBuyer().getId().equals(buyer.getId())) {
             throw new SlifeException(ErrorCode.NOT_CHAT_PARTICIPANT, "Chỉ người mua mới có quyền hủy lượt trả giá này");
         }
+        assertNoBlockBetweenDealParties(deal, buyer);
 
 
         deal.setStatus(STATUS_CANCELLED);
@@ -374,6 +390,7 @@ public class DealService {
         if (!isBuyer && !isSeller) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
+        assertNoBlockBetweenDealParties(deal, current);
         return mapToResponse(deal);
     }
 
@@ -399,7 +416,10 @@ public class DealService {
 
         if (!t.isEmpty() && !"all".equals(t)) {
             List<Deal> only = "received".equals(t) ? received : proposed;
-            return only.stream().map(this::mapToResponse).toList();
+            return only.stream()
+                    .filter(d -> !isDealHiddenByBlock(d, current))
+                    .map(this::mapToResponse)
+                    .toList();
         }
 
         java.util.Map<Long, Deal> byId = new java.util.HashMap<>();
@@ -407,6 +427,7 @@ public class DealService {
         for (Deal d : received) if (d != null && d.getId() != null) byId.put(d.getId(), d);
 
         return byId.values().stream()
+                .filter(d -> !isDealHiddenByBlock(d, current))
                 .sorted((a, b) -> {
                     var la = a.getCreatedAt();
                     var lb = b.getCreatedAt();
@@ -417,6 +438,34 @@ public class DealService {
                 })
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    private void assertNoBlockBetweenDealParties(Deal deal, User current) {
+        User buyer = deal.getBuyer();
+        User seller = deal.getSeller();
+        if (buyer == null || seller == null || buyer.getId() == null || seller.getId() == null) {
+            return;
+        }
+        if (!current.getId().equals(buyer.getId()) && !current.getId().equals(seller.getId())) {
+            return;
+        }
+        Long otherId = current.getId().equals(buyer.getId()) ? seller.getId() : buyer.getId();
+        if (blockService.isBlockedEitherDirection(current.getId(), otherId)) {
+            throw new SlifeException(ErrorCode.DEAL_NOT_FOUND);
+        }
+    }
+
+    private boolean isDealHiddenByBlock(Deal d, User me) {
+        User buyer = d.getBuyer();
+        User seller = d.getSeller();
+        if (buyer == null || seller == null || buyer.getId() == null || seller.getId() == null) {
+            return false;
+        }
+        if (!me.getId().equals(buyer.getId()) && !me.getId().equals(seller.getId())) {
+            return true;
+        }
+        Long otherId = me.getId().equals(buyer.getId()) ? seller.getId() : buyer.getId();
+        return blockService.isBlockedEitherDirection(me.getId(), otherId);
     }
 
     private DealResponse mapToResponse(Deal deal) {

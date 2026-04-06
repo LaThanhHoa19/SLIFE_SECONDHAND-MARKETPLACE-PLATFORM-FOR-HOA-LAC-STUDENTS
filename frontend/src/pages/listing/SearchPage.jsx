@@ -1,6 +1,7 @@
 import {
     Box,
     Chip,
+    CircularProgress,
     Typography,
     ToggleButton,
     ToggleButtonGroup,
@@ -26,10 +27,9 @@ import {
     Lightbulb as LightbulbIcon,
     Search as SearchIcon,
 } from '@mui/icons-material';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ListingsFeed from '../../components/listing/ListingsFeed';
-import Pagination from '../../components/common/Pagination';
 import useListings from '../../hooks/useListings';
 import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
@@ -75,7 +75,6 @@ export default function SearchPage() {
     const condition = searchParams.get('condition') || '';
     const minPrice = searchParams.get('minPrice') || '';
     const maxPrice = searchParams.get('maxPrice') || '';
-    const page = Number(searchParams.get('page') || 0);
     const size = Number(searchParams.get('size') || 20);
 
     useEffect(() => {
@@ -102,7 +101,7 @@ export default function SearchPage() {
         navigate(`/search?${params.toString()}`);
     }, [navigate]);
 
-    const { data, isLoading, meta, patchListing } = useListings({
+    const { data, isLoading, isLoadingMore, hasMore, loadMore, meta, patchListing } = useListings({
         q,
         category,
         location,
@@ -110,9 +109,28 @@ export default function SearchPage() {
         condition,
         minPrice,
         maxPrice,
-        page,
         size,
     });
+
+    // Infinite scroll sentinel for search results
+    const sentinelRef = useRef(null);
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        if (!hasMore) return;
+        if (isLoading || isLoadingMore) return;
+        const obs = new IntersectionObserver(
+            (entries) => {
+                const e = entries?.[0];
+                if (!e?.isIntersecting) return;
+                if (!hasMore || isLoading || isLoadingMore) return;
+                loadMore();
+            },
+            { rootMargin: '600px' },
+        );
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
     useEffect(() => {
         getLocations()
@@ -563,17 +581,25 @@ export default function SearchPage() {
                             imageAspect={viewMode === 'list' ? 'compactList' : undefined}
                             onPatchListing={patchListing}
                         />
-                        <Pagination
-                            page={page}
-                            totalPages={meta.totalPages}
-                            totalElements={meta.totalElements}
-                            pageSize={size}
-                            onChange={(nextPage) => {
-                                const params = new URLSearchParams(searchParams);
-                                params.set('page', String(nextPage));
-                                navigate(`/search?${params.toString()}`);
-                            }}
-                        />
+                        {/* Infinite scroll sentinel */}
+                        <Box ref={sentinelRef} sx={{ height: 1 }} />
+
+                        {/* Loading more indicator + fallback button */}
+                        {hasMore ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                                {isLoadingMore ? (
+                                    <CircularProgress size={26} sx={{ color: '#9D6EED' }} />
+                                ) : (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={loadMore}
+                                        sx={{ fontWeight: 700, minWidth: 180, borderColor: 'rgba(157,110,237,0.7)', color: '#E5E7EB' }}
+                                    >
+                                        Xem thêm kết quả
+                                    </Button>
+                                )}
+                            </Box>
+                        ) : null}
                     </Box>
                 </Box>
 

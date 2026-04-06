@@ -32,6 +32,7 @@ public class CommentService {
     private final CommentImageRepository commentImageRepository;
     private final ListingRepository listingRepository;
     private final UserService userService;
+    private final BlockService blockService;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
     private final CommentRateLimitService commentRateLimitService;
@@ -48,6 +49,7 @@ public class CommentService {
 
         Listing listing = listingRepository.findById(request.getListingId())
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        assertCanCommentOnListing(currentUser, listing);
 
         Comment comment = new Comment();
         comment.setContent(text);
@@ -59,9 +61,7 @@ public class CommentService {
         List<String> savedUrls = saveImages(saved, imageUrls);
 
         if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            notificationService.notifyListingCommented(
-                    listing.getSeller(), currentUser,
-                    listing.getId(), listing.getTitle());
+            notificationService.notifyListingCommented(listing.getSeller(), currentUser, listing.getId());
         }
         commentRateLimitService.recordSuccess(currentUser.getId());
 
@@ -85,6 +85,8 @@ public class CommentService {
         if (listing == null) {
             throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
         }
+        assertCanCommentOnListing(currentUser, listing);
+        assertCanReplyToCommentAuthor(currentUser, parent);
 
         Comment reply = new Comment();
         reply.setContent(text);
@@ -96,10 +98,17 @@ public class CommentService {
         Comment saved = commentRepository.save(reply);
         List<String> savedUrls = saveImages(saved, imageUrls);
 
-        if (!listing.getSeller().getId().equals(currentUser.getId())) {
-            notificationService.notifyListingCommented(
-                    listing.getSeller(), currentUser,
-                    listing.getId(), listing.getTitle());
+        User parentAuthor = parent.getUser();
+        if (parentAuthor != null && parentAuthor.getId() != null
+                && !parentAuthor.getId().equals(currentUser.getId())) {
+            notificationService.notifyListingCommentReply(parentAuthor, currentUser, listing.getId());
+        }
+        User seller = listing.getSeller();
+        if (seller != null && seller.getId() != null && !seller.getId().equals(currentUser.getId())) {
+            Long parentAuthorId = parentAuthor != null ? parentAuthor.getId() : null;
+            if (parentAuthorId == null || !seller.getId().equals(parentAuthorId)) {
+                notificationService.notifyListingDiscussionJoined(seller, currentUser, listing.getId());
+            }
         }
         commentRateLimitService.recordSuccess(currentUser.getId());
 
@@ -159,9 +168,29 @@ public class CommentService {
 
     @Transactional(readOnly = true)
     public List<CommentResponse> getCommentsForListing(Long listingId) {
+        Listing listing = listingRepository.findById(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        User viewer = userService.getCurrentUserOptional().orElse(null);
+        if (viewer != null && listing.getSeller() != null && listing.getSeller().getId() != null
+                && !viewer.getId().equals(listing.getSeller().getId())
+                && !"ADMIN".equalsIgnoreCase(viewer.getRole())
+                && blockService.isBlockedEitherDirection(viewer.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
+
         List<Comment> all = commentRepository.findByListing_IdOrderByCreatedAtAsc(listingId);
         if (all.isEmpty())
             return List.of();
+
+        boolean viewerIsSeller = viewer != null && listing.getSeller() != null
+                && viewer.getId().equals(listing.getSeller().getId());
+        boolean viewerIsAdmin = viewer != null && "ADMIN".equalsIgnoreCase(viewer.getRole());
+        if (viewer != null && !viewerIsSeller && !viewerIsAdmin) {
+            all = filterCommentsHiddenByBlock(all, viewer.getId());
+            if (all.isEmpty()) {
+                return List.of();
+            }
+        }
 
         // Load tat ca images 1 lan cho toan bo comments -> tranh N+1
         Set<Long> commentIds = all.stream().map(Comment::getId).collect(Collectors.toSet());
@@ -190,6 +219,53 @@ public class CommentService {
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────
+
+    private void assertCanCommentOnListing(User viewer, Listing listing) {
+        if (listing.getSeller() == null || listing.getSeller().getId() == null) {
+            return;
+        }
+        if (viewer.getId().equals(listing.getSeller().getId())) {
+            return;
+        }
+        if (blockService.isBlockedEitherDirection(viewer.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
+    }
+
+    private void assertCanReplyToCommentAuthor(User viewer, Comment parent) {
+        User pa = parent.getUser();
+        if (pa == null || pa.getId() == null || pa.getId().equals(viewer.getId())) {
+            return;
+        }
+        if (blockService.isBlockedEitherDirection(viewer.getId(), pa.getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
+        }
+    }
+
+    private List<Comment> filterCommentsHiddenByBlock(List<Comment> all, Long viewerId) {
+        Set<Long> hidden = new HashSet<>();
+        for (Comment c : all) {
+            User a = c.getUser();
+            if (a != null && a.getId() != null && blockService.isBlockedEitherDirection(viewerId, a.getId())) {
+                hidden.add(c.getId());
+            }
+        }
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (Comment c : all) {
+                if (hidden.contains(c.getId())) {
+                    continue;
+                }
+                Comment p = c.getParentComment();
+                if (p != null && hidden.contains(p.getId())) {
+                    hidden.add(c.getId());
+                    changed = true;
+                }
+            }
+        }
+        return all.stream().filter(c -> !hidden.contains(c.getId())).toList();
+    }
 
     /** Luu anh va tra ve danh sach URL da luu */
     private List<String> saveImages(Comment comment, List<String> imageUrls) {

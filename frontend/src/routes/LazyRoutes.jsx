@@ -29,6 +29,7 @@ export const LazyListingDetailPage = lazy(() => import('../pages/listing/Listing
 export const LazyCreateListingPage = lazy(() => import('../pages/listing/CreateListingPage'));
 export const LazyEditListingPage = lazy(() => import('../pages/listing/EditListingPage'));
 export const LazyDraftEditPublishPage = lazy(() => import('../pages/listing/DraftEditPublishPage'));
+export const LazyRepostPublishPage = lazy(() => import('../pages/listing/RepostPublishPage.jsx'));
 export const LazyMyListingsPage = lazy(() => import('../pages/listing/MyListingsPage'));
 export const LazySavedListingsPage = lazy(() => import('../pages/listing/SavedListingsPage'));
 export const LazyLikedListingsPage = lazy(() => import('../pages/listing/LikedListingsPage'));
@@ -49,6 +50,10 @@ export const LazyReportPage = lazy(() => import('../pages/report/ReportPage'));
 export const LazyChatPage = lazy(() => import('../pages/chat/ChatPage'));
 export const LazyOrderHistoryPage = lazy(() => import('../pages/history/OrderHistoryPage'));
 export const LazyTermsPage = lazy(() => import('../pages/legal/TermsPage'));
+export const LazyCommunityFeedPage = lazy(() => import('../pages/community/CommunityFeedPage'));
+export const LazyCommunityCreatePostPage = lazy(() => import('../pages/community/CommunityCreatePostPage'));
+export const LazyCommunityPostDetailPage = lazy(() => import('../pages/community/CommunityPostDetailPage'));
+export const LazyBlockedUsersPage = lazy(() => import('../pages/settings/BlockedUsersPage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -66,6 +71,7 @@ export const SuspenseListingDetailPage = withSuspense(LazyListingDetailPage, "Đ
 export const SuspenseCreateListingPage = withSuspense(LazyCreateListingPage, "Đang tải trang đăng tin...");
 export const SuspenseEditListingPage = withSuspense(LazyEditListingPage, "Đang tải trang chỉnh sửa tin...");
 export const SuspenseDraftEditPublishPage = withSuspense(LazyDraftEditPublishPage, "Đang tải bản nháp...");
+export const SuspenseRepostPublishPage = withSuspense(LazyRepostPublishPage, "Đang tải đăng lại tin...");
 export const SuspenseMyListingsPage = withSuspense(LazyMyListingsPage, "Đang tải tin đăng của tôi...");
 export const SuspenseSavedListingsPage = withSuspense(LazySavedListingsPage, "Đang tải tin đã lưu...");
 export const SuspenseLikedListingsPage = withSuspense(LazyLikedListingsPage, "Đang tải tin đã thích...");
@@ -86,3 +92,7 @@ export const SuspenseReportPage = withSuspense(LazyReportPage, "Đang tải tran
 export const SuspenseChatPage = withSuspense(LazyChatPage, "Đang tải tin nhắn...");
 export const SuspenseOrderHistoryPage = withSuspense(LazyOrderHistoryPage, "Đang tải lịch sử chốt đơn...");
 export const SuspenseTermsPage = withSuspense(LazyTermsPage, "Đang tải quy chế hoạt động...");
+export const SuspenseCommunityFeedPage = withSuspense(LazyCommunityFeedPage, "Đang tải cộng đồng...");
+export const SuspenseCommunityCreatePostPage = withSuspense(LazyCommunityCreatePostPage, "Đang tải tạo bài cộng đồng...");
+export const SuspenseCommunityPostDetailPage = withSuspense(LazyCommunityPostDetailPage, "Đang tải bài cộng đồng...");
+export const SuspenseBlockedUsersPage = withSuspense(LazyBlockedUsersPage, "Đang tải danh sách chặn...");

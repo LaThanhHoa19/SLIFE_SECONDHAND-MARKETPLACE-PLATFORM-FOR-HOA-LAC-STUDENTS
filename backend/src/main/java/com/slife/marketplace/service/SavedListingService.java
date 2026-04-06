@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class SavedListingService {
@@ -27,13 +28,16 @@ public class SavedListingService {
     private final SavedListingRepository savedListingRepository;
     private final ListingRepository listingRepository;
     private final ListingService listingService;
+    private final BlockService blockService;
 
     public SavedListingService(SavedListingRepository savedListingRepository,
                                ListingRepository listingRepository,
-                               ListingService listingService) {
+                               ListingService listingService,
+                               BlockService blockService) {
         this.savedListingRepository = savedListingRepository;
         this.listingRepository = listingRepository;
         this.listingService = listingService;
+        this.blockService = blockService;
     }
 
     @Transactional
@@ -42,6 +46,11 @@ public class SavedListingService {
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
         if (!ACTIVE.equals(listing.getStatus())) {
             throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
+        if (listing.getSeller() != null && listing.getSeller().getId() != null
+                && !listing.getSeller().getId().equals(user.getId())
+                && blockService.isBlockedEitherDirection(user.getId(), listing.getSeller().getId())) {
+            throw new SlifeException(ErrorCode.FOLLOW_BLOCKED, "Cannot interact due to a block");
         }
         if (savedListingRepository.existsByUser_IdAndListing_Id(user.getId(), listingId)) {
             throw new SlifeException(ErrorCode.SAVED_LISTING_ALREADY);
@@ -70,7 +79,12 @@ public class SavedListingService {
         Pageable pageable = PageRequest.of(Math.max(0, page), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<SavedListing> savedPage = savedListingRepository.findByUser_IdOrderByCreatedAtDesc(user.getId(), pageable);
         List<ListingResponse> content = savedPage.getContent().stream()
-                .map(sl -> listingService.buildListingResponse(sl.getListing(), user, true))
+                .map(SavedListing::getListing)
+                .filter(Objects::nonNull)
+                .filter(l -> l.getSeller() == null || l.getSeller().getId() == null
+                        || l.getSeller().getId().equals(user.getId())
+                        || !blockService.isBlockedEitherDirection(user.getId(), l.getSeller().getId()))
+                .map(l -> listingService.buildListingResponse(l, user, true))
                 .toList();
         return new PagedResponse<>(content, savedPage.getNumber(), savedPage.getSize(),
                 savedPage.getTotalElements(), savedPage.getTotalPages());

@@ -187,7 +187,7 @@ public class ListingController {
                 && listing.getSeller() != null
                 && listing.getSeller().getId() != null
                 && !listing.getSeller().getId().equals(currentUser.getId())
-                && blockService.isBlockedByCurrentUser(listing.getSeller().getId(), currentUser.getId())) {
+                && blockService.isBlockedEitherDirection(listing.getSeller().getId(), currentUser.getId())) {
             throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
         }
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);
@@ -297,7 +297,7 @@ public class ListingController {
                 && listing.getSeller() != null
                 && listing.getSeller().getId() != null
                 && !listing.getSeller().getId().equals(currentUser.getId())
-                && blockService.isBlockedByCurrentUser(listing.getSeller().getId(), currentUser.getId())) {
+                && blockService.isBlockedEitherDirection(listing.getSeller().getId(), currentUser.getId())) {
             throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
         }
         boolean isSaved = currentUser != null && savedListingService.isSaved(currentUser.getId(), id);

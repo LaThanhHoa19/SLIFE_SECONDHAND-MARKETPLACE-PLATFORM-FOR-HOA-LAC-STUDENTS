@@ -24,6 +24,7 @@ import {
     SuspenseLikedListingsPage,
     SuspenseEditListingPage,
     SuspenseDraftEditPublishPage,
+    SuspenseRepostPublishPage,
     SuspenseProfilePage,
     SuspenseDealDetailPage,
     SuspenseNotificationsPage,
@@ -42,6 +43,10 @@ import {
     SuspenseSearchPage,
     SuspenseAdminLoginPage,
     SuspenseTermsPage,
+    SuspenseCommunityFeedPage,
+    SuspenseCommunityCreatePostPage,
+    SuspenseCommunityPostDetailPage,
+    SuspenseBlockedUsersPage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -96,6 +101,16 @@ export default function AppRouter() {
             <Route element={<MainLayout />}>
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/feed" element={<SuspenseListingsPage />} />
+                <Route path="/community" element={<SuspenseCommunityFeedPage />} />
+                <Route path="/community/posts/:id" element={<SuspenseCommunityPostDetailPage />} />
+                <Route
+                    path="/community/new"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCommunityCreatePostPage />
+                        </RouteGuard>
+                    }
+                />
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
@@ -134,6 +149,14 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseEditListingPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/listings/:id/repost"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseRepostPublishPage />
                         </RouteGuard>
                     }
                 />
@@ -206,6 +229,15 @@ export default function AppRouter() {
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
                             <SuspenseOrderHistoryPage />
+                        </RouteGuard>
+                    }
+                />
+
+                <Route
+                    path="/settings/blocked"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseBlockedUsersPage />
                         </RouteGuard>
                     }
                 />

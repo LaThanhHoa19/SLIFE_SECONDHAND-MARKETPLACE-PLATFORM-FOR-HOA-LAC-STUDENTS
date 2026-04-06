@@ -22,6 +22,7 @@ import {
     Favorite as FavoriteFilledIcon,
     MoreHoriz as MoreIcon,
     Flag as ReportIcon,
+    Block as BlockIcon,
     Add as AddIcon,
     Check as CheckIcon,
     Person as PersonIcon,
@@ -39,6 +40,9 @@ import { useToast } from '../../context/ToastContext';
 import { getListingShareInfo, saveListing, toggleListingLike, unsaveListing } from '../../api/listingApi';
 import CommentModal from './CommentModal';
 import ReportDialog from '../report/ReportDialog';
+import BlockUserConfirmDialog from '../social/BlockUserConfirmDialog';
+import { useBlockActions } from '../../hooks/useBlockActions';
+import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 
 const LIKE_RED = '#FF4757';
 const PURPLE = '#9D6EED';
@@ -147,7 +151,12 @@ export default function ListingCard({
     const isSavedPage = location.pathname.startsWith('/saved');
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
-    const sellerId = listing?.sellerId ?? seller?.userId ?? seller?.id ?? listing?.seller?.id;
+    const sellerId =
+        listing?.sellerId ??
+        seller?.userId ??
+        seller?.id ??
+        listing?.seller?.id ??
+        listing?.seller?.userId;
     const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
     const [followed, setFollowed] = useState(!!listing?.isFollowed);
     const [commentOpen, setCommentOpen] = useState(false);
@@ -160,6 +169,8 @@ export default function ListingCard({
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+    const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+    const { blockUserById } = useBlockActions();
 
     const isDraggingRef = useRef(false);
     const startXRef = useRef(0);
@@ -187,7 +198,15 @@ export default function ListingCard({
     }, [listing?.id, listing?.isSaved, listing?.is_saved]);
 
     const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
-    const unavailableStatuses = new Set(['SOLD', 'HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
+    const unavailableStatuses = new Set([
+        'SOLD',
+        'HIDDEN',
+        'MOD_HIDDEN',
+        'DELETED',
+        'BANNED',
+        'EXPIRED',
+        'GIVEN_AWAY',
+    ]);
     const isUnavailable = unavailableStatuses.has(normalizedStatus) || listing?.isUnavailable === true;
 
     const handleClick = () => {
@@ -203,6 +222,10 @@ export default function ListingCard({
     const handleFollowClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!sellerId || isMe) return;
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để theo dõi người bán.', 'warning');
@@ -223,6 +246,10 @@ export default function ListingCard({
     const handleLikeClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id) return;
         // Dùng token (axios cũng gắn Bearer) — tránh trường hợp có JWT nhưng user object chưa hydrate.
         if (!token) {
@@ -260,6 +287,10 @@ export default function ListingCard({
     const handleShareClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id || shareSubmitting) return;
         setShareSubmitting(true);
         let shareUrl = `${window.location.origin}/listings/${id}`;
@@ -296,6 +327,10 @@ export default function ListingCard({
     const handleSaveClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id || saveSubmitting) return;
         if (!token) {
             showToast('Bạn cần đăng nhập để tiếp tục.', 'warning');
@@ -325,6 +360,10 @@ export default function ListingCard({
     const handleMessageClick = (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id) return;
         if (!token) {
             showToast('Bạn cần đăng nhập để nhắn tin.', 'warning');
@@ -337,6 +376,10 @@ export default function ListingCard({
     const handleMoreOpen = (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         setMoreAnchorEl(e.currentTarget);
     };
 
@@ -352,6 +395,10 @@ export default function ListingCard({
         e.stopPropagation();
         e.preventDefault();
         handleMoreClose();
+        if (isUnavailable) {
+            showToast('Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!isAuthenticated) {
             showToast('Bạn cần đăng nhập để báo cáo tin.', 'warning');
             navigate('/login', { state: { from: location.pathname } });
@@ -360,10 +407,30 @@ export default function ListingCard({
         setReportOpen(true);
     };
 
+    const handleBlockMenuClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleMoreClose();
+        if (!isAuthenticated) {
+            showToast('Bạn cần đăng nhập để chặn người bán.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        if (!sellerId) {
+            showToast('Không xác định được người bán.', 'error');
+            return;
+        }
+        setBlockDialogOpen(true);
+    };
+
     const handleUnsaveFromMenu = async (e) => {
         e.stopPropagation();
         e.preventDefault();
         handleMoreClose();
+        if (isUnavailable) {
+            showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+            return;
+        }
         if (!id || saveSubmitting || !isSavedPage) return;
         if (!token) {
             showToast('Bạn cần đăng nhập để tiếp tục.', 'warning');
@@ -428,7 +495,7 @@ export default function ListingCard({
                                 <PersonIcon sx={{ fontSize: 24, color: 'rgba(255,255,255,0.85)' }} />
                             </Avatar>
                         </Tooltip>
-                        {showFollowBtn && (
+                        {showFollowBtn && !isUnavailable && (
                             <Tooltip title={followed ? 'Bỏ theo dõi' : 'Theo dõi'}>
                                 <Box
                                     component="span"
@@ -490,13 +557,16 @@ export default function ListingCard({
                         </Stack>
                         {(!isMe || isSavedPage) && (
                             <Tooltip title="Tùy chọn">
-                                <IconButton
-                                    size="small"
-                                    sx={{ color: 'rgba(255,255,255,0.5)', mt: -0.5, mr: -1 }}
-                                    onClick={handleMoreOpen}
-                                >
-                                    <MoreIcon />
-                                </IconButton>
+                                <span>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable}
+                                        sx={{ color: 'rgba(255,255,255,0.5)', mt: -0.5, mr: -1 }}
+                                        onClick={handleMoreOpen}
+                                    >
+                                        <MoreIcon />
+                                    </IconButton>
+                                </span>
                             </Tooltip>
                         )}
                     </Box>
@@ -725,18 +795,20 @@ export default function ListingCard({
                         {/* Like */}
                         <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: -1 }}>
-                                <IconButton
-                                    size="small"
-                                    disabled={likeSubmitting}
-                                    onClick={handleLikeClick}
-                                    sx={{
-                                        color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.1)' },
-                                    }}
-                                >
-                                    {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
-                                </IconButton>
+                                <Box component="span" sx={{ display: 'inline-flex' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable || likeSubmitting}
+                                        onClick={handleLikeClick}
+                                        sx={{
+                                            color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
+                                            p: 1,
+                                            '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.1)' },
+                                        }}
+                                    >
+                                        {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
+                                    </IconButton>
+                                </Box>
                                 <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
                                     {likeCount || 0}
                                 </Typography>
@@ -746,13 +818,23 @@ export default function ListingCard({
                         {/* Comment */}
                         <Tooltip title="Bình luận">
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <IconButton
-                                    size="small"
-                                    onClick={(e) => { e.stopPropagation(); setCommentOpen(true); }}
-                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
-                                >
-                                    <CommentIconOutlined sx={{ fontSize: 18 }} />
-                                </IconButton>
+                                <Box component="span" sx={{ display: 'inline-flex' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isUnavailable) {
+                                                showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
+                                                return;
+                                            }
+                                            setCommentOpen(true);
+                                        }}
+                                        sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#9D6EED', bgcolor: 'rgba(157,110,237,0.1)' } }}
+                                    >
+                                        <CommentIconOutlined sx={{ fontSize: 18 }} />
+                                    </IconButton>
+                                </Box>
                                 <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
                                     {listing?.commentCount || 0}
                                 </Typography>
@@ -762,9 +844,10 @@ export default function ListingCard({
                         {/* Message Seller - hide for own listing */}
                         {!isMe && (
                             <Tooltip title="Tin nhắn">
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
                                     <IconButton
                                         size="small"
+                                        disabled={isUnavailable}
                                         onClick={handleMessageClick}
                                         sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#00BA7C', bgcolor: 'rgba(0,186,124,0.1)' } }}
                                     >
@@ -776,11 +859,11 @@ export default function ListingCard({
 
                         {/* Share */}
                         <Tooltip title="Chia sẻ">
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center' }}>
                                 <IconButton
                                     size="small"
                                     onClick={handleShareClick}
-                                    disabled={shareSubmitting}
+                                    disabled={isUnavailable || shareSubmitting}
                                     sx={{ color: 'rgba(255,255,255,0.6)', p: 1, '&:hover': { color: '#1D9BF0', bgcolor: 'rgba(29,155,240,0.1)' } }}
                                 >
                                     <ShareIconOutlined sx={{ fontSize: 19 }} />
@@ -791,26 +874,27 @@ export default function ListingCard({
                         {/* Bookmark */}
                         {!isSavedPage && (
                             <Tooltip title={isSaved ? 'Bỏ lưu tin' : 'Lưu tin'}>
-                                <IconButton
-                                    size="small"
-                                    disabled={saveSubmitting}
-                                    onClick={handleSaveClick}
-                                    sx={{
-                                        ml: 'auto',
-                                        color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
-                                    }}
-                                >
-                                    {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
-                                </IconButton>
+                                <Box component="span" sx={{ display: 'inline-flex', ml: 'auto' }}>
+                                    <IconButton
+                                        size="small"
+                                        disabled={isUnavailable || saveSubmitting}
+                                        onClick={handleSaveClick}
+                                        sx={{
+                                            color: isSaved ? PURPLE : 'rgba(255,255,255,0.6)',
+                                            p: 1,
+                                            '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
+                                        }}
+                                    >
+                                        {isSaved ? <BookmarkIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+                                    </IconButton>
+                                </Box>
                             </Tooltip>
                         )}
                     </Box>
                 </Box>
             </Box>
             <CommentModal
-                open={commentOpen}
+                open={commentOpen && !isUnavailable}
                 onClose={() => setCommentOpen(false)}
                 listingId={id}
                 listing={listing}
@@ -834,11 +918,19 @@ export default function ListingCard({
                         }}
                     >
                         {isSavedPage && isSaved && (
-                            <MenuItem onClick={handleUnsaveFromMenu} disabled={saveSubmitting}>
+                            <MenuItem onClick={handleUnsaveFromMenu} disabled={saveSubmitting || isUnavailable}>
                                 <ListItemIcon sx={{ color: '#E9D5FF', minWidth: '32px !important' }}>
                                     <BookmarkIcon fontSize="small" />
                                 </ListItemIcon>
                                 <ListItemText primary="Bỏ lưu" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
+                            </MenuItem>
+                        )}
+                        {!isMe && !!sellerId && (
+                            <MenuItem onClick={handleBlockMenuClick}>
+                                <ListItemIcon sx={{ color: 'rgba(255,180,180,0.95)', minWidth: '32px !important' }}>
+                                    <BlockIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText primary="Chặn người bán" primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
                             </MenuItem>
                         )}
                         {!isMe && (
@@ -858,6 +950,21 @@ export default function ListingCard({
                         targetId={id}
                         targetTitle={listing?.title}
                     />
+
+                    {!isMe && sellerId && (
+                        <BlockUserConfirmDialog
+                            open={blockDialogOpen}
+                            onClose={() => setBlockDialogOpen(false)}
+                            displayName={seller?.fullName || 'Người bán'}
+                            onConfirm={() =>
+                                blockUserById(sellerId).then(() => {
+                                    onPatchListing?.(id, { removeFromList: true });
+                                    const onListingDetail = /^\/listings\/[^/]+$/.test(location.pathname);
+                                    if (onListingDetail) navigate('/feed');
+                                })
+                            }
+                        />
+                    )}
                 </>
             )}
         </Card>

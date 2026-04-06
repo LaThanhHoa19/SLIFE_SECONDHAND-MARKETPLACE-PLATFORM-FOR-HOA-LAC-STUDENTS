@@ -138,7 +138,7 @@ public class ListingService {
                 : Set.of();
 
         List<Listing> listings = pageResult.getContent().stream()
-                .filter(l -> !isSellerBlockingViewer(l.getSeller(), currentUser))
+                .filter(l -> !isHiddenByBlockBetweenSellerAndViewer(l.getSeller(), currentUser))
                 .toList();
         Set<Long> followedSellerIds = resolveFollowedSellerIds(currentUser, listings);
 
@@ -210,7 +210,7 @@ public class ListingService {
         List<com.slife.marketplace.dto.response.ListingCardResponse> content = prioritized.stream()
                 .filter(card -> currentUser == null
                         || card.getSellerId() == null
-                        || !blockService.isBlockedByCurrentUser(card.getSellerId(), currentUser.getId()))
+                        || !blockService.isBlockedEitherDirection(card.getSellerId(), currentUser.getId()))
                 .collect(Collectors.toCollection(java.util.ArrayList::new));
         if (currentUser != null && !content.isEmpty()) {
             Set<Long> sellerIds = content.stream()
@@ -498,15 +498,30 @@ public class ListingService {
             listing.setStatus(LISTING_STATUS_DRAFT);
             listing.setExpirationDate(null);
         } else if (LISTING_STATUS_DRAFT.equals(listing.getStatus())) {
+            // Publish draft: đẩy tin lên đầu feed bằng cách reset createdAt/updatedAt,
+            // đồng thời cấp expirationDate mới để hợp lệ với lazy-expiry catalog.
+            Instant publishNow = Instant.now();
             listing.setStatus(LISTING_STATUS_ACTIVE);
-            listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
+            listing.setViewCount(0L);
+            listing.setCreatedAt(publishNow);
+            listing.setUpdatedAt(publishNow);
+            listing.setExpirationDate(publishNow.plus(getListingExpirationDays(), ChronoUnit.DAYS));
         } else if (LISTING_STATUS_ACTIVE.equals(listing.getStatus()) && listing.getExpirationDate() == null) {
             // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION
             // was enforced.
             listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
         }
 
-        listing.setUpdatedAt(Instant.now());
+        // Nếu không phải publish thì updatedAt vẫn cần bump.
+        // (Publish đã set updatedAt = publishNow để giữ timestamp đồng bộ.)
+        boolean justPublished = !isDraft && LISTING_STATUS_ACTIVE.equals(listing.getStatus())
+                && listing.getCreatedAt() != null
+                && listing.getUpdatedAt() != null
+                && listing.getCreatedAt().equals(listing.getUpdatedAt())
+                && listing.getExpirationDate() != null;
+        if (!justPublished) {
+            listing.setUpdatedAt(Instant.now());
+        }
 
         Listing saved = listingRepository.save(listing);
         log.info("updateListing: id={}, status={}, seller={}", saved.getId(), saved.getStatus(), seller.getId());
@@ -780,14 +795,17 @@ public class ListingService {
                 followerIds);
     }
 
-    private boolean isSellerBlockingViewer(User seller, User viewer) {
+    /**
+     * Ẩn tin khi có block theo bất kỳ chiều nào giữa người bán và người xem (cùng mô hình chat).
+     */
+    private boolean isHiddenByBlockBetweenSellerAndViewer(User seller, User viewer) {
         if (seller == null || viewer == null || seller.getId() == null || viewer.getId() == null) {
             return false;
         }
         if (seller.getId().equals(viewer.getId())) {
             return false;
         }
-        return blockService.isBlockedByCurrentUser(seller.getId(), viewer.getId());
+        return blockService.isBlockedEitherDirection(seller.getId(), viewer.getId());
     }
 
     private Object buildSellerSummary(Listing listing) {
@@ -1043,7 +1061,7 @@ public class ListingService {
     }
 
     // ----------------------------------------------------------------
-    // Repost — tạo tin ACTIVE mới (clone + ảnh); tin nguồn → DELETED + soft-delete
+    // Repost — clone-to-draft: tạo bản nháp mới (clone + ảnh), giữ nguyên tin nguồn
     // ----------------------------------------------------------------
 
     @Transactional
@@ -1076,6 +1094,8 @@ public class ListingService {
             throw new SlifeException(ErrorCode.LISTING_NOT_EXPIRED);
         }
 
+        // Hướng "clone-to-draft": tạo bản nháp mới để người bán rà soát/chỉnh sửa trước khi đăng.
+        // Khi publish (DRAFT -> ACTIVE), hệ thống sẽ reset createdAt/updatedAt và set expirationDate.
         Listing fresh = new Listing();
         fresh.setSeller(source.getSeller());
         fresh.setCategory(source.getCategory());
@@ -1089,11 +1109,11 @@ public class ListingService {
                         ? source.getPurpose()
                         : "SALE");
         fresh.setIsGiveaway(Boolean.TRUE.equals(source.getIsGiveaway()));
-        fresh.setStatus(LISTING_STATUS_ACTIVE);
+        fresh.setStatus(LISTING_STATUS_DRAFT);
         fresh.setViewCount(0L);
         fresh.setCreatedAt(now);
         fresh.setUpdatedAt(now);
-        fresh.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
+        fresh.setExpirationDate(null);
         fresh.setDeletedAt(null);
 
         Listing savedNew = listingRepository.save(fresh);
@@ -1116,11 +1136,6 @@ public class ListingService {
         if (!newImages.isEmpty()) {
             listingImageRepository.saveAll(newImages);
         }
-
-        source.setStatus(LISTING_STATUS_DELETED);
-        source.setDeletedAt(now);
-        source.setUpdatedAt(now);
-        listingRepository.save(source);
 
         log.info(
                 "repostListing: newListingId={} sourceId={} sellerId={}",

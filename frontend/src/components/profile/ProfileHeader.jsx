@@ -27,6 +27,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
+import BlockIcon from '@mui/icons-material/Block';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import StarIcon from '@mui/icons-material/Star';
 import { DialogTitle, DialogActions } from '@mui/material';
@@ -71,6 +72,9 @@ export default function ProfileHeader({
     onVerifyPhoneOtp,
     otpCooldownActive,
     otpCooldownLeftSeconds,
+    /** Đăng nhập và đang xem hồ sơ người khác — hiện mục chặn trong menu */
+    canBlock = false,
+    onOpenBlockDialog,
 }) {
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
@@ -308,6 +312,18 @@ export default function ProfileHeader({
                             }
                         }}
                     >
+                        {canBlock && typeof onOpenBlockDialog === 'function' && (
+                            <MenuItem
+                                onClick={() => {
+                                    setAnchorEl(null);
+                                    onOpenBlockDialog();
+                                }}
+                                sx={{ color: 'rgba(255,255,255,0.92)', fontWeight: 600, display: 'flex', gap: 1 }}
+                            >
+                                <BlockIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.65)' }} />
+                                Chặn người dùng
+                            </MenuItem>
+                        )}
                         <MenuItem 
                             onClick={() => { setAnchorEl(null); handleOpenReportDialog(); }} 
                             sx={{ color: '#ed4956', fontWeight: 700, display: 'flex', gap: 1 }}

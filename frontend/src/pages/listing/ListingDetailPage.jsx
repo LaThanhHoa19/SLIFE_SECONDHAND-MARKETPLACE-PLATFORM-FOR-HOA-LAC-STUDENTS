@@ -65,6 +65,11 @@ import ListingSimilar from '../../components/listing/ListingSimilar';
 import ListingPickupMapPreview from '../../components/listing/ListingPickupMapPreview';
 import ReportDialog from '../../components/report/ReportDialog';
 import { DARK_DIALOG_PAPER_PROPS } from '../../components/common/dialogStyles';
+import { isFollowBlockedError, isListingNotFoundError } from '../../utils/apiError';
+import { useBlockActions } from '../../hooks/useBlockActions';
+import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDialog';
+import CatalogItemUnavailableScreen from '../../components/common/CatalogItemUnavailableScreen';
+import { shouldShowCatalogUnavailableForNotifLink } from '../../utils/catalogAvailability';
 
 // Hang so mau sac dong bo voi Feed
 const DARK_BG = '#141225';
@@ -126,6 +131,7 @@ export default function ListingDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const fromNotification = Boolean(location.state?.fromNotification);
     const { user: currentUser, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading: sellerFollowLoading, toggleFollow } = useFollowActions({
         user: currentUser,
@@ -149,8 +155,10 @@ export default function ListingDetailPage() {
     const [saveSubmittingSimilarId, setSaveSubmittingSimilarId] = useState(null);
     const [sellerFollowed, setSellerFollowed] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
+    const [blockSellerOpen, setBlockSellerOpen] = useState(false);
     const [loginDialogOpen, setLoginDialogOpen] = useState(false);
     const [loginDialogConfig, setLoginDialogConfig] = useState({ title: '', content: '' });
+    const { blockUserById } = useBlockActions();
 
     // Load listing
     useEffect(() => {
@@ -165,7 +173,13 @@ export default function ListingDetailPage() {
                 setLikeCount(Number(data?.likeCount ?? 0));
                 setIsLiked(!!data?.isLiked);
             })
-            .catch((err) => setError(err?.message || 'Không tải được tin.'))
+            .catch((err) => {
+                if (isListingNotFoundError(err)) {
+                    setError('LISTING_UNAVAILABLE');
+                } else {
+                    setError(err?.message || 'Không tải được tin.');
+                }
+            })
             .finally(() => setLoading(false));
     }, [id]);
 
@@ -176,7 +190,11 @@ export default function ListingDetailPage() {
     // Load tin khac cua nguoi ban + tin tuong tu
     useEffect(() => {
         if (!listing) return;
-        const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+        const sellerId =
+            listing?.seller?.id ??
+            listing?.seller?.userId ??
+            listing?.sellerSummary?.userId ??
+            listing?.sellerSummary?.id;
         const currentId = Number(id);
 
         setLoadingRelated(true);
@@ -268,10 +286,14 @@ export default function ListingDetailPage() {
                     }
                     : prev
             );
-        } catch {
+        } catch (e) {
             setIsLiked(prevLiked);
             setLikeCount(prevCount);
-            showToast('Không cập nhật được lượt thích. Thử lại sau.', 'error');
+            if (isFollowBlockedError(e)) {
+                showToast('Không thể thích tin do đang chặn hoặc bị chặn với người bán.', 'warning');
+            } else {
+                showToast('Không cập nhật được lượt thích. Thử lại sau.', 'error');
+            }
         } finally {
             setLikeSubmitting(false);
         }
@@ -327,7 +349,11 @@ export default function ListingDetailPage() {
 
     const handleSellerFollowClick = useCallback(async () => {
         if (!listing) return;
-        const sid = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id;
+        const sid =
+            listing?.seller?.id ??
+            listing?.seller?.userId ??
+            listing?.sellerSummary?.userId ??
+            listing?.sellerSummary?.id;
         if (!sid) return;
         await toggleFollow({
             targetUserId: sid,
@@ -378,9 +404,13 @@ export default function ListingDetailPage() {
             }
             setListing((p) => (p ? { ...p, isSaved: !wasSaved } : p));
             showToast(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
-        } catch {
+        } catch (e) {
             setIsSavedItem(wasSaved);
-            showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
+            if (isFollowBlockedError(e)) {
+                showToast('Không thể lưu tin do đang chặn hoặc bị chặn với người bán.', 'warning');
+            } else {
+                showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
+            }
         } finally {
             setSaveSubmitting(false);
         }
@@ -437,10 +467,21 @@ export default function ListingDetailPage() {
             </Box>
         );
     }
+    if (
+        fromNotification &&
+        (Boolean(error) || (listing && shouldShowCatalogUnavailableForNotifLink(listing, currentUser, true)))
+    ) {
+        return <CatalogItemUnavailableScreen />;
+    }
     if (error || !listing) {
+        const listingUnavailable = error === 'LISTING_UNAVAILABLE';
         return (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-                <Typography color="error" sx={{ mb: 2 }}>{error || 'Không tìm thấy tin.'}</Typography>
+            <Box sx={{ p: 4, textAlign: 'center', maxWidth: 480, mx: 'auto' }}>
+                <Typography sx={{ mb: 2, color: listingUnavailable ? TEXT_SEC : 'error.main', lineHeight: 1.65 }}>
+                    {listingUnavailable
+                        ? 'Không thể mở tin này. Có thể tin đã gỡ hoặc bạn và người bán đang chặn nhau — hai bên sẽ không thấy tin của nhau.'
+                        : error || 'Không tìm thấy tin.'}
+                </Typography>
                 <Button
                     startIcon={<ArrowBackIosNewIcon />}
                     onClick={() => navigate(-1)}
@@ -448,6 +489,11 @@ export default function ListingDetailPage() {
                 >
                     Quay lại
                 </Button>
+                {listingUnavailable && isAuthenticated && (
+                    <Button sx={{ display: 'block', mx: 'auto', mt: 1 }} onClick={() => navigate('/settings/blocked')}>
+                        Danh sách đã chặn
+                    </Button>
+                )}
             </Box>
         );
     }
@@ -455,7 +501,12 @@ export default function ListingDetailPage() {
     // Dan xuat du lieu
     const images = (listing?.images ?? []).map((p) => fullImageUrl(p)).filter(Boolean);
     const seller = getSeller(listing);
-    const sellerId = listing?.seller?.id ?? listing?.sellerSummary?.userId ?? listing?.sellerSummary?.id ?? listing?.sellerId;
+    const sellerId =
+        listing?.seller?.id ??
+        listing?.seller?.userId ??
+        listing?.sellerSummary?.userId ??
+        listing?.sellerSummary?.id ??
+        listing?.sellerId;
     const conditionInfo = getConditionInfo(listing.itemCondition);
     const locationText = getLocation(listing);
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
@@ -616,6 +667,8 @@ export default function ListingDetailPage() {
                             sellerFollowed={sellerFollowed}
                             sellerFollowLoading={sellerFollowLoading}
                             onSellerFollowClick={handleSellerFollowClick}
+                            showSellerBlock={isAuthenticated && !isOwnListing && !!sellerId}
+                            onSellerBlockClick={() => setBlockSellerOpen(true)}
                         />
                     </Grid>
                 </Grid>
@@ -851,6 +904,17 @@ export default function ListingDetailPage() {
                     </Box>
                 </Box>
             </Dialog>
+
+            <BlockUserConfirmDialog
+                open={blockSellerOpen}
+                onClose={() => setBlockSellerOpen(false)}
+                displayName={seller?.fullName || 'Người bán'}
+                onConfirm={() =>
+                    sellerId
+                        ? blockUserById(sellerId).then(() => navigate('/feed'))
+                        : Promise.resolve()
+                }
+            />
         </Box>
     );
 }

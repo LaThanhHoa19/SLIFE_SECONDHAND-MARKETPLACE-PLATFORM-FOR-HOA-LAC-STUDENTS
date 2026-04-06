@@ -37,6 +37,7 @@ public class AuthService {
     private final JwtUserSessionValidator sessionValidator;
     private final TokenBlacklistService tokenBlacklistService;
     private final StudentVerificationService studentVerificationService;
+    private final SystemEmailService systemEmailService;
     private final ObjectMapper objectMapper;
     private final String googleClientId;
     private final String googleClientSecret;
@@ -51,6 +52,7 @@ public class AuthService {
             JwtUserSessionValidator sessionValidator,
             TokenBlacklistService tokenBlacklistService,
             StudentVerificationService studentVerificationService,
+            SystemEmailService systemEmailService,
             ObjectMapper objectMapper,
             @Value("${google.clientId:}") String googleClientId,
             @Value("${google.clientSecret:}") String googleClientSecret
@@ -61,6 +63,7 @@ public class AuthService {
         this.sessionValidator = sessionValidator;
         this.tokenBlacklistService = tokenBlacklistService;
         this.studentVerificationService = studentVerificationService;
+        this.systemEmailService = systemEmailService;
         this.objectMapper = objectMapper;
         this.googleClientId = googleClientId;
         this.googleClientSecret = googleClientSecret;
@@ -178,7 +181,9 @@ public class AuthService {
                 .map(existingUser -> syncGoogleProfile(existingUser, fullName, avatarUrl))
                 .orElseGet(() -> createGoogleUser(email, fullName, avatarUrl));
         assertUserMayReceiveToken(user);
-        return buildAuthResponse(user);
+        AuthResponse response = buildAuthResponse(user);
+        systemEmailService.trySendWelcomeAfterGoogleLogin(user.getId());
+        return response;
     }
 
     private static boolean isBcryptHash(String value) {
@@ -311,5 +316,9 @@ public class AuthService {
 
     private static String blankToNull(String value) {
         return value != null && !value.isBlank() ? value : null;
+    }
+
+    public long getRefreshTokenTtlSeconds() {
+        return Math.max(1L, jwtTokenProvider.getRefreshExpirationMs() / 1000L);
     }
 }

@@ -5,6 +5,7 @@
  * Response list mẫu: { content:[{listingId,title,price,isGiveaway,seller,images}], page,size,totalElements,totalPages }.
  */
 import axiosClient from './axiosClient';
+import adminAxiosClient from './adminAxiosClient';
 
 const sanitizeQueryParams = (params = {}) => Object.fromEntries(
     Object.entries(params).filter(([, value]) => value !== '' && value !== null && value !== undefined)
@@ -44,7 +45,7 @@ export const createListingWithImages = (payload, imageFiles = []) => {
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
 /** Admin ẩn tin từ moderation/report flow. */
-export const adminHideListing = (id) => axiosClient.patch(`/api/admin/listings/${id}/hide`);
+export const adminHideListing = (id) => adminAxiosClient.patch(`/api/admin/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
 export const uploadImages = (id, formData, onUploadProgress) =>
     axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
