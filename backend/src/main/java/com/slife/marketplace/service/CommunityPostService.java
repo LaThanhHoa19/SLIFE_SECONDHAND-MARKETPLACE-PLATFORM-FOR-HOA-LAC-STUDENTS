@@ -4,6 +4,7 @@ import com.slife.marketplace.dto.request.CreateCommunityPostRequest;
 import com.slife.marketplace.dto.request.UpdateCommunityPostRequest;
 import com.slife.marketplace.dto.response.CommunityPostCardResponse;
 import com.slife.marketplace.dto.response.CommunityPostResponse;
+import com.slife.marketplace.dto.response.CursorPageResponse;
 import com.slife.marketplace.dto.response.ListingImageItemResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.CommunityPost;
@@ -186,6 +187,72 @@ public class CommunityPostService {
                 pageResult.getSize(),
                 pageResult.getTotalElements(),
                 pageResult.getTotalPages());
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<CommunityPostCardResponse> getFeedCursor(int limit, String cursor, String hashtag, String sort, User viewer) {
+        int size = Math.max(1, Math.min(limit, 30));
+        Long viewerId = viewer != null ? viewer.getId() : null;
+        String normSort = sort == null ? "latest" : sort.trim().toLowerCase(Locale.ROOT);
+        boolean top = "top".equals(normSort) || "popular".equals(normSort);
+        String normTag = normalizeHashtagFilterParam(hashtag);
+
+        Pageable pageable = PageRequest.of(0, size);
+        List<CommunityPost> posts;
+        String nextCursor = null;
+        boolean hasMore;
+
+        if (!top) {
+            CommunityPostCursorCodec.LatestCursor c = CommunityPostCursorCodec.decodeLatest(cursor);
+            Instant cursorCreatedAt = c != null ? c.createdAt() : null;
+            Long cursorId = c != null ? c.id() : null;
+            if (normTag != null) {
+                posts = communityPostRepository.findVisibleForViewerByHashtagCursorLatest(
+                        CommunityPost.STATUS_ACTIVE, normTag, viewerId, cursorCreatedAt, cursorId, pageable);
+            } else {
+                posts = communityPostRepository.findVisibleForViewerCursorLatest(
+                        CommunityPost.STATUS_ACTIVE, viewerId, cursorCreatedAt, cursorId, pageable);
+            }
+            hasMore = posts.size() == size;
+        } else {
+            CommunityPostCursorCodec.TopCursor c = CommunityPostCursorCodec.decodeTop(cursor);
+            Long cursorScore = c != null ? c.score() : null;
+            Instant cursorCreatedAt = c != null ? c.createdAt() : null;
+            Long cursorId = c != null ? c.id() : null;
+            if (normTag != null) {
+                posts = communityPostRepository.findVisibleForViewerByHashtagCursorTop(
+                        CommunityPost.STATUS_ACTIVE, normTag, viewerId, cursorScore, cursorCreatedAt, cursorId, pageable);
+            } else {
+                posts = communityPostRepository.findVisibleForViewerCursorTop(
+                        CommunityPost.STATUS_ACTIVE, viewerId, cursorScore, cursorCreatedAt, cursorId, pageable);
+            }
+            hasMore = posts.size() == size;
+        }
+
+        List<Long> ids = posts.stream().map(CommunityPost::getId).filter(Objects::nonNull).toList();
+        Map<Long, String> thumbByPost = firstThumbByPostId(ids);
+        Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
+        Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
+        Set<Long> likedByViewer = new HashSet<>();
+        if (viewerId != null && !ids.isEmpty()) {
+            likedByViewer.addAll(communityPostLikeRepository.findPostIdsLikedByUser(viewerId, ids));
+        }
+
+        List<CommunityPostCardResponse> cards = posts.stream()
+                .map(p -> toCard(p, thumbByPost, likes, comments, viewerId, likedByViewer))
+                .collect(Collectors.toList());
+
+        if (hasMore && !posts.isEmpty()) {
+            CommunityPost last = posts.get(posts.size() - 1);
+            if (!top) {
+                nextCursor = CommunityPostCursorCodec.encodeLatest(last.getCreatedAt(), last.getId());
+            } else {
+                long score = likes.getOrDefault(last.getId(), 0L) + comments.getOrDefault(last.getId(), 0L);
+                nextCursor = CommunityPostCursorCodec.encodeTop(score, last.getCreatedAt(), last.getId());
+            }
+        }
+
+        return new CursorPageResponse<>(cards, nextCursor, hasMore);
     }
 
     @Transactional
