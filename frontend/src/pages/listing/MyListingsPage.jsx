@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { deleteDraft, getMyListings, hideListing, renewListing, unhideListing } from '../../api/myListingApi';
+import { deleteDraft, getMyListings, hideListing, renewListing, repostListing, unhideListing } from '../../api/myListingApi';
 import { useToast } from '../../context/ToastContext';
 import DeleteDraftDialog from './myListings/DeleteDraftDialog';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -238,7 +238,7 @@ export default function MyListingsPage() {
             action: 'repost',
             listingId: sourceId,
             title: 'Xác nhận đăng lại tin',
-            content: 'Hệ thống sẽ tạo một tin đăng mới từ tin đã hết hạn. Bạn có thể chỉnh sửa sau khi tạo.',
+            content: 'Hệ thống sẽ tạo bài đăng mới từ tin đã hết hạn và đăng ngay lập tức.',
             confirmLabel: 'Đăng lại',
             variant: 'warning',
         });
@@ -261,8 +261,13 @@ export default function MyListingsPage() {
                 await renewListing(listingId);
                 showSnackbar('Đã gia hạn bài đăng thêm 15 ngày tính từ ngày hôm nay.', 'success');
             } else if (action === 'repost') {
-                // Không tạo record mới tại đây. Chỉ mở trang đăng lại; record mới sẽ được tạo khi user bấm "Đăng tin".
-                navigate(`/listings/${listingId}/repost`);
+                const res = await repostListing(listingId);
+                const newId = res?.data?.data ?? res?.data;
+                showSnackbar('Đăng lại thành công!', 'success');
+                setActionConfirm((prev) => ({ ...prev, open: false }));
+                fetchTabCounts();
+                if (newId) navigate(`/listings/${newId}`);
+                return;
             }
 
             setActionConfirm((prev) => ({ ...prev, open: false }));
