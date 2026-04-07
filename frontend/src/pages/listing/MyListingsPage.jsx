@@ -54,10 +54,10 @@ const SORT_LABELS = {
 };
 
 const TAB_CONTEXT_PHRASE = {
-    ACTIVE:   'đang hoạt động',
-    HIDDEN:   'đã ẩn',
-    DRAFT:    'bản nháp',
-    EXPIRED:  'hết hạn',
+    ACTIVE: 'đang hoạt động',
+    HIDDEN: 'đã ẩn',
+    DRAFT: 'bản nháp',
+    EXPIRED: 'hết hạn',
     // SOLD:     'đã bán',
     REPORTED: 'bị báo cáo',
 };
@@ -102,20 +102,20 @@ export default function MyListingsPage() {
     const { checkVerification } = usePhoneVerification();
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const [activeTab,      setActiveTab]      = useState(() => tabFromSearchParams(searchParams));
-    const [page,           setPage]           = useState(() => pageFromSearchParams(searchParams));
-    const [listings,       setListings]       = useState([]);
-    const [totalPages,     setTotalPages]     = useState(1);
-    const [totalElements,  setTotalElements]  = useState(0);
-    const [isLoading,      setLoading]        = useState(false);
-    const [error,          setError]          = useState(null);
-    const [tabCounts,      setTabCounts]      = useState({});
-    const [searchQuery,    setSearchQuery]    = useState('');
-    const [sortBy,         setSortBy]         = useState('newest');
+    const [activeTab, setActiveTab] = useState(() => tabFromSearchParams(searchParams));
+    const [page, setPage] = useState(() => pageFromSearchParams(searchParams));
+    const [listings, setListings] = useState([]);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
+    const [isLoading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [tabCounts, setTabCounts] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('newest');
     const [categoryFilter, setCategoryFilter] = useState('all');
-    const [deleteDialog,   setDeleteDialog]   = useState({ open: false, listingId: null });
-    const [isDeleting,     setIsDeleting]     = useState(false);
-    const [actionConfirm,  setActionConfirm]  = useState({
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, listingId: null });
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [actionConfirm, setActionConfirm] = useState({
         open: false,
         action: null,
         listingId: null,
@@ -162,7 +162,7 @@ export default function MyListingsPage() {
             if (ctrl.signal.aborted) return;
 
             const payload = res?.data ?? res;
-            const list    = Array.isArray(payload?.content) ? payload.content : [];
+            const list = Array.isArray(payload?.content) ? payload.content : [];
             setListings(list);
             setTotalPages(payload?.totalPages ?? 1);
             setTotalElements(payload?.totalElements ?? list.length);

@@ -629,11 +629,19 @@ export default function ListingForm({
             }
             return;
         }
-        if (isGiveaway) {
-            setValue('price', '0', { shouldDirty: true, shouldValidate: true });
-            clearErrors('price');
-        } else {
-            setValue('price', '', { shouldDirty: true, shouldValidate: true });
+        // mode === 'create': bỏ qua lần chạy đầu tiên để tránh validate sớm khi user chưa tương tác
+        if (prevGiveawayRef.current === null) {
+            prevGiveawayRef.current = isGiveaway;
+            return;
+        }
+        if (prevGiveawayRef.current !== isGiveaway) {
+            if (isGiveaway) {
+                setValue('price', '0', { shouldDirty: true, shouldValidate: true });
+                clearErrors('price');
+            } else {
+                setValue('price', '', { shouldDirty: true, shouldValidate: true });
+            }
+            prevGiveawayRef.current = isGiveaway;
         }
     }, [isGiveaway, setValue, clearErrors, mode]);
 
