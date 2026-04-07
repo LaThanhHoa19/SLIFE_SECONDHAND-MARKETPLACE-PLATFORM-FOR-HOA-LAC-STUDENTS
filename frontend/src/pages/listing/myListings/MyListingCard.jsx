@@ -178,7 +178,7 @@ export default function MyListingCard({
 
                 {(listing?.expirationDate || listing?.reportCount > 0) && (
                     <Stack gap={0.35}>
-                        {listing?.expirationDate && (
+                        {listing?.expirationDate && activeTab !== 'SOLD' && (
                             <Typography fontSize={10.5} color="rgba(255,255,255,0.32)">
                                 Hết hạn {formatDate(listing.expirationDate)}
                             </Typography>
