@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { deleteDraft, getMyListings, hideListing, renewListing, repostListing, unhideListing } from '../../api/myListingApi';
+import { deleteDraft, getMyListings, hideListing, renewListing, unhideListing } from '../../api/myListingApi';
 import { useToast } from '../../context/ToastContext';
 import DeleteDraftDialog from './myListings/DeleteDraftDialog';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -261,17 +261,8 @@ export default function MyListingsPage() {
                 await renewListing(listingId);
                 showSnackbar('Đã gia hạn bài đăng thêm 15 ngày tính từ ngày hôm nay.', 'success');
             } else if (action === 'repost') {
-                const { data: body } = await repostListing(listingId);
-                const payload = body?.data;
-                const newIdRaw =
-                    payload != null && typeof payload === 'object' && payload !== null && 'data' in payload
-                        ? payload.data
-                        : payload;
-                const newId = newIdRaw != null && newIdRaw !== '' ? Number(newIdRaw) : NaN;
-                showSnackbar('Đăng tin lại thành công', 'success');
-                if (Number.isFinite(newId) && newId > 0) {
-                    navigate(`/listings/${newId}`);
-                }
+                // Không tạo record mới tại đây. Chỉ mở trang đăng lại; record mới sẽ được tạo khi user bấm "Đăng tin".
+                navigate(`/listings/${listingId}/repost`);
             }
 
             setActionConfirm((prev) => ({ ...prev, open: false }));

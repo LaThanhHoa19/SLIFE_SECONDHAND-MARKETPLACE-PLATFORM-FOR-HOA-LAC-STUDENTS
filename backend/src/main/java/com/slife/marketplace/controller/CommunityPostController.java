@@ -5,6 +5,7 @@ import com.slife.marketplace.dto.request.UpdateCommunityPostRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.CommunityPostCardResponse;
 import com.slife.marketplace.dto.response.CommunityPostResponse;
+import com.slife.marketplace.dto.response.CursorPageResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.dto.response.ToggleLikeResponse;
 import com.slife.marketplace.entity.User;
@@ -51,12 +52,20 @@ public class CommunityPostController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PagedResponse<CommunityPostCardResponse>>> list(
+    public ResponseEntity<ApiResponse<?>> list(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "limit", required = false) Integer limit,
+            @RequestParam(name = "cursor", required = false) String cursor,
             @RequestParam(name = "hashtag", required = false) String hashtag,
             @RequestParam(name = "sort", defaultValue = "latest") String sort) {
         User viewer = userService.getCurrentUserOptional().orElse(null);
+        // Backward compatible: use cursor mode when cursor/limit is provided; otherwise keep page/size.
+        if ((cursor != null && !cursor.isBlank()) || limit != null) {
+            int lim = limit != null ? limit : 15;
+            CursorPageResponse<CommunityPostCardResponse> out = communityPostService.getFeedCursor(lim, cursor, hashtag, sort, viewer);
+            return ResponseEntity.ok(ApiResponse.success("OK", out));
+        }
         return ResponseEntity.ok(ApiResponse.success("OK", communityPostService.getFeed(page, size, hashtag, sort, viewer)));
     }
 

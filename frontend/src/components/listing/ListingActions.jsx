@@ -45,35 +45,38 @@ export default function ListingActions({ phoneNumber, startingChat = false, hand
                 </Button>
             </Tooltip>
             <Tooltip title="Gửi tin nhắn">
-                <Button
-                    variant="contained"
-                    onClick={handleChat}
-                    disabled={startingChat}
-                    sx={{
-                        py: 1.75,
-                        borderRadius: '12px',
-                        bgcolor: PURPLE,
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 1.5,
-                        textTransform: 'none',
-                        transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        '&:hover': { 
-                            bgcolor: '#835cd4',
-                            transform: 'translateY(-2px)',
-                            boxShadow: `0 8px 25px rgba(157, 110, 237, 0.4)`, // Glow tím Pro
-                        },
-                        '&:active': { transform: 'translateY(0)' },
-                        '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.2)' }
-                    }}
-                >
-                    <ChatBubbleOutlineIcon sx={{ fontSize: 22 }} />
-                    <Typography fontSize={15} fontWeight={700}>
-                        Nhắn tin
-                    </Typography>
-                </Button>
+                <Box component="span" sx={{ display: 'flex' }}>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={handleChat}
+                        disabled={startingChat}
+                        sx={{
+                            py: 1.75,
+                            borderRadius: '12px',
+                            bgcolor: PURPLE,
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 1.5,
+                            textTransform: 'none',
+                            transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                            '&:hover': { 
+                                bgcolor: '#835cd4',
+                                transform: 'translateY(-2px)',
+                                boxShadow: `0 8px 25px rgba(157, 110, 237, 0.4)`,
+                            },
+                            '&:active': { transform: 'translateY(0)' },
+                            '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.2)' }
+                        }}
+                    >
+                        <ChatBubbleOutlineIcon sx={{ fontSize: 22 }} />
+                        <Typography fontSize={15} fontWeight={700}>
+                            Nhắn tin
+                        </Typography>
+                    </Button>
+                </Box>
             </Tooltip>
         </Box>
     );

@@ -230,7 +230,7 @@ public class AuthService {
         user.setPasswordHash(null);
         user.setRole("USER");
         user.setStatus("ACTIVE");
-        user.setReputationScore(BigDecimal.valueOf(5.00));
+        user.setReputationScore(BigDecimal.valueOf(0.00));
         user.setViolationCount(0);
         user.setTokenRevision(0L);
         user.setCreatedAt(LocalDateTime.now());
@@ -316,5 +316,9 @@ public class AuthService {
 
     private static String blankToNull(String value) {
         return value != null && !value.isBlank() ? value : null;
+    }
+
+    public long getRefreshTokenTtlSeconds() {
+        return Math.max(1L, jwtTokenProvider.getRefreshExpirationMs() / 1000L);
     }
 }

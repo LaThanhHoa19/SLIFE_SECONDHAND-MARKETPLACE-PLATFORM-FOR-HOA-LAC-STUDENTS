@@ -11,7 +11,7 @@ import {
     Typography,
 } from '@mui/material';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../../hooks/useAuth';
+import { useAdminAuth } from '../../hooks/useAdminAuth';
 
 export default function AdminLoginPage() {
     const navigate = useNavigate();
@@ -23,20 +23,12 @@ export default function AdminLoginPage() {
         formState: { errors, isSubmitting },
     } = useForm();
 
-    const { login, logout } = useAuth();
+    const { adminLogin } = useAdminAuth();
 
     const onSubmit = async (values) => {
         setLoginError('');
-        const result = await login(values, {
-            onSuccess: async (payload) => {
-                const role = payload?.user?.role;
-                if (role === 'ADMIN' || role === 'MODERATOR') {
-                    navigate('/admin');
-                } else {
-                    await logout();
-                    setLoginError('Tài khoản không có quyền truy cập trang quản trị.');
-                }
-            },
+        const result = await adminLogin(values, {
+            onSuccess: () => navigate('/admin'),
         });
         if (!result.success) {
             setLoginError(result.error || 'Đăng nhập thất bại.');

@@ -66,7 +66,7 @@ public class User {
     private String status;
 
     @NotNull
-    @ColumnDefault("5.00")
+    @ColumnDefault("0.00")
     @Column(name = "reputation_score", nullable = false, precision = 3, scale = 2)
     private BigDecimal reputationScore;
 

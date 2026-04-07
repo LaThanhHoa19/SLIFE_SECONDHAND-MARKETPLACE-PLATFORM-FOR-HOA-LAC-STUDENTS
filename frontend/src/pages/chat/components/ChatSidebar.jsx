@@ -1,6 +1,7 @@
 import {
     Badge,
     Box,
+    Chip,
     CircularProgress,
     Divider,
     IconButton,
@@ -33,6 +34,7 @@ export default function ChatSidebar({
     setActiveSessionId,
     navigate,
     formatSessionTimeShort,
+    listingUnavailableByListingId = {},
 }) {
     const hasSearch = Boolean(String(sidebarSearch || '').trim());
 
@@ -154,6 +156,9 @@ export default function ChatSidebar({
                         const hasListing = Boolean(listingTitle);
                         const rowKey = s.sessionId || `row-${s.listingId}-${otherName}`;
                         const unread = s.unreadCount > 0;
+                        const lid = s.listingId != null ? Number(s.listingId) : NaN;
+                        const listingGone =
+                            Number.isFinite(lid) && lid > 0 && Boolean(listingUnavailableByListingId[lid]);
 
                         const titleBlock = hasListing ? (
                             <Box sx={{ minWidth: 0 }}>
@@ -167,7 +172,7 @@ export default function ChatSidebar({
                                         lineHeight: 1.35,
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.04em',
-                                        color: 'primary.main',
+                                        color: listingGone ? 'text.disabled' : 'primary.main',
                                         overflow: 'hidden',
                                         display: '-webkit-box',
                                         WebkitLineClamp: 2,
@@ -175,6 +180,22 @@ export default function ChatSidebar({
                                         wordBreak: 'break-word',
                                     }}
                                 />
+                                {listingGone && (
+                                    <Chip
+                                        size="small"
+                                        label="Tin không còn trên chợ"
+                                        sx={{
+                                            mt: 0.35,
+                                            height: 20,
+                                            fontSize: '0.65rem',
+                                            fontWeight: 700,
+                                            color: 'warning.light',
+                                            borderColor: alpha(theme.palette.warning.main, 0.45),
+                                            bgcolor: alpha(theme.palette.warning.main, 0.08),
+                                        }}
+                                        variant="outlined"
+                                    />
+                                )}
                                 <SearchHighlight
                                     text={otherName || 'Người dùng'}
                                     query={highlightSearchQuery}

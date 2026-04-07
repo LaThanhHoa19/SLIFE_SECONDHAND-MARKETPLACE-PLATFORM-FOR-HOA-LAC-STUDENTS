@@ -31,39 +31,44 @@ export default function ListingDescription({ description }) {
             <Box
                 sx={{
                     position: 'relative',
-                    overflow: 'hidden',
                     maxHeight: isExpanded ? 'none' : '200px',
-                    color: 'rgba(255,255,255,0.85)',
-                    fontSize: 15,
-                    lineHeight: 1.8,
-                    whiteSpace: 'pre-wrap', // Fix for line breaks
-                    wordBreak: 'break-word',
-                    '& p': { mb: 1.5, mt: 0 },
-                    '& ul': { mb: 1.5, pl: 2.5 },
-                    '& li': { mb: 0.6 },
-                    '& img': { maxWidth: '100%', borderRadius: '12px', mt: 1, mb: 1.5, display: 'block' },
-                    '& strong': { color: '#fff', fontWeight: 700 },
-                    '& em': { color: '#FFC107', fontStyle: 'italic' },
                     transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    overflow: 'hidden',
                 }}
-                dangerouslySetInnerHTML={{ __html: displayHtml }}
-            />
-
-            {/* Lớp phủ mờ (gradient) khi chưa mở rộng */}
-            {!isExpanded && displayHtml.length > 200 && (
+            >
                 <Box
                     sx={{
-                        position: 'absolute',
-                        bottom: 60,
-                        left: 0,
-                        right: 0,
-                        height: 80,
-                        background: `linear-gradient(to bottom, rgba(32, 29, 38, 0), #201D26)`,
-                        pointerEvents: 'none',
-                        zIndex: 1
+                        color: 'rgba(255,255,255,0.85)',
+                        fontSize: 15,
+                        lineHeight: 1.8,
+                        whiteSpace: 'pre-wrap', // Fix for line breaks
+                        wordBreak: 'break-word',
+                        '& p': { mb: 1.5, mt: 0 },
+                        '& ul': { mb: 1.5, pl: 2.5 },
+                        '& li': { mb: 0.6 },
+                        '& img': { maxWidth: '100%', borderRadius: '12px', mt: 1, mb: 1.5, display: 'block' },
+                        '& strong': { color: '#fff', fontWeight: 700 },
+                        '& em': { color: '#FFC107', fontStyle: 'italic' },
                     }}
+                    dangerouslySetInnerHTML={{ __html: displayHtml }}
                 />
-            )}
+
+                {/* Lớp phủ mờ (gradient) khi chưa mở rộng - CHỈ hiện khi chưa expand và nội dung dài */}
+                {!isExpanded && displayHtml.length > 250 && (
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            height: 100,
+                            background: `linear-gradient(to bottom, transparent 0%, #201D26 90%)`,
+                            pointerEvents: 'none',
+                            zIndex: 1
+                        }}
+                    />
+                )}
+            </Box>
 
             {/* Nút Xem thêm / Thu gọn - Premium Style */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, position: 'relative', zIndex: 2 }}>

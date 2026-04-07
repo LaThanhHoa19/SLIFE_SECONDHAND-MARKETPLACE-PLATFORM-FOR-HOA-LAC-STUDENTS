@@ -28,6 +28,7 @@ import { useAuth } from '../../hooks/useAuth';
 import CommunityPostCard from '../../components/community/CommunityPostCard';
 import { getCommunityPosts } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
+import useCommunityFeedRealtime from '../../hooks/useCommunityFeedRealtime';
 
 /** Nhãn hiển thị + slug hashtag (chữ thường, không dấu cách — khớp normalize backend). */
 const PLACEHOLDER_TAGS = [
@@ -39,17 +40,13 @@ const PLACEHOLDER_TAGS = [
 ];
 const PAGE_SIZE = 15;
 
-function normalizePaged(res) {
+function normalizeCursor(res) {
     const raw = unwrapApiData(res);
-    const content = Array.isArray(raw?.content) ? raw.content : [];
-    const page = Number(raw?.page);
-    const totalPages = Number(raw?.totalPages);
-    const totalElements = Number(raw?.totalElements);
+    const items = Array.isArray(raw?.items) ? raw.items : [];
     return {
-        content,
-        page: Number.isFinite(page) ? page : 0,
-        totalPages: Number.isFinite(totalPages) ? totalPages : 0,
-        totalElements: Number.isFinite(totalElements) ? totalElements : content.length,
+        items,
+        nextCursor: raw?.nextCursor ?? null,
+        hasMore: Boolean(raw?.hasMore),
     };
 }
 
@@ -74,13 +71,15 @@ export default function CommunityFeedPage() {
     const sortFeed = useMemo(() => (searchParams.get('sort') === 'top' ? 'top' : 'latest'), [searchParams]);
 
     const [posts, setPosts] = useState([]);
-    const [page, setPage] = useState(0);
-    const [totalPages, setTotalPages] = useState(0);
+    const [cursor, setCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState('');
     const abortRef = useRef(null);
     const loadMoreLockRef = useRef(false);
+    const sentinelRef = useRef(null);
+    const restoreScrollRef = useRef(false);
 
     const goCreatePost = () => {
         if (!isAuthenticated) {
@@ -91,19 +90,20 @@ export default function CommunityFeedPage() {
     };
 
     const fetchPage = useCallback(
-        async (pageIndex, append) => {
+        async (nextCursor, append) => {
         abortRef.current?.abort();
         const ac = new AbortController();
         abortRef.current = ac;
         try {
-            const params = { page: pageIndex, size: PAGE_SIZE, sort: sortFeed };
+            const params = { limit: PAGE_SIZE, sort: sortFeed };
+            if (nextCursor) params.cursor = nextCursor;
             if (hashtagFilter) params.hashtag = hashtagFilter;
             const res = await getCommunityPosts(params, { signal: ac.signal });
-            const { content, page: p, totalPages: tp } = normalizePaged(res);
+            const { items, nextCursor: nc, hasMore: hm } = normalizeCursor(res);
             setError('');
-            setPosts((prev) => (append ? [...prev, ...content] : content));
-            setPage(p);
-            setTotalPages(tp);
+            setPosts((prev) => (append ? [...prev, ...items] : items));
+            setCursor(nc);
+            setHasMore(hm);
         } catch (e) {
             if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
             setError(
@@ -120,7 +120,9 @@ export default function CommunityFeedPage() {
 
     const loadInitial = useCallback(async () => {
         setLoading(true);
-        await fetchPage(0, false);
+        setCursor(null);
+        setHasMore(true);
+        await fetchPage(null, false);
         setLoading(false);
     }, [fetchPage]);
 
@@ -129,17 +131,51 @@ export default function CommunityFeedPage() {
         return () => abortRef.current?.abort();
     }, [loadInitial]);
 
+    // Restore/save scroll position for better UX when back from detail
+    useEffect(() => {
+        restoreScrollRef.current = true;
+    }, [hashtagFilter, sortFeed]);
+
+    useEffect(() => {
+        if (!restoreScrollRef.current) return;
+        if (loading) return;
+        restoreScrollRef.current = false;
+        try {
+            const key = `community.scroll.${sortFeed}.${hashtagFilter || 'all'}`;
+            const raw = sessionStorage.getItem(key);
+            const y = raw ? Number(raw) : 0;
+            if (!Number.isNaN(y) && y > 0) {
+                window.scrollTo({ top: y, behavior: 'instant' });
+            }
+        } catch {
+            // ignore
+        }
+    }, [loading, hashtagFilter, sortFeed]);
+
+    useEffect(() => {
+        const onScroll = () => {
+            try {
+                const key = `community.scroll.${sortFeed}.${hashtagFilter || 'all'}`;
+                sessionStorage.setItem(key, String(window.scrollY || 0));
+            } catch {
+                // ignore
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [hashtagFilter, sortFeed]);
+
     const loadMore = useCallback(async () => {
-        if (loadMoreLockRef.current || page + 1 >= totalPages) return;
+        if (loadMoreLockRef.current || !hasMore || !cursor) return;
         loadMoreLockRef.current = true;
         setLoadingMore(true);
         try {
-            await fetchPage(page + 1, true);
+            await fetchPage(cursor, true);
         } finally {
             setLoadingMore(false);
             loadMoreLockRef.current = false;
         }
-    }, [fetchPage, page, totalPages]);
+    }, [fetchPage, cursor, hasMore]);
 
     const openPost = useCallback((postId) => navigate(`/community/posts/${postId}`), [navigate]);
 
@@ -147,7 +183,44 @@ export default function CommunityFeedPage() {
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
     }, []);
 
-    const hasMore = totalPages > 0 && page + 1 < totalPages;
+    const handleRealtimeStats = useCallback(
+        ({ postId, likeCount, commentCount }) => {
+            setPosts((prev) =>
+                prev.map((p) =>
+                    Number(p.id) === Number(postId)
+                        ? {
+                              ...p,
+                              likeCount,
+                              commentCount,
+                          }
+                        : p,
+                ),
+            );
+        },
+        [],
+    );
+
+    useCommunityFeedRealtime(true, handleRealtimeStats);
+
+    // Infinite scroll trigger (IntersectionObserver)
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        if (loading || loadingMore) return;
+        if (!hasMore) return;
+
+        const obs = new IntersectionObserver(
+            (entries) => {
+                const e = entries?.[0];
+                if (!e?.isIntersecting) return;
+                if (!hasMore || loadingMore || loading) return;
+                void loadMore();
+            },
+            { root: null, rootMargin: '600px', threshold: 0 },
+        );
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [hasMore, loading, loadingMore, loadMore]);
 
     const setSortTab = (_e, value) => {
         const next = new URLSearchParams(searchParams);
@@ -319,16 +392,23 @@ export default function CommunityFeedPage() {
                                 onPatchPost={handlePatchPost}
                             />
                         ))}
+                        {/* Sentinel for infinite scroll */}
+                        <Box ref={sentinelRef} sx={{ height: 1 }} />
+
+                        {/* Loading more indicator + fallback button */}
                         {hasMore ? (
                             <Box sx={{ textAlign: 'center', pt: 1 }}>
-                                <Button
-                                    variant="outlined"
-                                    onClick={loadMore}
-                                    disabled={loadingMore}
-                                    sx={{ fontWeight: 700, minWidth: 160 }}
-                                >
-                                    {loadingMore ? <CircularProgress size={22} /> : 'Xem thêm'}
-                                </Button>
+                                {loadingMore ? (
+                                    <CircularProgress size={22} />
+                                ) : (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={loadMore}
+                                        sx={{ fontWeight: 700, minWidth: 160 }}
+                                    >
+                                        Xem thêm
+                                    </Button>
+                                )}
                             </Box>
                         ) : null}
                     </Stack>

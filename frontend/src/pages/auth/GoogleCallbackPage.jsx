@@ -1,32 +1,10 @@
 import { useEffect } from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
-const TOKEN_KEY = 'slife_access_token';
-const USER_KEY = 'slife_user';
-
 export default function GoogleCallbackPage() {
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const accessToken = params.get('access_token');
-    const userJson = params.get('user');
-
-    if (!accessToken) {
-      window.location.replace('/login?google_error=no_token');
-      return;
-    }
-
-    localStorage.setItem(TOKEN_KEY, accessToken);
-
-    if (userJson) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userJson));
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
-      } catch {
-        // user data will be fetched by AuthContext on next load
-      }
-    }
-
-    // Full page replace so AuthContext re-initializes with the new token
+    // Refresh token đã được backend set trong HttpOnly cookie.
+    // AuthContext ở trang chủ sẽ tự gọi /auth/refresh để lấy access token in-memory.
     window.location.replace('/');
   }, []);
 

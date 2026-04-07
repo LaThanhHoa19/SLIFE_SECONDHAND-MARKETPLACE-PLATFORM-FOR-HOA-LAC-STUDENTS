@@ -2,18 +2,20 @@
  * Trang "Chỉnh sửa & Đăng" cho bản nháp — đường dẫn: /drafts/:id/publish
  * Không thay đổi logic Create/Edit listing hiện tại, chỉ tách flow dành cho tab DRAFT.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import ListingForm from '../../components/listing/ListingForm';
 import { APP_SHELL_BG } from '../../utils/layoutConstants';
 import { useMaxImagesPerPost } from '../../hooks/useMaxImagesPerPost';
+import { useNavigationBlocker } from '../../hooks/useNavigationBlocker';
 import { deleteListingImage, getListing, updateListing, uploadImages } from '../../api/listingApi';
 import { useAuth } from '../../hooks/useAuth';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
+import ConfirmDialog from '../../components/common/ConfirmDialog';
 import {
     getListingSubmitErrorMessage,
     isListingImageRelatedApiError,
@@ -116,7 +118,43 @@ export default function DraftEditPublishPage() {
     const [existingImages, setExistingImages] = useState([]);
     const [submitting, setSubmitting] = useState(false);
     const [submitErrorPlacement, setSubmitErrorPlacement] = useState('top');
+    const [isDirty, setIsDirty] = useState(false);
+    const [leaveOpen, setLeaveOpen] = useState(false);
     const { showToast } = useToast();
+
+    const shouldBlock = isDirty && !submitting;
+    const blocker = useNavigationBlocker(shouldBlock);
+
+    useEffect(() => {
+        if (blocker.state === 'blocked') {
+            setLeaveOpen(true);
+        }
+    }, [blocker.state]);
+
+    const closeLeave = useCallback(() => {
+        setLeaveOpen(false);
+        if (blocker.state === 'blocked') {
+            blocker.reset();
+        }
+    }, [blocker]);
+
+    const confirmLeave = useCallback(() => {
+        setLeaveOpen(false);
+        if (blocker.state === 'blocked') {
+            blocker.proceed();
+        }
+    }, [blocker]);
+
+    useEffect(() => {
+        if (!shouldBlock) return;
+        const handler = (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        };
+        window.addEventListener('beforeunload', handler);
+        return () => window.removeEventListener('beforeunload', handler);
+    }, [shouldBlock]);
 
     const listingIdNum = useMemo(() => {
         const n = Number(id);
@@ -258,12 +296,24 @@ export default function DraftEditPublishPage() {
                     onRemoveExistingImage={handleRemoveExistingImage}
                     maxImagesPerPost={maxImagesPerPost}
                     onSubmit={handlePublish}
+                    onDirtyChange={setIsDirty}
                     submitting={submitting}
                     serverSubmitError={error}
                     serverSubmitErrorPlacement={submitErrorPlacement}
                     onDismissServerSubmitError={() => setError('')}
                 />
             )}
+
+            <ConfirmDialog
+                open={leaveOpen}
+                variant="warning"
+                title="Bạn có muốn thoát khỏi chỉnh sửa?"
+                content="Nội dung sẽ không được lưu."
+                confirmLabel="Thoát"
+                cancelLabel="Ở lại"
+                onClose={closeLeave}
+                onConfirm={confirmLeave}
+            />
         </Box>
     );
 }
