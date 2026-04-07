@@ -138,12 +138,12 @@ export default function Bubble({
             msg?.dealDecision === 'DONE';
         const isDealConfirmationRequest =
             typeof msg?.content === 'string' &&
-            msg.content.toUpperCase().includes('XÁC NHẬN GIAO DỊCH');
+            msg.content.toUpperCase().includes('XÁC NHẬN THỎA THUẬN');
         const responder = (msg?.dealResponderName && String(msg.dealResponderName).trim()) || 'Người mua';
         const formatted = formatDealConfirmationDisplayContent(msg.content);
         const detailBody =
             decided && typeof formatted === 'string'
-                ? formatted.replace(/^🧾\s*XÁC NHẬN GIAO DỊCH\s*\n*/i, '').trim()
+                ? formatted.replace(/^🧾\s*XÁC NHẬN THỎA THUẬN\s*\n*/i, '').trim()
                 : formatted;
         const isAccept = msg?.dealDecision === 'ACCEPT';
         const isCancel = msg?.dealDecision === 'CANCEL';
