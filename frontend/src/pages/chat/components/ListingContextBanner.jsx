@@ -11,7 +11,7 @@ export default function ListingContextBanner({
     onFinalizeOrder,
     finalizeDisabled = false,
     showPostSaleActions = false,
-    /** Một nút: gọi ẩn tin (HIDDEN), không còn tách Đã bán / Ẩn tin. */
+    /** Một nút: gọi ẩn tin (HIDDEN).*/
     onPostSaleAction,
     postSaleOutcome = null,
     postSaleBusy = false,
@@ -146,8 +146,8 @@ export default function ListingContextBanner({
                             postSaleOutcome === 'gone'
                                 ? 'Tin đã gỡ khỏi chợ'
                                 : postSaleOutcome === 'hidden'
-                                  ? 'Tin đã ẩn'
-                                  : 'Tin không còn trên chợ'
+                                    ? 'Tin đã ẩn'
+                                    : 'Tin không còn trên chợ'
                         }
                         variant="outlined"
                         sx={{
@@ -187,7 +187,7 @@ export default function ListingContextBanner({
                         {isSellerInActiveChat && showPostSaleActions && postSaleOutcome == null && (
                             <Chip
                                 size="small"
-                                label="Đã bán / ẩn tin"
+                                label="Ẩn tin"
                                 variant="outlined"
                                 clickable={!postSaleBusy && Boolean(onPostSaleAction)}
                                 disabled={postSaleBusy}
