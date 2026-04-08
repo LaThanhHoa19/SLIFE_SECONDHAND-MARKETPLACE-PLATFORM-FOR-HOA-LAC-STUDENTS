@@ -41,6 +41,7 @@ public class CommunityPostCommentService {
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
     private final CommunityPostStatsBroadcastService communityPostStatsBroadcastService;
+    private final ContentModerationService contentModerationService;
 
     @Transactional
     public CommentResponse createComment(Long postId, CreateCommunityPostCommentRequest request) {
@@ -51,6 +52,9 @@ public class CommunityPostCommentService {
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
         validateContentOrImage(text, imageUrls);
+        if (text != null) {
+            contentModerationService.assertNoBannedKeywords(text);
+        }
 
         CommunityPost post = communityPostRepository.findById(postId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.COMMUNITY_POST_NOT_FOUND));
@@ -87,6 +91,9 @@ public class CommunityPostCommentService {
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
         validateContentOrImage(text, imageUrls);
+        if (text != null) {
+            contentModerationService.assertNoBannedKeywords(text);
+        }
 
         CommunityPostComment parent = communityPostCommentRepository.findById(parentCommentId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.COMMUNITY_POST_COMMENT_NOT_FOUND));
@@ -172,6 +179,9 @@ public class CommunityPostCommentService {
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
         validateContentOrImage(text, imageUrls);
+        if (text != null) {
+            contentModerationService.assertNoBannedKeywords(text);
+        }
 
         comment.setContent(text);
         if (request.getImageUrls() != null) {

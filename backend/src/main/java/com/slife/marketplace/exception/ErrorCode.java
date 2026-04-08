@@ -36,6 +36,8 @@ public enum ErrorCode {
     LISTING_NOT_RENEWABLE("LISTING_NOT_RENEWABLE", "Listing can only be renewed within 7 days before expiration", HttpStatus.CONFLICT),
     SAVED_LISTING_ALREADY("SAVED_LISTING_ALREADY", "Listing already saved", HttpStatus.CONFLICT),
     SAVED_LISTING_NOT_SAVED("SAVED_LISTING_NOT_SAVED", "Listing was not saved", HttpStatus.NOT_FOUND),
+    LISTING_QUOTA_EXCEEDED("LISTING_QUOTA_EXCEEDED", "Maximum active listings limit reached", HttpStatus.CONFLICT),
+    BANNED_KEYWORD_IN_CONTENT("BANNED_KEYWORD_IN_CONTENT", "Content contains a banned keyword", HttpStatus.BAD_REQUEST),
 
     // Follow
     FOLLOW_SELF("FOLLOW_SELF", "You cannot follow yourself", HttpStatus.BAD_REQUEST),

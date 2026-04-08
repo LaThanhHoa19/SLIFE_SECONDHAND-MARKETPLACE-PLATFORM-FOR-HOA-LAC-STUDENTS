@@ -171,7 +171,7 @@ export default function Sidebar({ open = true }) {
                                     sx={{
                                         fontSize: 14,
                                         fontWeight: active ? 800 : 700,
-                                        fontFamily: "'Outfit', sans-serif",
+                                        fontFamily: "'Plus Jakarta Sans', sans-serif",
                                         color: active
                                             ? '#FFFFFF'
                                             : (path === '/listings/new'
@@ -231,7 +231,7 @@ export default function Sidebar({ open = true }) {
                             sx={{
                                 fontSize: '14px',
                                 fontWeight: isActive('/community') ? 800 : 600,
-                                fontFamily: "'Outfit', sans-serif",
+                                fontFamily: "'Plus Jakarta Sans', sans-serif",
                                 color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.7)',
                                 whiteSpace: 'nowrap',
                                 ml: 1.5,

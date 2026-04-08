@@ -29,5 +29,7 @@ public class BannedKeyword {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "deleted_at", columnDefinition = "DATETIME")
+    private Instant deletedAt;
 
 }

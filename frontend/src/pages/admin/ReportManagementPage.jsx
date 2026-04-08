@@ -25,7 +25,6 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { useNavigate } from 'react-router-dom';
 import { getReportsPage } from '../../api/reportApi';
 import ReusableTable from '../../components/common/ReusableTable';
-import { ADMIN_THEME as t } from '../../theme/adminTheme';
 import {
     extractSpringPage,
     formatReportDate,
@@ -40,10 +39,10 @@ import {
     targetSubjectLabel,
 } from './reportAdminUtils';
 
-const STITCH_PAGE_GRADIENT = `linear-gradient(165deg, #0b0e1e 0%, #0f0e18 40%, ${t.bgApp} 100%)`;
-const TABLE_CARD_BG = 'rgba(18, 22, 43, 0.85)';
-const TABLE_BORDER = 'rgba(99, 102, 241, 0.12)';
-const STITCH_INDIGO = '#6366f1';
+const TABLE_CARD_BG = '#19191B';
+const TABLE_BORDER = '#3E3E42';
+const STITCH_INDIGO = '#9D6EED';
+const ADMIN_SELECT_SURFACE = '#0F0E13';
 
 function reporterInitials(name) {
     if (!name || typeof name !== 'string') return '?';
@@ -109,17 +108,17 @@ const reportManagementTableSx = {
     width: '100%',
     tableLayout: 'fixed',
     '& thead th': {
-        color: 'rgba(255,255,255,0.5)',
+        color: 'rgba(255,255,255,0.88)',
         fontSize: 11,
         fontWeight: 700,
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        backgroundColor: 'rgba(255,255,255,0.04)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
         borderBottom: `1px solid ${TABLE_BORDER}`,
         py: 1.5,
     },
     '& tbody td': {
-        color: '#f1f5f9',
+        color: '#ffffff',
         borderBottom: `1px solid ${TABLE_BORDER}`,
         py: 1.75,
         fontSize: 13,
@@ -127,13 +126,13 @@ const reportManagementTableSx = {
         overflow: 'hidden',
     },
     '& .MuiTableCell-root:not(:last-of-type)': {
-        borderRight: 'none',
+        borderRight: `1px solid ${TABLE_BORDER}`,
     },
     '& tbody .MuiTableRow-root:nth-of-type(odd)': {
-        backgroundColor: 'rgba(255,255,255,0.02)',
+        backgroundColor: 'rgba(255,255,255,0.03)',
     },
     '& tbody .MuiTableRow-root:hover': {
-        backgroundColor: 'rgba(99, 102, 241, 0.06)',
+        backgroundColor: 'rgba(255,255,255,0.06)',
     },
     '& tbody .MuiTableRow-root:last-of-type .MuiTableCell-root': {
         borderBottom: 'none',
@@ -463,23 +462,12 @@ export default function ReportManagementPage() {
 
     return (
         <Box
-            sx={(theme) => ({
-                background: STITCH_PAGE_GRADIENT,
+            sx={{
                 borderRadius: 0,
                 border: 'none',
                 py: { xs: 0, sm: 2.5 },
                 mb: 2,
-                // Full-bleed trong main: bù padding px của AdminLayout để không còn “cột đen” hai bên
-                mx: { xs: theme.spacing(-2), sm: theme.spacing(-3) },
-                px: { xs: theme.spacing(2), sm: theme.spacing(3) },
-                width: {
-                    xs: `calc(100% + ${theme.spacing(4)})`,
-                    sm: `calc(100% + ${theme.spacing(6)})`,
-                },
-                maxWidth: 'none',
-                boxSizing: 'border-box',
-                alignSelf: 'stretch',
-            })}
+            }}
         >
             <TextField
                 fullWidth
@@ -499,11 +487,12 @@ export default function ReportManagementPage() {
                     maxWidth: '100%',
                     '& .MuiOutlinedInput-root': {
                         borderRadius: 999,
-                        bgcolor: 'rgba(15, 23, 42, 0.55)',
-                        color: 'rgba(248, 250, 252, 0.95)',
-                        '& fieldset': { borderColor: 'rgba(99, 102, 241, 0.2)' },
-                        '&:hover fieldset': { borderColor: 'rgba(99, 102, 241, 0.35)' },
-                        '&.Mui-focused fieldset': { borderColor: STITCH_INDIGO },
+                        bgcolor: 'rgba(0,0,0,0.25)',
+                        color: '#fff',
+                        '& fieldset': { borderColor: STITCH_INDIGO, borderWidth: 1 },
+                        '&:hover fieldset': { borderColor: STITCH_INDIGO },
+                        '&.Mui-focused': { boxShadow: '0 0 0 3px rgba(157, 110, 237, 0.22)' },
+                        '&.Mui-focused fieldset': { borderColor: STITCH_INDIGO, borderWidth: 1 },
                     },
                     '& input::placeholder': { color: 'rgba(148, 163, 184, 0.65)', opacity: 1 },
                 }}
@@ -567,21 +556,56 @@ export default function ReportManagementPage() {
                     </Typography>
                 </Box>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel id="report-status-filter" sx={{ color: 'rgba(148, 163, 184, 0.9)' }}>
-                            Trạng thái
-                        </InputLabel>
+                    <FormControl
+                        size="small"
+                        sx={{
+                            minWidth: 200,
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 999,
+                                backgroundColor: ADMIN_SELECT_SURFACE,
+                                color: '#fff',
+                                '&:hover': { backgroundColor: ADMIN_SELECT_SURFACE },
+                                '&.Mui-focused': { backgroundColor: ADMIN_SELECT_SURFACE },
+                            },
+                            '& .MuiOutlinedInput-notchedOutline': { borderColor: TABLE_BORDER },
+                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.35)' },
+                            '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+                            '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
+                            '& .MuiSelect-icon': { color: 'rgba(255,255,255,0.7)' },
+                            '& .MuiSelect-select': { color: '#fff' },
+                        }}
+                    >
+                        <InputLabel id="report-status-filter">Trạng thái</InputLabel>
                         <Select
                             labelId="report-status-filter"
                             label="Trạng thái"
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value)}
-                            sx={{
-                                color: 'rgba(248, 250, 252, 0.95)',
-                                borderRadius: 999,
-                                bgcolor: 'rgba(15, 23, 42, 0.45)',
-                                '& fieldset': { borderColor: 'rgba(99, 102, 241, 0.25)' },
-                                '&:hover fieldset': { borderColor: 'rgba(99, 102, 241, 0.4)' },
+                            MenuProps={{
+                                MenuListProps: {
+                                    sx: {
+                                        bgcolor: ADMIN_SELECT_SURFACE,
+                                        py: 0.5,
+                                        '& .MuiMenuItem-root': {
+                                            color: '#fff',
+                                            bgcolor: ADMIN_SELECT_SURFACE,
+                                        },
+                                        '& .MuiMenuItem-root:hover': { bgcolor: 'rgba(255,255,255,0.08)' },
+                                        '& .MuiMenuItem-root.Mui-selected': {
+                                            bgcolor: 'rgba(157, 110, 237, 0.22)',
+                                            color: '#fff',
+                                            '&:hover': { bgcolor: 'rgba(157, 110, 237, 0.3)' },
+                                        },
+                                    },
+                                },
+                                PaperProps: {
+                                    sx: {
+                                        bgcolor: ADMIN_SELECT_SURFACE,
+                                        color: '#fff',
+                                        backgroundImage: 'none',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                                    },
+                                },
                             }}
                         >
                             <MenuItem value="ALL">Tất cả</MenuItem>
@@ -598,11 +622,8 @@ export default function ReportManagementPage() {
                         sx={{
                             borderRadius: 999,
                             textTransform: 'none',
-                            px: 2.5,
+                            px: 3,
                             fontWeight: 700,
-                            background: `linear-gradient(135deg, ${STITCH_INDIGO} 0%, #4f46e5 100%)`,
-                            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
-                            '&:hover': { boxShadow: '0 10px 28px rgba(99, 102, 241, 0.45)' },
                         }}
                     >
                         Tải lại dữ liệu
@@ -647,7 +668,7 @@ export default function ReportManagementPage() {
                     borderRadius: 3,
                     overflow: 'hidden',
                     bgcolor: TABLE_CARD_BG,
-                    boxShadow: '0 24px 48px rgba(0, 0, 0, 0.35)',
+                    boxShadow: 'none',
                 }}
             >
                 <ReusableTable
@@ -676,12 +697,15 @@ export default function ReportManagementPage() {
                         `${from}–${to} của ${count === -1 ? to : count}`
                     }
                     sx={{
-                        bgcolor: 'rgba(12, 16, 32, 0.6)',
-                        color: 'rgba(203, 213, 225, 0.9)',
+                        bgcolor: TABLE_CARD_BG,
+                        color: 'rgba(255,255,255,0.72)',
                         borderTop: `1px solid ${TABLE_BORDER}`,
-                        '& .MuiTablePagination-select': { color: '#f1f5f9' },
-                        '& .MuiTablePagination-selectIcon': { color: 'rgba(148, 163, 184, 0.8)' },
-                        '& .MuiIconButton-root': { color: 'rgba(226, 232, 240, 0.85)' },
+                        '& .MuiTablePagination-select': { color: '#fff' },
+                        '& .MuiTablePagination-selectIcon': { color: 'rgba(255,255,255,0.7)' },
+                        '& .MuiIconButton-root': { color: 'rgba(255,255,255,0.88)' },
+                        '& .MuiTablePagination-displayedRows, & .MuiTablePagination-selectLabel': {
+                            color: 'rgba(255,255,255,0.72)',
+                        },
                     }}
                 />
             </Box>

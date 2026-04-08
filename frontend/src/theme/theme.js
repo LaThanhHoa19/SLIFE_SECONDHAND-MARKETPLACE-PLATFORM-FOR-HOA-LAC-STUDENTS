@@ -30,7 +30,7 @@ const theme = createTheme({
         }
     },
     typography: {
-        fontFamily: "'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
         h1: {
             fontWeight: 700,
             fontSize: '2.5rem',

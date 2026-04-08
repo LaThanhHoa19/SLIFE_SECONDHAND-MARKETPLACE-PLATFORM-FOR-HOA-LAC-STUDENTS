@@ -2,6 +2,7 @@ package com.slife.marketplace.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -33,4 +34,8 @@ public class SealDealFullRequest {
 
     /** Tuỳ chọn: địa chỉ giao; mặc định {@code listing.pickup_address_id}. */
     private Long addressId;
+
+    /** Cùng ý nghĩa {@link SealDealRequest#getPickupLocationText()}. */
+    @Size(max = 4000, message = "Địa điểm nhận hàng quá dài")
+    private String pickupLocationText;
 }

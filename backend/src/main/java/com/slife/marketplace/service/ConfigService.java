@@ -32,7 +32,10 @@ public class ConfigService {
             "MAX_IMAGES_PER_POST",
             "DEAL_TIMEOUT_DAYS",
             "REPORT_THRESHOLD",
-            "AUTO_HIDE_REPORT_THRESHOLD");
+            "AUTO_HIDE_REPORT_THRESHOLD",
+            "PICKUP_REMINDER_HOURS",
+            "MAX_ACTIVE_LISTINGS_PER_USER",
+            "LISTING_EXPIRING_SOON_HOURS_BEFORE");
 
     private static final Map<String, ConfigValidationMetaDTO> VALIDATION_RULES = Map.of(
             "LISTING_EXPIRATION", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
@@ -40,7 +43,10 @@ public class ConfigService {
             "MAX_IMAGES_PER_POST", new ConfigValidationMetaDTO("integer", 1, 30, "Giá trị hợp lệ: 1–30 ảnh."),
             "REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."),
             "DEAL_TIMEOUT_DAYS", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
-            "AUTO_HIDE_REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."));
+            "AUTO_HIDE_REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."),
+            "PICKUP_REMINDER_HOURS", new ConfigValidationMetaDTO("integer", 1, 168, "Giá trị hợp lệ: 1–168 giờ."),
+            "MAX_ACTIVE_LISTINGS_PER_USER", new ConfigValidationMetaDTO("integer", 0, 5000, "0 = không giới hạn; 1–5000 tin ACTIVE."),
+            "LISTING_EXPIRING_SOON_HOURS_BEFORE", new ConfigValidationMetaDTO("integer", 1, 720, "Giá trị hợp lệ: 1–720 giờ trước khi hết hạn."));
     private final ConfigRepository configRepository;
 
     public ConfigService(ConfigRepository configRepository) {

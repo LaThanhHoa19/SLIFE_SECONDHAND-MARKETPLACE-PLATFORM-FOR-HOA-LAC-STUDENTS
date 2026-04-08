@@ -31,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,6 +65,8 @@ public class ListingService {
      * Hạn hiển thị mặc định cho tin ACTIVE nếu chưa có config LISTING_EXPIRATION.
      */
     private static final int DEFAULT_LISTING_EXPIRATION_DAYS = 30;
+    /** 0 = không giới hạn (khớp seed {@code MAX_ACTIVE_LISTINGS_PER_USER}). */
+    private static final int DEFAULT_MAX_ACTIVE_LISTINGS_PER_USER = 0;
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
@@ -76,19 +80,23 @@ public class ListingService {
     private final ConfigService configService;
     private final NotificationService notificationService;
     private final ListingExpiryBatchService listingExpiryBatchService;
+    private final SystemEmailService systemEmailService;
+    private final ContentModerationService contentModerationService;
 
     public ListingService(ListingRepository listingRepository,
-            ListingImageRepository listingImageRepository,
-            SavedListingRepository savedListingRepository,
-            CategoryRepository categoryRepository,
-            AddressRepository addressRepository,
-            FollowService followService,
-            BlockService blockService,
-            ListingLikeRepository listingLikeRepository,
-            ListingImageService listingImageService,
-            ConfigService configService,
-            NotificationService notificationService,
-            ListingExpiryBatchService listingExpiryBatchService) {
+                          ListingImageRepository listingImageRepository,
+                          SavedListingRepository savedListingRepository,
+                          CategoryRepository categoryRepository,
+                          AddressRepository addressRepository,
+                          FollowService followService,
+                          BlockService blockService,
+                          ListingLikeRepository listingLikeRepository,
+                          ListingImageService listingImageService,
+                          ConfigService configService,
+                          NotificationService notificationService,
+                          ListingExpiryBatchService listingExpiryBatchService,
+                          SystemEmailService systemEmailService,
+                          ContentModerationService contentModerationService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -101,6 +109,8 @@ public class ListingService {
         this.configService = configService;
         this.notificationService = notificationService;
         this.listingExpiryBatchService = listingExpiryBatchService;
+        this.systemEmailService = systemEmailService;
+        this.contentModerationService = contentModerationService;
     }
 
     // ----------------------------------------------------------------
@@ -334,7 +344,7 @@ public class ListingService {
      */
     @Transactional
     public ListingResponse createListingWithImages(User seller, CreateListingRequest request,
-            List<MultipartFile> images) {
+                                                   List<MultipartFile> images) {
         if (seller == null) {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
         }
@@ -380,6 +390,22 @@ public class ListingService {
         return Math.max(1, configService.getIntConfigValue("LISTING_EXPIRATION", DEFAULT_LISTING_EXPIRATION_DAYS));
     }
 
+    /**
+     * Gọi khi sắp thêm một tin {@code ACTIVE} mới (đăng mới, đăng từ nháp, đăng lại).
+     * {@code MAX_ACTIVE_LISTINGS_PER_USER = 0} → không giới hạn.
+     */
+    private void enforceMaxActiveListingsIfAddingNewActive(User seller) {
+        int max = configService.getIntConfigValue("MAX_ACTIVE_LISTINGS_PER_USER", DEFAULT_MAX_ACTIVE_LISTINGS_PER_USER);
+        if (max <= 0) {
+            return;
+        }
+        long n = listingRepository.countBySeller_IdAndStatusAndDeletedAtIsNull(seller.getId(), LISTING_STATUS_ACTIVE);
+        if (n >= max) {
+            throw new SlifeException(ErrorCode.LISTING_QUOTA_EXCEEDED,
+                    "Bạn đã đạt số tin đang hiển thị tối đa. Vui lòng ẩn hoặc gỡ bớt tin trước khi đăng mới.");
+        }
+    }
+
     private static List<MultipartFile> nonEmptyImageParts(List<MultipartFile> images) {
         if (images == null) {
             return List.of();
@@ -409,6 +435,13 @@ public class ListingService {
         Address pickup = resolvePickupAddress(seller, request);
         if (!isDraft && pickup == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Vui lòng chọn địa điểm giao dịch");
+        }
+
+        if (!isDraft) {
+            enforceMaxActiveListingsIfAddingNewActive(seller);
+            contentModerationService.assertNoBannedKeywords(
+                    request.getTitle() != null ? request.getTitle().trim() : "",
+                    request.getDescription());
         }
 
         Listing listing = new Listing();
@@ -501,6 +534,7 @@ public class ListingService {
             listing.setStatus(LISTING_STATUS_DRAFT);
             listing.setExpirationDate(null);
         } else if (LISTING_STATUS_DRAFT.equals(listing.getStatus())) {
+            enforceMaxActiveListingsIfAddingNewActive(seller);
             // Publish draft: đẩy tin lên đầu feed bằng cách reset createdAt/updatedAt,
             // đồng thời cấp expirationDate mới để hợp lệ với lazy-expiry catalog.
             Instant publishNow = Instant.now();
@@ -513,6 +547,10 @@ public class ListingService {
             // Backfill expiration for legacy ACTIVE rows created before LISTING_EXPIRATION
             // was enforced.
             listing.setExpirationDate(Instant.now().plus(getListingExpirationDays(), ChronoUnit.DAYS));
+        }
+
+        if (!isDraft && LISTING_STATUS_ACTIVE.equals(listing.getStatus())) {
+            contentModerationService.assertNoBannedKeywords(listing.getTitle(), listing.getDescription());
         }
 
         // Nếu không phải publish thì updatedAt vẫn cần bump.
@@ -681,7 +719,7 @@ public class ListingService {
     }
 
     private void enrichListingCardsWithLikes(List<com.slife.marketplace.dto.response.ListingCardResponse> cards,
-            User currentUser) {
+                                             User currentUser) {
         if (cards == null || cards.isEmpty()) {
             return;
         }
@@ -900,6 +938,8 @@ public class ListingService {
      */
     public int hideExpiredActiveListings() {
         Instant now = Instant.now();
+        notifyListingsExpiringSoon(now);
+
         int total = 0;
         int batchUpdated;
         do {
@@ -910,6 +950,29 @@ public class ListingService {
             log.info("hideExpiredActiveListings: total {} ACTIVE listing(s) set HIDDEN (all batches)", total);
         }
         return total;
+    }
+
+    private void notifyListingsExpiringSoon(Instant now) {
+        int hoursBefore = Math.max(1, configService.getIntConfigValue(
+                "LISTING_EXPIRING_SOON_HOURS_BEFORE", 24));
+        Instant from = now.plus(hoursBefore - 1L, ChronoUnit.HOURS);
+        Instant to = now.plus(hoursBefore, ChronoUnit.HOURS);
+        List<Listing> expiring = listingRepository.findActiveListingsExpiringBetween(from, to);
+        for (Listing listing : expiring) {
+            if (listing == null || listing.getSeller() == null || listing.getExpirationDate() == null) {
+                continue;
+            }
+            try {
+                LocalDateTime expiresAt = LocalDateTime.ofInstant(listing.getExpirationDate(), ZoneId.systemDefault());
+                systemEmailService.sendListingExpiringSoonEmail(
+                        listing.getSeller(),
+                        listing.getTitle(),
+                        listing.getId(),
+                        expiresAt);
+            } catch (Exception ex) {
+                log.warn("send listing expiring soon email failed listingId={}: {}", listing.getId(), ex.getMessage());
+            }
+        }
     }
 
     @Transactional(readOnly = true)
@@ -1097,6 +1160,9 @@ public class ListingService {
         if (!isFunctionallyExpired || isBlockedStatus) {
             throw new SlifeException(ErrorCode.LISTING_NOT_EXPIRED);
         }
+
+        enforceMaxActiveListingsIfAddingNewActive(currentUser);
+        contentModerationService.assertNoBannedKeywords(source.getTitle(), source.getDescription());
 
         // Hướng "clone-to-active": tạo bài ACTIVE mới ngay, set lại toàn bộ timestamp
         // như bài đăng mới.
