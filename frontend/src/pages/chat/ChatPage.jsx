@@ -1460,12 +1460,17 @@ function ChatPageInner() {
       }
       const pickupIso = toIsoFromDatetimeLocal(finalizePickupTimeLocal);
       const sealAddressId = pickupAddressForFinalize?.addressId ?? pickupAddressForFinalize?.id;
+      const pickupLocRaw =
+        (finalizePickupLocationText && String(finalizePickupLocationText).trim()) ||
+        fmtAddress(pickupAddressForFinalize) ||
+        '';
       await sealListingDeal(listingId, {
         buyerId: Number(buyerId),
         price,
         ...(pickupIso ? { pickupTime: pickupIso } : {}),
         ...(resolvedOfferId != null ? { offerId: resolvedOfferId } : {}),
         ...(sealAddressId != null ? { addressId: Number(sealAddressId) } : {}),
+        ...(pickupLocRaw && pickupLocRaw !== '—' ? { pickupLocationText: pickupLocRaw } : {}),
       });
       suppressOpponentDiffRef.current = true;
       const res = await chatApi.sendMessage(activeSessionId, content, 'DEAL_CONFIRMATION');

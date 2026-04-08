@@ -159,7 +159,7 @@ public class DealService {
                 d.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
             }
             d.setOffer(offerForDeal);
-            d.setAddress(resolveAddressForSealUpdate(listing, request.getAddressId(), d.getAddress()));
+            d.setAddress(resolveAddressForSeal(listing, request.getAddressId(), request.getPickupLocationText(), d.getAddress(), true));
             return mapToResponse(dealRepository.save(d));
         }
 
@@ -170,7 +170,7 @@ public class DealService {
         deal.setDealPrice(request.getPrice());
         deal.setStatus(STATUS_PENDING);
         deal.setOffer(offerForDeal);
-        deal.setAddress(resolveAddressForDeal(listing, request.getAddressId()));
+        deal.setAddress(resolveAddressForSeal(listing, request.getAddressId(), request.getPickupLocationText(), null, false));
         if (request.getPickupTime() != null) {
             deal.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
         }
@@ -744,6 +744,79 @@ public class DealService {
             return currentOnDeal;
         }
         return listing.getPickupAddress();
+    }
+
+    /**
+     * Chốt đơn trong chat: nếu {@code pickupLocationText} khác chuỗi hiển thị của địa chỉ tin đăng,
+     * tạo bản ghi {@link Address} mới cho người bán (không sửa địa chỉ gốc của tin).
+     */
+    private Address resolveAddressForSeal(Listing listing, Long explicitAddressId, String pickupLocationText,
+                                          Address currentOnDeal, boolean updatingExisting) {
+        String trimmed = pickupLocationText != null ? pickupLocationText.trim() : "";
+        if (trimmed.isEmpty() || "—".equals(trimmed)) {
+            if (updatingExisting) {
+                return resolveAddressForSealUpdate(listing, explicitAddressId, currentOnDeal);
+            }
+            return resolveAddressForDeal(listing, explicitAddressId);
+        }
+        if (updatingExisting && currentOnDeal != null && trimmed.equals(formatAddressDisplay(currentOnDeal))) {
+            return currentOnDeal;
+        }
+        Address listingPickup = listing.getPickupAddress();
+        String baseDisplay = formatAddressDisplay(listingPickup);
+        if (trimmed.equals(baseDisplay)) {
+            if (updatingExisting) {
+                return resolveAddressForSealUpdate(listing, explicitAddressId, currentOnDeal);
+            }
+            return resolveAddressForDeal(listing, explicitAddressId);
+        }
+        User seller = listing.getSeller();
+        if (seller == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Tin đăng thiếu người bán");
+        }
+        return persistSellerPickupAddressSnapshot(seller, listingPickup, trimmed);
+    }
+
+    private static String formatAddressDisplay(Address a) {
+        if (a == null) {
+            return "";
+        }
+        String loc = a.getLocationName();
+        String txt = a.getAddressText();
+        boolean hasLoc = loc != null && !loc.isBlank();
+        boolean hasTxt = txt != null && !txt.isBlank();
+        if (hasLoc && hasTxt) {
+            return loc.trim() + ", " + txt.trim();
+        }
+        if (hasLoc) {
+            return loc.trim();
+        }
+        if (hasTxt) {
+            return txt.trim();
+        }
+        return "";
+    }
+
+    private Address persistSellerPickupAddressSnapshot(User seller, Address basePickup, String fullText) {
+        Address a = new Address();
+        a.setUser(seller);
+        String t = fullText.trim();
+        if (t.length() <= 200) {
+            a.setLocationName(t);
+            a.setAddressText(null);
+        } else {
+            a.setLocationName(t.substring(0, 200));
+            a.setAddressText(t.substring(200));
+        }
+        if (basePickup != null) {
+            a.setLat(basePickup.getLat());
+            a.setLng(basePickup.getLng());
+        }
+        a.setIsDefault(false);
+        Instant now = Instant.now();
+        a.setCreatedAt(now);
+        a.setUpdatedAt(now);
+        return addressRepository.save(a);
     }
 
     private Optional<Offer> resolveOfferForCreateDeal(Long listingId, User buyer, BigDecimal price, Long explicitOfferId) {
