@@ -196,7 +196,10 @@ public class DealService {
         deal.setStatus(STATUS_COMPLETED);
         deal.setConfirmedAt(LocalDateTime.now());
         Deal saved = dealRepository.save(deal);
-        notifyDealStatusEmail(saved, "Người mua đã chấp nhận", buyer);
+        notifyDealStatusEmail(saved,
+                "Bạn đã chấp nhận giao dịch.",
+                "Người mua đã chấp nhận giao dịch.",
+                buyer);
         return mapToResponse(saved);
     }
 
@@ -218,7 +221,10 @@ public class DealService {
         deal.setStatus(STATUS_REJECTED);
         deal.setConfirmedAt(LocalDateTime.now());
         Deal saved = dealRepository.save(deal);
-        notifyDealStatusEmail(saved, "Người mua đã từ chối", buyer);
+        notifyDealStatusEmail(saved,
+                "Bạn đã từ chối giao dịch.",
+                "Người mua đã từ chối giao dịch.",
+                buyer);
         return mapToResponse(saved);
     }
 
@@ -239,6 +245,10 @@ public class DealService {
         // DB schema for deals does not have REJECTED; use CANCELLED for seller rejection.
         deal.setStatus(STATUS_CANCELLED);
         deal = dealRepository.save(deal);
+        notifyDealStatusEmail(deal,
+                "Người bán đã từ chối giao dịch này.",
+                "Bạn đã từ chối giao dịch đang chờ xác nhận.",
+                seller);
         return mapToResponse(deal);
     }
 
@@ -259,7 +269,10 @@ public class DealService {
         deal.setStatus(STATUS_CONFIRMED);
         deal.setConfirmedAt(LocalDateTime.now());
         deal = dealRepository.save(deal);
-        notifyDealStatusEmail(deal, "Người bán đã xác nhận giao dịch", seller);
+        notifyDealStatusEmail(deal,
+                "Người bán đã xác nhận giao dịch — kiểm tra lịch nhận hàng trên SLIFE.",
+                "Bạn đã xác nhận giao dịch.",
+                seller);
         return mapToResponse(deal);
     }
 
@@ -320,7 +333,10 @@ public class DealService {
                 deal.getListing() != null ? deal.getListing().getTitle() : "tin đăng của bạn", false, false);
 
         Deal saved = dealRepository.save(deal);
-        notifyDealStatusEmail(saved, "Người mua đã hủy giao dịch", buyer);
+        notifyDealStatusEmail(saved,
+                "Bạn đã hủy giao dịch.",
+                "Người mua đã hủy giao dịch.",
+                buyer);
     }
 
     @Transactional
@@ -387,9 +403,15 @@ public class DealService {
         deal.setUpdatedAt(LocalDateTime.now());
         Deal saved = dealRepository.save(deal);
         if (request.isCompleted()) {
-            notifyDealStatusEmail(saved, "Giao dịch đã hoàn tất thành công", buyer);
+            notifyDealStatusEmail(saved,
+                    "Bạn đã xác nhận hoàn tất giao dịch.",
+                    "Người mua đã xác nhận hoàn tất giao dịch.",
+                    buyer);
         } else {
-            notifyDealStatusEmail(saved, "Giao dịch đã bị hủy", buyer);
+            notifyDealStatusEmail(saved,
+                    "Bạn đã hủy giao dịch sau khi nhận hàng.",
+                    "Người mua đã hủy giao dịch.",
+                    buyer);
         }
         return mapToResponse(saved);
     }
@@ -651,22 +673,21 @@ public class DealService {
         }
     }
 
-    private void notifyDealStatusEmail(Deal deal, String statusLabel, User actor) {
+    private void notifyDealStatusEmail(Deal deal, String buyerHeadline, String sellerHeadline, User actor) {
         if (deal == null) {
             return;
         }
         Listing listing = deal.getListing();
         Long listingId = listing != null ? listing.getId() : null;
         String listingTitle = listing != null ? listing.getTitle() : "tin đăng";
-        String actorName = actor != null ? actor.getFullName() : null;
 
         User buyer = deal.getBuyer();
         User seller = deal.getSeller();
         if (buyer != null) {
-            systemEmailService.sendDealStatusChangedEmail(buyer, listingTitle, listingId, statusLabel, actorName);
+            systemEmailService.sendDealStatusChangedEmail(buyer, deal, listingTitle, listingId, buyerHeadline, actor);
         }
         if (seller != null && (buyer == null || !seller.getId().equals(buyer.getId()))) {
-            systemEmailService.sendDealStatusChangedEmail(seller, listingTitle, listingId, statusLabel, actorName);
+            systemEmailService.sendDealStatusChangedEmail(seller, deal, listingTitle, listingId, sellerHeadline, actor);
         }
     }
 
