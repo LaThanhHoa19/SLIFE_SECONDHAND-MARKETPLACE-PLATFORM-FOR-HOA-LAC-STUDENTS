@@ -55,6 +55,7 @@ public class DealService {
     private final UserService userService;
     private final BlockService blockService;
     private final NotificationService notificationService;
+    private final SystemEmailService systemEmailService;
 
     public DealService(DealRepository dealRepository,
                        ListingRepository listingRepository,
@@ -65,7 +66,8 @@ public class DealService {
                        UserRepository userRepository,
                        UserService userService,
                        NotificationService notificationService,
-                       BlockService blockService) {
+                       BlockService blockService,
+                       SystemEmailService systemEmailService) {
         this.dealRepository = dealRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
@@ -76,6 +78,7 @@ public class DealService {
         this.userService = userService;
         this.notificationService = notificationService;
         this.blockService = blockService;
+        this.systemEmailService = systemEmailService;
     }
 
     @Transactional
@@ -192,7 +195,9 @@ public class DealService {
         assertNoBlockBetweenDealParties(deal, buyer);
         deal.setStatus(STATUS_COMPLETED);
         deal.setConfirmedAt(LocalDateTime.now());
-        return mapToResponse(dealRepository.save(deal));
+        Deal saved = dealRepository.save(deal);
+        notifyDealStatusEmail(saved, "Người mua đã chấp nhận", buyer);
+        return mapToResponse(saved);
     }
 
     /**
@@ -212,7 +217,9 @@ public class DealService {
         assertNoBlockBetweenDealParties(deal, buyer);
         deal.setStatus(STATUS_REJECTED);
         deal.setConfirmedAt(LocalDateTime.now());
-        return mapToResponse(dealRepository.save(deal));
+        Deal saved = dealRepository.save(deal);
+        notifyDealStatusEmail(saved, "Người mua đã từ chối", buyer);
+        return mapToResponse(saved);
     }
 
     @Transactional
@@ -252,6 +259,7 @@ public class DealService {
         deal.setStatus(STATUS_CONFIRMED);
         deal.setConfirmedAt(LocalDateTime.now());
         deal = dealRepository.save(deal);
+        notifyDealStatusEmail(deal, "Người bán đã xác nhận giao dịch", seller);
         return mapToResponse(deal);
     }
 
@@ -305,13 +313,14 @@ public class DealService {
 
         deal.setStatus(STATUS_CANCELLED);
         deal.setDeletedAt(LocalDateTime.now());
-        
+
         // Gửi thông báo cho Seller biết bị hủy đơn
-        notificationService.notifyDealFinalized(deal.getSeller(), buyer, 
-            deal.getListing() != null ? deal.getListing().getId() : null, 
-            deal.getListing() != null ? deal.getListing().getTitle() : "tin đăng của bạn", false, false);
-            
-        dealRepository.save(deal);
+        notificationService.notifyDealFinalized(deal.getSeller(), buyer,
+                deal.getListing() != null ? deal.getListing().getId() : null,
+                deal.getListing() != null ? deal.getListing().getTitle() : "tin đăng của bạn", false, false);
+
+        Deal saved = dealRepository.save(deal);
+        notifyDealStatusEmail(saved, "Người mua đã hủy giao dịch", buyer);
     }
 
     @Transactional
@@ -342,12 +351,12 @@ public class DealService {
                 review.setReviewer(buyer);
                 review.setReviewee(deal.getSeller());
                 review.setRating(request.getRating());
-                
+
                 StringBuilder fullComment = new StringBuilder();
                 if (request.getComment() != null && !request.getComment().trim().isEmpty()) {
                     fullComment.append(request.getComment().trim());
                 }
-                
+
                 if (request.getTags() != null && !request.getTags().isEmpty()) {
                     String tagsStr = String.join(", ", request.getTags());
                     if (fullComment.length() > 0) {
@@ -356,16 +365,16 @@ public class DealService {
                         fullComment.append("Tiêu chí nổi bật: ").append(tagsStr);
                     }
                 }
-                
+
                 review.setComment(fullComment.toString());
                 review.setCreatedAt(Instant.now());
                 reviewRepository.save(review);
                 reviewRepository.flush(); // Đẩy xuống DB ngay để tính trung bình chính xác
                 refreshUserReputation(deal.getSeller());
             }
-            
+
             deal.setStatus(STATUS_SUCCESS);
-            
+
             // Notify seller
             notificationService.notifyDealFinalized(deal.getSeller(), buyer, listing.getId(), listing.getTitle(), true, request.getRating() != null);
         } else {
@@ -374,9 +383,15 @@ public class DealService {
             // Notify seller
             notificationService.notifyDealFinalized(deal.getSeller(), buyer, deal.getListing().getId(), deal.getListing().getTitle(), false, false);
         }
-        
+
         deal.setUpdatedAt(LocalDateTime.now());
-        return mapToResponse(dealRepository.save(deal));
+        Deal saved = dealRepository.save(deal);
+        if (request.isCompleted()) {
+            notifyDealStatusEmail(saved, "Giao dịch đã hoàn tất thành công", buyer);
+        } else {
+            notifyDealStatusEmail(saved, "Giao dịch đã bị hủy", buyer);
+        }
+        return mapToResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -470,37 +485,37 @@ public class DealService {
 
     private DealResponse mapToResponse(Deal deal) {
         if (deal == null) return null;
-        
+
         Long offerId = deal.getOffer() != null ? deal.getOffer().getId() : null;
         Long addressId = deal.getAddress() != null ? deal.getAddress().getId() : null;
-        
+
         Listing listing = deal.getListing();
         String title = (listing != null) ? listing.getTitle() : "Tin đăng";
         String image = null;
-        
+
         if (listing != null && listing.getImages() != null && !listing.getImages().isEmpty()) {
             image = listing.getImages().get(0).getImageUrl();
         }
-        
+
         Long listingId = (listing != null) ? listing.getId() : null;
         Long buyerId = (deal.getBuyer() != null) ? deal.getBuyer().getId() : null;
-        
+
         User seller = deal.getSeller();
         Long sellerId = (seller != null) ? seller.getId() : null;
         String sName = (seller != null) ? seller.getFullName() : "Người bán";
         String sAvatar = (seller != null) ? seller.getAvatarUrl() : null;
-        
+
         // Kiểm tra xem người mua đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu)
         boolean reviewed = false;
         if (deal.getConversation() != null && deal.getBuyer() != null) {
             // Lấy mốc thời gian chốt hoặc tạo làm chuẩn (tránh dùng review của deal trước đó)
             java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
             java.time.Instant after = startPoint.atZone(java.time.ZoneId.systemDefault()).toInstant();
-            
+
             reviewed = reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
-                deal.getConversation().getId(),
-                deal.getBuyer().getId(),
-                after
+                    deal.getConversation().getId(),
+                    deal.getBuyer().getId(),
+                    after
             );
         }
 
@@ -537,7 +552,7 @@ public class DealService {
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
         // We use confirmedAt if available, otherwise createdAt
         List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
-        
+
         for (Deal deal : pendingDeals) {
             try {
                 // Tương đương hành động Buyer bấm "Hoàn thành"
@@ -546,16 +561,16 @@ public class DealService {
                     listing.setStatus("SOLD");
                     listingRepository.save(listing);
                 }
-                
+
                 deal.setStatus(STATUS_SUCCESS);
                 deal.setUpdatedAt(LocalDateTime.now());
                 dealRepository.save(deal);
-                
+
                 // Gửi thông báo cho Seller
-                notificationService.notifyDealFinalized(deal.getSeller(), deal.getBuyer(), 
-                    listing != null ? listing.getId() : null, 
-                    listing != null ? listing.getTitle() : "tin đăng", true, false);
-                
+                notificationService.notifyDealFinalized(deal.getSeller(), deal.getBuyer(),
+                        listing != null ? listing.getId() : null,
+                        listing != null ? listing.getTitle() : "tin đăng", true, false);
+
             } catch (Exception e) {
                 // Log and continue
             }
@@ -584,7 +599,7 @@ public class DealService {
         if (deal.getConversation() != null && deal.getBuyer() != null) {
             java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
             java.time.Instant after = startPoint.atZone(java.time.ZoneId.systemDefault()).toInstant();
-            
+
             if (reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
                     deal.getConversation().getId(), buyer.getId(), after)) {
                 throw new SlifeException(ErrorCode.INVALID_INPUT, "Bạn đã đánh giá giao dịch này rồi");
@@ -620,11 +635,11 @@ public class DealService {
 
         // Cập nhật điểm đánh giá cho người bán
         refreshUserReputation(deal.getSeller());
-        
+
         // Gửi thông báo "Có đánh giá mới" cho Người bán
         Long convId = (deal.getConversation() != null) ? deal.getConversation().getId() : null;
-        notificationService.notifyNewReview(deal.getSeller(), buyer, 
-            deal.getListing().getId(), deal.getListing().getTitle(), request.getRating(), convId);
+        notificationService.notifyNewReview(deal.getSeller(), buyer,
+                deal.getListing().getId(), deal.getListing().getTitle(), request.getRating(), convId);
     }
 
     private void refreshUserReputation(User user) {
@@ -633,6 +648,25 @@ public class DealService {
         if (avg != null) {
             user.setReputationScore(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
             userRepository.saveAndFlush(user);
+        }
+    }
+
+    private void notifyDealStatusEmail(Deal deal, String statusLabel, User actor) {
+        if (deal == null) {
+            return;
+        }
+        Listing listing = deal.getListing();
+        Long listingId = listing != null ? listing.getId() : null;
+        String listingTitle = listing != null ? listing.getTitle() : "tin đăng";
+        String actorName = actor != null ? actor.getFullName() : null;
+
+        User buyer = deal.getBuyer();
+        User seller = deal.getSeller();
+        if (buyer != null) {
+            systemEmailService.sendDealStatusChangedEmail(buyer, listingTitle, listingId, statusLabel, actorName);
+        }
+        if (seller != null && (buyer == null || !seller.getId().equals(buyer.getId()))) {
+            systemEmailService.sendDealStatusChangedEmail(seller, listingTitle, listingId, statusLabel, actorName);
         }
     }
 

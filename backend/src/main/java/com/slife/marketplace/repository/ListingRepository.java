@@ -301,6 +301,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             + "ORDER BY l.expirationDate ASC")
     List<Long> findIdsOfActiveExpiredListings(@Param("now") Instant now, Pageable pageable);
 
+    /** Tin ACTIVE sẽ hết hạn trong cửa sổ thời gian chỉ định. */
+    @Query("SELECT l FROM Listing l WHERE l.status = 'ACTIVE' "
+            + "AND l.deletedAt IS NULL "
+            + "AND l.expirationDate IS NOT NULL "
+            + "AND l.expirationDate >= :from AND l.expirationDate < :to")
+    List<Listing> findActiveListingsExpiringBetween(@Param("from") Instant from, @Param("to") Instant to);
+
     /**
      * Batch: {@code HIDDEN} theo danh sách ID (chỉ khi vẫn {@code ACTIVE} để an toàn khi chạy song song).
      */

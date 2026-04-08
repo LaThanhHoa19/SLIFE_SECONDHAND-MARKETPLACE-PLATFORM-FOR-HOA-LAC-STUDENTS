@@ -31,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,19 +78,21 @@ public class ListingService {
     private final ConfigService configService;
     private final NotificationService notificationService;
     private final ListingExpiryBatchService listingExpiryBatchService;
+    private final SystemEmailService systemEmailService;
 
     public ListingService(ListingRepository listingRepository,
-            ListingImageRepository listingImageRepository,
-            SavedListingRepository savedListingRepository,
-            CategoryRepository categoryRepository,
-            AddressRepository addressRepository,
-            FollowService followService,
-            BlockService blockService,
-            ListingLikeRepository listingLikeRepository,
-            ListingImageService listingImageService,
-            ConfigService configService,
-            NotificationService notificationService,
-            ListingExpiryBatchService listingExpiryBatchService) {
+                          ListingImageRepository listingImageRepository,
+                          SavedListingRepository savedListingRepository,
+                          CategoryRepository categoryRepository,
+                          AddressRepository addressRepository,
+                          FollowService followService,
+                          BlockService blockService,
+                          ListingLikeRepository listingLikeRepository,
+                          ListingImageService listingImageService,
+                          ConfigService configService,
+                          NotificationService notificationService,
+                          ListingExpiryBatchService listingExpiryBatchService,
+                          SystemEmailService systemEmailService) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -101,6 +105,7 @@ public class ListingService {
         this.configService = configService;
         this.notificationService = notificationService;
         this.listingExpiryBatchService = listingExpiryBatchService;
+        this.systemEmailService = systemEmailService;
     }
 
     // ----------------------------------------------------------------
@@ -334,7 +339,7 @@ public class ListingService {
      */
     @Transactional
     public ListingResponse createListingWithImages(User seller, CreateListingRequest request,
-            List<MultipartFile> images) {
+                                                   List<MultipartFile> images) {
         if (seller == null) {
             throw new SlifeException(ErrorCode.UNAUTHORIZED);
         }
@@ -681,7 +686,7 @@ public class ListingService {
     }
 
     private void enrichListingCardsWithLikes(List<com.slife.marketplace.dto.response.ListingCardResponse> cards,
-            User currentUser) {
+                                             User currentUser) {
         if (cards == null || cards.isEmpty()) {
             return;
         }
@@ -900,6 +905,8 @@ public class ListingService {
      */
     public int hideExpiredActiveListings() {
         Instant now = Instant.now();
+        notifyListingsExpiringSoon(now);
+
         int total = 0;
         int batchUpdated;
         do {
@@ -910,6 +917,27 @@ public class ListingService {
             log.info("hideExpiredActiveListings: total {} ACTIVE listing(s) set HIDDEN (all batches)", total);
         }
         return total;
+    }
+
+    private void notifyListingsExpiringSoon(Instant now) {
+        Instant from = now.plus(23, ChronoUnit.HOURS);
+        Instant to = now.plus(24, ChronoUnit.HOURS);
+        List<Listing> expiring = listingRepository.findActiveListingsExpiringBetween(from, to);
+        for (Listing listing : expiring) {
+            if (listing == null || listing.getSeller() == null || listing.getExpirationDate() == null) {
+                continue;
+            }
+            try {
+                LocalDateTime expiresAt = LocalDateTime.ofInstant(listing.getExpirationDate(), ZoneId.systemDefault());
+                systemEmailService.sendListingExpiringSoonEmail(
+                        listing.getSeller(),
+                        listing.getTitle(),
+                        listing.getId(),
+                        expiresAt);
+            } catch (Exception ex) {
+                log.warn("send listing expiring soon email failed listingId={}: {}", listing.getId(), ex.getMessage());
+            }
+        }
     }
 
     @Transactional(readOnly = true)

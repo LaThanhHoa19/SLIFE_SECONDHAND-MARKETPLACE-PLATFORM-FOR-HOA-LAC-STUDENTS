@@ -20,12 +20,15 @@ import java.util.List;
 public class ListingExpiryBatchService {
 
     private final ListingRepository listingRepository;
+    private final SystemEmailService systemEmailService;
     private final int batchSize;
 
     public ListingExpiryBatchService(
             ListingRepository listingRepository,
+            SystemEmailService systemEmailService,
             @Value("${app.scheduler.expire-listing-batch-size:100}") int batchSize) {
         this.listingRepository = listingRepository;
+        this.systemEmailService = systemEmailService;
         this.batchSize = batchSize;
     }
 
@@ -41,7 +44,25 @@ public class ListingExpiryBatchService {
         if (ids.isEmpty()) {
             return 0;
         }
+
+        List<com.slife.marketplace.entity.Listing> selectedListings = listingRepository.findAllById(ids);
         int updated = listingRepository.hideExpiredActiveListingsByIds(ids, now);
+        if (updated > 0) {
+            for (com.slife.marketplace.entity.Listing listing : selectedListings) {
+                if (listing == null || listing.getSeller() == null) {
+                    continue;
+                }
+                try {
+                    systemEmailService.sendListingExpiredEmail(
+                            listing.getSeller(),
+                            listing.getTitle(),
+                            listing.getId());
+                } catch (Exception ex) {
+                    log.warn("send listing expired email failed listingId={}: {}", listing.getId(), ex.getMessage());
+                }
+            }
+        }
+
         log.info("listing expiry batch: selectedIds={} rowsUpdated={}", ids.size(), updated);
         return updated;
     }
