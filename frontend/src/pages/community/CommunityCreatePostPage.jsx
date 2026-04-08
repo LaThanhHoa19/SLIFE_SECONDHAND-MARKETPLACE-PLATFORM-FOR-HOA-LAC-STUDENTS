@@ -165,15 +165,15 @@ export default function CommunityCreatePostPage() {
                     borderRadius: 3,
                     border: '1px solid',
                     borderColor: (t) => alpha(t.palette.divider, 0.6),
-                    bgcolor: (t) => alpha(t.palette.background.paper, t.palette.mode === 'dark' ? 0.55 : 0.98),
+                    bgcolor: '#201D26',
                 }}
             >
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                    <IconButton aria-label="Quay lại cộng đồng" onClick={() => navigate('/community')} size="small">
+                    <IconButton aria-label="Quay lại cộng đồng" onClick={() => navigate('/community')} size="small" sx={{ color: '#fff' }}>
                         <ArrowBackIcon />
                     </IconButton>
-                    <PostAddOutlinedIcon color="primary" />
-                    <Typography variant="h6" fontWeight={800} sx={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    <PostAddOutlinedIcon sx={{ color: '#fff' }} />
+                    <Typography variant="h6" fontWeight={800} sx={{ color: '#fff' }}>
                         Tạo bài cộng đồng
                     </Typography>
                 </Stack>
@@ -194,6 +194,22 @@ export default function CommunityCreatePostPage() {
                             inputProps={{ maxLength: COMMUNITY_POST_MAX_TITLE }}
                             helperText={`${title.length}/${COMMUNITY_POST_MAX_TITLE}`}
                             placeholder="Ví dụ: Có ai học nhóm môn OS không?"
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    bgcolor: '#312F37',
+                                    borderRadius: 2,
+                                    '& fieldset': { borderColor: 'rgba(255,255,255,0.08)' },
+                                    '&:hover fieldset': { borderColor: 'rgba(255,107,107,0.3)' },
+                                    '&.Mui-focused fieldset': { borderColor: '#9D6EED' },
+                                },
+                                '& .MuiInputBase-input': {
+                                    color: '#FFFFFF',
+                                },
+                                '& .MuiInputBase-input::placeholder': {
+                                    color: 'rgba(255,255,255,0.4)',
+                                    opacity: 1,
+                                }
+                            }}
                         />
                         <Box>
                             <TextField
@@ -214,6 +230,22 @@ export default function CommunityCreatePostPage() {
                                 placeholder={
                                     'Viết nội dung tại đây. Hashtag: bắt đầu bằng #, không khoảng trắng trong thẻ, chỉ chữ/số/gạch dưới — ví dụ: #slife #kytucxa2026'
                                 }
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        bgcolor: '#312F37',
+                                        borderRadius: 2,
+                                        '& fieldset': { borderColor: 'rgba(255,255,255,0.08)' },
+                                        '&:hover fieldset': { borderColor: 'rgba(255,107,107,0.3)' },
+                                        '&.Mui-focused fieldset': { borderColor: '#9D6EED' },
+                                    },
+                                    '& .MuiInputBase-input': {
+                                        color: '#FFFFFF',
+                                    },
+                                    '& .MuiInputBase-input::placeholder': {
+                                        color: 'rgba(255,255,255,0.4)',
+                                        opacity: 1,
+                                    }
+                                }}
                             />
                             {suggestOpen ? (
                                 <Paper
@@ -265,7 +297,7 @@ export default function CommunityCreatePostPage() {
                         </Box>
 
                         <Box>
-                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>
+                            <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75, color: '#fff' }}>
                                 Ảnh đính kèm — JPG/PNG, tối đa {maxImages} ảnh, mỗi file ≤ {COMMUNITY_POST_MAX_IMAGE_MB}MB
                             </Typography>
                             <ImageUploader

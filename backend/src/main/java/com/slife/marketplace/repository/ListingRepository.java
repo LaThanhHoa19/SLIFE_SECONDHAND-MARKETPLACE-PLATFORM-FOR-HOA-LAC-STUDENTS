@@ -289,6 +289,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             Pageable pageable);
 
     @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND l.status NOT IN ('SOLD', 'BANNED', 'DELETED') " +
             "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
             "AND l.deletedAt IS NULL " +
             "ORDER BY l.expirationDate DESC")
