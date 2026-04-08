@@ -145,6 +145,9 @@ const CONFIG_LABELS = {
     REPORT_THRESHOLD: 'Ngưỡng báo cáo',
     DEAL_TIMEOUT_DAYS: 'Thời gian chờ giao dịch',
     AUTO_HIDE_REPORT_THRESHOLD: 'Ngưỡng tự ẩn theo báo cáo',
+    PICKUP_REMINDER_HOURS: 'Giờ nhắc trước giờ nhận hàng (email)',
+    MAX_ACTIVE_LISTINGS_PER_USER: 'Số tin ACTIVE tối đa / người',
+    LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Giờ trước khi hết hạn — gửi mail nhắc',
 };
 
 const SUPPORTED_CONFIG_KEYS = new Set(Object.keys(CONFIG_LABELS));

@@ -253,6 +253,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     long countBySeller_IdAndStatus(Long sellerId, String status);
 
+    long countBySeller_IdAndStatusAndDeletedAtIsNull(Long sellerId, String status);
+
     /**
      * Địa điểm gợi ý filter: chỉ từ tin ACTIVE hiển thị được (chưa xóa mềm, chưa quá hạn lazy).
      */

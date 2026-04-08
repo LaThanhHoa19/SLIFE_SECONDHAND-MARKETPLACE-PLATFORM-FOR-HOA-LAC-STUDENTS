@@ -159,7 +159,7 @@ public class DealService {
                 d.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
             }
             d.setOffer(offerForDeal);
-            d.setAddress(resolveAddressForSealUpdate(listing, request.getAddressId(), d.getAddress()));
+            d.setAddress(resolveAddressForSeal(listing, request.getAddressId(), request.getPickupLocationText(), d.getAddress(), true));
             return mapToResponse(dealRepository.save(d));
         }
 
@@ -170,7 +170,7 @@ public class DealService {
         deal.setDealPrice(request.getPrice());
         deal.setStatus(STATUS_PENDING);
         deal.setOffer(offerForDeal);
-        deal.setAddress(resolveAddressForDeal(listing, request.getAddressId()));
+        deal.setAddress(resolveAddressForSeal(listing, request.getAddressId(), request.getPickupLocationText(), null, false));
         if (request.getPickupTime() != null) {
             deal.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
         }
@@ -196,7 +196,10 @@ public class DealService {
         deal.setStatus(STATUS_COMPLETED);
         deal.setConfirmedAt(LocalDateTime.now());
         Deal saved = dealRepository.save(deal);
-        notifyDealStatusEmail(saved, "Người mua đã chấp nhận", buyer);
+        notifyDealStatusEmail(saved,
+                "Bạn đã chấp nhận giao dịch.",
+                "Người mua đã chấp nhận giao dịch.",
+                buyer);
         return mapToResponse(saved);
     }
 
@@ -218,7 +221,10 @@ public class DealService {
         deal.setStatus(STATUS_REJECTED);
         deal.setConfirmedAt(LocalDateTime.now());
         Deal saved = dealRepository.save(deal);
-        notifyDealStatusEmail(saved, "Người mua đã từ chối", buyer);
+        notifyDealStatusEmail(saved,
+                "Bạn đã từ chối giao dịch.",
+                "Người mua đã từ chối giao dịch.",
+                buyer);
         return mapToResponse(saved);
     }
 
@@ -239,6 +245,10 @@ public class DealService {
         // DB schema for deals does not have REJECTED; use CANCELLED for seller rejection.
         deal.setStatus(STATUS_CANCELLED);
         deal = dealRepository.save(deal);
+        notifyDealStatusEmail(deal,
+                "Người bán đã từ chối giao dịch này.",
+                "Bạn đã từ chối giao dịch đang chờ xác nhận.",
+                seller);
         return mapToResponse(deal);
     }
 
@@ -259,7 +269,10 @@ public class DealService {
         deal.setStatus(STATUS_CONFIRMED);
         deal.setConfirmedAt(LocalDateTime.now());
         deal = dealRepository.save(deal);
-        notifyDealStatusEmail(deal, "Người bán đã xác nhận giao dịch", seller);
+        notifyDealStatusEmail(deal,
+                "Người bán đã xác nhận giao dịch — kiểm tra lịch nhận hàng trên SLIFE.",
+                "Bạn đã xác nhận giao dịch.",
+                seller);
         return mapToResponse(deal);
     }
 
@@ -320,7 +333,10 @@ public class DealService {
                 deal.getListing() != null ? deal.getListing().getTitle() : "tin đăng của bạn", false, false);
 
         Deal saved = dealRepository.save(deal);
-        notifyDealStatusEmail(saved, "Người mua đã hủy giao dịch", buyer);
+        notifyDealStatusEmail(saved,
+                "Bạn đã hủy giao dịch.",
+                "Người mua đã hủy giao dịch.",
+                buyer);
     }
 
     @Transactional
@@ -387,9 +403,15 @@ public class DealService {
         deal.setUpdatedAt(LocalDateTime.now());
         Deal saved = dealRepository.save(deal);
         if (request.isCompleted()) {
-            notifyDealStatusEmail(saved, "Giao dịch đã hoàn tất thành công", buyer);
+            notifyDealStatusEmail(saved,
+                    "Bạn đã xác nhận hoàn tất giao dịch.",
+                    "Người mua đã xác nhận hoàn tất giao dịch.",
+                    buyer);
         } else {
-            notifyDealStatusEmail(saved, "Giao dịch đã bị hủy", buyer);
+            notifyDealStatusEmail(saved,
+                    "Bạn đã hủy giao dịch sau khi nhận hàng.",
+                    "Người mua đã hủy giao dịch.",
+                    buyer);
         }
         return mapToResponse(saved);
     }
@@ -651,22 +673,21 @@ public class DealService {
         }
     }
 
-    private void notifyDealStatusEmail(Deal deal, String statusLabel, User actor) {
+    private void notifyDealStatusEmail(Deal deal, String buyerHeadline, String sellerHeadline, User actor) {
         if (deal == null) {
             return;
         }
         Listing listing = deal.getListing();
         Long listingId = listing != null ? listing.getId() : null;
         String listingTitle = listing != null ? listing.getTitle() : "tin đăng";
-        String actorName = actor != null ? actor.getFullName() : null;
 
         User buyer = deal.getBuyer();
         User seller = deal.getSeller();
         if (buyer != null) {
-            systemEmailService.sendDealStatusChangedEmail(buyer, listingTitle, listingId, statusLabel, actorName);
+            systemEmailService.sendDealStatusChangedEmail(buyer, deal, listingTitle, listingId, buyerHeadline, actor);
         }
         if (seller != null && (buyer == null || !seller.getId().equals(buyer.getId()))) {
-            systemEmailService.sendDealStatusChangedEmail(seller, listingTitle, listingId, statusLabel, actorName);
+            systemEmailService.sendDealStatusChangedEmail(seller, deal, listingTitle, listingId, sellerHeadline, actor);
         }
     }
 
@@ -744,6 +765,79 @@ public class DealService {
             return currentOnDeal;
         }
         return listing.getPickupAddress();
+    }
+
+    /**
+     * Chốt đơn trong chat: nếu {@code pickupLocationText} khác chuỗi hiển thị của địa chỉ tin đăng,
+     * tạo bản ghi {@link Address} mới cho người bán (không sửa địa chỉ gốc của tin).
+     */
+    private Address resolveAddressForSeal(Listing listing, Long explicitAddressId, String pickupLocationText,
+                                          Address currentOnDeal, boolean updatingExisting) {
+        String trimmed = pickupLocationText != null ? pickupLocationText.trim() : "";
+        if (trimmed.isEmpty() || "—".equals(trimmed)) {
+            if (updatingExisting) {
+                return resolveAddressForSealUpdate(listing, explicitAddressId, currentOnDeal);
+            }
+            return resolveAddressForDeal(listing, explicitAddressId);
+        }
+        if (updatingExisting && currentOnDeal != null && trimmed.equals(formatAddressDisplay(currentOnDeal))) {
+            return currentOnDeal;
+        }
+        Address listingPickup = listing.getPickupAddress();
+        String baseDisplay = formatAddressDisplay(listingPickup);
+        if (trimmed.equals(baseDisplay)) {
+            if (updatingExisting) {
+                return resolveAddressForSealUpdate(listing, explicitAddressId, currentOnDeal);
+            }
+            return resolveAddressForDeal(listing, explicitAddressId);
+        }
+        User seller = listing.getSeller();
+        if (seller == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Tin đăng thiếu người bán");
+        }
+        return persistSellerPickupAddressSnapshot(seller, listingPickup, trimmed);
+    }
+
+    private static String formatAddressDisplay(Address a) {
+        if (a == null) {
+            return "";
+        }
+        String loc = a.getLocationName();
+        String txt = a.getAddressText();
+        boolean hasLoc = loc != null && !loc.isBlank();
+        boolean hasTxt = txt != null && !txt.isBlank();
+        if (hasLoc && hasTxt) {
+            return loc.trim() + ", " + txt.trim();
+        }
+        if (hasLoc) {
+            return loc.trim();
+        }
+        if (hasTxt) {
+            return txt.trim();
+        }
+        return "";
+    }
+
+    private Address persistSellerPickupAddressSnapshot(User seller, Address basePickup, String fullText) {
+        Address a = new Address();
+        a.setUser(seller);
+        String t = fullText.trim();
+        if (t.length() <= 200) {
+            a.setLocationName(t);
+            a.setAddressText(null);
+        } else {
+            a.setLocationName(t.substring(0, 200));
+            a.setAddressText(t.substring(200));
+        }
+        if (basePickup != null) {
+            a.setLat(basePickup.getLat());
+            a.setLng(basePickup.getLng());
+        }
+        a.setIsDefault(false);
+        Instant now = Instant.now();
+        a.setCreatedAt(now);
+        a.setUpdatedAt(now);
+        return addressRepository.save(a);
     }
 
     private Optional<Offer> resolveOfferForCreateDeal(Long listingId, User buyer, BigDecimal price, Long explicitOfferId) {

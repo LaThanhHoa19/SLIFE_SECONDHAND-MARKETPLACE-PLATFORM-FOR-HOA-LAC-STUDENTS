@@ -43,6 +43,7 @@ public class SystemEmailService {
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final ConfigService configService;
 
     @Value("${app.mail.enabled:true}")
     private boolean mailEnabled;
@@ -62,13 +63,19 @@ public class SystemEmailService {
     @Value("${app.mail.http.secret:}")
     private String mailHttpSecret;
 
+    /** Khi non-blank, mọi lệnh gửi mail dùng địa chỉ này (thử template an toàn khi DB có nhiều user). */
+    @Value("${app.mail.force-to:}")
+    private String mailForceTo;
+
     public SystemEmailService(
             ObjectProvider<JavaMailSender> mailSenderProvider,
             UserRepository userRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ConfigService configService) {
         this.mailSenderProvider = mailSenderProvider;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.configService = configService;
     }
 
     @Async("emailTaskExecutor")
@@ -85,13 +92,8 @@ public class SystemEmailService {
                 return;
             }
             String name = displayName(user);
-            String subject = "Chào mừng bạn đến với SLIFE";
-            String body = htmlWrap(
-                    "<p>Xin chào " + esc(name) + ",</p>"
-                            + "<p>Tài khoản SLIFE của bạn đã được kích hoạt qua Google. "
-                            + "Bạn có thể đăng tin, trả giá và trao đổi an toàn trên chợ đồ cũ sinh viên.</p>"
-                            + "<p><a href=\"" + esc(welcomeAppLink()) + "\">Mở SLIFE</a></p>"
-                            + "<p style=\"color:#666;font-size:12px\">Đây là email hệ thống, vui lòng không trả lời.</p>");
+            String subject = "[SLIFE] Chào mừng — tài khoản của bạn đã sẵn sàng";
+            String body = buildWelcomeEmailDocument(name);
             send(user.getEmail(), subject, body);
             user.setWelcomeEmailSentAt(LocalDateTime.now());
             user.setUpdatedAt(LocalDateTime.now());
@@ -121,27 +123,25 @@ public class SystemEmailService {
     }
 
     @Async("emailTaskExecutor")
-    public void sendOfferAcceptedEmails(User buyer, User seller, String listingTitle, Long listingId, Long conversationId) {
+    public void sendOfferAcceptedEmails(User buyer, User seller, String listingTitle, Long listingId,
+                                        Long conversationId, Long dealId) {
         if (!mailEnabled) {
             return;
         }
         String title = trunc(listingTitle, 80);
+        String chatLink = esc(chatOrListingUrl(listingId, conversationId));
+        String listingLink = esc(listingUrl(listingId));
         try {
             if (buyer != null && buyer.getEmail() != null && !buyer.getEmail().isBlank()) {
-                String subject = "Người bán đã chấp nhận mức giá bạn đề xuất";
-                String body = htmlWrap(
-                        "<p>Xin chào " + esc(displayName(buyer)) + ",</p>"
-                                + "<p>Người bán đã <strong>chấp nhận</strong> trả giá của bạn cho «" + esc(title) + "».</p>"
-                                + "<p><a href=\"" + esc(chatOrListingUrl(listingId, conversationId)) + "\">Mở chat / chi tiết</a></p>");
+                String subject = "[SLIFE] Người bán đã chấp nhận trả giá — " + trunc(title, 45);
+                String body = buildOfferAcceptedEmailDocument(
+                        buyer, seller, title, listingId, dealId, chatLink, listingLink, true);
                 send(buyer.getEmail(), subject, body);
             }
             if (seller != null && seller.getEmail() != null && !seller.getEmail().isBlank()) {
-                String subject2 = "Bạn đã chấp nhận một lượt trả giá";
-                String body2 = htmlWrap(
-                        "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
-                                + "<p>Bạn đã chấp nhận trả giá của người mua cho «" + esc(title) + "». "
-                                + "Hãy chốt thời gian giao dịch trong chat nếu cần.</p>"
-                                + "<p><a href=\"" + esc(chatOrListingUrl(listingId, conversationId)) + "\">Mở chat</a></p>");
+                String subject2 = "[SLIFE] Bạn đã chấp nhận một lượt trả giá — " + trunc(title, 40);
+                String body2 = buildOfferAcceptedEmailDocument(
+                        buyer, seller, title, listingId, dealId, chatLink, listingLink, false);
                 send(seller.getEmail(), subject2, body2);
             }
         } catch (Exception ex) {
@@ -150,39 +150,41 @@ public class SystemEmailService {
     }
 
     @Async("emailTaskExecutor")
-    public void sendOfferRejectedEmail(User buyer, String sellerName, String listingTitle, Long listingId,
-                                       BigDecimal amount) {
-        if (!mailEnabled || buyer == null || buyer.getEmail() == null || buyer.getEmail().isBlank()) {
+    public void sendOfferRejectedEmails(User buyer, User seller, String listingTitle, Long listingId, BigDecimal amount) {
+        if (!mailEnabled) {
             return;
         }
+        String title = trunc(listingTitle, 80);
+        String money = esc(formatMoney(amount));
+        String listingLink = esc(listingUrl(listingId));
         try {
-            String subject = "Lượt trả giá của bạn chưa được chấp nhận";
-            String body = htmlWrap(
-                    "<p>Xin chào " + esc(displayName(buyer)) + ",</p>"
-                            + "<p>Người bán <strong>" + esc(sellerName) + "</strong> đã <strong>từ chối</strong> "
-                            + "mức giá " + esc(formatMoney(amount)) + " cho «" + esc(trunc(listingTitle, 80)) + "».</p>"
-                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Xem tin</a></p>");
-            send(buyer.getEmail(), subject, body);
+            if (buyer != null && buyer.getEmail() != null && !buyer.getEmail().isBlank()) {
+                String subject = "[SLIFE] Trả giá chưa được chấp nhận — " + trunc(title, 40);
+                String body = buildOfferRejectedEmailDocument(
+                        buyer, seller, title, money, listingLink, true);
+                send(buyer.getEmail(), subject, body);
+            }
+            if (seller != null && seller.getEmail() != null && !seller.getEmail().isBlank()) {
+                String subject2 = "[SLIFE] Bạn đã từ chối một lượt trả giá — " + trunc(title, 40);
+                String body2 = buildOfferRejectedEmailDocument(
+                        buyer, seller, title, money, listingLink, false);
+                send(seller.getEmail(), subject2, body2);
+            }
         } catch (Exception ex) {
-            log.warn("sendOfferRejectedEmail failed: {}", ex.getMessage());
+            log.warn("sendOfferRejectedEmails failed: {}", ex.getMessage());
         }
     }
 
     @Async("emailTaskExecutor")
-    public void sendDealStatusChangedEmail(User recipient, String listingTitle, Long listingId, String statusLabel, String actorName) {
+    public void sendDealStatusChangedEmail(User recipient, Deal deal, String listingTitle, Long listingId,
+                                           String headlineForRecipient, User actor) {
         if (!mailEnabled || recipient == null || recipient.getEmail() == null || recipient.getEmail().isBlank()) {
             return;
         }
         try {
             String title = trunc(listingTitle, 80);
-            String subject = "Cập nhật giao dịch: " + esc(statusLabel);
-            String body = htmlWrap(
-                    "<p>Xin chào " + esc(displayName(recipient)) + ",</p>"
-                            + "<p>Giao dịch cho «" + esc(title) + "» vừa được cập nhật trạng thái: <strong>" + esc(statusLabel) + "</strong>.</p>"
-                            + (actorName != null && !actorName.isBlank()
-                            ? "<p>Thao tác bởi: <strong>" + esc(actorName) + "</strong>.</p>"
-                            : "")
-                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Xem chi tiết</a></p>");
+            String subject = "[SLIFE] Giao dịch #" + deal.getId() + " — " + trunc(headlineForRecipient, 55);
+            String body = buildDealStatusEmailDocument(recipient, deal, title, listingId, headlineForRecipient, actor);
             send(recipient.getEmail(), subject, body);
         } catch (Exception ex) {
             log.warn("sendDealStatusChangedEmail failed: {}", ex.getMessage());
@@ -248,6 +250,114 @@ public class SystemEmailService {
         }
     }
 
+    /**
+     * Dev: gửi tuần tự các template email (welcome, trả giá, deal, nhắc nhận hàng, …) để kiểm tra SMTP/HTTP relay.
+     * Đích thực tế = {@code app.mail.force-to} nếu có, không thì tới các email giả lập (không tồn tại trong DB).
+     */
+    public int sendDevMailSamples() {
+        if (!mailEnabled) {
+            log.warn("sendDevMailSamples: mail disabled");
+            return 0;
+        }
+        int sent = 0;
+        User buyer = devUser(9001L, "buyer-mail-sample@slife.test", "Người mua (mẫu)");
+        User seller = devUser(9002L, "seller-mail-sample@slife.test", "Người bán (mẫu)");
+        Listing listing = new Listing();
+        listing.setId(7001L);
+        listing.setTitle("Tai nghe không dây — mẫu test email SLIFE");
+        listing.setSeller(seller);
+        Deal deal = new Deal();
+        deal.setId(5001L);
+        deal.setListing(listing);
+        deal.setBuyer(buyer);
+        deal.setDealPrice(new BigDecimal("199000.00"));
+        deal.setStatus("CONFIRMED");
+        deal.setPickupTime(LocalDateTime.now().plusDays(1).withHour(15).withMinute(0).withSecond(0).withNano(0));
+        String title = trunc(listing.getTitle(), 80);
+        Long listingId = listing.getId();
+        try {
+            send("welcome-sample@slife.test",
+                    "[SLIFE] Chào mừng — tài khoản của bạn đã sẵn sàng",
+                    buildWelcomeEmailDocument("Bạn đọc email test"));
+            sent++;
+
+            send(seller.getEmail(),
+                    "Có lượt trả giá mới cho tin của bạn",
+                    htmlWrap("<p>Xin chào " + esc(displayName(seller)) + ",</p>"
+                            + "<p><strong>" + esc(displayName(buyer)) + "</strong> vừa đề xuất giá <strong>"
+                            + esc(formatMoney(new BigDecimal("150000"))) + "</strong> cho tin «" + esc(title) + "».</p>"
+                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Xem tin & phản hồi</a></p>"));
+            sent++;
+
+            String chatLink = esc(chatOrListingUrl(listingId, 4001L));
+            String listingLink = esc(listingUrl(listingId));
+            send(buyer.getEmail(),
+                    "[SLIFE] Người bán đã chấp nhận trả giá — " + trunc(title, 45),
+                    buildOfferAcceptedEmailDocument(buyer, seller, title, listingId, 5001L, chatLink, listingLink, true));
+            sent++;
+            send(seller.getEmail(),
+                    "[SLIFE] Bạn đã chấp nhận một lượt trả giá — " + trunc(title, 40),
+                    buildOfferAcceptedEmailDocument(buyer, seller, title, listingId, 5001L, chatLink, listingLink, false));
+            sent++;
+
+            String money = esc(formatMoney(new BigDecimal("120000")));
+            send(buyer.getEmail(),
+                    "[SLIFE] Trả giá chưa được chấp nhận — " + trunc(title, 40),
+                    buildOfferRejectedEmailDocument(buyer, seller, title, money, listingLink, true));
+            sent++;
+            send(seller.getEmail(),
+                    "[SLIFE] Bạn đã từ chối một lượt trả giá — " + trunc(title, 40),
+                    buildOfferRejectedEmailDocument(buyer, seller, title, money, listingLink, false));
+            sent++;
+
+            send(buyer.getEmail(),
+                    "[SLIFE] Giao dịch #" + deal.getId() + " — " + trunc("Người bán đã xác nhận giao dịch.", 55),
+                    buildDealStatusEmailDocument(buyer, deal, title, listingId,
+                            "Người bán đã xác nhận giao dịch — kiểm tra lịch nhận hàng trên SLIFE.", seller));
+            sent++;
+            send(seller.getEmail(),
+                    "[SLIFE] Giao dịch #" + deal.getId() + " — " + trunc("Bạn đã xác nhận giao dịch.", 55),
+                    buildDealStatusEmailDocument(seller, deal, title, listingId, "Bạn đã xác nhận giao dịch.", seller));
+            sent++;
+
+            String pickupStr = deal.getPickupTime().format(DT_FMT);
+            int reminderHours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3));
+            String hourPhrase = reminderHours == 1 ? "1 giờ" : reminderHours + " giờ";
+            String subRem = "[SLIFE] Nhắc nhận hàng — #" + deal.getId() + " — " + trunc(title, 50);
+            send(buyer.getEmail(), subRem,
+                    buildPickupReminderEmailDocument(deal, listing, buyer, seller, true, pickupStr, hourPhrase));
+            sent++;
+            send(seller.getEmail(), subRem,
+                    buildPickupReminderEmailDocument(deal, listing, seller, buyer, false, pickupStr, hourPhrase));
+            sent++;
+
+            log.info("sendDevMailSamples: queued {} messages (force-to={})", sent,
+                    mailForceTo != null && !mailForceTo.isBlank() ? mailForceTo : "(none)");
+        } catch (Exception ex) {
+            log.warn("sendDevMailSamples failed: {}", ex.getMessage(), ex);
+        }
+        return sent;
+    }
+
+    private static User devUser(Long id, String email, String fullName) {
+        User u = new User();
+        u.setId(id);
+        u.setEmail(email);
+        u.setFullName(fullName);
+        return u;
+    }
+
+    private String resolveRecipient(String intendedTo) {
+        if (mailForceTo != null && !mailForceTo.isBlank()) {
+            String t = mailForceTo.trim();
+            if (!t.equalsIgnoreCase(intendedTo != null ? intendedTo.trim() : "")) {
+                log.debug("app.mail.force-to: redirect {} -> {}", intendedTo, t);
+            }
+            return t;
+        }
+        return intendedTo;
+    }
+
     /** Đồng bộ — gọi từ scheduler sau khi đã chọn deal (tránh đánh dấu reminderSent trước khi gửi). */
     public void sendPickupReminderEmails(Deal deal) {
         if (!mailEnabled || deal == null) {
@@ -261,29 +371,277 @@ public class SystemEmailService {
             return;
         }
         String pickupStr = pickup.format(DT_FMT);
-        String title = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
+        String titleShort = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
+        int reminderHours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3));
+        String hourPhrase = reminderHours == 1 ? "1 giờ" : reminderHours + " giờ";
+        String subject = "[SLIFE] Nhắc nhận hàng — #" + deal.getId() + " — " + trunc(titleShort, 50);
         try {
             if (buyer.getEmail() != null && !buyer.getEmail().isBlank()) {
-                String subject = "Nhắc: Còn khoảng 3 giờ tới giờ giao dịch";
-                String body = htmlWrap(
-                        "<p>Xin chào " + esc(displayName(buyer)) + ",</p>"
-                                + "<p>Giao dịch cho «" + esc(title) + "» dự kiến lúc <strong>" + esc(pickupStr)
-                                + "</strong> (còn khoảng 3 giờ). Vui lòng liên hệ đối phương nếu cần đổi lịch.</p>"
-                                + "<p><a href=\"" + esc(listingUrl(listing.getId())) + "\">Xem tin</a></p>");
+                String body = buildPickupReminderEmailDocument(
+                        deal, listing, buyer, seller, true, pickupStr, hourPhrase);
                 send(buyer.getEmail(), subject, body);
             }
             if (seller.getEmail() != null && !seller.getEmail().isBlank()) {
-                String subject = "Nhắc: Còn khoảng 3 giờ tới giờ giao dịch";
-                String body = htmlWrap(
-                        "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
-                                + "<p>Giao dịch với người mua cho «" + esc(title) + "» dự kiến lúc <strong>"
-                                + esc(pickupStr) + "</strong> (còn khoảng 3 giờ).</p>"
-                                + "<p><a href=\"" + esc(listingUrl(listing.getId())) + "\">Xem tin</a></p>");
+                String body = buildPickupReminderEmailDocument(
+                        deal, listing, seller, buyer, false, pickupStr, hourPhrase);
                 send(seller.getEmail(), subject, body);
             }
         } catch (Exception ex) {
             log.warn("sendPickupReminderEmails dealId={}: {}", deal.getId(), ex.getMessage());
         }
+    }
+
+    /**
+     * HTML email (table + inline CSS) cho nhắc lịch nhận hàng — tương thích client phổ biến.
+     */
+    private String buildPickupReminderEmailDocument(
+            Deal deal,
+            Listing listing,
+            User recipient,
+            User otherParty,
+            boolean recipientIsBuyer,
+            String pickupStr,
+            String hourPhrase) {
+        Long listingId = listing.getId();
+        String listingLink = esc(listingUrl(listingId));
+        String chatLink = esc(chatOrListingUrl(listingId, null));
+        String title = listing.getTitle() != null ? trunc(listing.getTitle(), 120) : "Tin đăng";
+        String roleLine = recipientIsBuyer
+                ? "Bạn là <strong>người mua</strong> trong giao dịch này."
+                : "Bạn là <strong>người bán</strong> trong giao dịch này.";
+        String otherLabel = recipientIsBuyer ? "Người bán" : "Người mua";
+
+        String rows = ""
+                + emailDetailRow("Mã giao dịch", "#" + deal.getId())
+                + emailDetailRow("Tin đăng", esc(title))
+                + emailDetailRow("Giá thỏa thuận", esc(formatMoney(deal.getDealPrice())))
+                + emailDetailRow("Giờ nhận hàng (dự kiến)", esc(pickupStr))
+                + emailDetailRow(otherLabel, esc(displayName(otherParty)))
+                + emailDetailRow("Nhắc trước", "Còn khoảng " + esc(hourPhrase));
+
+        String bodyContent = ""
+                + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayName(recipient)) + "</strong>,</p>"
+                + "<p style=\"margin:0 0 16px 0;\">" + roleLine + "</p>"
+                + "<p style=\"margin:0 0 20px 0;color:#475569;\">"
+                + "Thời điểm nhận hàng đã gần. Dưới đây là chi tiết giao dịch — vui lòng liên hệ "
+                + esc(otherLabel.toLowerCase()) + " nếu cần đổi lịch.</p>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"border-collapse:collapse;font-size:14px;color:#334155;\">"
+                + rows
+                + "</table>"
+                + emailPrimarySecondaryActions(listingLink, chatLink, "Xem tin đăng", "Mở trò chuyện");
+
+        String footer = "Đây là email tự động từ SLIFE. Bạn nhận được vì có giao dịch đang chờ nhận hàng. "
+                + "Không cần trả lời trực tiếp email này.";
+        return slifeEmailDocument("Nhắc lịch nhận hàng", bodyContent, footer);
+    }
+
+    private String buildWelcomeEmailDocument(String displayNameForGreeting) {
+        String feed = esc(welcomeAppLink());
+        String body = ""
+                + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayNameForGreeting) + "</strong>,</p>"
+                + "<p style=\"margin:0 0 16px 0;color:#475569;\">"
+                + "Tài khoản SLIFE của bạn đã được kích hoạt qua Google. "
+                + "Bạn có thể đăng tin, trả giá và trao đổi an toàn trên chợ đồ cũ khu Hòa Lạc.</p>"
+                + "<ul style=\"margin:0 0 20px 18px;padding:0;color:#334155;font-size:14px;line-height:1.6;\">"
+                + "<li>Đăng bán đồ dùng, sách, điện tử…</li>"
+                + "<li>Chat trực tiếp với người mua / bán</li>"
+                + "<li>Nhận thông báo khi có lượt trả giá hoặc cập nhật giao dịch</li>"
+                + "</ul>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-top:8px;\">"
+                + "<tr><td align=\"center\" style=\"padding:6px 0;\">"
+                + "<a href=\"" + feed + "\" style=\"display:inline-block;background:#7c3aed;color:#ffffff;"
+                + "text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:999px;\">"
+                + "Khám phá bảng tin</a>"
+                + "</td></tr></table>";
+        String footer = "Đây là email chào mừng từ SLIFE. Nếu bạn không vừa đăng nhập, vui lòng bảo mật tài khoản Google.";
+        return slifeEmailDocument("Chào mừng đến với SLIFE", body, footer);
+    }
+
+    private String buildOfferAcceptedEmailDocument(
+            User buyer,
+            User seller,
+            String titleTruncated,
+            Long listingId,
+            Long dealId,
+            String chatLinkEscaped,
+            String listingLinkEscaped,
+            boolean recipientIsBuyer) {
+        User recipient = recipientIsBuyer ? buyer : seller;
+        User other = recipientIsBuyer ? seller : buyer;
+        String intro = recipientIsBuyer
+                ? ("Người bán <strong>" + esc(displayName(seller)) + "</strong> đã <strong>chấp nhận</strong> "
+                + "mức giá bạn đề xuất cho tin dưới đây.")
+                : ("Bạn đã <strong>chấp nhận</strong> trả giá của <strong>" + esc(displayName(buyer)) + "</strong>. "
+                + "Hãy thống nhất thời gian giao nhận trong chat nếu cần.");
+        String rows = emailDetailRow("Tin đăng", esc(titleTruncated));
+        if (dealId != null) {
+            rows += emailDetailRow("Mã giao dịch", "#" + dealId);
+        }
+        rows += emailDetailRow("Đối phương", esc(displayName(other)));
+
+        String body = ""
+                + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayName(recipient)) + "</strong>,</p>"
+                + "<p style=\"margin:0 0 18px 0;color:#475569;\">" + intro + "</p>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"border-collapse:collapse;font-size:14px;color:#334155;\">"
+                + rows
+                + "</table>"
+                + emailPrimarySecondaryActions(listingLinkEscaped, chatLinkEscaped, "Xem tin đăng", "Mở trò chuyện");
+        String footer = "Email tự động từ SLIFE về lượt trả giá. Không cần trả lời trực tiếp email này.";
+        return slifeEmailDocument("Trả giá được chấp nhận", body, footer);
+    }
+
+    private String buildOfferRejectedEmailDocument(
+            User buyer,
+            User seller,
+            String titleTruncated,
+            String amountEscaped,
+            String listingLinkEscaped,
+            boolean recipientIsBuyer) {
+        User recipient = recipientIsBuyer ? buyer : seller;
+        String intro = recipientIsBuyer
+                ? ("Người bán <strong>" + esc(displayName(seller)) + "</strong> đã <strong>từ chối</strong> "
+                + "mức giá " + amountEscaped + " cho tin dưới đây. Bạn có thể đề xuất mức khác hoặc thảo luận trong chat.")
+                : ("Bạn đã <strong>từ chối</strong> mức giá " + amountEscaped + " từ <strong>"
+                + esc(displayName(buyer)) + "</strong> cho tin dưới đây.");
+        String rows = ""
+                + emailDetailRow("Tin đăng", esc(titleTruncated))
+                + emailDetailRow("Mức giá đề xuất", amountEscaped)
+                + emailDetailRow("Người mua", esc(displayName(buyer)));
+
+        String body = ""
+                + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayName(recipient)) + "</strong>,</p>"
+                + "<p style=\"margin:0 0 18px 0;color:#475569;\">" + intro + "</p>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"border-collapse:collapse;font-size:14px;color:#334155;\">"
+                + rows
+                + "</table>"
+                + emailPrimarySecondaryActions(listingLinkEscaped, null, "Xem tin đăng", null);
+        String footer = "Email tự động từ SLIFE. Không cần trả lời trực tiếp email này.";
+        return slifeEmailDocument("Cập nhật lượt trả giá", body, footer);
+    }
+
+    private String buildDealStatusEmailDocument(
+            User recipient,
+            Deal deal,
+            String titleTruncated,
+            Long listingId,
+            String headlineForRecipient,
+            User actor) {
+        String listingLink = esc(listingUrl(listingId));
+        String chatLink = esc(chatOrListingUrl(listingId, null));
+        String rows = ""
+                + emailDetailRow("Mã giao dịch", "#" + deal.getId())
+                + emailDetailRow("Tin đăng", esc(titleTruncated))
+                + emailDetailRow("Giá thỏa thuận", esc(formatMoney(deal.getDealPrice())))
+                + emailDetailRow("Trạng thái trong hệ thống", esc(dealStatusDisplayVi(deal.getStatus())));
+        if (deal.getPickupTime() != null) {
+            rows += emailDetailRow("Giờ nhận hàng (nếu có)", esc(deal.getPickupTime().format(DT_FMT)));
+        }
+        String actorLine = "";
+        if (shouldShowActor(recipient, actor)) {
+            actorLine = "<p style=\"margin:16px 0 0 0;color:#475569;font-size:14px;\">Người thực hiện thao tác: <strong>"
+                    + esc(displayName(actor)) + "</strong></p>";
+        }
+
+        String body = ""
+                + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayName(recipient)) + "</strong>,</p>"
+                + "<p style=\"margin:0 0 8px 0;font-size:16px;color:#0f172a;font-weight:600;line-height:1.45;\">"
+                + esc(headlineForRecipient) + "</p>"
+                + "<p style=\"margin:0 0 18px 0;color:#475569;\">Dưới đây là thông tin giao dịch trên SLIFE.</p>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"border-collapse:collapse;font-size:14px;color:#334155;\">"
+                + rows
+                + "</table>"
+                + actorLine
+                + emailPrimarySecondaryActions(listingLink, chatLink, "Xem tin đăng", "Mở trò chuyện");
+        String footer = "Email tự động từ SLIFE về giao dịch của bạn. Không cần trả lời trực tiếp email này.";
+        return slifeEmailDocument("Cập nhật giao dịch", body, footer);
+    }
+
+    private static boolean shouldShowActor(User recipient, User actor) {
+        if (actor == null || recipient == null) {
+            return false;
+        }
+        if (actor.getId() == null || recipient.getId() == null) {
+            return false;
+        }
+        return !actor.getId().equals(recipient.getId());
+    }
+
+    private static String dealStatusDisplayVi(String status) {
+        if (status == null) {
+            return "—";
+        }
+        return switch (status.trim().toUpperCase()) {
+            case "PENDING" -> "Chờ xác nhận";
+            case "CONFIRMED" -> "Đã xác nhận";
+            case "COMPLETED" -> "Đã chấp nhận (chờ nhận hàng)";
+            case "CANCELLED" -> "Đã hủy";
+            case "REJECTED" -> "Đã từ chối";
+            case "SUCCESS" -> "Hoàn tất";
+            default -> status;
+        };
+    }
+
+    private String slifeEmailDocument(String headerSubtitle, String bodyContentHtml, String footerText) {
+        String inner = ""
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background-color:#f4f4f6;margin:0;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;\">"
+                + "<tr><td align=\"center\">"
+                + "<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"max-width:600px;width:100%;background:#ffffff;border-radius:12px;"
+                + "overflow:hidden;box-shadow:0 4px 24px rgba(15,23,42,0.08);\">"
+                + "<tr><td style=\"background:#7c3aed;padding:22px 24px;\">"
+                + "<div style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.02em;\">SLIFE</div>"
+                + "<div style=\"color:rgba(255,255,255,0.92);font-size:14px;margin-top:6px;\">"
+                + esc(headerSubtitle) + "</div>"
+                + "</td></tr>"
+                + "<tr><td style=\"padding:24px 24px 8px 24px;color:#1e293b;font-size:15px;line-height:1.55;\">"
+                + bodyContentHtml
+                + "</td></tr>"
+                + "<tr><td style=\"padding:16px 24px 22px 24px;background:#f8fafc;font-size:12px;color:#64748b;"
+                + "line-height:1.5;border-top:1px solid #e2e8f0;\">"
+                + esc(footerText)
+                + "</td></tr>"
+                + "</table></td></tr></table>";
+        return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\">"
+                + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>"
+                + "<body style=\"margin:0;padding:0;\">" + inner + "</body></html>";
+    }
+
+    private String emailPrimarySecondaryActions(String primaryUrlEscaped, String secondaryUrlEscaped,
+                                             String primaryLabel, String secondaryLabel) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-top:24px;\">");
+        if (primaryUrlEscaped != null && primaryLabel != null) {
+            sb.append("<tr><td align=\"center\" style=\"padding:4px;\">")
+                    .append("<a href=\"").append(primaryUrlEscaped)
+                    .append("\" style=\"display:inline-block;background:#7c3aed;color:#ffffff;")
+                    .append("text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:999px;\">")
+                    .append(esc(primaryLabel))
+                    .append("</a></td></tr>");
+        }
+        if (secondaryUrlEscaped != null && secondaryLabel != null) {
+            sb.append("<tr><td align=\"center\" style=\"padding:4px;\">")
+                    .append("<a href=\"").append(secondaryUrlEscaped)
+                    .append("\" style=\"display:inline-block;color:#7c3aed;")
+                    .append("text-decoration:underline;font-size:14px;font-weight:600;\">")
+                    .append(esc(secondaryLabel))
+                    .append("</a></td></tr>");
+        }
+        sb.append("</table>");
+        return sb.toString();
+    }
+
+    private static String emailDetailRow(String label, String valueHtml) {
+        return "<tr>"
+                + "<td style=\"padding:10px 0;border-bottom:1px solid #e2e8f0;color:#64748b;vertical-align:top;width:42%;\">"
+                + esc(label) + "</td>"
+                + "<td style=\"padding:10px 0;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;"
+                + "color:#0f172a;vertical-align:top;\">" + valueHtml + "</td>"
+                + "</tr>";
     }
 
     /** Trang mặc định sau đăng nhập (email welcome). */
@@ -296,24 +654,25 @@ public class SystemEmailService {
     }
 
     private void send(String to, String subject, String htmlBody) {
+        String toResolved = resolveRecipient(to);
         if (useHttpRelay()) {
-            sendViaHttpRelay(to, subject, htmlBody);
+            sendViaHttpRelay(toResolved, subject, htmlBody);
             return;
         }
         JavaMailSender sender = mailSenderProvider.getIfAvailable();
         if (sender == null) {
-            log.warn("JavaMailSender bean missing — add spring-boot-starter-mail properties or set app.mail.transport=http. Skip email to {}", to);
+            log.warn("JavaMailSender bean missing — add spring-boot-starter-mail properties or set app.mail.transport=http. Skip email to {}", toResolved);
             return;
         }
         try {
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
             helper.setFrom(mailFrom);
-            helper.setTo(to);
+            helper.setTo(toResolved);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);
             sender.send(message);
-            log.debug("Email sent (SMTP) to {} subject={}", to, subject);
+            log.debug("Email sent (SMTP) to {} subject={}", toResolved, subject);
         } catch (Exception ex) {
             log.warn("send email failed to {}: {}", to, ex.getMessage());
             throw new RuntimeException(ex);

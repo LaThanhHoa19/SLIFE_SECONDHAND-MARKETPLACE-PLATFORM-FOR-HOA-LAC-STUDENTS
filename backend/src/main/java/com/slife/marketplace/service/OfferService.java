@@ -312,7 +312,7 @@ public class OfferService {
             notificationService.notifyDealConfirmed(
                     buyerUser, listing.getSeller(), listing.getId(), listing.getTitle(), convId);
             systemEmailService.sendOfferAcceptedEmails(
-                    buyerUser, listing.getSeller(), listing.getTitle(), listing.getId(), convId);
+                    buyerUser, listing.getSeller(), listing.getTitle(), listing.getId(), convId, savedDeal.getId());
         }
         return savedDeal;
     }
@@ -406,7 +406,8 @@ public class OfferService {
                 listing.getSeller(),
                 listing.getTitle(),
                 listing.getId(),
-                convId
+                convId,
+                deal.getId()
         );
         return toResponse(offer);
     }
@@ -439,9 +440,9 @@ public class OfferService {
         if (buyer != null && listing.getSeller() != null && offer.getAmount() != null) {
             notificationService.notifyOfferRejected(buyer, listing.getSeller(), listing.getId(),
                     listing.getTitle(), offer.getAmount());
-            systemEmailService.sendOfferRejectedEmail(
+            systemEmailService.sendOfferRejectedEmails(
                     buyer,
-                    emailDisplayName(listing.getSeller()),
+                    listing.getSeller(),
                     listing.getTitle(),
                     listing.getId(),
                     offer.getAmount());
