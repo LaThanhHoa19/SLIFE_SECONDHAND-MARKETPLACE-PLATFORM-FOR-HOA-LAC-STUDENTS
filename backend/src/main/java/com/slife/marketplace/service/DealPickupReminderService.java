@@ -13,30 +13,36 @@ import java.time.ZoneId;
 import java.util.List;
 
 /**
- * Nhắc email 2 bên khi còn khoảng 3 giờ tới {@link Deal#getPickupTime()} (cửa sổ ±7 phút theo chu kỳ cron).
+ * Nhắc email 2 bên trước giờ nhận hàng ({@code PICKUP_REMINDER_HOURS}, mặc định 3) — cửa sổ ±7 phút theo chu kỳ cron.
  */
 @Service
 public class DealPickupReminderService {
 
     private static final Logger log = LoggerFactory.getLogger(DealPickupReminderService.class);
+    private static final int DEFAULT_PICKUP_REMINDER_HOURS = 3;
 
     private final DealRepository dealRepository;
     private final SystemEmailService systemEmailService;
+    private final ConfigService configService;
 
     @Value("${app.scheduler.pickup-reminder-zone:Asia/Ho_Chi_Minh}")
     private String zoneId;
 
-    public DealPickupReminderService(DealRepository dealRepository, SystemEmailService systemEmailService) {
+    public DealPickupReminderService(DealRepository dealRepository,
+                                     SystemEmailService systemEmailService,
+                                     ConfigService configService) {
         this.dealRepository = dealRepository;
         this.systemEmailService = systemEmailService;
+        this.configService = configService;
     }
 
     @Transactional
     public void processDueReminders() {
         ZoneId zone = ZoneId.of(zoneId);
         LocalDateTime now = LocalDateTime.now(zone);
-        LocalDateTime lower = now.plusHours(3).minusMinutes(7);
-        LocalDateTime upper = now.plusHours(3).plusMinutes(7);
+        int hours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", DEFAULT_PICKUP_REMINDER_HOURS));
+        LocalDateTime lower = now.plusHours(hours).minusMinutes(7);
+        LocalDateTime upper = now.plusHours(hours).plusMinutes(7);
         List<Deal> deals = dealRepository.findDealsForPickupReminder(lower, upper);
         for (Deal d : deals) {
             try {

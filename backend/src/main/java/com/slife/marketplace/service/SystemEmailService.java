@@ -43,6 +43,7 @@ public class SystemEmailService {
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
+    private final ConfigService configService;
 
     @Value("${app.mail.enabled:true}")
     private boolean mailEnabled;
@@ -65,10 +66,12 @@ public class SystemEmailService {
     public SystemEmailService(
             ObjectProvider<JavaMailSender> mailSenderProvider,
             UserRepository userRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            ConfigService configService) {
         this.mailSenderProvider = mailSenderProvider;
         this.userRepository = userRepository;
         this.objectMapper = objectMapper;
+        this.configService = configService;
     }
 
     @Async("emailTaskExecutor")
@@ -262,22 +265,23 @@ public class SystemEmailService {
         }
         String pickupStr = pickup.format(DT_FMT);
         String title = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
+        int reminderHours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3));
+        String hourPhrase = reminderHours == 1 ? "1 giờ" : reminderHours + " giờ";
+        String subject = "Nhắc: Còn khoảng " + hourPhrase + " tới giờ giao dịch";
         try {
             if (buyer.getEmail() != null && !buyer.getEmail().isBlank()) {
-                String subject = "Nhắc: Còn khoảng 3 giờ tới giờ giao dịch";
                 String body = htmlWrap(
                         "<p>Xin chào " + esc(displayName(buyer)) + ",</p>"
                                 + "<p>Giao dịch cho «" + esc(title) + "» dự kiến lúc <strong>" + esc(pickupStr)
-                                + "</strong> (còn khoảng 3 giờ). Vui lòng liên hệ đối phương nếu cần đổi lịch.</p>"
+                                + "</strong> (còn khoảng " + esc(hourPhrase) + "). Vui lòng liên hệ đối phương nếu cần đổi lịch.</p>"
                                 + "<p><a href=\"" + esc(listingUrl(listing.getId())) + "\">Xem tin</a></p>");
                 send(buyer.getEmail(), subject, body);
             }
             if (seller.getEmail() != null && !seller.getEmail().isBlank()) {
-                String subject = "Nhắc: Còn khoảng 3 giờ tới giờ giao dịch";
                 String body = htmlWrap(
                         "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
                                 + "<p>Giao dịch với người mua cho «" + esc(title) + "» dự kiến lúc <strong>"
-                                + esc(pickupStr) + "</strong> (còn khoảng 3 giờ).</p>"
+                                + esc(pickupStr) + "</strong> (còn khoảng " + esc(hourPhrase) + ").</p>"
                                 + "<p><a href=\"" + esc(listingUrl(listing.getId())) + "\">Xem tin</a></p>");
                 send(seller.getEmail(), subject, body);
             }
