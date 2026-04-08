@@ -181,13 +181,16 @@ public class ListingService {
 
         if ("FOLLOWING".equalsIgnoreCase(feedType)) {
             if (currentUser == null) {
-                pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(), pageable, 0);
+                pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(), pageable,
+                        0);
             } else {
                 Set<Long> followedSellerIds = followService.findAllFollowedIds(currentUser.getId());
                 if (followedSellerIds.isEmpty()) {
-                    pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(), pageable, 0);
+                    pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(),
+                            pageable, 0);
                 } else {
-                    pageResult = listingRepository.findFollowingActiveListingCards(followedSellerIds, Instant.now(), pageable);
+                    pageResult = listingRepository.findFollowingActiveListingCards(followedSellerIds, Instant.now(),
+                            pageable);
                 }
             }
         } else if ("GIVEAWAY".equalsIgnoreCase(feedType)) {
@@ -796,7 +799,8 @@ public class ListingService {
     }
 
     /**
-     * Ẩn tin khi có block theo bất kỳ chiều nào giữa người bán và người xem (cùng mô hình chat).
+     * Ẩn tin khi có block theo bất kỳ chiều nào giữa người bán và người xem (cùng
+     * mô hình chat).
      */
     private boolean isHiddenByBlockBetweenSellerAndViewer(User seller, User viewer) {
         if (seller == null || viewer == null || seller.getId() == null || viewer.getId() == null) {
@@ -1094,8 +1098,9 @@ public class ListingService {
             throw new SlifeException(ErrorCode.LISTING_NOT_EXPIRED);
         }
 
-        // Hướng "clone-to-draft": tạo bản nháp mới để người bán rà soát/chỉnh sửa trước khi đăng.
-        // Khi publish (DRAFT -> ACTIVE), hệ thống sẽ reset createdAt/updatedAt và set expirationDate.
+        // Hướng "clone-to-active": tạo bài ACTIVE mới ngay, set lại toàn bộ timestamp
+        // như bài đăng mới.
+        // Tin nguồn (hết hạn) được giữ nguyên, không đổi trạng thái.
         Listing fresh = new Listing();
         fresh.setSeller(source.getSeller());
         fresh.setCategory(source.getCategory());
@@ -1109,14 +1114,22 @@ public class ListingService {
                         ? source.getPurpose()
                         : "SALE");
         fresh.setIsGiveaway(Boolean.TRUE.equals(source.getIsGiveaway()));
-        fresh.setStatus(LISTING_STATUS_DRAFT);
+        fresh.setStatus(LISTING_STATUS_ACTIVE);
         fresh.setViewCount(0L);
         fresh.setCreatedAt(now);
         fresh.setUpdatedAt(now);
-        fresh.setExpirationDate(null);
+        fresh.setExpirationDate(now.plus(getListingExpirationDays(), ChronoUnit.DAYS));
         fresh.setDeletedAt(null);
 
         Listing savedNew = listingRepository.save(fresh);
+
+        // Soft-delete tin nguồn để biến mất khỏi tab Hết hạn (deletedAt IS NULL là điều
+        // kiện lọc).
+        // Không xóa cứng để giữ lịch sử (deal, chat vẫn reference được).
+        source.setDeletedAt(now);
+        source.setStatus(LISTING_STATUS_DELETED);
+        source.setUpdatedAt(now);
+        listingRepository.save(source);
 
         List<ListingImage> sourceImages = listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(source.getId());
         List<ListingImage> newImages = new ArrayList<>();
@@ -1137,8 +1150,11 @@ public class ListingService {
             listingImageRepository.saveAll(newImages);
         }
 
+        // Thông báo cho người theo dõi về bài đăng mới
+        notifyFollowersIfNewActiveListing(savedNew);
+
         log.info(
-                "repostListing: newListingId={} sourceId={} sellerId={}",
+                "repostListing (clone-to-active): newListingId={} sourceId={} sellerId={}",
                 savedNew.getId(),
                 id,
                 currentUser.getId());
