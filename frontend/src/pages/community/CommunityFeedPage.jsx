@@ -272,8 +272,14 @@ export default function CommunityFeedPage() {
                 >
                     <Stack direction="row" alignItems="center" gap={1.25} sx={{ mb: 1.5 }}>
                         <ForumOutlinedIcon sx={{ fontSize: 32, color: 'primary.light' }} />
-                        <Typography variant="h5" fontWeight={800} sx={{ color: '#9D6EED' }}>
-                        <Typography variant="h5" fontWeight={800} sx={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                        <Typography 
+                            variant="h5" 
+                            fontWeight={800} 
+                            sx={{ 
+                                color: '#9D6EED', 
+                                fontFamily: "'Plus Jakarta Sans', sans-serif" 
+                            }}
+                        >
                             Cộng đồng SLife
                         </Typography>
                     </Stack>
@@ -371,7 +377,15 @@ export default function CommunityFeedPage() {
                         }}
                     >
                         <CardContent sx={{ py: 4, textAlign: 'center' }}>
-                            <Typography variant="subtitle1" fontWeight={800} gutterBottom sx={{ color: '#9D6EED' }}>
+                            <Typography 
+                                variant="subtitle1" 
+                                fontWeight={800} 
+                                gutterBottom 
+                                sx={{ 
+                                    color: '#9D6EED',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif"
+                                }}
+                            >
                                 Chưa có bài đăng cộng đồng
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
