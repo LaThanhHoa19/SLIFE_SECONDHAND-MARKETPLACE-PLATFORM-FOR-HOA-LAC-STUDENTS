@@ -14,10 +14,12 @@ import java.util.Optional;
 @Repository 
 public interface DealRepository extends JpaRepository<Deal, Long> {
 
+    @EntityGraph(attributePaths = {"listing", "listing.seller", "proposedBy", "conversation", "offer", "address"})
     Optional<Deal> findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
             Long listingId, Long proposedById, String status);
     long countByStatusAndDeletedAtIsNull(String status);
 
+    @EntityGraph(attributePaths = {"listing", "listing.seller", "proposedBy", "conversation", "offer", "address"})
     Optional<Deal> findByIdAndDeletedAtIsNull(Long id);
     List<Deal> findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull(String status, LocalDateTime updatedAt);
 
@@ -35,7 +37,7 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     @Query(value = """
             SELECT DATE(d.created_at) AS day, COUNT(*) AS cnt
             FROM deals d
-            WHERE d.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)
+            WHERE d.created_at >= DATE_SUB(UTC_TIMESTAMP() + INTERVAL 7 HOUR, INTERVAL :days DAY)
               AND d.deleted_at IS NULL
             GROUP BY DATE(d.created_at)
             ORDER BY day ASC
