@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import {
-    Box, Button, TextField, Typography, Grid, MenuItem, Checkbox,
+    Box, Button, TextField, Typography, Grid, Checkbox,
     FormControlLabel, ToggleButton, ToggleButtonGroup, Dialog,
     DialogTitle, List, ListItemButton, ListItemText, IconButton,
     InputAdornment, Stack, Collapse, Alert, LinearProgress,
@@ -55,6 +55,14 @@ function parseCoord(v) {
     if (v == null || v === '') return NaN;
     const n = typeof v === 'number' ? v : Number(v);
     return Number.isFinite(n) ? n : NaN;
+}
+
+function adminSelectionKey(admin) {
+    if (!admin) return '';
+    const p = admin?.province?.code || admin?.province?.name || '';
+    const d = admin?.district?.code || admin?.district?.name || '';
+    const w = admin?.ward?.code || admin?.ward?.name || '';
+    return `${p}|${d}|${w}`;
 }
 
 /** Chuẩn hóa tiếng Việt để so sánh — bỏ dấu, viết thường */
@@ -397,13 +405,16 @@ export default function ListingForm({
     // Admin location — state cho UI, ref cho click handler (tránh closure stale)
     const [adminLocation, setAdminLocation] = useState(null);
     const adminLocationRef = useRef(null);
+    const prevAdminSelectionKeyRef = useRef('');
+    const [locationChangedNeedRepin, setLocationChangedNeedRepin] = useState(false);
+    const mapSectionRef = useRef(null);
     /** Bbox quận/huyện (hoặc phường) từ Nominatim — ưu tiên khi so với reverse chỉ có tên phường */
     const adminBboxRef = useRef(null);
     const pendingFlyToRef = useRef(null);
 
     // Pending pin: chờ user xác nhận hoặc từ chối
     const [pendingPin, setPendingPin] = useState(null); // { lat, lng, addressText, districtHint? }
-    const [pinStatus, setPinStatus] = useState('idle'); // 'idle' | 'valid' | 'invalid'
+    const [pinStatus, setPinStatus] = useState('idle'); // 'idle' | 'valid' | 'invalid' | 'missing_admin'
 
     // Map
     const [mapReady, setMapReady] = useState(false);
@@ -552,6 +563,38 @@ export default function ListingForm({
     useEffect(() => {
         adminLocationRef.current = adminLocation;
     }, [adminLocation]);
+
+    // Nếu đổi 1 trong 3 cấp khu vực sau khi đã từng xác nhận khu vực trước đó:
+    // reset ghim cũ và yêu cầu ghim lại.
+    useEffect(() => {
+        const nextKey = adminSelectionKey(adminLocation);
+        const prevKey = prevAdminSelectionKeyRef.current;
+
+        if (prevKey && nextKey && prevKey !== nextKey) {
+            const hasPinned = Number.isFinite(parseCoord(getValues('pickupLat'))) && Number.isFinite(parseCoord(getValues('pickupLng')));
+            if (hasPinned) {
+                setValue('pickupLat', '', { shouldDirty: true, shouldValidate: true });
+                setValue('pickupLng', '', { shouldDirty: true, shouldValidate: false });
+                setValue('pickupLocationName', '', { shouldDirty: true, shouldValidate: false });
+                setValue('pickupAddressText', '', { shouldDirty: true, shouldValidate: false });
+                setValue('pickupProvince', '', { shouldDirty: true, shouldValidate: false });
+                setValue('pickupDistrict', '', { shouldDirty: true, shouldValidate: false });
+                setValue('pickupWard', '', { shouldDirty: true, shouldValidate: false });
+                clearErrors(['pickupLat', 'pickupLocationName']);
+                setLocationChangedNeedRepin(true);
+                setMapEnabled(true);
+                if (markerRef.current) {
+                    markerRef.current.remove();
+                    markerRef.current = null;
+                }
+                window.setTimeout(() => {
+                    mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 60);
+            }
+        }
+
+        if (nextKey) prevAdminSelectionKeyRef.current = nextKey;
+    }, [adminLocation, getValues, setValue, clearErrors]);
 
     // Khi chọn khu vực: bbox (validate ghim) + flyTo + reset pending pin
     useEffect(() => {
@@ -791,9 +834,9 @@ export default function ListingForm({
             const currentAdmin = adminLocationRef.current;
 
             if (!currentAdmin) {
-                // Chưa chọn khu vực — cho gim tự do
+                // Bắt buộc chọn đủ Tỉnh/Huyện/Xã trước khi xác nhận ghim
                 setPendingPin({ lat, lng, addressText });
-                setPinStatus('valid');
+                setPinStatus('missing_admin');
                 return;
             }
 
@@ -963,6 +1006,7 @@ export default function ListingForm({
         }
         setPendingPin(null);
         setPinStatus('idle');
+        setLocationChangedNeedRepin(false);
     }, [pendingPin, setValue, clearErrors]);
 
     const handleRetryPin = useCallback(() => {
@@ -1028,7 +1072,7 @@ export default function ListingForm({
                     }
                 }
                 const currentAdmin = adminLocationRef.current;
-                if (!currentAdmin) { setPendingPin({ lat, lng, addressText }); setPinStatus('valid'); return; }
+                if (!currentAdmin) { setPendingPin({ lat, lng, addressText }); setPinStatus('missing_admin'); return; }
 
                 const {
                     isValid,
@@ -1551,7 +1595,7 @@ export default function ListingForm({
                     </Box>
 
                     {/* 5. ĐỊA ĐIỂM GIAO DỊCH */}
-                    <Box mt={isStudioLayout ? 0 : 3} sx={{ order: isStudioLayout ? 5 : 0 }}>
+                    <Box ref={mapSectionRef} mt={isStudioLayout ? 0 : 3} sx={{ order: isStudioLayout ? 5 : 0 }}>
                         {isStudioLayout ? (
                             <CreateStudioSectionTitle
                                 title="Địa điểm giao dịch"
@@ -1581,6 +1625,21 @@ export default function ListingForm({
                                 ward: adminLocation.ward,
                             } : undefined}
                         />
+
+                        {locationChangedNeedRepin && (
+                            <Alert
+                                severity="warning"
+                                sx={{
+                                    mt: 1.5,
+                                    bgcolor: 'rgba(245,158,11,0.12)',
+                                    color: '#fbbf24',
+                                    border: '1px solid rgba(245,158,11,0.35)',
+                                    borderRadius: 1.5,
+                                }}
+                            >
+                                Vị trí đã thay đổi, vui lòng ghim lại trên bản đồ.
+                            </Alert>
+                        )}
 
                         {/* ── Địa chỉ đã xác nhận (khu vực 3 cấp; tọa độ lưu riêng) ── */}
                         {pickupLat && pickupLng && (pickupLocationNameW?.trim() || pickupAddressText?.trim()) && (
@@ -1683,6 +1742,29 @@ export default function ListingForm({
                                 Vị trí không thuộc khu vực đã chọn
                                 {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}.
                                 Vui lòng gim lại trong đúng khu vực.
+                            </Alert>
+                        )}
+                        {pendingPin && pinStatus === 'missing_admin' && (
+                            <Alert
+                                severity="warning"
+                                sx={{
+                                    mt: 1.5,
+                                    bgcolor: 'rgba(245,158,11,0.12)',
+                                    color: '#fbbf24',
+                                    border: '1px solid rgba(245,158,11,0.35)',
+                                    borderRadius: 1.5,
+                                }}
+                                action={
+                                    <Button
+                                        size="small"
+                                        onClick={handleRetryPin}
+                                        sx={{ color: '#fbbf24', fontSize: 12, fontWeight: 700 }}
+                                    >
+                                        Đã hiểu
+                                    </Button>
+                                }
+                            >
+                                Vui lòng chọn đủ Tỉnh/Thành phố, Quận/Huyện, Phường/Xã rồi ghim lại.
                             </Alert>
                         )}
 

@@ -168,6 +168,86 @@ public class SystemEmailService {
         }
     }
 
+    @Async("emailTaskExecutor")
+    public void sendDealStatusChangedEmail(User recipient, String listingTitle, Long listingId, String statusLabel, String actorName) {
+        if (!mailEnabled || recipient == null || recipient.getEmail() == null || recipient.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            String title = trunc(listingTitle, 80);
+            String subject = "Cập nhật giao dịch: " + esc(statusLabel);
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(recipient)) + ",</p>"
+                            + "<p>Giao dịch cho «" + esc(title) + "» vừa được cập nhật trạng thái: <strong>" + esc(statusLabel) + "</strong>.</p>"
+                            + (actorName != null && !actorName.isBlank()
+                            ? "<p>Thao tác bởi: <strong>" + esc(actorName) + "</strong>.</p>"
+                            : "")
+                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Xem chi tiết</a></p>");
+            send(recipient.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendDealStatusChangedEmail failed: {}", ex.getMessage());
+        }
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendAdminUserStatusChangedEmail(User targetUser, String newStatus) {
+        if (!mailEnabled || targetUser == null || targetUser.getEmail() == null || targetUser.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            String normalized = newStatus != null ? newStatus.trim().toUpperCase() : "UNKNOWN";
+            String subject = "Cập nhật trạng thái tài khoản SLIFE";
+            String actionText = "ACTIVE".equals(normalized)
+                    ? "đã được kích hoạt lại"
+                    : ("BANNED".equals(normalized) ? "đã bị khóa" : "đã được cập nhật");
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(targetUser)) + ",</p>"
+                            + "<p>Tài khoản SLIFE của bạn " + actionText + ".</p>"
+                            + "<p>Nếu bạn cho rằng đây là nhầm lẫn, vui lòng liên hệ quản trị viên.</p>"
+                            + "<p><a href=\"" + esc(frontendUrl) + "\">Mở SLIFE</a></p>");
+            send(targetUser.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendAdminUserStatusChangedEmail failed: {}", ex.getMessage());
+        }
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendListingExpiringSoonEmail(User seller, String listingTitle, Long listingId, LocalDateTime expiresAt) {
+        if (!mailEnabled || seller == null || seller.getEmail() == null || seller.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            String subject = "Tin đăng của bạn sắp hết hạn";
+            String expireStr = expiresAt != null ? expiresAt.format(DT_FMT) : "sắp tới";
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
+                            + "<p>Tin «" + esc(trunc(listingTitle, 80)) + "» sẽ hết hạn vào <strong>" + esc(expireStr) + "</strong>.</p>"
+                            + "<p>Bạn có thể gia hạn hoặc đăng lại để tiếp tục hiển thị.</p>"
+                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Mở tin đăng</a></p>");
+            send(seller.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendListingExpiringSoonEmail failed: {}", ex.getMessage());
+        }
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendListingExpiredEmail(User seller, String listingTitle, Long listingId) {
+        if (!mailEnabled || seller == null || seller.getEmail() == null || seller.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            String subject = "Tin đăng của bạn đã hết hạn";
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
+                            + "<p>Tin «" + esc(trunc(listingTitle, 80)) + "» đã hết hạn hiển thị.</p>"
+                            + "<p>Bạn có thể đăng lại tin để tiếp tục bán.</p>"
+                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Xem tin đăng</a></p>");
+            send(seller.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendListingExpiredEmail failed: {}", ex.getMessage());
+        }
+    }
+
     /** Đồng bộ — gọi từ scheduler sau khi đã chọn deal (tránh đánh dấu reminderSent trước khi gửi). */
     public void sendPickupReminderEmails(Deal deal) {
         if (!mailEnabled || deal == null) {
