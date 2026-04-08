@@ -7,10 +7,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Repository
 public interface ListingImageRepository extends JpaRepository<ListingImage, Long> {
+
+    /** Một ảnh đại diện (tránh lazy-load toàn bộ {@code listing.images} → lỗi Hibernate với nhiều collection). */
+    Optional<ListingImage> findFirstByListing_IdOrderByDisplayOrderAsc(Long listingId);
 
     /**
      * Counts the current number of images for a listing.

@@ -8,6 +8,7 @@ import com.slife.marketplace.entity.Address;
 import com.slife.marketplace.entity.Conversation;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
+import com.slife.marketplace.entity.ListingImage;
 import com.slife.marketplace.entity.Offer;
 import com.slife.marketplace.entity.Review;
 import com.slife.marketplace.entity.User;
@@ -16,10 +17,12 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.AddressRepository;
 import com.slife.marketplace.repository.ConversationRepository;
 import com.slife.marketplace.repository.DealRepository;
+import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
 import com.slife.marketplace.repository.ReviewRepository;
 import com.slife.marketplace.repository.UserRepository;
+import com.slife.marketplace.util.TimeZones;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +39,9 @@ import java.util.Optional;
 @Service
 public class DealService {
 
+    /** Mọi {@link LocalDateTime} nghiệp vụ deal (pickup, confirmed, …) lưu theo giờ Việt Nam. */
+    public static final ZoneId ZONE_VIETNAM = TimeZones.VIETNAM;
+
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_CONFIRMED = "CONFIRMED";
     public static final String STATUS_COMPLETED = "COMPLETED";
@@ -46,6 +52,7 @@ public class DealService {
     public static final String STATUS_REJECTED = "REJECTED";
 
     private final DealRepository dealRepository;
+    private final ListingImageRepository listingImageRepository;
     private final ListingRepository listingRepository;
     private final ConversationRepository conversationRepository;
     private final OfferRepository offerRepository;
@@ -58,6 +65,7 @@ public class DealService {
     private final SystemEmailService systemEmailService;
 
     public DealService(DealRepository dealRepository,
+                       ListingImageRepository listingImageRepository,
                        ListingRepository listingRepository,
                        ConversationRepository conversationRepository,
                        OfferRepository offerRepository,
@@ -69,6 +77,7 @@ public class DealService {
                        BlockService blockService,
                        SystemEmailService systemEmailService) {
         this.dealRepository = dealRepository;
+        this.listingImageRepository = listingImageRepository;
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
         this.offerRepository = offerRepository;
@@ -156,7 +165,7 @@ public class DealService {
             Deal d = existing.get();
             d.setDealPrice(request.getPrice());
             if (request.getPickupTime() != null) {
-                d.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
+                d.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZONE_VIETNAM));
             }
             d.setOffer(offerForDeal);
             d.setAddress(resolveAddressForSeal(listing, request.getAddressId(), request.getPickupLocationText(), d.getAddress(), true));
@@ -172,7 +181,7 @@ public class DealService {
         deal.setOffer(offerForDeal);
         deal.setAddress(resolveAddressForSeal(listing, request.getAddressId(), request.getPickupLocationText(), null, false));
         if (request.getPickupTime() != null) {
-            deal.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZoneId.systemDefault()));
+            deal.setPickupTime(LocalDateTime.ofInstant(request.getPickupTime(), ZONE_VIETNAM));
         }
         deal = dealRepository.save(deal);
         return mapToResponse(deal);
@@ -194,7 +203,7 @@ public class DealService {
         }
         assertNoBlockBetweenDealParties(deal, buyer);
         deal.setStatus(STATUS_COMPLETED);
-        deal.setConfirmedAt(LocalDateTime.now());
+        deal.setConfirmedAt(LocalDateTime.now(ZONE_VIETNAM));
         Deal saved = dealRepository.save(deal);
         notifyDealStatusEmail(saved,
                 "Bạn đã chấp nhận giao dịch.",
@@ -219,7 +228,7 @@ public class DealService {
         }
         assertNoBlockBetweenDealParties(deal, buyer);
         deal.setStatus(STATUS_REJECTED);
-        deal.setConfirmedAt(LocalDateTime.now());
+        deal.setConfirmedAt(LocalDateTime.now(ZONE_VIETNAM));
         Deal saved = dealRepository.save(deal);
         notifyDealStatusEmail(saved,
                 "Bạn đã từ chối giao dịch.",
@@ -267,7 +276,7 @@ public class DealService {
         assertNoBlockBetweenDealParties(deal, seller);
 
         deal.setStatus(STATUS_CONFIRMED);
-        deal.setConfirmedAt(LocalDateTime.now());
+        deal.setConfirmedAt(LocalDateTime.now(ZONE_VIETNAM));
         deal = dealRepository.save(deal);
         notifyDealStatusEmail(deal,
                 "Người bán đã xác nhận giao dịch — kiểm tra lịch nhận hàng trên SLIFE.",
@@ -325,7 +334,7 @@ public class DealService {
 
 
         deal.setStatus(STATUS_CANCELLED);
-        deal.setDeletedAt(LocalDateTime.now());
+        deal.setDeletedAt(LocalDateTime.now(ZONE_VIETNAM));
 
         // Gửi thông báo cho Seller biết bị hủy đơn
         notificationService.notifyDealFinalized(deal.getSeller(), buyer,
@@ -400,7 +409,7 @@ public class DealService {
             notificationService.notifyDealFinalized(deal.getSeller(), buyer, deal.getListing().getId(), deal.getListing().getTitle(), false, false);
         }
 
-        deal.setUpdatedAt(LocalDateTime.now());
+        deal.setUpdatedAt(LocalDateTime.now(ZONE_VIETNAM));
         Deal saved = dealRepository.save(deal);
         if (request.isCompleted()) {
             notifyDealStatusEmail(saved,
@@ -513,13 +522,14 @@ public class DealService {
 
         Listing listing = deal.getListing();
         String title = (listing != null) ? listing.getTitle() : "Tin đăng";
+        Long listingId = (listing != null) ? listing.getId() : null;
         String image = null;
-
-        if (listing != null && listing.getImages() != null && !listing.getImages().isEmpty()) {
-            image = listing.getImages().get(0).getImageUrl();
+        if (listingId != null) {
+            image = listingImageRepository.findFirstByListing_IdOrderByDisplayOrderAsc(listingId)
+                    .map(ListingImage::getImageUrl)
+                    .orElse(null);
         }
 
-        Long listingId = (listing != null) ? listing.getId() : null;
         Long buyerId = (deal.getBuyer() != null) ? deal.getBuyer().getId() : null;
 
         User seller = deal.getSeller();
@@ -532,9 +542,9 @@ public class DealService {
         if (deal.getConversation() != null && deal.getBuyer() != null) {
             // Lấy mốc thời gian chốt hoặc tạo làm chuẩn (tránh dùng review của deal trước đó)
             java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
-            java.time.Instant after = startPoint.atZone(java.time.ZoneId.systemDefault()).toInstant();
+            java.time.Instant after = startPoint.atZone(ZONE_VIETNAM).toInstant();
 
-            reviewed = reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+            reviewed = reviewRepository.existsReviewCreatedAfter(
                     deal.getConversation().getId(),
                     deal.getBuyer().getId(),
                     after
@@ -571,7 +581,7 @@ public class DealService {
     @Transactional
     public void autoFinalizeDeals() {
         // Auto-finalize deals that were confirmed (accepted) by buyer but not finalized after 7 days
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        LocalDateTime sevenDaysAgo = LocalDateTime.now(ZONE_VIETNAM).minusDays(7);
         // We use confirmedAt if available, otherwise createdAt
         List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
 
@@ -585,7 +595,7 @@ public class DealService {
                 }
 
                 deal.setStatus(STATUS_SUCCESS);
-                deal.setUpdatedAt(LocalDateTime.now());
+                deal.setUpdatedAt(LocalDateTime.now(ZONE_VIETNAM));
                 dealRepository.save(deal);
 
                 // Gửi thông báo cho Seller
@@ -620,9 +630,9 @@ public class DealService {
         // Kiểm tra đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu để tránh conflict với deal cũ)
         if (deal.getConversation() != null && deal.getBuyer() != null) {
             java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
-            java.time.Instant after = startPoint.atZone(java.time.ZoneId.systemDefault()).toInstant();
+            java.time.Instant after = startPoint.atZone(ZONE_VIETNAM).toInstant();
 
-            if (reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+            if (reviewRepository.existsReviewCreatedAfter(
                     deal.getConversation().getId(), buyer.getId(), after)) {
                 throw new SlifeException(ErrorCode.INVALID_INPUT, "Bạn đã đánh giá giao dịch này rồi");
             }
