@@ -264,30 +264,106 @@ public class SystemEmailService {
             return;
         }
         String pickupStr = pickup.format(DT_FMT);
-        String title = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
+        String titleShort = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
         int reminderHours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3));
         String hourPhrase = reminderHours == 1 ? "1 giờ" : reminderHours + " giờ";
-        String subject = "Nhắc: Còn khoảng " + hourPhrase + " tới giờ giao dịch";
+        String subject = "[SLIFE] Nhắc nhận hàng — #" + deal.getId() + " — " + trunc(titleShort, 50);
         try {
             if (buyer.getEmail() != null && !buyer.getEmail().isBlank()) {
-                String body = htmlWrap(
-                        "<p>Xin chào " + esc(displayName(buyer)) + ",</p>"
-                                + "<p>Giao dịch cho «" + esc(title) + "» dự kiến lúc <strong>" + esc(pickupStr)
-                                + "</strong> (còn khoảng " + esc(hourPhrase) + "). Vui lòng liên hệ đối phương nếu cần đổi lịch.</p>"
-                                + "<p><a href=\"" + esc(listingUrl(listing.getId())) + "\">Xem tin</a></p>");
+                String body = buildPickupReminderEmailDocument(
+                        deal, listing, buyer, seller, true, pickupStr, hourPhrase);
                 send(buyer.getEmail(), subject, body);
             }
             if (seller.getEmail() != null && !seller.getEmail().isBlank()) {
-                String body = htmlWrap(
-                        "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
-                                + "<p>Giao dịch với người mua cho «" + esc(title) + "» dự kiến lúc <strong>"
-                                + esc(pickupStr) + "</strong> (còn khoảng " + esc(hourPhrase) + ").</p>"
-                                + "<p><a href=\"" + esc(listingUrl(listing.getId())) + "\">Xem tin</a></p>");
+                String body = buildPickupReminderEmailDocument(
+                        deal, listing, seller, buyer, false, pickupStr, hourPhrase);
                 send(seller.getEmail(), subject, body);
             }
         } catch (Exception ex) {
             log.warn("sendPickupReminderEmails dealId={}: {}", deal.getId(), ex.getMessage());
         }
+    }
+
+    /**
+     * HTML email (table + inline CSS) cho nhắc lịch nhận hàng — tương thích client phổ biến.
+     */
+    private String buildPickupReminderEmailDocument(
+            Deal deal,
+            Listing listing,
+            User recipient,
+            User otherParty,
+            boolean recipientIsBuyer,
+            String pickupStr,
+            String hourPhrase) {
+        Long listingId = listing.getId();
+        String listingLink = esc(listingUrl(listingId));
+        String chatLink = esc(chatOrListingUrl(listingId, null));
+        String title = listing.getTitle() != null ? trunc(listing.getTitle(), 120) : "Tin đăng";
+        String roleLine = recipientIsBuyer
+                ? "Bạn là <strong>người mua</strong> trong giao dịch này."
+                : "Bạn là <strong>người bán</strong> trong giao dịch này.";
+        String otherLabel = recipientIsBuyer ? "Người bán" : "Người mua";
+
+        String rows = ""
+                + pickupReminderDetailRow("Mã giao dịch", "#" + deal.getId())
+                + pickupReminderDetailRow("Tin đăng", esc(title))
+                + pickupReminderDetailRow("Giá thỏa thuận", esc(formatMoney(deal.getDealPrice())))
+                + pickupReminderDetailRow("Giờ nhận hàng (dự kiến)", esc(pickupStr))
+                + pickupReminderDetailRow(otherLabel, esc(displayName(otherParty)))
+                + pickupReminderDetailRow("Nhắc trước", "Còn khoảng " + esc(hourPhrase));
+
+        String inner = ""
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background-color:#f4f4f6;margin:0;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;\">"
+                + "<tr><td align=\"center\">"
+                + "<table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"max-width:600px;width:100%;background:#ffffff;border-radius:12px;"
+                + "overflow:hidden;box-shadow:0 4px 24px rgba(15,23,42,0.08);\">"
+                + "<tr><td style=\"background:#7c3aed;padding:22px 24px;\">"
+                + "<div style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.02em;\">SLIFE</div>"
+                + "<div style=\"color:rgba(255,255,255,0.92);font-size:14px;margin-top:6px;\">Nhắc lịch nhận hàng</div>"
+                + "</td></tr>"
+                + "<tr><td style=\"padding:24px 24px 8px 24px;color:#1e293b;font-size:15px;line-height:1.55;\">"
+                + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayName(recipient)) + "</strong>,</p>"
+                + "<p style=\"margin:0 0 16px 0;\">" + roleLine + "</p>"
+                + "<p style=\"margin:0 0 20px 0;color:#475569;\">"
+                + "Thời điểm nhận hàng đã gần. Dưới đây là chi tiết giao dịch — vui lòng liên hệ "
+                + esc(otherLabel.toLowerCase()) + " nếu cần đổi lịch.</p>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"border-collapse:collapse;font-size:14px;color:#334155;\">"
+                + rows
+                + "</table>"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-top:24px;\">"
+                + "<tr><td align=\"center\" style=\"padding:4px;\">"
+                + "<a href=\"" + listingLink + "\" style=\"display:inline-block;background:#7c3aed;color:#ffffff;"
+                + "text-decoration:none;font-weight:600;font-size:14px;padding:12px 28px;border-radius:999px;\">"
+                + "Xem tin đăng</a>"
+                + "</td></tr>"
+                + "<tr><td align=\"center\" style=\"padding:4px;\">"
+                + "<a href=\"" + chatLink + "\" style=\"display:inline-block;color:#7c3aed;"
+                + "text-decoration:underline;font-size:14px;font-weight:600;\">Mở trò chuyện</a>"
+                + "</td></tr>"
+                + "</table>"
+                + "</td></tr>"
+                + "<tr><td style=\"padding:16px 24px 22px 24px;background:#f8fafc;font-size:12px;color:#64748b;"
+                + "line-height:1.5;border-top:1px solid #e2e8f0;\">"
+                + "Đây là email tự động từ SLIFE. Bạn nhận được vì có giao dịch đang chờ nhận hàng. "
+                + "Không cần trả lời trực tiếp email này."
+                + "</td></tr>"
+                + "</table></td></tr></table>";
+
+        return "<!DOCTYPE html><html><head><meta charset=\"UTF-8\">"
+                + "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head>"
+                + "<body style=\"margin:0;padding:0;\">" + inner + "</body></html>";
+    }
+
+    private static String pickupReminderDetailRow(String label, String valueHtml) {
+        return "<tr>"
+                + "<td style=\"padding:10px 0;border-bottom:1px solid #e2e8f0;color:#64748b;vertical-align:top;width:42%;\">"
+                + esc(label) + "</td>"
+                + "<td style=\"padding:10px 0;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;"
+                + "color:#0f172a;vertical-align:top;\">" + valueHtml + "</td>"
+                + "</tr>";
     }
 
     /** Trang mặc định sau đăng nhập (email welcome). */
