@@ -214,8 +214,8 @@ export default function StitchLandingPage() {
           <section className="relative overflow-hidden px-6 py-16 md:py-24 lg:px-20">
             <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-12">
               <div className="w-full lg:w-[45%] text-center lg:text-left space-y-8 z-10 shrink-0">
-                <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.1] tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.45)]">
-                  <span className="text-white">SLIFE - Chốt đồ cũ,</span><br />
+                <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.1] tracking-tight text-white [text-shadow:0_2px_18px_rgba(0,0,0,0.45)]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  <span className="text-white">SLIFE - Chốt đồ cũ</span><br />
                   <span className="text-violet-300">Đủ đồ dùng</span>, <span className="text-slate-100">Ngay tại Hòa Lạc</span>
                 </h1>
                 <p className="text-lg text-slate-300 max-w-xl mx-auto lg:mx-0">
