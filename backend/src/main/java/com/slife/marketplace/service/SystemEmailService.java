@@ -5,6 +5,7 @@ import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.UserRepository;
+import com.slife.marketplace.util.TimeZones;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,7 +273,7 @@ public class SystemEmailService {
         deal.setBuyer(buyer);
         deal.setDealPrice(new BigDecimal("199000.00"));
         deal.setStatus("CONFIRMED");
-        deal.setPickupTime(LocalDateTime.now().plusDays(1).withHour(15).withMinute(0).withSecond(0).withNano(0));
+        deal.setPickupTime(LocalDateTime.now(TimeZones.VIETNAM).plusDays(1).withHour(15).withMinute(0).withSecond(0).withNano(0));
         String title = trunc(listing.getTitle(), 80);
         Long listingId = listing.getId();
         try {
