@@ -272,7 +272,7 @@ export default function CommunityFeedPage() {
                 >
                     <Stack direction="row" alignItems="center" gap={1.25} sx={{ mb: 1.5 }}>
                         <ForumOutlinedIcon sx={{ fontSize: 32, color: 'primary.light' }} />
-                        <Typography variant="h5" fontWeight={800} sx={{ fontFamily: "'Outfit', sans-serif" }}>
+                        <Typography variant="h5" fontWeight={800} sx={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                             Cộng đồng SLife
                         </Typography>
                     </Stack>

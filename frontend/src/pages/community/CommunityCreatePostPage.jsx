@@ -173,7 +173,7 @@ export default function CommunityCreatePostPage() {
                         <ArrowBackIcon />
                     </IconButton>
                     <PostAddOutlinedIcon color="primary" />
-                    <Typography variant="h6" fontWeight={800} sx={{ fontFamily: "'Outfit', sans-serif" }}>
+                    <Typography variant="h6" fontWeight={800} sx={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                         Tạo bài cộng đồng
                     </Typography>
                 </Stack>

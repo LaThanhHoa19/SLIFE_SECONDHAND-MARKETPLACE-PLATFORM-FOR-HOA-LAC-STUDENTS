@@ -131,7 +131,7 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
               fontSize: '0.9rem',
               lineHeight: 1.3,
               textShadow: '0 2px 4px rgba(0,0,0,0.6)',
-              fontFamily: "'Outfit', sans-serif", // Ensure san-serif
+              fontFamily: "'Plus Jakarta Sans', sans-serif", // Ensure san-serif
               // Truncate title
               display: '-webkit-box',
               WebkitLineClamp: 3,

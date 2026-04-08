@@ -1,7 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* Global Styles */
 
 :root {
-  font-family: 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -17,7 +17,8 @@
 
 html {
   scrollbar-gutter: stable;
-  overflow-y: scroll; /* Force vertical scrollbar to be always visible */
+  overflow-y: scroll;
+  /* Force vertical scrollbar to be always visible */
   background-color: #000000;
 }
 
@@ -72,9 +73,11 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
   }

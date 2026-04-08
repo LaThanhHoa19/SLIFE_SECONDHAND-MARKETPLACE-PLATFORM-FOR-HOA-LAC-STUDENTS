@@ -291,7 +291,7 @@ export default function PhoneVerificationModal({
                     component="div" 
                     sx={{ 
                         fontWeight: 800, 
-                        fontFamily: "'Outfit', sans-serif", 
+                        fontFamily: "'Plus Jakarta Sans', sans-serif", 
                         fontSize: '1.2rem', 
                         letterSpacing: '-0.02em' 
                     }}
