@@ -21,21 +21,21 @@ import { SearchHighlight } from '../chatSearchHighlight';
 import ChatParticipantAvatar from './ChatParticipantAvatar';
 
 export default function ChatSidebar({
-    theme,
-    listDisplay,
-    sessionsLoading,
-    sessions,
-    sessionsTotalElements = 0,
-    sidebarSearch = '',
-    onSidebarSearchChange,
-    /** Chuỗi đã debounce — tô vàng trên dòng tiêu đề (tin / tên), khớp lọc API */
-    highlightSearchQuery = '',
-    activeSessionId,
-    setActiveSessionId,
-    navigate,
-    formatSessionTimeShort,
-    listingUnavailableByListingId = {},
-}) {
+                                        theme,
+                                        listDisplay,
+                                        sessionsLoading,
+                                        sessions,
+                                        sessionsTotalElements = 0,
+                                        sidebarSearch = '',
+                                        onSidebarSearchChange,
+                                        /** Chuỗi đã debounce — tô vàng trên dòng tiêu đề (tin / tên), khớp lọc API */
+                                        highlightSearchQuery = '',
+                                        activeSessionId,
+                                        setActiveSessionId,
+                                        navigate,
+                                        formatSessionTimeShort,
+                                        listingUnavailableByListingId = {},
+                                    }) {
     const hasSearch = Boolean(String(sidebarSearch || '').trim());
 
     return (
@@ -155,7 +155,10 @@ export default function ChatSidebar({
                         const otherName = s.otherParticipantName || '';
                         const hasListing = Boolean(listingTitle);
                         const rowKey = s.sessionId || `row-${s.listingId}-${otherName}`;
-                        const unread = s.unreadCount > 0;
+                        const unreadCountRaw =
+                            s.unreadCount ?? s.unread_count ?? s.unreadMessages ?? s.unread_messages ?? 0;
+                        const unreadCount = Number(unreadCountRaw) || 0;
+                        const unread = unreadCount > 0;
                         const lid = s.listingId != null ? Number(s.listingId) : NaN;
                         const listingGone =
                             Number.isFinite(lid) && lid > 0 && Boolean(listingUnavailableByListingId[lid]);
@@ -233,51 +236,51 @@ export default function ChatSidebar({
                         );
 
                         return (
-                        <ListItemButton
-                            key={rowKey}
-                            selected={s.sessionId === activeSessionId}
-                            onClick={() => s.sessionId && setActiveSessionId(s.sessionId)}
-                            disabled={!s.sessionId}
-                            sx={{
-                                py: 1.1,
-                                alignItems: 'flex-start',
-                                borderRadius: 2.25,
-                                mx: 0.75,
-                                mb: 0.4,
-                                border: '1px solid',
-                                borderColor:
-                                    s.sessionId === activeSessionId
-                                        ? alpha(theme.palette.primary.main, 0.45)
-                                        : 'transparent',
-                                bgcolor:
-                                    s.sessionId === activeSessionId
-                                        ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1)
-                                        : 'transparent',
-                                '&:hover': {
-                                    bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.08),
-                                },
-                            }}
-                        >
-                            <ChatParticipantAvatar
-                                avatarUrl={s.otherParticipantAvatarUrl}
-                                displayName={otherName || listingTitle}
-                                sx={{ width: 44, height: 44, mr: 1.5, fontSize: 16 }}
-                            />
-                            <ListItemText
-                                primary={titleBlock}
-                                primaryTypographyProps={{ component: 'div' }}
-                                secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
-                                secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
-                                sx={{ mr: 0.5, minWidth: 0 }}
-                            />
-                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
-                                <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
-                                    {formatSessionTimeShort(s.lastMessageAt)}
-                                </Typography>
-                                {s.unreadCount > 0 && <Badge badgeContent={s.unreadCount} color="primary" sx={{ mt: 0.5 }} />}
-                            </Box>
-                        </ListItemButton>
-                    )})}
+                            <ListItemButton
+                                key={rowKey}
+                                selected={s.sessionId === activeSessionId}
+                                onClick={() => s.sessionId && setActiveSessionId(s.sessionId)}
+                                disabled={!s.sessionId}
+                                sx={{
+                                    py: 1.1,
+                                    alignItems: 'flex-start',
+                                    borderRadius: 2.25,
+                                    mx: 0.75,
+                                    mb: 0.4,
+                                    border: '1px solid',
+                                    borderColor:
+                                        s.sessionId === activeSessionId
+                                            ? alpha(theme.palette.primary.main, 0.45)
+                                            : 'transparent',
+                                    bgcolor:
+                                        s.sessionId === activeSessionId
+                                            ? alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.1)
+                                            : 'transparent',
+                                    '&:hover': {
+                                        bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.08),
+                                    },
+                                }}
+                            >
+                                <ChatParticipantAvatar
+                                    avatarUrl={s.otherParticipantAvatarUrl}
+                                    displayName={otherName || listingTitle}
+                                    sx={{ width: 44, height: 44, mr: 1.5, fontSize: 16 }}
+                                />
+                                <ListItemText
+                                    primary={titleBlock}
+                                    primaryTypographyProps={{ component: 'div' }}
+                                    secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
+                                    secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
+                                    sx={{ mr: 0.5, minWidth: 0 }}
+                                />
+                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                                    <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
+                                        {formatSessionTimeShort(s.lastMessageAt)}
+                                    </Typography>
+                                    {unread && <Badge badgeContent={unreadCount} color="primary" sx={{ mt: 0.5 }} />}
+                                </Box>
+                            </ListItemButton>
+                        )})}
                 </List>
             )}
         </Paper>
