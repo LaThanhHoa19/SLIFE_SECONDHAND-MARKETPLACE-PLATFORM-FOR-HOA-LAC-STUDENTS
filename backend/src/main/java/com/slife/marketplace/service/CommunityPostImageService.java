@@ -7,6 +7,7 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommunityPostImageRepository;
 import com.slife.marketplace.repository.CommunityPostRepository;
+import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +19,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -43,15 +42,18 @@ public class CommunityPostImageService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostImageRepository communityPostImageRepository;
     private final ConfigService configService;
+    private final FileStorage fileStorage;
     private final Path uploadBasePath;
 
     public CommunityPostImageService(CommunityPostRepository communityPostRepository,
                                      CommunityPostImageRepository communityPostImageRepository,
                                      ConfigService configService,
+                                     FileStorage fileStorage,
                                      Path uploadBasePath) {
         this.communityPostRepository = communityPostRepository;
         this.communityPostImageRepository = communityPostImageRepository;
         this.configService = configService;
+        this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
     }
 
@@ -90,7 +92,7 @@ public class CommunityPostImageService {
             Path dir = uploadBasePath.resolve("community-posts");
             String storedFilename;
             try {
-                Files.createDirectories(dir);
+                fileStorage.createDirectories(dir);
                 try (InputStream raw = file.getInputStream();
                      PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(raw), 16)) {
                     byte[] head = new byte[12];
@@ -111,7 +113,7 @@ public class CommunityPostImageService {
                     if (!target.startsWith(base)) {
                         throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
                     }
-                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                    fileStorage.copy(in, target);
                 }
             } catch (IOException e) {
                 log.error("uploadPostImages failed postId={}", postId, e);
@@ -186,7 +188,7 @@ public class CommunityPostImageService {
                 log.warn("Refusing to delete outside upload dir: {}", imageUrl);
                 return;
             }
-            Files.deleteIfExists(target);
+            fileStorage.deleteIfExists(target);
         } catch (IOException e) {
             log.warn("Could not delete community post image file: {}", imageUrl, e);
         }
