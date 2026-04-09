@@ -68,6 +68,7 @@ export default function TermsPage() {
                     },
                     {
                         title: 'Cơ chế giải quyết tranh chấp của SLife',
+                        slug: 'dispute',
                         body:
                             'Cơ chế này hướng dẫn cách ghi nhận thỏa thuận, gửi báo cáo khi có sai lệch và quy trình xử lý tranh chấp trên SLife.\n\n' +
                             '- Ghi nhận lịch sử thỏa thuận\n' +

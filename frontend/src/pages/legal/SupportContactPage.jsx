@@ -169,19 +169,13 @@ export default function SupportContactPage() {
                             sx={{ mb: 3 }}
                         >
                             <Typography
-                                onClick={() => navigate('/contact')}
-                                sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
-                            >
-                                Thông tin trợ giúp
-                            </Typography>
-                            <Typography
-                                onClick={() => navigate('/terms?key=posting')}
+                                onClick={() => navigate('/seller-guide')}
                                 sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
                             >
                                 Tôi là người bán
                             </Typography>
                             <Typography
-                                onClick={() => navigate('/terms?key=features')}
+                                onClick={() => navigate('/buyer-guide')}
                                 sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
                             >
                                 Tôi là người mua

@@ -55,6 +55,9 @@ export const LazyCommunityCreatePostPage = lazy(() => import('../pages/community
 export const LazyCommunityPostDetailPage = lazy(() => import('../pages/community/CommunityPostDetailPage'));
 export const LazyBlockedUsersPage = lazy(() => import('../pages/settings/BlockedUsersPage'));
 export const LazySupportContactPage = lazy(() => import('../pages/legal/SupportContactPage'));
+export const LazySellerGuidePage = lazy(() => import('../pages/legal/SellerGuidePage'));
+export const LazyBuyerGuidePage = lazy(() => import('../pages/legal/BuyerGuidePage'));
+export const LazySafetyGuidePage = lazy(() => import('../pages/legal/SafetyGuidePage'));
 
 // HOC để wrap lazy components với Suspense
 export const withSuspense = (Component, loadingMessage) => (props) => (
@@ -98,3 +101,6 @@ export const SuspenseCommunityCreatePostPage = withSuspense(LazyCommunityCreateP
 export const SuspenseCommunityPostDetailPage = withSuspense(LazyCommunityPostDetailPage, "Đang tải bài cộng đồng...");
 export const SuspenseBlockedUsersPage = withSuspense(LazyBlockedUsersPage, "Đang tải danh sách chặn...");
 export const SuspenseSupportContactPage = withSuspense(LazySupportContactPage, "Đang tải trang liên hệ...");
+export const SuspenseSellerGuidePage = withSuspense(LazySellerGuidePage, "Đang tải hướng dẫn người bán...");
+export const SuspenseBuyerGuidePage = withSuspense(LazyBuyerGuidePage, "Đang tải hướng dẫn người mua...");
+export const SuspenseSafetyGuidePage = withSuspense(LazySafetyGuidePage, "Đang tải hướng dẫn an toàn...");
