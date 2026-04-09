@@ -63,18 +63,18 @@ function applyUserProfilePatch(prev, patch) {
   const next = { ...prevObj, ...patch };
 
   const hasExplicitPhoneInPatch =
-    Object.prototype.hasOwnProperty.call(patch, 'phoneNumber') ||
-    Object.prototype.hasOwnProperty.call(patch, 'phone_number');
+      Object.prototype.hasOwnProperty.call(patch, 'phoneNumber') ||
+      Object.prototype.hasOwnProperty.call(patch, 'phone_number');
   const patchPhone = patch.phoneNumber ?? patch.phone_number;
   const prevPhone = prevObj.phoneNumber ?? prevObj.phone_number;
   const phoneChanged =
-    prev != null &&
-    hasExplicitPhoneInPatch &&
-    String(patchPhone ?? '') !== String(prevPhone ?? '');
+      prev != null &&
+      hasExplicitPhoneInPatch &&
+      String(patchPhone ?? '') !== String(prevPhone ?? '');
 
   const phoneVerifiedAtInPatch =
-    Object.prototype.hasOwnProperty.call(patch, 'phoneVerifiedAt') ||
-    Object.prototype.hasOwnProperty.call(patch, 'phone_verified_at');
+      Object.prototype.hasOwnProperty.call(patch, 'phoneVerifiedAt') ||
+      Object.prototype.hasOwnProperty.call(patch, 'phone_verified_at');
   const atFromPatch = patch.phoneVerifiedAt ?? patch.phone_verified_at;
 
   let at = next.phoneVerifiedAt ?? next.phone_verified_at;
@@ -182,9 +182,9 @@ export default function ProfilePage() {
           if (data) setProfileUser(applyUserProfilePatch(null, data));
         } catch (err) {
           setError(
-            isUserNotFoundError(err)
-              ? 'PROFILE_UNAVAILABLE'
-              : err?.message || 'Không tải được thông tin người dùng.',
+              isUserNotFoundError(err)
+                  ? 'PROFILE_UNAVAILABLE'
+                  : err?.message || 'Không tải được thông tin người dùng.',
           );
         }
       }
@@ -204,34 +204,39 @@ export default function ProfilePage() {
     if (!profileUser?.id) return;
     setListingsLoading(true);
     try {
-      // 1. Fetch tin đăng bình thường (ACTIVE)
-      const res = await getListings({ sellerId: profileUser.id, size: 50 });
-      const data = getPayload(res);
-      let list = Array.isArray(data) ? data : data?.content ?? [];
+      const normalizeList = (payload) => (Array.isArray(payload) ? payload : payload?.content ?? []);
+      const dedupeById = (items) => {
+        const map = new Map();
+        (Array.isArray(items) ? items : []).forEach((item) => {
+          const key = item?.id ?? item?.listingId ?? item?.listing_id;
+          if (key != null) map.set(String(key), item);
+        });
+        return Array.from(map.values());
+      };
 
-      // 2. Nếu là trang của chính mình, fetch thêm tin Đã bán (SOLD)
-      if (isMe) {
-        try {
-          const { getMyListings } = await import('../../api/myListingApi');
-          const soldRes = await getMyListings({ status: 'SOLD', size: 50 });
-          const soldData = getPayload(soldRes);
-          const soldList = Array.isArray(soldData) ? soldData : soldData?.content ?? [];
-          
-          // Gộp tin ACTIVE và SOLD vào chung state để render theo Tab
-          list = [...list, ...soldList];
-        } catch (e) {
-          console.error("Lỗi khi tải tin đã bán:", e);
-        }
+      // 1) Luôn lấy danh sách theo seller
+      const baseRes = await getListings({ sellerId: profileUser.id, size: 50 });
+      const baseData = getPayload(baseRes);
+      let list = normalizeList(baseData);
+
+      // 2) Lấy riêng tin SOLD để đảm bảo tab Đã bán luôn có dữ liệu (cả hồ sơ của mình và người khác)
+      try {
+        const soldRes = await getListings({ sellerId: profileUser.id, status: 'SOLD', size: 50 });
+        const soldData = getPayload(soldRes);
+        const soldList = normalizeList(soldData);
+        list = dedupeById([...list, ...soldList]);
+      } catch (e) {
+        console.error('Lỗi khi tải danh sách tin đã bán:', e);
       }
 
       setListings(list);
     } catch (err) {
-      console.error("Failed to load listings:", err);
+      console.error('Failed to load listings:', err);
       setListings([]);
     } finally {
       setListingsLoading(false);
     }
-  }, [profileUser?.id, isMe]);
+  }, [profileUser?.id]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
   useEffect(() => { if (profileUser?.id) loadListings(); }, [profileUser?.id, loadListings]);
@@ -244,7 +249,7 @@ export default function ProfilePage() {
       } else if (rawPhone.startsWith('0')) {
         normalizedPhone = rawPhone.substring(1);
       }
-      
+
       setEditForm({
         fullName: profileUser.fullName ?? profileUser.full_name ?? '',
         phoneNumber: normalizedPhone,
@@ -505,33 +510,42 @@ export default function ProfilePage() {
     navigate(`/chat?listingId=${firstListing.id}`);
   };
 
+  const handleOpenReportUserDialog = useCallback(() => {
+    if (!currentUser) {
+      showToast('Bạn cần đăng nhập để báo cáo người dùng.', 'warning');
+      navigate('/login');
+      return;
+    }
+    setReportDialogOpen(true);
+  }, [currentUser, navigate, showToast]);
+
   if (loading && !profileUser) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh"><CircularProgress /></Box>;
-  
+
   if (!profileUser) {
     const needLogin = !id || id === 'me';
     const profileUnavailable = error === 'PROFILE_UNAVAILABLE';
     return (
-      <Box
-        p={3}
-        textAlign="center"
-        sx={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Typography sx={{ color: 'rgba(255,255,255,0.88)', maxWidth: 440, lineHeight: 1.65 }}>
-          {needLogin
-            ? 'Vui lòng đăng nhập để xem trang cá nhân của bạn.'
-            : profileUnavailable
-              ? 'Không thể hiển thị trang này. Có thể người dùng không tồn tại hoặc một trong hai bên đã chặn — hai phía sẽ không thấy hồ sơ của nhau.'
-              : error || 'Không tìm thấy người dùng.'}
-        </Typography>
-        <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(needLogin ? '/login' : '/feed')}>
-          {needLogin ? 'Đăng nhập' : 'Về bảng tin'}
-        </Button>
-        {!needLogin && profileUnavailable && currentUser && (
-          <Button sx={{ mt: 1 }} variant="text" onClick={() => navigate('/settings/blocked')}>
-            Danh sách đã chặn
+        <Box
+            p={3}
+            textAlign="center"
+            sx={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Typography sx={{ color: 'rgba(255,255,255,0.88)', maxWidth: 440, lineHeight: 1.65 }}>
+            {needLogin
+                ? 'Vui lòng đăng nhập để xem trang cá nhân của bạn.'
+                : profileUnavailable
+                    ? 'Không thể hiển thị trang này. Có thể người dùng không tồn tại hoặc một trong hai bên đã chặn — hai phía sẽ không thấy hồ sơ của nhau.'
+                    : error || 'Không tìm thấy người dùng.'}
+          </Typography>
+          <Button sx={{ mt: 2 }} variant="contained" onClick={() => navigate(needLogin ? '/login' : '/feed')}>
+            {needLogin ? 'Đăng nhập' : 'Về bảng tin'}
           </Button>
-        )}
-      </Box>
+          {!needLogin && profileUnavailable && currentUser && (
+              <Button sx={{ mt: 1 }} variant="text" onClick={() => navigate('/settings/blocked')}>
+                Danh sách đã chặn
+              </Button>
+          )}
+        </Box>
     );
   }
 
@@ -559,28 +573,28 @@ export default function ProfilePage() {
   return (
       <Box sx={{ minHeight: '100vh', bgcolor: 'transparent', pb: 6 }}>
         {isMe && (
-          <Box
-            ref={recaptchaContainerRef}
-            aria-hidden
-            sx={{
-              position: 'fixed',
-              left: 0,
-              bottom: 0,
-              width: 1,
-              height: 1,
-              overflow: 'hidden',
-              opacity: 0,
-              pointerEvents: 'none',
-              zIndex: -1,
-            }}
-          />
+            <Box
+                ref={recaptchaContainerRef}
+                aria-hidden
+                sx={{
+                  position: 'fixed',
+                  left: 0,
+                  bottom: 0,
+                  width: 1,
+                  height: 1,
+                  overflow: 'hidden',
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+            />
         )}
         <ProfileHeader
             user={user} isMe={isMe} editing={editing} setEditing={setEditing} saving={saving}
             handleSave={handleSave} editForm={editForm} setEditForm={setEditForm}
             avatarUrl={avatarUrl} displayCoverUrl={displayCoverUrl} fullName={fullName}
             joinDate={joinDate} reputationScore={reputationScore} ratingCount={ratingCount}
-            handleOpenReportDialog={() => setReportDialogOpen(true)}
+            handleOpenReportDialog={handleOpenReportUserDialog}
             handleCoverChange={(e) => handleFileChange(e.target.files[0], 'cover')}
             handleAvatarChange={(e) => handleFileChange(e.target.files[0], 'avatar')}
             coverInputRef={coverInputRef} avatarInputRef={avatarInputRef}
@@ -632,16 +646,16 @@ export default function ProfilePage() {
                   centered
                   sx={{
                     px: 2,
-                    '& .MuiTabs-indicator': { 
-                      bgcolor: 'white', 
-                      height: 1.5, 
+                    '& .MuiTabs-indicator': {
+                      bgcolor: 'white',
+                      height: 1.5,
                       bottom: 0,
                       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                     },
-                    '& .MuiTab-root': { 
-                      color: 'rgba(255, 255, 255, 0.4)', 
-                      fontWeight: 600, 
-                      textTransform: 'uppercase', 
+                    '& .MuiTab-root': {
+                      color: 'rgba(255, 255, 255, 0.4)',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
                       fontSize: '0.75rem',
                       letterSpacing: '1px',
                       py: 2,
@@ -655,7 +669,7 @@ export default function ProfilePage() {
                         fontSize: 20,
                         transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                       },
-                      '&.Mui-selected': { 
+                      '&.Mui-selected': {
                         color: 'white !important',
                         '& .MuiSvgIcon-root': { transform: 'scale(1.2)' },
                       }
@@ -668,24 +682,24 @@ export default function ProfilePage() {
               </Tabs>
 
               {/* Grid/List View Filter */}
-              <Box sx={{ 
-                position: 'absolute', 
-                right: 0, 
-                height: '100%', 
-                display: { xs: 'none', sm: 'flex' }, 
-                alignItems: 'center', 
-                gap: 1, 
-                pr: 2 
+              <Box sx={{
+                position: 'absolute',
+                right: 0,
+                height: '100%',
+                display: { xs: 'none', sm: 'flex' },
+                alignItems: 'center',
+                gap: 1,
+                pr: 2
               }}>
-                <IconButton 
-                  onClick={() => setViewMode('grid')} 
-                  sx={{ color: viewMode === 'grid' ? '#0095f6' : 'rgba(255,255,255,0.3)' }}
+                <IconButton
+                    onClick={() => setViewMode('grid')}
+                    sx={{ color: viewMode === 'grid' ? '#0095f6' : 'rgba(255,255,255,0.3)' }}
                 >
                   <GridOnIcon fontSize="small" />
                 </IconButton>
-                <IconButton 
-                  onClick={() => setViewMode('list')} 
-                  sx={{ color: viewMode === 'list' ? '#0095f6' : 'rgba(255,255,255,0.3)' }}
+                <IconButton
+                    onClick={() => setViewMode('list')}
+                    sx={{ color: viewMode === 'list' ? '#0095f6' : 'rgba(255,255,255,0.3)' }}
                 >
                   <ListIcon fontSize="small" />
                 </IconButton>
@@ -694,9 +708,9 @@ export default function ProfilePage() {
 
             <Box sx={{ flex: 1, p: { xs: 0.1, sm: 0.5 } }}>
               {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter(l => l.status === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter((l) => String(l?.status || l?.itemStatus || '').toUpperCase() === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
               {tab === 2 && (
-                <ReviewSection userId={profileUser?.id} />
+                  <ReviewSection userId={profileUser?.id} />
               )}
             </Box>
           </Box>
@@ -711,12 +725,12 @@ export default function ProfilePage() {
         />
 
         {!isMe && profileUser?.id && (
-          <BlockUserConfirmDialog
-            open={blockDialogOpen}
-            onClose={() => setBlockDialogOpen(false)}
-            displayName={fullName}
-            onConfirm={() => blockUserById(profileUser.id).then(() => navigate('/feed'))}
-          />
+            <BlockUserConfirmDialog
+                open={blockDialogOpen}
+                onClose={() => setBlockDialogOpen(false)}
+                displayName={fullName}
+                onConfirm={() => blockUserById(profileUser.id).then(() => navigate('/feed'))}
+            />
         )}
       </Box>
   );

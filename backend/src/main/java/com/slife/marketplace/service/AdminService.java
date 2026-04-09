@@ -43,6 +43,7 @@ public class AdminService {
     private final ReportRepository reportRepository;
     private final DealRepository dealRepository;
     private final AuditLogService auditLogService;
+    private final SystemEmailService systemEmailService;
 
     public AdminService(
             UserRepository userRepository,
@@ -50,13 +51,15 @@ public class AdminService {
             CategoryRepository categoryRepository,
             ReportRepository reportRepository,
             DealRepository dealRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            SystemEmailService systemEmailService) {
         this.userRepository = userRepository;
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.reportRepository = reportRepository;
         this.dealRepository = dealRepository;
         this.auditLogService = auditLogService;
+        this.systemEmailService = systemEmailService;
     }
 
     @Transactional(readOnly = true)
@@ -200,6 +203,7 @@ public class AdminService {
         }
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
+        systemEmailService.sendAdminUserStatusChangedEmail(user, normalizedStatus);
 
         if ("BANNED".equals(normalizedStatus)) {
             auditLogService.logUserBan(admin, id, previousStatus);

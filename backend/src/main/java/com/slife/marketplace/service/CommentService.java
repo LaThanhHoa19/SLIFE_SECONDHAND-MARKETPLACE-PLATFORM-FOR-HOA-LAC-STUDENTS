@@ -36,6 +36,7 @@ public class CommentService {
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
     private final CommentRateLimitService commentRateLimitService;
+    private final ContentModerationService contentModerationService;
 
     @Transactional
     public CommentResponse createComment(CreateCommentRequest request) {
@@ -46,6 +47,9 @@ public class CommentService {
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
         validateContentOrImage(text, imageUrls);
+        if (text != null) {
+            contentModerationService.assertNoBannedKeywords(text);
+        }
 
         Listing listing = listingRepository.findById(request.getListingId())
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
@@ -77,6 +81,9 @@ public class CommentService {
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
         validateContentOrImage(text, imageUrls);
+        if (text != null) {
+            contentModerationService.assertNoBannedKeywords(text);
+        }
 
         Comment parent = commentRepository.findById(parentCommentId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.COMMENT_NOT_FOUND));
@@ -154,6 +161,9 @@ public class CommentService {
         String text = trimOrNull(request.getContent());
         List<String> imageUrls = sanitize(request.getImageUrls());
         validateContentOrImage(text, imageUrls);
+        if (text != null) {
+            contentModerationService.assertNoBannedKeywords(text);
+        }
 
         comment.setContent(text);
         // Neu co update anh, xoa anh cu va luu anh moi

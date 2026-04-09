@@ -11,6 +11,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.security.LoginRateLimitService;
 import com.slife.marketplace.security.TokenBlacklistService;
 import com.slife.marketplace.service.AuthService;
+import com.slife.marketplace.service.SystemEmailService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,6 +37,7 @@ public class AuthController {
     private final AuthService authService;
     private final TokenBlacklistService tokenBlacklistService;
     private final LoginRateLimitService loginRateLimitService;
+    private final SystemEmailService systemEmailService;
 
     @Value("${app.frontend.url:http://localhost:5173}")
     private String frontendUrl;
@@ -48,10 +50,12 @@ public class AuthController {
 
     public AuthController(AuthService authService,
                           TokenBlacklistService tokenBlacklistService,
-                          LoginRateLimitService loginRateLimitService) {
+                          LoginRateLimitService loginRateLimitService,
+                          SystemEmailService systemEmailService) {
         this.authService = authService;
         this.tokenBlacklistService = tokenBlacklistService;
         this.loginRateLimitService = loginRateLimitService;
+        this.systemEmailService = systemEmailService;
     }
 
     @PostMapping("/dev-login")
@@ -60,6 +64,31 @@ public class AuthController {
             throw new SlifeException(ErrorCode.FORBIDDEN, "dev-login is disabled");
         }
         return ResponseEntity.ok(ApiResponse.success("Dev login successful", authService.devLogin(email)));
+    }
+
+    /**
+     * Gửi ~11 email mẫu (welcome, trả giá, deal, nhắc nhận hàng…). Đích thực = {@code app.mail.force-to} nếu có.
+     */
+    @PostMapping("/dev/send-sample-emails")
+    public ResponseEntity<ApiResponse<Integer>> devSendSampleEmails() {
+        if (!devLoginEnabled) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "dev-login is disabled");
+        }
+        int n = systemEmailService.sendDevMailSamples();
+        return ResponseEntity.ok(ApiResponse.success("Sent sample emails (check app.mail.force-to)", n));
+    }
+
+    /**
+     * Gửi lại email chào mừng cho user (cần {@code welcome_email_sent_at = NULL} trong DB trước).
+     */
+    @PostMapping("/dev/trigger-welcome-email")
+    public ResponseEntity<ApiResponse<String>> devTriggerWelcomeEmail(@RequestParam("userId") Long userId) {
+        if (!devLoginEnabled) {
+            throw new SlifeException(ErrorCode.FORBIDDEN, "dev-login is disabled");
+        }
+        systemEmailService.trySendWelcomeAfterGoogleLogin(userId);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Welcome email attempted (skipped if already sent or no email). userId=" + userId, "ok"));
     }
 
     @PostMapping("/login")

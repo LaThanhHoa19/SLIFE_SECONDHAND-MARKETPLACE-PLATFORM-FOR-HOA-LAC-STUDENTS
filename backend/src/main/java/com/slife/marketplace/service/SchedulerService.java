@@ -2,6 +2,7 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.repository.DealRepository;
+import com.slife.marketplace.util.TimeZones;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,7 +33,7 @@ public class SchedulerService {
     @Scheduled(cron = "${app.scheduler.auto-confirm-deal-cron:0 0 * * * *}")
     public void autoCompleteConfirmedDeals() {
         int timeoutDays = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", DEFAULT_DEAL_TIMEOUT_DAYS));
-        LocalDateTime threshold = LocalDateTime.now().minusDays(timeoutDays);
+        LocalDateTime threshold = LocalDateTime.now(TimeZones.VIETNAM).minusDays(timeoutDays);
 
         List<Deal> overdueDeals = dealRepository.findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull("CONFIRMED", threshold);
         if (overdueDeals.isEmpty()) {

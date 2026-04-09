@@ -5,6 +5,9 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * {@code pickupTime} là giờ địa phương Việt Nam (cùng quy ước với cột {@code deals.pickup_time}).
+ */
 @Data
 public class UpdatePickupTimeRequest {
     @NotNull
