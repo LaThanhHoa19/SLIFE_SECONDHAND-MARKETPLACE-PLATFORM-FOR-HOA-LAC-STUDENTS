@@ -5,6 +5,7 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.UserRepository;
+import com.slife.marketplace.storage.FileStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -15,9 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 
 @Service
@@ -28,10 +27,12 @@ public class UserService {
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final UserRepository userRepository;
+    private final FileStorage fileStorage;
     private final Path uploadBasePath;
 
-    public UserService(UserRepository userRepository, Path uploadBasePath) {
+    public UserService(UserRepository userRepository, FileStorage fileStorage, Path uploadBasePath) {
         this.userRepository = userRepository;
+        this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
         log.info("UserService upload base path: {}", this.uploadBasePath);
     }
@@ -167,10 +168,10 @@ public class UserService {
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
         Path dir = uploadBasePath.resolve(subDir);
         try {
-            Files.createDirectories(dir);
+            fileStorage.createDirectories(dir);
             Path target = dir.resolve(filename).normalize();
             try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                fileStorage.copy(in, target);
             }
             String url = "/uploads/" + subDir + "/" + filename;
             user.setAvatarUrl(url);
@@ -196,10 +197,10 @@ public class UserService {
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
         Path dir = uploadBasePath.resolve(subDir);
         try {
-            Files.createDirectories(dir);
+            fileStorage.createDirectories(dir);
             Path target = dir.resolve(filename).normalize();
             try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                fileStorage.copy(in, target);
             }
             String url = "/uploads/" + subDir + "/" + filename;
             user.setCoverImageUrl(url);
