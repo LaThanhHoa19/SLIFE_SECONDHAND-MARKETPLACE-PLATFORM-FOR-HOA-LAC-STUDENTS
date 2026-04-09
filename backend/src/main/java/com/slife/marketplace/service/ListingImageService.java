@@ -7,6 +7,7 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
+import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,9 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 
@@ -34,15 +33,18 @@ public class ListingImageService {
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
     private final ConfigService configService;
+    private final FileStorage fileStorage;
     private final Path uploadBasePath;
 
     public ListingImageService(ListingRepository listingRepository,
                                ListingImageRepository listingImageRepository,
                                ConfigService configService,
+                               FileStorage fileStorage,
                                Path uploadBasePath) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.configService = configService;
+        this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
     }
 
@@ -76,10 +78,10 @@ public class ListingImageService {
             String filename = listingId + "_" + System.currentTimeMillis() + "_" + displayOrder + ext;
             Path dir = uploadBasePath.resolve("listings");
             try {
-                Files.createDirectories(dir);
+                fileStorage.createDirectories(dir);
                 Path target = dir.resolve(filename).normalize();
                 try (InputStream in = file.getInputStream()) {
-                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                    fileStorage.copy(in, target);
                 }
             } catch (IOException e) {
                 log.error("uploadListingImages failed listingId={}", listingId, e);
@@ -140,7 +142,7 @@ public class ListingImageService {
                 log.warn("Refusing to delete outside upload dir: {}", imageUrl);
                 return;
             }
-            Files.deleteIfExists(target);
+            fileStorage.deleteIfExists(target);
         } catch (IOException e) {
             log.warn("Could not delete listing image file: {}", imageUrl, e);
         }
