@@ -648,7 +648,7 @@ public class ChatService {
                 notificationService.notifyDealConfirmed(acceptedBuyer, seller,
                         listing.getId(), listing.getTitle(), conv.getId());
                 systemEmailService.sendOfferAcceptedEmails(
-                        acceptedBuyer, seller, listing.getTitle(), listing.getId(), conv.getId());
+                        acceptedBuyer, seller, listing.getTitle(), listing.getId(), conv.getId(), null);
             }
             log.info("respondToOffer ACCEPTED offerId={} listingId={}", offerId,
                     listing != null ? listing.getId() : null);
@@ -665,9 +665,9 @@ public class ChatService {
                 User rejSeller = rejListing.getSeller() != null ? rejListing.getSeller() : seller;
                 notificationService.notifyOfferRejected(buyer, rejSeller, rejListing.getId(),
                         rejListing.getTitle(), offer.getAmount());
-                systemEmailService.sendOfferRejectedEmail(
+                systemEmailService.sendOfferRejectedEmails(
                         buyer,
-                        emailDisplayNameForMail(rejSeller),
+                        rejSeller,
                         rejListing.getTitle(),
                         rejListing.getId(),
                         offer.getAmount());

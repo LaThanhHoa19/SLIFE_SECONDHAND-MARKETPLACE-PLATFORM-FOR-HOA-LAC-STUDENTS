@@ -8,6 +8,8 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import com.slife.marketplace.util.TimeZones;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -83,15 +85,15 @@ public class Deal {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now(TimeZones.VIETNAM);
+        updatedAt = LocalDateTime.now(TimeZones.VIETNAM);
         if (status == null) status = "PENDING";
         if (reminderSent == null) reminderSent = false;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now(TimeZones.VIETNAM);
     }
 
     // ---- Backward-compatible aliases for existing code paths ----

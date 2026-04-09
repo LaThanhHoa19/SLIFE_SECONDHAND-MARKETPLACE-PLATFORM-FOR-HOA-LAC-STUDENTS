@@ -69,6 +69,7 @@ public class CommunityPostService {
     private final CommunityPostLikeService communityPostLikeService;
     private final BlockService blockService;
     private final ConfigService configService;
+    private final ContentModerationService contentModerationService;
 
     public int getMaxImagesPerPost() {
         int perPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
@@ -87,6 +88,8 @@ public class CommunityPostService {
         if (!imageParts.isEmpty() && imageParts.size() > maxPerPost) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
         }
+
+        contentModerationService.assertNoBannedKeywords(request.getTitle().trim(), trimToNull(request.getDescription()));
 
         CommunityPost post = new CommunityPost();
         post.setAuthor(author);
@@ -119,6 +122,8 @@ public class CommunityPostService {
         if (request.getDescription() != null) {
             post.setDescription(trimToNull(request.getDescription()));
         }
+        String modTitle = post.getTitle() != null ? post.getTitle() : "";
+        contentModerationService.assertNoBannedKeywords(modTitle, post.getDescription());
         if (request.getDescription() != null || request.getHashtags() != null) {
             List<String> explicit = request.getHashtags() != null ? request.getHashtags() : List.of();
             syncHashtags(post, mergeHashtagSources(explicit, post.getDescription()));

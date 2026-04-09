@@ -91,30 +91,30 @@ export default function CommunityFeedPage() {
 
     const fetchPage = useCallback(
         async (nextCursor, append) => {
-        abortRef.current?.abort();
-        const ac = new AbortController();
-        abortRef.current = ac;
-        try {
-            const params = { limit: PAGE_SIZE, sort: sortFeed };
-            if (nextCursor) params.cursor = nextCursor;
-            if (hashtagFilter) params.hashtag = hashtagFilter;
-            const res = await getCommunityPosts(params, { signal: ac.signal });
-            const { items, nextCursor: nc, hasMore: hm } = normalizeCursor(res);
-            setError('');
-            setPosts((prev) => (append ? [...prev, ...items] : items));
-            setCursor(nc);
-            setHasMore(hm);
-        } catch (e) {
-            if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
-            setError(
-                e?.response?.data?.message ||
+            abortRef.current?.abort();
+            const ac = new AbortController();
+            abortRef.current = ac;
+            try {
+                const params = { limit: PAGE_SIZE, sort: sortFeed };
+                if (nextCursor) params.cursor = nextCursor;
+                if (hashtagFilter) params.hashtag = hashtagFilter;
+                const res = await getCommunityPosts(params, { signal: ac.signal });
+                const { items, nextCursor: nc, hasMore: hm } = normalizeCursor(res);
+                setError('');
+                setPosts((prev) => (append ? [...prev, ...items] : items));
+                setCursor(nc);
+                setHasMore(hm);
+            } catch (e) {
+                if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
+                setError(
+                    e?.response?.data?.message ||
                     e?.response?.data?.error ||
                     e?.message ||
                     'Không tải được bài cộng đồng.',
-            );
-            if (!append) setPosts([]);
-        }
-    },
+                );
+                if (!append) setPosts([]);
+            }
+        },
         [hashtagFilter, sortFeed],
     );
 
@@ -189,10 +189,10 @@ export default function CommunityFeedPage() {
                 prev.map((p) =>
                     Number(p.id) === Number(postId)
                         ? {
-                              ...p,
-                              likeCount,
-                              commentCount,
-                          }
+                            ...p,
+                            likeCount,
+                            commentCount,
+                        }
                         : p,
                 ),
             );
@@ -272,7 +272,14 @@ export default function CommunityFeedPage() {
                 >
                     <Stack direction="row" alignItems="center" gap={1.25} sx={{ mb: 1.5 }}>
                         <ForumOutlinedIcon sx={{ fontSize: 32, color: 'primary.light' }} />
-                        <Typography variant="h5" fontWeight={800} sx={{ fontFamily: "'Outfit', sans-serif" }}>
+                        <Typography 
+                            variant="h5" 
+                            fontWeight={800} 
+                            sx={{ 
+                                color: '#9D6EED', 
+                                fontFamily: "'Plus Jakarta Sans', sans-serif" 
+                            }}
+                        >
                             Cộng đồng SLife
                         </Typography>
                     </Stack>
@@ -370,7 +377,15 @@ export default function CommunityFeedPage() {
                         }}
                     >
                         <CardContent sx={{ py: 4, textAlign: 'center' }}>
-                            <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                            <Typography 
+                                variant="subtitle1" 
+                                fontWeight={800} 
+                                gutterBottom 
+                                sx={{ 
+                                    color: '#9D6EED',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif"
+                                }}
+                            >
                                 Chưa có bài đăng cộng đồng
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>

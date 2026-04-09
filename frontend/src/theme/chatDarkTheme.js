@@ -50,8 +50,7 @@ export const chatDarkTheme = createTheme({
   },
   shape: { borderRadius: 12 },
   typography: {
-    fontFamily:
-        '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
+    fontFamily: '"Plus Jakarta Sans", sans-serif',
   },
   components: {
     MuiListItemButton: {

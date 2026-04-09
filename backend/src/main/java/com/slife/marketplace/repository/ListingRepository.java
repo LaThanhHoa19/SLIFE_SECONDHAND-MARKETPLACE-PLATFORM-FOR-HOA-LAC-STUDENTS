@@ -253,6 +253,8 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     long countBySeller_IdAndStatus(Long sellerId, String status);
 
+    long countBySeller_IdAndStatusAndDeletedAtIsNull(Long sellerId, String status);
+
     /**
      * Địa điểm gợi ý filter: chỉ từ tin ACTIVE hiển thị được (chưa xóa mềm, chưa quá hạn lazy).
      */
@@ -289,6 +291,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             Pageable pageable);
 
     @Query("SELECT l FROM Listing l WHERE l.seller = :seller " +
+            "AND l.status NOT IN ('SOLD', 'BANNED', 'DELETED') " +
             "AND l.expirationDate IS NOT NULL AND l.expirationDate < CURRENT_TIMESTAMP " +
             "AND l.deletedAt IS NULL " +
             "ORDER BY l.expirationDate DESC")
@@ -299,6 +302,13 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             + "AND l.expirationDate IS NOT NULL AND l.expirationDate < :now AND l.deletedAt IS NULL "
             + "ORDER BY l.expirationDate ASC")
     List<Long> findIdsOfActiveExpiredListings(@Param("now") Instant now, Pageable pageable);
+
+    /** Tin ACTIVE sẽ hết hạn trong cửa sổ thời gian chỉ định. */
+    @Query("SELECT l FROM Listing l WHERE l.status = 'ACTIVE' "
+            + "AND l.deletedAt IS NULL "
+            + "AND l.expirationDate IS NOT NULL "
+            + "AND l.expirationDate >= :from AND l.expirationDate < :to")
+    List<Listing> findActiveListingsExpiringBetween(@Param("from") Instant from, @Param("to") Instant to);
 
     /**
      * Batch: {@code HIDDEN} theo danh sách ID (chỉ khi vẫn {@code ACTIVE} để an toàn khi chạy song song).

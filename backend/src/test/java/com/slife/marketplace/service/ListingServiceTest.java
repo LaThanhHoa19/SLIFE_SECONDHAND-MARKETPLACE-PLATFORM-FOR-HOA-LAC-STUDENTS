@@ -87,6 +87,11 @@ class ListingServiceTest {
 
     @Mock
     private ListingExpiryBatchService listingExpiryBatchService;
+    @Mock
+    private SystemEmailService systemEmailService;
+
+    @Mock
+    private ContentModerationService contentModerationService;
 
     private ListingService listingService;
 
@@ -104,7 +109,9 @@ class ListingServiceTest {
                 listingImageService,
                 configService,
                 notificationService,
-                listingExpiryBatchService
+                listingExpiryBatchService,
+                systemEmailService,
+                contentModerationService
         );
     }
 

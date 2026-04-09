@@ -40,14 +40,14 @@ const iconBtnSx = {
 };
 
 export default function MyListingCard({
-                                          listing,
-                                          activeTab,
-                                          onHide,
-                                          onUnhide,
-                                          onRenew,
-                                          onRepost,
-                                          onDeleteDraft,
-                                      }) {
+    listing,
+    activeTab,
+    onHide,
+    onUnhide,
+    onRenew,
+    onRepost,
+    onDeleteDraft,
+}) {
     const navigate = useNavigate();
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
@@ -144,41 +144,41 @@ export default function MyListingCard({
             </Box>
 
             <Stack sx={{ p: 1.25, pt: 1, pb: 1.25, flex: 1, gap: 0.5 }}>
-                 <Typography
-                     onClick={goDetail}
-                     fontSize={14}
-                     fontWeight={700}
-                     color="rgba(255,255,255,0.95)"
-                     sx={{
-                         cursor: 'pointer',
-                         lineHeight: 1.3,
-                         display: '-webkit-box',
-                         WebkitLineClamp: 2,
-                         WebkitBoxOrient: 'vertical',
-                         overflow: 'hidden',
-                         minHeight: 32,
-                         letterSpacing: '-0.01em',
-                         '&:hover': { color: STITCH_PURPLE },
-                     }}
-                 >
-                     {listing?.title || 'Không có tiêu đề'}
-                 </Typography>
- 
-                 <Typography
-                     fontSize={16}
-                     fontWeight={800}
-                     color={listing?.isGiveaway ? '#5CE1A8' : STITCH_PRICE_CYAN}
-                     sx={{
-                         letterSpacing: '-0.02em',
-                         textShadow: listing?.isGiveaway ? 'none' : '0 0 12px rgba(92, 225, 230, 0.18)',
-                     }}
-                 >
-                     {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
-                 </Typography>
+                <Typography
+                    onClick={goDetail}
+                    fontSize={14}
+                    fontWeight={700}
+                    color="rgba(255,255,255,0.95)"
+                    sx={{
+                        cursor: 'pointer',
+                        lineHeight: 1.3,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        minHeight: 32,
+                        letterSpacing: '-0.01em',
+                        '&:hover': { color: STITCH_PURPLE },
+                    }}
+                >
+                    {listing?.title || 'Không có tiêu đề'}
+                </Typography>
+
+                <Typography
+                    fontSize={16}
+                    fontWeight={800}
+                    color={listing?.isGiveaway ? '#5CE1A8' : STITCH_PRICE_CYAN}
+                    sx={{
+                        letterSpacing: '-0.02em',
+                        textShadow: listing?.isGiveaway ? 'none' : '0 0 12px rgba(92, 225, 230, 0.18)',
+                    }}
+                >
+                    {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
+                </Typography>
 
                 {(listing?.expirationDate || listing?.reportCount > 0) && (
                     <Stack gap={0.35}>
-                        {listing?.expirationDate && (
+                        {listing?.expirationDate && activeTab !== 'SOLD' && (
                             <Typography fontSize={10.5} color="rgba(255,255,255,0.32)">
                                 Hết hạn {formatDate(listing.expirationDate)}
                             </Typography>
