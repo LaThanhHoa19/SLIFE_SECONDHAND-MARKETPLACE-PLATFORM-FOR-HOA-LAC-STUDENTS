@@ -48,7 +48,8 @@ import {
     getPurposeInfo,
     getStatusInfo,
     LISTING_ICONS,
-    formatRelativeShort
+    formatRelativeShort,
+    formatCurrency as toCurrency
 } from '../../utils/listingFormatUtils';
 
 const LIKE_RED = '#FF4757';
@@ -83,7 +84,7 @@ function normalizeShareUrl(rawUrl, fallbackId) {
     }
 }
 
-const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
+// toCurrency imported from listingFormatUtils
 
 const getSeller = (listing) => {
     const sellerSummary = listing?.sellerSummary;

@@ -71,22 +71,27 @@ import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDial
 import CatalogItemUnavailableScreen from '../../components/common/CatalogItemUnavailableScreen';
 import { shouldShowCatalogUnavailableForNotifLink } from '../../utils/catalogAvailability';
 
-// Hang so mau sac dong bo voi Feed
-const DARK_BG = '#141225';
-const CARD_BG = '#201D26';
-const CARD_BG2 = '#252230';
-const BORDER = 'rgba(255,255,255,0.07)';
 import { 
     getConditionInfo, 
     getPurposeInfo,
-    BRAND_COLORS 
+    getStatusInfo,
+    BRAND_COLORS, 
+    LISTING_ICONS,
+    formatRelativeShort
 } from '../../utils/listingFormatUtils';
 
+const getPayload = unwrapApiData;
+
+// Hằng số màu sắc đồng bộ với Feed
 const TEXT_PRI = BRAND_COLORS.TEXT_PRI;
 const TEXT_SEC = BRAND_COLORS.TEXT_SEC;
 const PURPLE = BRAND_COLORS.PURPLE;
 const RED = BRAND_COLORS.RED;
 const GREEN = BRAND_COLORS.GREEN;
+const DARK_BG = '#141225';
+const CARD_BG = '#201D26';
+const CARD_BG2 = '#252230';
+const BORDER = 'rgba(255,255,255,0.07)';
 
 const getSeller = (listing) => {
     const s = listing?.sellerSummary ?? listing?.seller;

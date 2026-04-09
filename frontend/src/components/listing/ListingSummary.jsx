@@ -6,8 +6,11 @@ import {
     getStatusInfo,
     LISTING_ICONS,
     BRAND_COLORS,
-    formatRelativeShort
+    formatRelativeShort,
+    formatCurrency
 } from '../../utils/listingFormatUtils';
+
+export const toCurrency = formatCurrency;
 
 export const TEXT_PRI = BRAND_COLORS.TEXT_PRI;
 export const TEXT_SEC = BRAND_COLORS.TEXT_SEC;
