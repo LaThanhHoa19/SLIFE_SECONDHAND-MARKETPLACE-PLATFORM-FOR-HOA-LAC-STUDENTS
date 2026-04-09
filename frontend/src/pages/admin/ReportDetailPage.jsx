@@ -10,6 +10,7 @@ import {
     Grid,
     IconButton,
     Paper,
+    Skeleton,
     Stack,
     TextField,
     Tooltip,
@@ -136,6 +137,7 @@ export default function ReportDetailPage() {
     const [listingImageBroken, setListingImageBroken] = useState(false);
     const [evidenceImageBroken, setEvidenceImageBroken] = useState(false);
     const [reportedUserInfo, setReportedUserInfo] = useState(null);
+    const [relatedLoading, setRelatedLoading] = useState(false);
     const [loadError, setLoadError] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [adminNote, setAdminNote] = useState('');
@@ -216,6 +218,7 @@ export default function ReportDetailPage() {
             const tt = String(report?.targetType || '').toUpperCase();
             const id = report?.listingId ?? report?.targetId;
             if (!cancelled) {
+                setRelatedLoading(true);
                 setListingImageBroken(false);
                 setEvidenceImageBroken(false);
             }
@@ -243,6 +246,7 @@ export default function ReportDetailPage() {
                             setReportedUserInfo(null);
                         }
                     }
+                    if (!cancelled) setRelatedLoading(false);
                     return;
                 } catch {
                     if (!cancelled) {
@@ -263,7 +267,10 @@ export default function ReportDetailPage() {
             } else {
                 if (!cancelled) setReportedUserInfo(null);
             }
-            if (!cancelled) setListingInfo(null);
+            if (!cancelled) {
+                setListingInfo(null);
+                setRelatedLoading(false);
+            }
         };
         loadRelatedTargets();
         return () => {
@@ -819,10 +826,21 @@ export default function ReportDetailPage() {
                             </Typography>
                         </Paper>
 
-                        {reportedUserInfo && (
+                        {relatedLoading ? (
+                            <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                                <Skeleton variant="text" width="60%" height={24} sx={{ bgcolor: 'rgba(148,163,184,0.22)' }} />
+                                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1.5 }}>
+                                    <Skeleton variant="circular" width={44} height={44} sx={{ bgcolor: 'rgba(148,163,184,0.2)' }} />
+                                    <Box sx={{ flex: 1 }}>
+                                        <Skeleton variant="text" width="75%" height={22} sx={{ bgcolor: 'rgba(148,163,184,0.22)' }} />
+                                        <Skeleton variant="text" width="55%" height={18} sx={{ bgcolor: 'rgba(148,163,184,0.18)' }} />
+                                    </Box>
+                                </Stack>
+                            </Paper>
+                        ) : reportedUserInfo ? (
                             <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
                                 <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
-                                    NGƯỜI DÙNG BỊ BÁO CÁO
+                                    {tt === 'LISTING' || tt === 'POST' ? 'NGƯỜI ĐĂNG TIN' : 'NGƯỜI DÙNG BỊ BÁO CÁO'}
                                 </Typography>
                                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1.5 }}>
                                     <Avatar
@@ -885,112 +903,114 @@ export default function ReportDetailPage() {
                                     ) : null}
                                 </Stack>
                             </Paper>
-                        )}
+                        ) : null}
 
-                        <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
-                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-                                <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
-                                    {tt === 'LISTING' || tt === 'POST' ? 'TIN ĐĂNG BỊ BÁO CÁO' : tt === 'USER' ? 'NGƯỜI DÙNG BỊ BÁO CÁO' : 'ĐỐI TƯỢNG LIÊN QUAN'}
-                                </Typography>
-                                {listingId != null && (
-                                    <Tooltip title="Mở tin đăng">
-                                        <IconButton
-                                            size="small"
-                                            onClick={() => navigate(`/listings/${listingId}`)}
-                                            sx={{
-                                                color: STITCH_INDIGO,
-                                                bgcolor: 'rgba(99, 102, 241, 0.12)',
-                                                '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.22)' },
-                                            }}
-                                        >
-                                            <OpenInNewIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
-                            </Stack>
-                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                <Box
-                                    sx={{
-                                        width: 64,
-                                        height: 64,
-                                        flexShrink: 0,
-                                        borderRadius: 2,
-                                        bgcolor: 'rgba(99, 102, 241, 0.12)',
-                                        border: `1px solid ${CARD_BORDER}`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    {tt === 'USER' ? (
-                                        <Avatar
-                                            src={reportedAvatar || undefined}
-                                            imgProps={{ referrerPolicy: 'no-referrer' }}
-                                            sx={{
-                                                width: '100%',
-                                                height: '100%',
-                                                borderRadius: 2,
-                                                bgcolor: 'rgba(34, 211, 238, 0.22)',
-                                                color: '#cffafe',
-                                                fontWeight: 900,
-                                            }}
-                                        >
-                                            {reporterInitials(displayTitle)}
-                                        </Avatar>
-                                    ) : (tt === 'LISTING' || tt === 'POST') && listingImageUrl && !listingImageBroken ? (
-                                        <img
-                                            src={listingImageUrl}
-                                            alt="listing-thumbnail"
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            onError={() => setListingImageBroken(true)}
-                                        />
-                                    ) : (
-                                        <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.95)', fontWeight: 700, textAlign: 'center', px: 1 }}>
-                                            {(tt === 'LISTING' || tt === 'POST')
-                                                ? (listingImageUrl ? 'Ảnh không tải được' : 'Không có ảnh')
-                                                : (displayTitle || '?').slice(0, 1).toUpperCase()}
+                        {tt !== 'USER' && (
+                            <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                                    <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
+                                        {tt === 'LISTING' || tt === 'POST' ? 'TIN ĐĂNG BỊ BÁO CÁO' : tt === 'USER' ? 'TÓM TẮT ĐỐI TƯỢNG' : 'ĐỐI TƯỢNG LIÊN QUAN'}
+                                    </Typography>
+                                    {listingId != null && (
+                                        <Tooltip title="Mở tin đăng">
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => navigate(`/listings/${listingId}`)}
+                                                sx={{
+                                                    color: STITCH_INDIGO,
+                                                    bgcolor: 'rgba(99, 102, 241, 0.12)',
+                                                    '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.22)' },
+                                                }}
+                                            >
+                                                <OpenInNewIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                </Stack>
+                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                    <Box
+                                        sx={{
+                                            width: 64,
+                                            height: 64,
+                                            flexShrink: 0,
+                                            borderRadius: 2,
+                                            bgcolor: 'rgba(99, 102, 241, 0.12)',
+                                            border: `1px solid ${CARD_BORDER}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        {tt === 'USER' ? (
+                                            <Avatar
+                                                src={reportedAvatar || undefined}
+                                                imgProps={{ referrerPolicy: 'no-referrer' }}
+                                                sx={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    borderRadius: 2,
+                                                    bgcolor: 'rgba(34, 211, 238, 0.22)',
+                                                    color: '#cffafe',
+                                                    fontWeight: 900,
+                                                }}
+                                            >
+                                                {reporterInitials(displayTitle)}
+                                            </Avatar>
+                                        ) : (tt === 'LISTING' || tt === 'POST') && listingImageUrl && !listingImageBroken ? (
+                                            <img
+                                                src={listingImageUrl}
+                                                alt="listing-thumbnail"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={() => setListingImageBroken(true)}
+                                            />
+                                        ) : (
+                                            <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.95)', fontWeight: 700, textAlign: 'center', px: 1 }}>
+                                                {(tt === 'LISTING' || tt === 'POST')
+                                                    ? (listingImageUrl ? 'Ảnh không tải được' : 'Không có ảnh')
+                                                    : (displayTitle || '?').slice(0, 1).toUpperCase()}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="subtitle2" sx={{ color: '#f1f5f9', fontWeight: 700 }} noWrap>
+                                            {listingId != null ? `Tin #${listingId}` : `Đối tượng #${report.targetId ?? '—'}`}
                                         </Typography>
-                                    )}
-                                </Box>
-                                <Box sx={{ minWidth: 0 }}>
-                                    <Typography variant="subtitle2" sx={{ color: '#f1f5f9', fontWeight: 700 }} noWrap>
-                                        {listingId != null ? `Tin #${listingId}` : `Đối tượng #${report.targetId ?? '—'}`}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: MUTED_LABEL, display: 'block', mt: 0.25 }} noWrap>
-                                        {relatedCategoryLine(report.targetType)}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'rgba(226, 232, 240, 0.88)', mt: 0.75, lineHeight: 1.4 }} noWrap>
-                                        {displayTitle}
-                                    </Typography>
-                                    {(tt === 'LISTING' || tt === 'POST') && (
-                                        <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-                                            {(listingInfo?.price != null || listingInfo?.formattedPrice != null) && (
-                                                <Chip
-                                                    size="small"
-                                                    label={`Giá: ${listingInfo?.formattedPrice || listingInfo?.price}`}
-                                                    sx={{ bgcolor: 'rgba(99, 102, 241, 0.14)', color: '#c7d2fe', border: '1px solid rgba(129, 140, 248, 0.32)', fontWeight: 700 }}
-                                                />
-                                            )}
-                                            {listingInfo?.status && (
-                                                <Chip
-                                                    size="small"
-                                                    label={`Trạng thái tin: ${listingInfo.status}`}
-                                                    sx={{ bgcolor: 'rgba(148, 163, 184, 0.14)', color: '#e2e8f0', border: '1px solid rgba(148, 163, 184, 0.32)', fontWeight: 700 }}
-                                                />
-                                            )}
-                                            {(reportedUserInfo?.fullName || reportedUserInfo?.name) && (
-                                                <Chip
-                                                    size="small"
-                                                    label={`Người đăng: ${reportedUserInfo?.fullName || reportedUserInfo?.name}`}
-                                                    sx={{ bgcolor: 'rgba(34, 197, 94, 0.14)', color: '#86efac', border: '1px solid rgba(34, 197, 94, 0.32)', fontWeight: 700 }}
-                                                />
-                                            )}
-                                        </Stack>
-                                    )}
-                                </Box>
-                            </Stack>
-                        </Paper>
+                                        <Typography variant="caption" sx={{ color: MUTED_LABEL, display: 'block', mt: 0.25 }} noWrap>
+                                            {relatedCategoryLine(report.targetType)}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'rgba(226, 232, 240, 0.88)', mt: 0.75, lineHeight: 1.4 }} noWrap>
+                                            {displayTitle}
+                                        </Typography>
+                                        {(tt === 'LISTING' || tt === 'POST') && (
+                                            <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                                {(listingInfo?.price != null || listingInfo?.formattedPrice != null) && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`Giá: ${listingInfo?.formattedPrice || listingInfo?.price}`}
+                                                        sx={{ bgcolor: 'rgba(99, 102, 241, 0.14)', color: '#c7d2fe', border: '1px solid rgba(129, 140, 248, 0.32)', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                                {listingInfo?.status && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`Trạng thái tin: ${listingInfo.status}`}
+                                                        sx={{ bgcolor: 'rgba(148, 163, 184, 0.14)', color: '#e2e8f0', border: '1px solid rgba(148, 163, 184, 0.32)', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                                {(reportedUserInfo?.fullName || reportedUserInfo?.name) && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`Người đăng: ${reportedUserInfo?.fullName || reportedUserInfo?.name}`}
+                                                        sx={{ bgcolor: 'rgba(34, 197, 94, 0.14)', color: '#86efac', border: '1px solid rgba(34, 197, 94, 0.32)', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                        )}
+                                    </Box>
+                                </Stack>
+                            </Paper>
+                        )}
 
                         <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
                             <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em', mb: 1, display: 'block' }}>
@@ -1069,9 +1089,23 @@ export default function ReportDetailPage() {
                                 : 'Báo cáo này đã được xử lý. Bạn có thể xem lại thông tin phía trên.'}
                         </Typography>
                         {canAct && (
-                            <Typography variant="caption" sx={{ color: 'rgba(251, 191, 36, 0.95)', mt: 0.9, display: 'block', lineHeight: 1.45 }}>
-                                Sau duyệt: +1 cờ vi phạm cho user bị báo cáo{tt === 'LISTING' || tt === 'POST' ? ' và ẩn bài đăng' : ''}. Nếu đạt ngưỡng cấu hình, hệ thống sẽ tự động khoá tài khoản.
-                            </Typography>
+                            <Box
+                                sx={{
+                                    mt: 1,
+                                    px: 1.25,
+                                    py: 0.9,
+                                    borderRadius: 1.5,
+                                    bgcolor: 'rgba(251, 191, 36, 0.1)',
+                                    border: '1px solid rgba(251, 191, 36, 0.35)',
+                                }}
+                            >
+                                <Typography variant="caption" sx={{ color: '#fde68a', display: 'block', lineHeight: 1.5, fontWeight: 700 }}>
+                                    Duyệt = +1 cờ vi phạm{tt === 'LISTING' || tt === 'POST' ? ' + ẩn bài đăng' : ''}.
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'rgba(253, 230, 138, 0.95)', display: 'block', lineHeight: 1.45 }}>
+                                    Nếu (X + 1) {'>='} ngưỡng cấu hình thì hệ thống tự động khóa tài khoản.
+                                </Typography>
+                            </Box>
                         )}
                     </Box>
                 </Stack>
