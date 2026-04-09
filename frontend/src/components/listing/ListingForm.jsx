@@ -1535,7 +1535,7 @@ export default function ListingForm({
                                             />
                                         );
                                     })()}
-                                    label="Tôi muốn trao tặng miễn phí"
+                                    label="Tôi muốn cho tặng miễn phí"
                                     sx={{
                                         mt: 1,
                                         "& .MuiFormControlLabel-label": {

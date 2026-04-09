@@ -25,9 +25,9 @@ import {
     STITCH_CARD_BORDER,
     STITCH_PRICE_CYAN,
     STITCH_PURPLE,
-    toCurrency,
 } from './myListingsConfig';
 import { formatRelativeTimeVi } from './myListingsUtils';
+import { getPurposeInfo } from '../../../utils/listingFormatUtils';
 
 const iconBtnSx = {
     color: 'rgba(255,255,255,0.5)',
@@ -164,17 +164,22 @@ export default function MyListingCard({
                     {listing?.title || 'Không có tiêu đề'}
                 </Typography>
 
-                <Typography
-                    fontSize={16}
-                    fontWeight={800}
-                    color={listing?.isGiveaway ? '#5CE1A8' : STITCH_PRICE_CYAN}
-                    sx={{
-                        letterSpacing: '-0.02em',
-                        textShadow: listing?.isGiveaway ? 'none' : '0 0 12px rgba(92, 225, 230, 0.18)',
-                    }}
-                >
-                    {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
-                </Typography>
+                {(() => {
+                    const { color, priceText } = getPurposeInfo(listing?.isGiveaway, listing?.price);
+                    return (
+                        <Typography
+                            fontSize={16}
+                            fontWeight={800}
+                            color={color}
+                            sx={{
+                                letterSpacing: '-0.02em',
+                                textShadow: listing?.isGiveaway ? 'none' : '0 0 12px rgba(92, 225, 230, 0.18)',
+                            }}
+                        >
+                            {priceText}
+                        </Typography>
+                    );
+                })()}
 
                 {(listing?.expirationDate || listing?.reportCount > 0) && (
                     <Stack gap={0.35}>

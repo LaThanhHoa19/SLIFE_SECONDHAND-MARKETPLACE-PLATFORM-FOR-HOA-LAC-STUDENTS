@@ -4,15 +4,14 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import { fullImageUrl } from '../../utils/constants';
+import { getPurposeInfo } from '../../utils/listingFormatUtils';
 
 export const CARD_BG = '#201D26';
 export const BORDER = 'rgba(255,255,255,0.07)';
 export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const RED = '#FF4757';
-
-export const toCurrency = (value) =>
-  value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
+export const GREEN = '#2ED573';
 
 export default function MiniListingCard({ listing, compact = false, onToggleSave, saveDisabled = false }) {
   const navigate = useNavigate();
@@ -145,9 +144,14 @@ export default function MiniListingCard({ listing, compact = false, onToggleSave
             {listing?.title || listing?.name || 'Không có tiêu đề'}
           </Typography>
         </Box>
-        <Typography fontSize={13} fontWeight={700} color={RED}>
-          {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
-        </Typography>
+        {(() => {
+          const { color, priceText } = getPurposeInfo(listing?.isGiveaway, listing?.price);
+          return (
+            <Typography fontSize={13} fontWeight={700} color={color}>
+              {priceText}
+            </Typography>
+          );
+        })()}
       </Box>
     </Card>
   );

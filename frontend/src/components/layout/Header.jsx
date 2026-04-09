@@ -141,7 +141,7 @@ const PostButton = styled(Button)(({ theme }) => ({
 
 export default function Header({ onToggleSidebar }) {
     const { unreadCount } = useContext(NotificationContext);
-    const { user, logout } = useContext(AuthContext);
+    const { user, logout, token } = useContext(AuthContext);
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -153,7 +153,7 @@ export default function Header({ onToggleSidebar }) {
 
     useEffect(() => {
         let alive = true;
-        if (!user) {
+        if (!user || !token) {
             setChatUnreadCount(0);
             return () => {
                 alive = false;

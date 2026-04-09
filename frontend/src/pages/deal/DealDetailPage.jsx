@@ -29,6 +29,7 @@ import ConfirmDialog from '../../components/common/ConfirmDialog';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useToast } from '../../context/ToastContext';
+import { getPurposeInfo } from '../../utils/listingFormatUtils';
 
 // ── Design tokens (đồng bộ ListingForm) ──────────────────────────────────────
 
@@ -115,6 +116,8 @@ function fmtPrice(val) {
     if (val == null) return '—';
     return `${Number(val).toLocaleString('vi-VN')} ₫`;
 }
+
+// Keep fmtPrice for dealPrice (negotiated price), but use getPurposeInfo for listing price
 
 function fmtAddress(address) {
     if (!address) return null;
@@ -421,9 +424,14 @@ export default function DealDetailPage() {
                         </Typography>
                         <Typography fontSize="13px" sx={{ color: C.textMuted, mt: 0.4 }}>
                             Giá niêm yết:{' '}
-                            <Box component="span" sx={{ color: C.accentHover, fontWeight: 600 }}>
-                                {deal.listing?.isGiveaway ? 'Cho tặng' : fmtPrice(deal.listing?.price)}
-                            </Box>
+                            {(() => {
+                                const { color, priceText } = getPurposeInfo(deal.listing?.isGiveaway, deal.listing?.price);
+                                return (
+                                    <Box component="span" sx={{ color: color, fontWeight: 600 }}>
+                                        {priceText}
+                                    </Box>
+                                );
+                            })()}
                         </Typography>
                     </Box>
                 </Box>
