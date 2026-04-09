@@ -28,13 +28,14 @@ import {
     Logout as LogoutIcon,
     PostAdd as PostAddIcon
 } from '@mui/icons-material';
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { uiTokens } from '../../theme/uiTokens';
+import { getChats } from '../../api/chatApi';
 
 
 const HEADER_BG = uiTokens.colors.surface.appHeader;
@@ -97,23 +98,6 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
     },
 }));
 
-const NavButton = styled(Button)(({ theme }) => ({
-    color: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'transparent',
-    textTransform: 'none',
-    fontSize: '14px',
-    fontWeight: 500,
-    letterSpacing: '0.02em',
-    padding: theme.spacing(0.75, 1.5),
-    borderRadius: '10px',
-    minWidth: 'auto',
-    transition: 'color 0.2s, background-color 0.2s',
-    '&:hover': {
-        backgroundColor: ACCENT_SUBTLE,
-        color: '#fff',
-    },
-}));
-
 const ActionButton = styled(Button)(({ theme }) => ({
     color: '#fff',
     textTransform: 'none',
@@ -164,7 +148,53 @@ export default function Header({ onToggleSidebar }) {
     const [searchValue, setSearchValue] = useState('');
     const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+    const [chatUnreadCount, setChatUnreadCount] = useState(0);
     const { checkVerification } = usePhoneVerification();
+
+    useEffect(() => {
+        let alive = true;
+        if (!user) {
+            setChatUnreadCount(0);
+            return () => {
+                alive = false;
+            };
+        }
+
+        const calcUnreadFromSession = (session) => {
+            const raw =
+                session?.unreadCount ?? session?.unread_count ?? session?.unreadMessages ?? session?.unread_messages ?? 0;
+            return Number(raw) || 0;
+        };
+
+        const fetchChatUnread = async () => {
+            try {
+                const res = await getChats({ filter: 'ALL' });
+                const body = res?.data;
+                const raw = body?.data;
+                const list = Array.isArray(raw?.content)
+                    ? raw.content
+                    : Array.isArray(raw)
+                        ? raw
+                        : Array.isArray(body?.content)
+                            ? body.content
+                            : Array.isArray(body)
+                                ? body
+                                : [];
+                const total = list.reduce((sum, s) => sum + calcUnreadFromSession(s), 0);
+                if (alive) setChatUnreadCount(total);
+            } catch {
+                if (alive) setChatUnreadCount(0);
+            }
+        };
+
+        fetchChatUnread();
+        const intervalId = window.setInterval(fetchChatUnread, 15000);
+
+        return () => {
+            alive = false;
+            window.clearInterval(intervalId);
+        };
+    }, [user]);
 
     const userAvatar = user?.avatarUrl || user?.avatar || '';
 
@@ -331,7 +361,9 @@ export default function Header({ onToggleSidebar }) {
                             '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
                         }}
                     >
-                        <ChatIcon sx={{ fontSize: '22px' }} />
+                        <Badge badgeContent={chatUnreadCount} color="error">
+                            <ChatIcon sx={{ fontSize: '22px' }} />
+                        </Badge>
                     </IconButton>
 
                     {user ? (
