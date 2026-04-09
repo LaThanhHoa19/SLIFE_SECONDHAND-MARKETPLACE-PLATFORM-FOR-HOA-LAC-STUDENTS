@@ -9,7 +9,9 @@ import {
     Divider,
     alpha
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import CreateIcon from '@mui/icons-material/Create';
+import ChatIcon from '@mui/icons-material/Chat';
 import GavelIcon from '@mui/icons-material/Gavel';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import VerifiedIcon from '@mui/icons-material/Verified';
@@ -46,7 +48,7 @@ const GuideSection = ({ icon: Icon, title, content }) => {
                     {title}
                 </Typography>
             </Stack>
-            
+
             <Box sx={{ color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.8 }}>
                 {content}
             </Box>
@@ -55,7 +57,10 @@ const GuideSection = ({ icon: Icon, title, content }) => {
 };
 
 export default function SellerGuidePage() {
+    const navigate = useNavigate();
     const accentColor = '#A78BFA';
+
+    const handlePrivacy = () => navigate('/terms?key=general&item=privacy');
 
     return (
         <Box
@@ -82,23 +87,23 @@ export default function SellerGuidePage() {
                         }}
                     />
                     <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)', maxWidth: 700, mx: 'auto', fontSize: '1.1rem' }}>
-                        Chào mừng bạn đến với cộng đồng người bán SLife. Dưới đây là những hướng dẫn và quy định quan trọng giúp bạn đăng tin hiệu quả và giao dịch an toàn.
+                        Biến những món đồ cũ thành giá trị mới. Hãy tham khảo hướng dẫn dưới đây để bán hàng nhanh chóng và uy tín nhất.
                     </Typography>
                 </Box>
 
                 <Grid container spacing={4} justifyContent="center">
                     <Grid item xs={12} md={10}>
-                        <GuideSection 
+                        <GuideSection
                             icon={CreateIcon}
                             title="1. Quy trình đăng tin chuẩn"
                             content={
                                 <Stack spacing={2.5}>
                                     <Typography variant="body1">
-                                        Để tin đăng của bạn thu hút được nhiều người mua và được duyệt nhanh chóng, hãy tuân thủ các quy tắc sau:
+                                        Để tin đăng của bạn thu hút được nhiều người mua và không vi phạm các chính sách của Slife, hãy tuân thủ các quy tắc sau:
                                     </Typography>
                                     <Box sx={{ pl: 2, borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
                                         <Typography variant="body2" sx={{ mb: 1.5 }}>
-                                            • <b>Hình ảnh:</b> Cung cấp ít nhất 3 ảnh thực tế, rõ nét. Không dùng ảnh mạng hoặc ảnh có chứa thông tin nhạy cảm.
+                                            • <b>Hình ảnh:</b> Cung cấp ít nhất 1 ảnh thực tế, rõ nét. Không dùng ảnh mạng hoặc ảnh có chứa thông tin nhạy cảm.
                                         </Typography>
                                         <Typography variant="body2" sx={{ mb: 1.5 }}>
                                             • <b>Tiêu đề:</b> Ngắn gọn, súc tích và chứa tên sản phẩm. Ví dụ: "Giáo trình Kinh tế vi mô - Mới 95%".
@@ -114,7 +119,7 @@ export default function SellerGuidePage() {
                             }
                         />
 
-                        <GuideSection 
+                        <GuideSection
                             icon={GavelIcon}
                             title="2. Quy định về hàng hóa"
                             content={
@@ -146,7 +151,7 @@ export default function SellerGuidePage() {
                             }
                         />
 
-                        <GuideSection 
+                        <GuideSection
                             icon={CheckCircleOutlineIcon}
                             title="3. Quy trình chốt đơn an toàn"
                             content={
@@ -192,6 +197,45 @@ export default function SellerGuidePage() {
                         </Paper>
                     </Grid>
                 </Grid>
+
+                <Box
+                    sx={{
+                        mt: 8,
+                        pt: 4,
+                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        textAlign: 'center',
+                        width: '100%',
+                        maxWidth: 800,
+                        mx: 'auto'
+                    }}
+                >
+                    <Stack
+                        direction="row"
+                        spacing={2}
+                        justifyContent="center"
+                        divider={<Typography sx={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</Typography>}
+                        sx={{ mb: 3 }}
+                    >
+                        <Typography
+                            onClick={() => navigate('/seller-guide')}
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
+                        >
+                            Tôi là người bán
+                        </Typography>
+                        <Typography
+                            onClick={() => navigate('/buyer-guide')}
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
+                        >
+                            Tôi là người mua
+                        </Typography>
+                    </Stack>
+
+                    <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.85rem' }}>
+                        © Bản quyền đã được bảo hộ bởi Cộng đồng Sinh viên SLife - Khu vực Hòa Lạc.
+                        <br />
+                        Thông tin của bạn sẽ được bảo mật theo <Typography component="span" onClick={handlePrivacy} sx={{ color: accentColor, cursor: 'pointer', fontWeight: 600, '&:hover': { textDecoration: 'underline' } }}>Chính sách bảo mật</Typography> của chúng tôi.
+                    </Typography>
+                </Box>
             </Container>
         </Box>
     );

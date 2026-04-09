@@ -14,6 +14,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import { useNavigate } from 'react-router-dom';
 
 const SafetySection = ({ icon: Icon, title, content }) => {
     const accentColor = '#A78BFA';
@@ -47,7 +48,7 @@ const SafetySection = ({ icon: Icon, title, content }) => {
                     {title}
                 </Typography>
             </Stack>
-            
+
             <Box sx={{ color: 'rgba(255, 255, 255, 0.7)', lineHeight: 1.8 }}>
                 {content}
             </Box>
@@ -56,7 +57,10 @@ const SafetySection = ({ icon: Icon, title, content }) => {
 };
 
 export default function SafetyGuidePage() {
+    const navigate = useNavigate();
     const accentColor = '#A78BFA';
+
+    const handlePrivacy = () => navigate('/terms?key=general&item=privacy');
 
     return (
         <Box
@@ -89,7 +93,7 @@ export default function SafetyGuidePage() {
 
                 <Grid container spacing={4} justifyContent="center">
                     <Grid item xs={12} md={10}>
-                        <SafetySection 
+                        <SafetySection
                             icon={SecurityIcon}
                             title="1. Quy tắc 3 KHÔNG khi giao dịch"
                             content={
@@ -98,19 +102,19 @@ export default function SafetyGuidePage() {
                                         <Grid item xs={12} sm={4}>
                                             <Paper sx={{ p: 2, bgcolor: 'rgba(167, 139, 250, 0.05)', border: '1px solid rgba(167, 139, 250, 0.1)', height: '100%' }}>
                                                 <Typography variant="subtitle1" sx={{ color: accentColor, fontWeight: 700, mb: 1 }}>KHÔNG cọc tiền</Typography>
-                                                <Typography variant="body2">Tuyệt đối không chuyển khoản đặt cọc dưới mọi hình thức trước khi cầm tận tay sản phẩm.</Typography>
+                                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Tuyệt đối không chuyển khoản đặt cọc dưới mọi hình thức trước khi cầm tận tay sản phẩm.</Typography>
                                             </Paper>
                                         </Grid>
                                         <Grid item xs={12} sm={4}>
                                             <Paper sx={{ p: 2, bgcolor: 'rgba(167, 139, 250, 0.05)', border: '1px solid rgba(167, 139, 250, 0.1)', height: '100%' }}>
                                                 <Typography variant="subtitle1" sx={{ color: accentColor, fontWeight: 700, mb: 1 }}>KHÔNG đi một mình</Typography>
-                                                <Typography variant="body2">Nên đi cùng bạn bè khi giao dịch các món đồ có giá trị lớn hoặc gặp người lạ lần đầu.</Typography>
+                                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Nên đi cùng bạn bè khi giao dịch các món đồ có giá trị lớn hoặc gặp người lạ lần đầu.</Typography>
                                             </Paper>
                                         </Grid>
                                         <Grid item xs={12} sm={4}>
                                             <Paper sx={{ p: 2, bgcolor: 'rgba(167, 139, 250, 0.05)', border: '1px solid rgba(167, 139, 250, 0.1)', height: '100%' }}>
                                                 <Typography variant="subtitle1" sx={{ color: accentColor, fontWeight: 700, mb: 1 }}>KHÔNG vội vàng</Typography>
-                                                <Typography variant="body2">Hãy dành thời gian kiểm tra kỹ sản phẩm, đừng để sự hối thúc của người bán làm bạn lơ là.</Typography>
+                                                <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Hãy dành thời gian kiểm tra kỹ sản phẩm, đừng để sự hối thúc của người bán làm bạn lơ là.</Typography>
                                             </Paper>
                                         </Grid>
                                     </Grid>
@@ -118,7 +122,7 @@ export default function SafetyGuidePage() {
                             }
                         />
 
-                        <SafetySection 
+                        <SafetySection
                             icon={LocationOnIcon}
                             title="2. Địa điểm giao dịch khuyến nghị tại Hòa Lạc"
                             content={
@@ -144,7 +148,7 @@ export default function SafetyGuidePage() {
                             }
                         />
 
-                        <SafetySection 
+                        <SafetySection
                             icon={PaymentsIcon}
                             title="3. Thanh toán và Bàn giao"
                             content={
@@ -173,7 +177,7 @@ export default function SafetyGuidePage() {
                             }
                         />
 
-                        <SafetySection 
+                        <SafetySection
                             icon={ReportProblemIcon}
                             title="4. Cảnh báo và Báo cáo vi phạm"
                             content={
@@ -217,11 +221,50 @@ export default function SafetyGuidePage() {
                                 Chung tay xây dựng cộng đồng an toàn
                             </Typography>
                             <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)', maxWidth: 600, mx: 'auto' }}>
-                                Mọi phản hồi của bạn đều góp phần giúp SLife trở thành điểm đến tin cậy nhất cho sinh viên FPT Hòa Lạc. Cảm ơn bạn đã đồng hành cùng chúng tôi!
+                                Mọi phản hồi của bạn đều góp phần giúp SLife trở thành điểm đến tin cậy nhất cho sinh viên Hòa Lạc. Cảm ơn bạn đã đồng hành cùng chúng tôi!
                             </Typography>
                         </Paper>
                     </Grid>
                 </Grid>
+
+                <Box
+                    sx={{
+                        mt: 8,
+                        pt: 4,
+                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        textAlign: 'center',
+                        width: '100%',
+                        maxWidth: 800,
+                        mx: 'auto'
+                    }}
+                >
+                    <Stack
+                        direction="row"
+                        spacing={2}
+                        justifyContent="center"
+                        divider={<Typography sx={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</Typography>}
+                        sx={{ mb: 3 }}
+                    >
+                        <Typography
+                            onClick={() => navigate('/seller-guide')}
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
+                        >
+                            Tôi là người bán
+                        </Typography>
+                        <Typography
+                            onClick={() => navigate('/buyer-guide')}
+                            sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
+                        >
+                            Tôi là người mua
+                        </Typography>
+                    </Stack>
+
+                    <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.85rem' }}>
+                        © Bản quyền đã được bảo hộ bởi Cộng đồng Sinh viên SLife - Khu vực Hòa Lạc.
+                        <br />
+                        Thông tin của bạn sẽ được bảo mật theo <Typography component="span" onClick={handlePrivacy} sx={{ color: accentColor, cursor: 'pointer', fontWeight: 600, '&:hover': { textDecoration: 'underline' } }}>Chính sách bảo mật</Typography> của chúng tôi.
+                    </Typography>
+                </Box>
             </Container>
         </Box>
     );
