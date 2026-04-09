@@ -299,7 +299,7 @@ export default function Header({ onToggleSidebar }) {
                             transition: 'opacity 0.2s',
                             '&:hover': { opacity: 0.9 },
                         }}
-                        onClick={() => navigate('/')}
+                        onClick={() => navigate('/feed')}
                     >
                         SLIFE
                     </Typography>

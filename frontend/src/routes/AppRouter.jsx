@@ -47,6 +47,10 @@ import {
     SuspenseCommunityCreatePostPage,
     SuspenseCommunityPostDetailPage,
     SuspenseBlockedUsersPage,
+    SuspenseSupportContactPage,
+    SuspenseSellerGuidePage,
+    SuspenseBuyerGuidePage,
+    SuspenseSafetyGuidePage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -115,6 +119,10 @@ export default function AppRouter() {
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
                 <Route path="/terms" element={<SuspenseTermsPage />} />
+                <Route path="/contact" element={<SuspenseSupportContactPage />} />
+                <Route path="/seller-guide" element={<SuspenseSellerGuidePage />} />
+                <Route path="/buyer-guide" element={<SuspenseBuyerGuidePage />} />
+                <Route path="/safety" element={<SuspenseSafetyGuidePage />} />
 
                 {/* Google OAuth2 redirect callback — no guard, no layout needed */}
                 <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />

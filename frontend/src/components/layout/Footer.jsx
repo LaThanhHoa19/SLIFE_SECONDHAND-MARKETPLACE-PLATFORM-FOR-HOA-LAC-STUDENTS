@@ -3,11 +3,9 @@ import { Box, Typography, Link } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 const LINKS = [
-    { label: 'Góp ý', href: '/feedback' },
     { label: 'Quy chế hoạt động', href: '/terms' },
     { label: 'Chính sách bảo mật', href: '/terms?key=general&item=privacy' },
-    { label: 'Giải quyết tranh chấp', href: '/dispute' },
-    { label: 'Thông tin trợ giúp', href: '/help' },
+    { label: 'Giải quyết tranh chấp', href: '/terms?key=general&item=dispute' },
     { label: 'An toàn mua bán', href: '/safety' },
     { label: 'Liên hệ hỗ trợ', href: '/contact' },
 ];
