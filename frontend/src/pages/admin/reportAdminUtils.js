@@ -35,6 +35,8 @@ export const REPORT_ADMIN_MOCK_ROWS = [
         listingId: 2002,
         conversationId: null,
         reason: 'Hình ảnh không khớp mô tả, nghi ngờ hàng nhái.',
+        targetViolationCount: 1,
+        violationThreshold: 3,
         status: 'PENDING',
         adminNote: null,
         createdAt: '2026-03-11T14:22:00.000Z',
@@ -65,6 +67,8 @@ export const REPORT_ADMIN_MOCK_ROWS = [
         listingId: 2004,
         conversationId: null,
         reason: 'Giá niêm yết thấp bất thường, nghi ngờ scam.',
+        targetViolationCount: 2,
+        violationThreshold: 3,
         status: 'PENDING',
         adminNote: null,
         createdAt: '2026-03-13T16:05:00.000Z',
@@ -276,6 +280,16 @@ export function reportedUserAvatarUrl(row) {
         row?.reported?.avatarUrl ??
         row?.reported?.avatar_url ??
         row?.reported?.avatar ??
+        null;
+    return fullImageUrl(raw);
+}
+
+export function reportEvidenceImageUrl(row) {
+    const raw =
+        row?.evidenceImageUrl ??
+        row?.evidence_image_url ??
+        row?.evidenceImage ??
+        row?.evidence_image ??
         null;
     return fullImageUrl(raw);
 }
