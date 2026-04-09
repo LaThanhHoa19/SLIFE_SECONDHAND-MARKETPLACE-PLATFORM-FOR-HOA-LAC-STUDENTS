@@ -179,7 +179,8 @@ public class ListingService {
             User currentUser,
             Long sellerId,
             boolean prioritizeFollowing,
-            String feedType) {
+            String feedType,
+            String status) {
 
         // Mặc định Mới nhất: sắp xếp theo createdAt DESC
         Pageable pageable = PageRequest.of(
@@ -189,7 +190,10 @@ public class ListingService {
 
         Page<com.slife.marketplace.dto.response.ListingCardResponse> pageResult;
 
-        if ("FOLLOWING".equalsIgnoreCase(feedType)) {
+        if (status != null && !LISTING_STATUS_ACTIVE.equals(status)) {
+            // Nếu lọc theo status cụ thể (như SOLD), dùng query theo status + sellerId
+            pageResult = listingRepository.findListingCardsBySellerAndStatus(sellerId, status, pageable);
+        } else if ("FOLLOWING".equalsIgnoreCase(feedType)) {
             if (currentUser == null) {
                 pageResult = new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList(), pageable,
                         0);
