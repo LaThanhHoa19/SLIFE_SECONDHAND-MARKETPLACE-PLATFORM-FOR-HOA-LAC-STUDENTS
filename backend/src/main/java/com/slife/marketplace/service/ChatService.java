@@ -8,6 +8,7 @@ import com.slife.marketplace.entity.*;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.*;
+import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,9 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.Normalizer;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.*;
 import java.util.Locale;
@@ -51,6 +50,7 @@ public class ChatService {
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final FileStorage fileStorage;
     private final Path uploadBasePath;
 
     /** Rate limit: last message timestamp per user id (BR-38: max 1 message per second). */
@@ -65,6 +65,7 @@ public class ChatService {
                        NotificationService notificationService,
                        SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
+                       FileStorage fileStorage,
                        Path uploadBasePath) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
@@ -75,6 +76,7 @@ public class ChatService {
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
+        this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
     }
 
@@ -492,10 +494,10 @@ public class ChatService {
         String fileName = UUID.randomUUID() + ext;
         Path dir = uploadBasePath.resolve(Constants.CHAT_UPLOAD_DIR).resolve(resolvedSessionId);
         try {
-            Files.createDirectories(dir);
+            fileStorage.createDirectories(dir);
             Path dest = dir.resolve(fileName);
             try (InputStream in = file.getInputStream()) {
-                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+                fileStorage.copy(in, dest);
             }
         } catch (IOException e) {
             log.error("Chat image upload failed session={}", resolvedSessionId, e);
