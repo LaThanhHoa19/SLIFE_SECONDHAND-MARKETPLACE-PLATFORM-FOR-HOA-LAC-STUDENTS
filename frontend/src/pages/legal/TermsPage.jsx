@@ -389,9 +389,18 @@ export default function TermsPage() {
             <Container maxWidth="lg">
                 <Stack spacing={2.25}>
                     <Box>
-                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#FFFFFF', mb: 0.75 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#FFFFFF', mb: 1.5 }}>
                             Quy chế hoạt động
                         </Typography>
+                        <Box
+                            sx={{
+                                width: 48,
+                                height: 4,
+                                background: accentColor,
+                                borderRadius: 10,
+                                mb: 3
+                            }}
+                        />
                         <Typography sx={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>
                             Trang này mô tả các nguyên tắc và quy định khi sử dụng nền tảng SLIFE. Nội dung có thể được cập nhật định
                             kỳ để phù hợp với vận hành thực tế và quy định liên quan.
