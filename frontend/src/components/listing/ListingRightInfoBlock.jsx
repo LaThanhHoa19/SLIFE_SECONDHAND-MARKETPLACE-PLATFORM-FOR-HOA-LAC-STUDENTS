@@ -43,6 +43,7 @@ export default function ListingRightInfoBlock({
                     locationText={locationText}
                     createdAt={listing.createdAt}
                     itemCondition={listing.itemCondition}
+                    status={listing.status}
                 />
 
                 {/* Action Buttons */}

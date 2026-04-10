@@ -15,11 +15,9 @@ import {
 } from '@mui/icons-material';
 import { fullImageUrl } from '../../utils/constants';
 import { Link } from 'react-router-dom';
+import { formatCurrency as toCurrency } from '../../utils/listingFormatUtils';
 
-const toCurrency = (value) => {
-    if (!value && value !== 0) return '0 ₫';
-    return value.toLocaleString('vi-VN') + ' ₫';
-};
+// toCurrency imported from listingFormatUtils
 
 const STATUS_CONFIG = {
     'COMPLETED': { label: 'ĐÃ HOÀN TẤT', color: '#10B981' },

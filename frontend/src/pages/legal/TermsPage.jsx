@@ -11,11 +11,14 @@ import {
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function TermsPage() {
+    const navigate = useNavigate();
     const accentColor = '#A78BFA';
     const [searchParams] = useSearchParams();
+
+    const handlePrivacy = () => navigate('/terms?key=general&item=privacy');
 
     const sections = useMemo(
         () => [
@@ -68,6 +71,7 @@ export default function TermsPage() {
                     },
                     {
                         title: 'Cơ chế giải quyết tranh chấp của SLife',
+                        slug: 'dispute',
                         body:
                             'Cơ chế này hướng dẫn cách ghi nhận thỏa thuận, gửi báo cáo khi có sai lệch và quy trình xử lý tranh chấp trên SLife.\n\n' +
                             '- Ghi nhận lịch sử thỏa thuận\n' +
@@ -111,7 +115,7 @@ export default function TermsPage() {
                             '- Đăng ký và xác thực: Người dùng đăng nhập qua Google SSO; ưu tiên sử dụng email giáo dục (ví dụ: @fpt.edu.vn) để xác thực danh tính sinh viên.\n' +
                             '- Xác minh số điện thoại (mục bổ sung):\n' +
                             '  - Yêu cầu xác minh: Người dùng có thể cung cấp và xác thực số điện thoại trong phần Cập nhật hồ sơ để tăng độ tin cậy khi liên lạc.\n' +
-                            '  - Hiển thị trạng thái: Sau khi xác minh thành công, hồ sơ công khai sẽ hiển thị trạng thái “Số điện thoại đã xác thực”.\n' +
+                            '  - Hiển thị trạng thái: After khi xác minh thành công, hồ sơ công khai sẽ hiển thị trạng thái “Số điện thoại đã xác thực”.\n' +
                             '  - Tính duy nhất: Mỗi số điện thoại chỉ được đăng ký cho một tài khoản; hệ thống sẽ báo lỗi nếu số đã tồn tại.\n' +
                             '  - Định dạng hợp lệ: Số điện thoại phải đúng định dạng quy định; hệ thống sẽ từ chối và hiển thị thông báo lỗi nếu không hợp lệ.\n' +
                             '- Trách nhiệm và bảo mật: Người dùng tự quản lý thông tin cá nhân, đảm bảo tính chính xác của dữ liệu và chịu trách nhiệm về nội dung/hoạt động phát sinh từ tài khoản.\n' +
@@ -389,9 +393,18 @@ export default function TermsPage() {
             <Container maxWidth="lg">
                 <Stack spacing={2.25}>
                     <Box>
-                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#FFFFFF', mb: 0.75 }}>
+                        <Typography variant="h4" sx={{ fontWeight: 800, color: '#FFFFFF', mb: 1.5 }}>
                             Quy chế hoạt động
                         </Typography>
+                        <Box
+                            sx={{
+                                width: 48,
+                                height: 4,
+                                background: accentColor,
+                                borderRadius: 10,
+                                mb: 3
+                            }}
+                        />
                         <Typography sx={{ color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>
                             Trang này mô tả các nguyên tắc và quy định khi sử dụng nền tảng SLIFE. Nội dung có thể được cập nhật định
                             kỳ để phù hợp với vận hành thực tế và quy định liên quan.
@@ -533,9 +546,49 @@ export default function TermsPage() {
                             </Stack>
                         </Box>
                     </Box>
+
+                    {/* Centered Footer */}
+                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        <Box
+                            sx={{
+                                mt: 8,
+                                pt: 4,
+                                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                textAlign: 'center',
+                                width: '100%',
+                                maxWidth: 800,
+                            }}
+                        >
+                            <Stack
+                                direction="row"
+                                spacing={2}
+                                justifyContent="center"
+                                divider={<Typography sx={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</Typography>}
+                                sx={{ mb: 3 }}
+                            >
+                                <Typography
+                                    onClick={() => navigate('/seller-guide')}
+                                    sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
+                                >
+                                    Tôi là người bán
+                                </Typography>
+                                <Typography
+                                    onClick={() => navigate('/buyer-guide')}
+                                    sx={{ color: 'rgba(255, 255, 255, 0.7)', cursor: 'pointer', fontSize: '0.9rem', '&:hover': { color: accentColor } }}
+                                >
+                                    Tôi là người mua
+                                </Typography>
+                            </Stack>
+
+                            <Typography sx={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: '0.85rem' }}>
+                                © Bản quyền đã được bảo hộ bởi Cộng đồng Sinh viên SLife - Khu vực Hòa Lạc.
+                                <br />
+                                Thông tin của bạn sẽ được bảo mật theo <Typography component="span" onClick={handlePrivacy} sx={{ color: accentColor, cursor: 'pointer', fontWeight: 600, '&:hover': { textDecoration: 'underline' } }}>Chính sách bảo mật</Typography> của chúng tôi.
+                            </Typography>
+                        </Box>
+                    </Box>
                 </Stack>
             </Container>
         </Box>
     );
 }
-

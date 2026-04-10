@@ -71,34 +71,27 @@ import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDial
 import CatalogItemUnavailableScreen from '../../components/common/CatalogItemUnavailableScreen';
 import { shouldShowCatalogUnavailableForNotifLink } from '../../utils/catalogAvailability';
 
-// Hang so mau sac dong bo voi Feed
+import { 
+    getConditionInfo, 
+    getPurposeInfo,
+    getStatusInfo,
+    BRAND_COLORS, 
+    LISTING_ICONS,
+    formatRelativeShort
+} from '../../utils/listingFormatUtils';
+
+const getPayload = unwrapApiData;
+
+// Hằng số màu sắc đồng bộ với Feed
+const TEXT_PRI = BRAND_COLORS.TEXT_PRI;
+const TEXT_SEC = BRAND_COLORS.TEXT_SEC;
+const PURPLE = BRAND_COLORS.PURPLE;
+const RED = BRAND_COLORS.RED;
+const GREEN = BRAND_COLORS.GREEN;
 const DARK_BG = '#141225';
 const CARD_BG = '#201D26';
 const CARD_BG2 = '#252230';
 const BORDER = 'rgba(255,255,255,0.07)';
-const TEXT_PRI = 'rgba(255,255,255,0.95)';
-const TEXT_SEC = 'rgba(255,255,255,0.55)';
-const PURPLE = '#9D6EED';
-const RED = '#FF4757';
-const GREEN = '#2ED573';
-
-// Helper
-const getPayload = (res) => {
-    return unwrapApiData(res);
-};
-
-const toCurrency = (value) =>
-    value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
-
-const CONDITION_MAP = {
-    NEW: { label: 'Mới', color: GREEN },
-    USED_LIKE_NEW: { label: 'Như mới', color: '#1DD3B0' },
-    USED_GOOD: { label: 'Đã dùng - tốt', color: PURPLE },
-    USED_FAIR: { label: 'Đã dùng', color: '#FFA502' },
-};
-
-const getConditionInfo = (condition) =>
-    CONDITION_MAP[condition] || { label: condition || 'Không rõ', color: TEXT_SEC };
 
 const getSeller = (listing) => {
     const s = listing?.sellerSummary ?? listing?.seller;
@@ -748,7 +741,7 @@ export default function ListingDetailPage() {
                                             </Typography>
                                             {locationText && (
                                                 <Typography sx={{ color: 'rgba(255,255,255,0.68)', fontSize: 13, mt: 0.35, lineHeight: 1.3 }}>
-                                                    📍 {locationText}
+                                                    {LISTING_ICONS.LOCATION} {locationText}
                                                 </Typography>
                                             )}
                                         </Box>

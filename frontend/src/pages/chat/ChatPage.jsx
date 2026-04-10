@@ -1599,6 +1599,8 @@ function ChatPageInner() {
             cursor: 'default',
             fontSize: DEAL_FONT.input,
             caretColor: 'transparent',
+            outline: 'none',
+            boxShadow: 'none',
           },
           '& .MuiInputLabel-root': {
             color: DEAL_UI.textMuted,
@@ -1990,7 +1992,31 @@ function ChatPageInner() {
         <DialogTitle sx={{ color: DEAL_UI.text, fontWeight: 800, letterSpacing: 0.2, pb: 0.75 }}>
           Xác nhận thỏa thuận
         </DialogTitle>
-        <DialogContent sx={{ pt: 0 }}>
+        <DialogContent sx={{
+          pt: 0,
+          '&::-webkit-scrollbar': {
+            width: '6px',
+            height: '6px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: alpha(DEAL_UI.accent, 0.4),
+            borderRadius: '10px',
+            border: '2px solid transparent',
+            backgroundClip: 'content-box',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: alpha(DEAL_UI.accent, 0.7),
+            borderRadius: '10px',
+            border: '2px solid transparent',
+            backgroundClip: 'content-box',
+          },
+          // Firefox
+          scrollbarWidth: 'thin',
+          scrollbarColor: `${alpha(DEAL_UI.accent, 0.4)} transparent`,
+        }}>
           <Typography fontSize="13px" sx={{ color: DEAL_UI.textMuted, mt: 0 }}>
             Vui lòng kiểm tra kỹ các thông tin dưới đây trước khi hoàn tất.
           </Typography>
@@ -2135,6 +2161,8 @@ function ChatPageInner() {
                   '& .MuiInputBase-input': {
                     color: DEAL_UI.text,
                     fontSize: DEAL_FONT.input,
+                    outline: 'none',
+                    boxShadow: 'none',
                   },
                   '& .MuiInputLabel-root': {
                     color: DEAL_UI.textMuted,
@@ -2198,6 +2226,8 @@ function ChatPageInner() {
                   '& .MuiInputBase-input': {
                     color: DEAL_UI.text,
                     fontSize: DEAL_FONT.input,
+                    outline: 'none',
+                    boxShadow: 'none',
                   },
                   '& .MuiInputLabel-root': {
                     color: DEAL_UI.textMuted,
