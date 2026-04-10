@@ -3,15 +3,9 @@ import { Card, CardActionArea, CardMedia, Typography, Box } from '@mui/material'
 import ImageIcon from '@mui/icons-material/Image';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { fullImageUrl } from '../../utils/constants';
+import { getPurposeInfo, BRAND_COLORS } from '../../utils/listingFormatUtils';
 
-function formatPrice(value) {
-  if (value == null) return '—';
-  const num = Number(value);
-  if (isNaN(num)) return '—';
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
-}
-
-const PURPLE = '#9D6EED';
+const PURPLE = BRAND_COLORS.PURPLE;
 
 export default function ProfileListingCard({ listing, onClick, viewMode = 'grid' }) {
   const isGrid = viewMode === 'grid';
@@ -223,9 +217,14 @@ export default function ProfileListingCard({ listing, onClick, viewMode = 'grid'
           >
             {title}
           </Typography>
-          <Typography variant="h6" sx={{ color: PURPLE, fontWeight: 700 }}>
-            {listing?.isGiveaway ? 'Cho tặng' : formatPrice(price)}
-          </Typography>
+          {(() => {
+            const { color, priceText } = getPurposeInfo(listing?.isGiveaway, price);
+            return (
+              <Typography variant="h6" sx={{ color, fontWeight: 700 }}>
+                {priceText}
+              </Typography>
+            )
+          })()}
           {listing.location && (
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', mt: 1 }}>
               {listing.location}

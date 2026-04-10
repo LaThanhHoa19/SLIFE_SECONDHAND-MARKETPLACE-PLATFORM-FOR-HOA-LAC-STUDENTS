@@ -13,6 +13,9 @@ public record ReportResponseDTO(
         Long listingId,
         Long conversationId,
         String reason,
+        String evidenceImageUrl,
+        Integer targetViolationCount,
+        Integer violationThreshold,
         String status,
         String adminNote,
         Instant createdAt) {

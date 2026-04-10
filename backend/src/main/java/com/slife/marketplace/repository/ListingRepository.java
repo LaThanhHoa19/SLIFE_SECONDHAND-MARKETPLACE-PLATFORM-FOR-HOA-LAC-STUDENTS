@@ -170,6 +170,42 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                 )
                 FROM Listing l
                 LEFT JOIN l.pickupAddress a
+                WHERE l.seller.id = :sellerId
+                  AND l.status = :status
+                  AND l.deletedAt IS NULL
+            """)
+    Page<com.slife.marketplace.dto.response.ListingCardResponse> findListingCardsBySellerAndStatus(
+            @Param("sellerId") Long sellerId,
+            @Param("status") String status,
+            Pageable pageable);
+
+    @Query("""
+                SELECT new com.slife.marketplace.dto.response.ListingCardResponse(
+                    l.id, l.title, l.price,
+                    CASE
+                        WHEN a IS NULL THEN NULL
+                        WHEN a.locationName IS NOT NULL AND a.locationName <> '' AND a.addressText IS NOT NULL AND a.addressText <> ''
+                            THEN CONCAT(a.locationName, ' \u2014 ', a.addressText)
+                        WHEN a.locationName IS NOT NULL AND a.locationName <> '' THEN a.locationName
+                        ELSE a.addressText
+                    END,
+                    l.status,
+                    (SELECT img.imageUrl FROM ListingImage img WHERE img.listing = l ORDER BY img.displayOrder ASC LIMIT 1),
+                    l.itemCondition,
+                    l.purpose,
+                    l.isGiveaway,
+                    l.createdAt,
+                    l.seller.id,
+                    l.seller.fullName,
+                    l.seller.avatarUrl,
+                    false,
+                    false,
+                    (SELECT COUNT(ll) FROM ListingLike ll WHERE ll.listing = l),
+                    false,
+                    (SELECT COUNT(c) FROM Comment c WHERE c.listing = l AND c.deletedAt IS NULL)
+                )
+                FROM Listing l
+                LEFT JOIN l.pickupAddress a
                 WHERE l.status = 'ACTIVE'
                   AND l.deletedAt IS NULL
                   AND (l.expirationDate IS NULL OR l.expirationDate >= :now)

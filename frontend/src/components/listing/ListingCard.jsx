@@ -43,6 +43,14 @@ import ReportDialog from '../report/ReportDialog';
 import BlockUserConfirmDialog from '../social/BlockUserConfirmDialog';
 import { useBlockActions } from '../../hooks/useBlockActions';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
+import { 
+    getConditionInfo, 
+    getPurposeInfo,
+    getStatusInfo,
+    LISTING_ICONS,
+    formatRelativeShort,
+    formatCurrency as toCurrency
+} from '../../utils/listingFormatUtils';
 
 const LIKE_RED = '#FF4757';
 const PURPLE = '#9D6EED';
@@ -76,7 +84,7 @@ function normalizeShareUrl(rawUrl, fallbackId) {
     }
 }
 
-const toCurrency = (value) => `${Number(value || 0).toLocaleString('vi-VN')} ₫`;
+// toCurrency imported from listingFormatUtils
 
 const getSeller = (listing) => {
     const sellerSummary = listing?.sellerSummary;
@@ -106,35 +114,12 @@ const getLocationText = (listing) => {
     return '';
 };
 
-const CONDITION_LABELS = {
-    NEW: 'Hàng mới',
-    USED_LIKE_NEW: 'Như mới',
-    USED_GOOD: 'Đã qua sử dụng',
-    USED_FAIR: 'Đã qua sử dụng',
-    USED: 'Đã qua sử dụng',
-    SECOND_HAND: 'Đã qua sử dụng',
-};
-
-const getConditionText = (listing) => {
+const getConditionInfoObj = (listing) => {
     const raw = listing?.itemCondition || listing?.condition || '';
-    return CONDITION_LABELS[raw?.toUpperCase?.()] ?? raw;
+    return getConditionInfo(raw);
 };
 
 /** Format thời gian dạng ngắn: "1m", "5h", "3d", "12 thg 3" */
-const formatRelativeShort = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    const diffMs = Date.now() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins}m`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d`;
-    return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
-};
 
 
 export default function ListingCard({
@@ -452,7 +437,8 @@ export default function ListingCard({
         }
     };
 
-    const conditionText = getConditionText(listing);
+    const conditionObj = getConditionInfoObj(listing);
+    const purposeObj = getPurposeInfo(listing?.isGiveaway, listing?.price);
     const locationText = getLocationText(listing);
     const showFollowBtn = sellerId && !isMe;
 
@@ -552,7 +538,7 @@ export default function ListingCard({
                                 {seller?.fullName || 'Người bán'}
                             </Typography>
                             <Typography fontSize={13} color="rgba(255,255,255,0.45)">
-                                {formatRelativeShort(listing?.createdAt) || 'Vừa đăng'}
+                                {formatRelativeShort(listing?.createdAt)}
                             </Typography>
                         </Stack>
                         {(!isMe || isSavedPage) && (
@@ -584,38 +570,30 @@ export default function ListingCard({
                         </Typography>
 
                         {isUnavailable && (
-                            <Chip
-                                label={listing?.unavailableMessage || 'Không còn khả dụng'}
-                                size="small"
-                                sx={{
-                                    mb: 1,
-                                    alignSelf: 'flex-start',
-                                    bgcolor: 'rgba(239,68,68,0.16)',
-                                    border: '1px solid rgba(248,113,113,0.5)',
-                                    color: '#FECACA',
-                                    fontWeight: 700,
-                                    '& .MuiChip-label': { px: 1.1 },
-                                }}
-                            />
+                            <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px', mb: 1, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <Typography fontSize={12} fontWeight={700} color={getStatusInfo(listing?.status).color}>
+                                    {LISTING_ICONS.STATUS} {(listing?.unavailableMessage || getStatusInfo(listing?.status).label).toUpperCase()}
+                                </Typography>
+                            </Box>
                         )}
 
-                        <Typography fontSize={16} fontWeight={700} color="#FF4757" sx={{ mb: 1 }}>
-                            {listing?.isGiveaway ? 'Cho tặng' : toCurrency(listing?.price)}
+                        <Typography fontSize={16} fontWeight={700} color={purposeObj.color} sx={{ mb: 1 }}>
+                            {purposeObj.priceText}
                         </Typography>
 
                         {/* Tags */}
                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 0.5 }}>
-                            {!!conditionText && (
+                            {!!conditionObj.label && (
                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
-                                    <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
-                                        🏷 {conditionText}
+                                    <Typography fontSize={12} fontWeight={500} color={conditionObj.color}>
+                                        {LISTING_ICONS.CONDITION} {conditionObj.label}
                                     </Typography>
                                 </Box>
                             )}
                             {!!locationText && (
                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: 'rgba(255,255,255,0.08)', px: 1.2, py: 0.5, borderRadius: '6px' }}>
                                     <Typography fontSize={12} fontWeight={500} color="rgba(255,255,255,0.8)">
-                                        📍 {locationText}
+                                        {LISTING_ICONS.LOCATION} {locationText}
                                     </Typography>
                                 </Box>
                             )}
