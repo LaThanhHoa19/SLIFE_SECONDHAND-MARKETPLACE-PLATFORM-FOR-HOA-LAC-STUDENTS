@@ -28,7 +28,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.mock.web.MockMultipartFile;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +66,7 @@ class ReportServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private ConfigService configService;
     @Mock private AuditLogService auditLogService;
+    @Mock private SystemEmailService systemEmailService;
 
     private ReportService service;
 
@@ -80,7 +83,9 @@ class ReportServiceTest {
                 messageRepository,
                 notificationService,
                 configService,
-                auditLogService
+                auditLogService,
+                systemEmailService,
+                Path.of("build", "test-uploads")
         );
     }
 
@@ -291,22 +296,33 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVE listing -> close + applyApproveSideEffects (listing status=HIDDEN) + auditLog")
+        @DisplayName("APPROVE listing -> close + applyApproveSideEffects (listing status=MOD_HIDDEN) + strike + notify + email + auditLog")
         void approve_listing_shouldHideListingAndAudit() {
             Report r = pendingReport("LISTING", 10L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
             when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
 
+            User owner = user(2L, "USER");
+            owner.setViolationCount(1);
+            owner.setTokenRevision(0L);
             Listing l = new Listing();
             l.setId(10L);
             l.setStatus("ACTIVE");
+            l.setSeller(owner);
+            l.setTitle("Listing title");
             l.setUpdatedAt(Instant.now());
             when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
             when(listingRepository.save(any(Listing.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(configService.getIntConfigValue("REPORT_THRESHOLD", 3)).thenReturn(3);
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
             String msg = service.processReport(1L, "APPROVE", "ok", user(99L, "ADMIN"));
             assertNotNull(msg);
-            verify(listingRepository).save(argThat(x -> "HIDDEN".equalsIgnoreCase(x.getStatus())));
+            verify(listingRepository).save(argThat(x -> "MOD_HIDDEN".equalsIgnoreCase(x.getStatus())));
+            verify(userRepository).save(argThat(u -> u.getViolationCount() == 2 && !"BANNED".equalsIgnoreCase(u.getStatus())));
+            verify(notificationService).notifyAdminHiddenListing(eq(owner), eq(10L), eq("Listing title"), eq(1L), eq("spam"));
+            verify(systemEmailService).sendReportApprovedListingModerationEmail(eq(owner), eq(1L), eq("Listing title"),
+                    eq(10L), eq(2), eq(3), eq(false), eq("spam"));
             verify(auditLogService).logReportProcessed(any(), any(), eq(true));
         }
 
@@ -361,6 +377,29 @@ class ReportServiceTest {
             verify(notificationService).notifyAdminBannedUser(eq(target), eq(1L), eq("spam"));
             verify(auditLogService).logReportProcessed(any(), any(), eq(true));
         }
+
+        @Test
+        @DisplayName("APPROVE user dưới ngưỡng ban -> tăng violation + warning notify + email, không ban")
+        void approve_user_belowThreshold_shouldWarnNotBan() {
+            Report r = pendingReport("USER", 2L);
+            when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
+            when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            User target = user(2L, "USER");
+            target.setStatus("ACTIVE");
+            target.setViolationCount(0);
+            target.setTokenRevision(0L);
+            when(userRepository.findById(2L)).thenReturn(Optional.of(target));
+            when(configService.getIntConfigValue("REPORT_THRESHOLD", 3)).thenReturn(3);
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            service.processReport(1L, "APPROVE", "ok", user(99L, "ADMIN"));
+
+            verify(userRepository).save(argThat(u -> u.getViolationCount() == 1 && "ACTIVE".equalsIgnoreCase(u.getStatus())));
+            verify(notificationService).notifyReportApprovedUserWarning(eq(target), eq(1L), eq("spam"), eq(1), eq(3));
+            verify(notificationService, never()).notifyAdminBannedUser(any(), any(), any());
+            verify(systemEmailService).sendReportApprovedUserModerationEmail(eq(target), eq(1L), eq(1), eq(3), eq(false), eq("spam"));
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -400,6 +439,30 @@ class ReportServiceTest {
             ReportResponseDTO dto = service.getAdminReportById(1L);
             assertEquals("[Image-only comment]", dto.targetPreview());
             assertEquals(10L, dto.listingId());
+        }
+    }
+
+    @Nested
+    @DisplayName("uploadReportEvidenceImage")
+    class UploadEvidence {
+
+        @Test
+        @DisplayName("file null/empty -> INVALID_INPUT")
+        void upload_empty_shouldThrow() {
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> service.uploadReportEvidenceImage(null));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("invalid extension -> INVALID_FILE_TYPE")
+        void upload_invalidExt_shouldThrow() {
+            MockMultipartFile file = new MockMultipartFile(
+                    "file", "evidence.gif", "image/gif", new byte[] {1, 2, 3}
+            );
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> service.uploadReportEvidenceImage(file));
+            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
         }
     }
 }

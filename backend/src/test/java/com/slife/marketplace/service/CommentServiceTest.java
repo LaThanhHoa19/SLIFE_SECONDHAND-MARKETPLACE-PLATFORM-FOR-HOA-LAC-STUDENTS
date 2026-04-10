@@ -42,6 +42,7 @@ class CommentServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private AuditLogService auditLogService;
     @Mock private CommentRateLimitService commentRateLimitService;
+    @Mock private ContentModerationService contentModerationService;
 
     private CommentService commentService;
 
@@ -55,7 +56,8 @@ class CommentServiceTest {
                 blockService,
                 notificationService,
                 auditLogService,
-                commentRateLimitService
+                commentRateLimitService,
+                contentModerationService
         );
     }
 

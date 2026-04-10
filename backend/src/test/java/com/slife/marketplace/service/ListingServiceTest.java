@@ -945,7 +945,7 @@ class ListingServiceTest {
             viewer.setId(20L);
             when(followService.findAllFollowedIds(20L)).thenReturn(Set.of());
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
-                    listingService.getActiveListingCards(0, 10, viewer, null, true, "FOLLOWING");
+                    listingService.getActiveListingCards(0, 10, viewer, null, true, "FOLLOWING", null);
             assertEquals(0, res.getContent().size());
         }
 
@@ -983,7 +983,7 @@ class ListingServiceTest {
             when(listingImageRepository.findByListingIdIn(any())).thenReturn(List.of(img));
 
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
-                    listingService.getActiveListingCards(0, 10, viewer, null, true, "FOLLOWING");
+                    listingService.getActiveListingCards(0, 10, viewer, null, true, "FOLLOWING", null);
 
             assertEquals(1, res.getContent().size());
             assertEquals(1L, res.getContent().get(0).getId());
@@ -1002,7 +1002,7 @@ class ListingServiceTest {
         @DisplayName("FOLLOWING feed: currentUser null -> empty")
         void getActiveListingCards_followingFeedNoUser_shouldReturnEmpty() {
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
-                    listingService.getActiveListingCards(0, 10, null, null, true, "FOLLOWING");
+                    listingService.getActiveListingCards(0, 10, null, null, true, "FOLLOWING", null);
             assertEquals(0, res.getContent().size());
         }
 
@@ -1012,7 +1012,7 @@ class ListingServiceTest {
             Page<com.slife.marketplace.dto.response.ListingCardResponse> page = new PageImpl<>(List.of());
             when(listingRepository.findGiveawayActiveListingCards(any(), any(Instant.class), any(Pageable.class))).thenReturn(page);
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
-                    listingService.getActiveListingCards(0, 10, null, null, false, "GIVEAWAY");
+                    listingService.getActiveListingCards(0, 10, null, null, false, "GIVEAWAY", null);
             assertNotNull(res);
             verify(listingRepository).findGiveawayActiveListingCards(any(), any(Instant.class), any(Pageable.class));
         }
@@ -1428,7 +1428,7 @@ class ListingServiceTest {
             Page<com.slife.marketplace.dto.response.ListingCardResponse> page = new PageImpl<>(List.of());
             when(listingRepository.findPopularActiveListingCards(any(), any(Instant.class), any(Pageable.class))).thenReturn(page);
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
-                    listingService.getActiveListingCards(0, 10, null, null, false, "POPULAR");
+                    listingService.getActiveListingCards(0, 10, null, null, false, "POPULAR", null);
             assertNotNull(res);
             verify(listingRepository).findPopularActiveListingCards(any(), any(Instant.class), any(Pageable.class));
         }
@@ -1439,7 +1439,7 @@ class ListingServiceTest {
             Page<com.slife.marketplace.dto.response.ListingCardResponse> page = new PageImpl<>(List.of());
             when(listingRepository.findAllActiveListingCards(any(), any(Instant.class), any(Pageable.class))).thenReturn(page);
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
-                    listingService.getActiveListingCards(0, 10, null, null, false, "NEWEST");
+                    listingService.getActiveListingCards(0, 10, null, null, false, "NEWEST", null);
             assertNotNull(res);
             verify(listingRepository).findAllActiveListingCards(any(), any(Instant.class), any(Pageable.class));
         }

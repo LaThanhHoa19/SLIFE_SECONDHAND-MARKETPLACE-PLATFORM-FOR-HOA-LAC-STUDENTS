@@ -679,7 +679,7 @@ class OfferServiceTest {
             assertEquals(9L, deal.getOffer().getId());
 
             verify(notificationService).notifyDealConfirmed(eq(buyer), eq(seller), eq(10L), eq("T10"), eq(77L));
-            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("T10"), eq(10L), eq(77L));
+            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("T10"), eq(10L), eq(77L), any());
             verify(offerRepository).save(argThat(saved -> OfferService.STATUS_ACCEPTED.equals(saved.getStatus())));
         }
     }
@@ -797,7 +797,7 @@ class OfferServiceTest {
                 return rejected10 && rejected11;
             }));
             verify(notificationService).notifyDealConfirmed(eq(buyer), eq(seller), eq(10L), eq("T10"), eq(77L));
-            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("T10"), eq(10L), eq(77L));
+            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("T10"), eq(10L), eq(77L), any());
         }
     }
 
@@ -893,7 +893,7 @@ class OfferServiceTest {
             assertEquals("REJECTED", res.getStatus());
 
             verify(notificationService).notifyOfferRejected(eq(buyer), eq(seller), eq(10L), eq("T10"), eq(new BigDecimal("900")));
-            verify(systemEmailService).sendOfferRejectedEmail(eq(buyer), anyString(), eq("T10"), eq(10L), eq(new BigDecimal("900")));
+            verify(systemEmailService).sendOfferRejectedEmails(eq(buyer), eq(seller), eq("T10"), eq(10L), eq(new BigDecimal("900")));
             verify(offerRepository).save(argThat(saved -> OfferService.STATUS_REJECTED.equals(saved.getStatus())));
         }
     }

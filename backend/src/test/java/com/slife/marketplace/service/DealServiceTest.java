@@ -14,6 +14,7 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.AddressRepository;
 import com.slife.marketplace.repository.ConversationRepository;
 import com.slife.marketplace.repository.DealRepository;
+import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.OfferRepository;
 import com.slife.marketplace.repository.ReviewRepository;
@@ -48,6 +49,7 @@ import static org.mockito.Mockito.*;
 class DealServiceTest {
 
     @Mock private DealRepository dealRepository;
+    @Mock private ListingImageRepository listingImageRepository;
     @Mock private ListingRepository listingRepository;
     @Mock private ConversationRepository conversationRepository;
     @Mock private OfferRepository offerRepository;
@@ -57,6 +59,7 @@ class DealServiceTest {
     @Mock private UserService userService;
     @Mock private NotificationService notificationService;
     @Mock private BlockService blockService;
+    @Mock private SystemEmailService systemEmailService;
 
     private DealService dealService;
 
@@ -64,6 +67,7 @@ class DealServiceTest {
     void setUp() {
         dealService = new DealService(
                 dealRepository,
+                listingImageRepository,
                 listingRepository,
                 conversationRepository,
                 offerRepository,
@@ -72,7 +76,8 @@ class DealServiceTest {
                 userRepository,
                 userService,
                 notificationService,
-                blockService
+                blockService,
+                systemEmailService
         );
     }
 

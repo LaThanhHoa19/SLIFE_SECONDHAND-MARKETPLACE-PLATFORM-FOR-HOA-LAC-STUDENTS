@@ -49,6 +49,7 @@ class CommunityPostServiceTest {
     @Mock private CommunityPostLikeService likeService;
     @Mock private BlockService blockService;
     @Mock private ConfigService configService;
+    @Mock private ContentModerationService contentModerationService;
 
     private CommunityPostService service;
 
@@ -63,7 +64,8 @@ class CommunityPostServiceTest {
                 imageService,
                 likeService,
                 blockService,
-                configService
+                configService,
+                contentModerationService
         );
     }
 

@@ -46,6 +46,7 @@ class AdminServiceTest {
     @Mock private ReportRepository reportRepository;
     @Mock private DealRepository dealRepository;
     @Mock private AuditLogService auditLogService;
+    @Mock private SystemEmailService systemEmailService;
 
     private AdminService adminService;
 
@@ -57,7 +58,8 @@ class AdminServiceTest {
                 categoryRepository,
                 reportRepository,
                 dealRepository,
-                auditLogService
+                auditLogService,
+                systemEmailService
         );
     }
 

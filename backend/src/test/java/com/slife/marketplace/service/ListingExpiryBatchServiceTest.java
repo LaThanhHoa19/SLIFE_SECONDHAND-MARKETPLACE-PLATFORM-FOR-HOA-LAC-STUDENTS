@@ -21,18 +21,19 @@ import static org.mockito.Mockito.*;
 class ListingExpiryBatchServiceTest {
 
     @Mock private ListingRepository listingRepository;
+    @Mock private SystemEmailService systemEmailService;
 
     private ListingExpiryBatchService service;
 
     @BeforeEach
     void setUp() {
-        service = new ListingExpiryBatchService(listingRepository, 100);
+        service = new ListingExpiryBatchService(listingRepository, systemEmailService, 100);
     }
 
     @Test
     @DisplayName("hideNextBatch: clamp batchSize min=1")
     void clamp_min1() {
-        service = new ListingExpiryBatchService(listingRepository, 0);
+        service = new ListingExpiryBatchService(listingRepository, systemEmailService, 0);
         Instant now = Instant.now();
         when(listingRepository.findIdsOfActiveExpiredListings(eq(now), any(PageRequest.class))).thenReturn(List.of());
 
@@ -47,7 +48,7 @@ class ListingExpiryBatchServiceTest {
     @Test
     @DisplayName("hideNextBatch: clamp batchSize max=500")
     void clamp_max500() {
-        service = new ListingExpiryBatchService(listingRepository, 9999);
+        service = new ListingExpiryBatchService(listingRepository, systemEmailService, 9999);
         Instant now = Instant.now();
         when(listingRepository.findIdsOfActiveExpiredListings(eq(now), any(PageRequest.class))).thenReturn(List.of());
 

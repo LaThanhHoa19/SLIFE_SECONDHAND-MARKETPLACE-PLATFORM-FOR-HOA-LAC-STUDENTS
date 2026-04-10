@@ -673,7 +673,7 @@ class ChatServiceTest {
             assertNotNull(res);
 
             verify(notificationService).notifyDealConfirmed(eq(buyer), eq(seller), eq(10L), eq("Listing 10"), eq(1L));
-            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("Listing 10"), eq(10L), eq(1L));
+            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("Listing 10"), eq(10L), eq(1L), any());
             verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
         }
 
@@ -707,7 +707,7 @@ class ChatServiceTest {
             assertNotNull(res);
 
             verify(notificationService).notifyOfferRejected(eq(buyer), eq(seller), eq(10L), eq("Listing 10"), eq(new BigDecimal("900")));
-            verify(systemEmailService).sendOfferRejectedEmail(eq(buyer), anyString(), eq("Listing 10"), eq(10L), eq(new BigDecimal("900")));
+            verify(systemEmailService).sendOfferRejectedEmails(eq(buyer), eq(seller), eq("Listing 10"), eq(10L), eq(new BigDecimal("900")));
             verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
         }
     }

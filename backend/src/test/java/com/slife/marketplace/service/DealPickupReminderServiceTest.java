@@ -20,13 +20,15 @@ class DealPickupReminderServiceTest {
 
     @Mock private DealRepository dealRepository;
     @Mock private SystemEmailService systemEmailService;
+    @Mock private ConfigService configService;
 
     private DealPickupReminderService service;
 
     @BeforeEach
     void setUp() {
-        service = new DealPickupReminderService(dealRepository, systemEmailService);
+        service = new DealPickupReminderService(dealRepository, systemEmailService, configService);
         ReflectionTestUtils.setField(service, "zoneId", "UTC");
+        when(configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3)).thenReturn(3);
     }
 
     @Test

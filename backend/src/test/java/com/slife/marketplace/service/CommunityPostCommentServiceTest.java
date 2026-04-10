@@ -42,6 +42,7 @@ class CommunityPostCommentServiceTest {
     @Mock private AuditLogService auditLogService;
     @Mock private NotificationService notificationService;
     @Mock private CommunityPostStatsBroadcastService statsBroadcastService;
+    @Mock private ContentModerationService contentModerationService;
 
     private CommunityPostCommentService service;
 
@@ -55,7 +56,8 @@ class CommunityPostCommentServiceTest {
                 commentRateLimitService,
                 auditLogService,
                 notificationService,
-                statsBroadcastService
+                statsBroadcastService,
+                contentModerationService
         );
     }
 

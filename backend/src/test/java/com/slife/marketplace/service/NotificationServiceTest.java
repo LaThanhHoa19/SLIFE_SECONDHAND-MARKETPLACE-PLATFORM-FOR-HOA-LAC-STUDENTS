@@ -282,6 +282,22 @@ class NotificationServiceTest {
         }
 
         @Test
+        @DisplayName("Cảnh báo report user được duyệt nhưng chưa bị ban: lưu notification + đẩy số chưa đọc")
+        void notifyReportApprovedUserWarning_shouldSaveAndPush() {
+            User target = user(1L, "o@ex.com");
+            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(4L);
+
+            notificationService.notifyReportApprovedUserWarning(target, 5L, "SPAM", 1, 3);
+
+            ArgumentCaptor<Notification> cap = ArgumentCaptor.forClass(Notification.class);
+            verify(notificationRepository).save(cap.capture());
+            assertEquals("USER", cap.getValue().getRefType());
+            assertEquals(1L, cap.getValue().getRefId());
+            assertTrue(cap.getValue().getContent().contains("1/3"));
+            verify(messagingTemplate).convertAndSendToUser(eq("o@ex.com"), eq("/queue/notifications"), eq(4L));
+        }
+
+        @Test
         @DisplayName("Tương tác tin đăng (bình luận/thích/trả lời/tham gia thảo luận): lưu notification + đẩy số chưa đọc")
         void listingInteractionNotifies_shouldSaveAndPush() {
             User owner = user(1L, "o@ex.com");
