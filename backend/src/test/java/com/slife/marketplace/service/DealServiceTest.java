@@ -137,7 +137,7 @@ class DealServiceTest {
     }
 
     private void stubReviewLookupFalse(Deal d) {
-        when(reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+        when(reviewRepository.existsReviewCreatedAfter(
                 anyLong(), anyLong(), any(Instant.class))).thenReturn(false);
     }
 
@@ -788,7 +788,7 @@ class DealServiceTest {
             d.setConfirmedAt(LocalDateTime.now().minusDays(1));
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+            when(reviewRepository.existsReviewCreatedAfter(
                     eq(5L), eq(1L), any(Instant.class))).thenReturn(true);
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setRating((byte) 4);
@@ -805,7 +805,7 @@ class DealServiceTest {
             Deal d = dealEntity(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_SUCCESS);
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(reviewRepository.existsByConversation_IdAndReviewer_IdAndCreatedAtAfter(
+            when(reviewRepository.existsReviewCreatedAfter(
                     eq(5L), eq(1L), any(Instant.class))).thenReturn(false);
             when(reviewRepository.findAverageRatingByReviewee_Id(2L)).thenReturn(5.0);
 

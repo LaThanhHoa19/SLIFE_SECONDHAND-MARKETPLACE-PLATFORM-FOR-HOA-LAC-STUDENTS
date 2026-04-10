@@ -12,6 +12,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -46,11 +47,14 @@ class UserServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private FileStorage fileStorage;
 
+    @TempDir
+    Path tempUploadDir;
+
     private UserService service;
 
     @BeforeEach
     void setUp() {
-        service = new UserService(userRepository, fileStorage, Path.of("uploads").toAbsolutePath().normalize());
+        service = new UserService(userRepository, fileStorage, tempUploadDir.toAbsolutePath().normalize());
         SecurityContextHolder.clearContext();
     }
 

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -38,6 +39,9 @@ class CommunityPostImageServiceTest {
     @Mock private ConfigService configService;
     @Mock private FileStorage fileStorage;
 
+    @TempDir
+    Path tempUploadDir;
+
     private CommunityPostImageService service;
 
     @BeforeEach
@@ -47,7 +51,7 @@ class CommunityPostImageServiceTest {
                 imageRepository,
                 configService,
                 fileStorage,
-                Path.of("uploads").toAbsolutePath().normalize()
+                tempUploadDir.toAbsolutePath().normalize()
         );
     }
 

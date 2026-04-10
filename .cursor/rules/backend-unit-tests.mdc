@@ -1,0 +1,42 @@
+---
+description: Quy ước unit test backend (service layer) — Mockito, không DB/FS/API thật
+globs: backend/src/test/**/*.java
+alwaysApply: false
+---
+
+# Backend unit tests (Java / Spring)
+
+Áp dụng khi viết hoặc sửa test trong `backend/src/test/**`, đặc biệt `**/service/*Test.java`.
+
+## Phạm vi và mục tiêu
+
+- **Unit test** = kiểm tra **một lớp** (thường là service) với **dependency đã mock**; không khởi động Spring context đầy đủ trừ khi đó là `@SpringBootTest` / integration (đặt ở package test khác, không nhét vào “service unit test” thuần).
+- **Ưu tiên** nhánh có **business rules**, **bảo mật** (ownership, role), **edge cases** và **mã lỗi** (`ErrorCode` / `SlifeException`), không chỉ “happy path”.
+
+## Cấm / tránh
+
+- **Không DB thật** trong unit test service: không `@SpringBootTest` + H2 cho lớp service thuần; dùng `@ExtendWith(MockitoExtension.class)` và `@Mock` repository / bean phụ thuộc.
+- **Không ghi đĩa thật** với path cố định (`Path.of("uploads")`, `build/test-uploads`, v.v.): dùng **`@TempDir Path`** (JUnit Jupiter) cho mọi constructor cần `Path` upload/root.
+- **`FileStorage`**: trong unit test service luôn **`@Mock FileStorage`** — không new/inject **`NioFileStorage`** (implementation ghi đĩa thật). Chỉ dùng `NioFileStorage` + `@TempDir` khi viết **integration / test có I/O thật** có chủ đích (ít, tách class/package nếu được).
+- **Không gọi HTTP / email / Firebase / bên thứ ba thật**: mock `RestTemplate`, `SystemEmailService`, client ngoài, v.v.
+- **Không test controller** trong class “service unit test”; controller thuộc `@WebMvcTest` hoặc integration riêng.
+- **Tránh** test chỉ verify “gọi `repository.save` một lần” cho service **pass-through** (không thêm validation / orchestration). Nếu service chỉ delegate 1:1, có thể **bỏ qua** unit test hoặc gộp một test smoke tối thiểu.
+
+## Đồng bộ code & Mockito
+
+- Khi đổi **constructor / tên method repository / `ConfigService.getIntConfigValue(key, …)`** ở production, cập nhật test ngay — tránh `test-compile` fail hoặc **strict stubbing** (`PotentialStubbingProblem`, `UnnecessaryStubbing`): stub đúng **key** và đúng **method** (ví dụ đổi từ `existsBy…` sang `existsReviewCreatedAfter`).
+- Logic thuần (helper/codec static, không Spring) có thể test **JUnit thuần**, không bắt buộc `MockitoExtension`.
+
+## Cấu trúc test
+
+- Rõ ràng **Given / When / Then** (comment ngắn hoặc tách bước).
+- Một test ~ **một hành vi / một nhánh**; tên `@DisplayName` mô tả điều kiện + kỳ vọng.
+- `verify` chỉ cho **side-effect quan trọng** (notification, audit, delete file), tránh verify dư thừa mọi interaction.
+
+## Checklist trước khi merge
+
+- [ ] Không path upload cứng trên filesystem dev/CI.
+- [ ] Repository và service phụ thuộc là mock, không leak transaction/entity manager.
+- [ ] Exception và `ErrorCode` khớp production code.
+- [ ] `FileStorage` là mock; không dùng `NioFileStorage` trong unit test service thông thường.
+- [ ] `mvn test` (hoặc module tương ứng) pass.

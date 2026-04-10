@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
@@ -46,17 +47,19 @@ class ListingImageServiceTest {
     @Mock
     private FileStorage fileStorage;
 
+    @TempDir
+    Path tempUploadDir;
+
     private ListingImageService listingImageService;
 
     @BeforeEach
     void setUp() {
-        Path uploadBasePath = Path.of("uploads");
         listingImageService = new ListingImageService(
                 listingRepository,
                 listingImageRepository,
                 configService,
                 fileStorage,
-                uploadBasePath
+                tempUploadDir
         );
     }
 

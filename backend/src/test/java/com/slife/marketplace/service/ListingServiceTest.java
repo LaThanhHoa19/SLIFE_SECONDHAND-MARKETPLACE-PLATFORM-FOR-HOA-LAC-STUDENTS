@@ -124,15 +124,15 @@ class ListingServiceTest {
     }
 
     // =========================================================================
-    // FEATURE: REPOST (CLONE-TO-DRAFT) — LUỒNG CHÍNH + LUỒNG PHỤ
+    // FEATURE: REPOST (CLONE-TO-ACTIVE) — LUỒNG CHÍNH + LUỒNG PHỤ
     // =========================================================================
     @Nested
-    @DisplayName("Tính năng: Đăng lại (clone-to-draft)")
+    @DisplayName("Tính năng: Đăng lại (clone-to-active)")
     class RepostCloneToDraft {
 
     @Test
-        @DisplayName("Luồng chính: Tin hết hạn -> tạo listing DRAFT mới, clone field + ảnh, không đụng tin nguồn")
-        void repostListing_whenExpired_shouldCreateNewDraftAndCloneImages() {
+        @DisplayName("Luồng chính: Tin hết hạn -> tạo listing ACTIVE mới, soft-delete tin nguồn, clone ảnh")
+        void repostListing_whenExpired_shouldCreateNewActiveAndCloneImages() {
             // Arrange: seller + listing nguồn đã hết hạn (expirationDate < now) và status EXPIRED/HIDDEN đều ok
         User seller = new User();
             seller.setId(10L);
@@ -152,7 +152,9 @@ class ListingServiceTest {
             when(listingRepository.findById(17L)).thenReturn(Optional.of(source));
             when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> {
                 Listing fresh = invocation.getArgument(0);
-                fresh.setId(999L);
+                if (fresh.getId() == null) {
+                    fresh.setId(999L);
+                }
                 return fresh;
             });
 
@@ -169,6 +171,8 @@ class ListingServiceTest {
 
             when(listingImageRepository.findByListing_IdOrderByDisplayOrderAsc(17L))
                     .thenReturn(List.of(img1, img2Deleted));
+            when(configService.getIntConfigValue(eq("MAX_ACTIVE_LISTINGS_PER_USER"), anyInt())).thenReturn(0);
+            when(configService.getIntConfigValue(eq("LISTING_EXPIRATION"), anyInt())).thenReturn(30);
 
             // Act
             Long newId = listingService.repostListing(17L, seller);
@@ -176,21 +180,27 @@ class ListingServiceTest {
             // Assert: trả về id mới
             assertEquals(999L, newId);
 
-            // Assert: listing mới đúng ý clone-to-draft
             ArgumentCaptor<Listing> listingCaptor = ArgumentCaptor.forClass(Listing.class);
-            verify(listingRepository).save(listingCaptor.capture());
-            Listing savedFresh = listingCaptor.getValue();
-            assertEquals("DRAFT", savedFresh.getStatus());
+            verify(listingRepository, times(2)).save(listingCaptor.capture());
+            List<Listing> savedListings = listingCaptor.getAllValues();
+            Listing savedFresh = savedListings.get(0);
+            Listing savedSource = savedListings.get(1);
+
+            assertEquals("ACTIVE", savedFresh.getStatus());
             assertEquals(0L, savedFresh.getViewCount());
             assertNotNull(savedFresh.getCreatedAt());
             assertNotNull(savedFresh.getUpdatedAt());
-            assertNull(savedFresh.getExpirationDate());
+            assertNotNull(savedFresh.getExpirationDate());
             assertNull(savedFresh.getDeletedAt());
             assertEquals("Macbook Pro 2019", savedFresh.getTitle());
             assertEquals("Còn tốt", savedFresh.getDescription());
             assertEquals(new BigDecimal("15000000"), savedFresh.getPrice());
             assertEquals("USED_GOOD", savedFresh.getItemCondition());
             assertEquals("SALE", savedFresh.getPurpose());
+
+            assertEquals(17L, savedSource.getId());
+            assertEquals("DELETED", savedSource.getStatus());
+            assertNotNull(savedSource.getDeletedAt());
 
             // Assert: ảnh được clone (bỏ ảnh deletedAt != null)
             @SuppressWarnings("unchecked")
@@ -259,6 +269,7 @@ class ListingServiceTest {
             when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
 
             // config listing expiration days
+            when(configService.getIntConfigValue(eq("MAX_ACTIVE_LISTINGS_PER_USER"), anyInt())).thenReturn(0);
             when(configService.getIntConfigValue(eq("LISTING_EXPIRATION"), anyInt())).thenReturn(30);
 
             // category + pickup address: dùng pickupLocationName để resolvePickupAddress -> addressRepository.save()
@@ -1157,6 +1168,7 @@ class ListingServiceTest {
             // max
             when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
             when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
+            when(configService.getIntConfigValue(eq("MAX_ACTIVE_LISTINGS_PER_USER"), anyInt())).thenReturn(0);
             // expiration days used inside persistNewListing
             when(configService.getIntConfigValue(eq("LISTING_EXPIRATION"), anyInt())).thenReturn(30);
             // category + pickup
