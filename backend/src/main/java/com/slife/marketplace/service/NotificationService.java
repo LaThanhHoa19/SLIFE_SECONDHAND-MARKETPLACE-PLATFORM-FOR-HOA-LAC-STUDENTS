@@ -213,7 +213,7 @@ public class NotificationService {
             Long convId = resolveConversationId(listingId, buyer, seller);
             String refType = convId != null ? "DEAL" : "LISTING";
             Long refId = convId != null ? convId : listingId;
-            
+
             Notification n = buildNotification(seller, TYPE_DEAL, refType, refId, text);
             notificationRepository.save(n);
             pushNotificationCount(seller);
@@ -231,7 +231,7 @@ public class NotificationService {
             String refType = (refId != null) ? "DEAL" : "LISTING";
             // refId uses conversation_id if DEAL, listing_id if LISTING
             Long targetRefId = (refId != null) ? refId : listingId;
-            
+
             Notification n = buildNotification(seller, TYPE_DEAL, refType, targetRefId, text);
             notificationRepository.save(n);
             pushNotificationCount(seller);
@@ -290,6 +290,25 @@ public class NotificationService {
             pushNotificationCount(user);
         } catch (Exception ex) {
             log.error("notifyAdminBannedUser failed userId={}", user.getId(), ex);
+        }
+    }
+
+    /** Notify user when user-report approved but account has not reached ban threshold yet. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyReportApprovedUserWarning(User user, Long reportId, String reasonCode, int violationCount, int threshold) {
+        try {
+            String suffix = (reasonCode != null && !reasonCode.isBlank())
+                    ? " (lý do: " + reasonCode.trim() + ")"
+                    : "";
+            Notification n = buildNotification(user, TYPE_SYSTEM,
+                    "USER", user.getId(),
+                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                            + ": Báo cáo về tài khoản của bạn đã được duyệt" + suffix
+                            + ". Điểm vi phạm hiện tại: " + violationCount + "/" + threshold + ".");
+            notificationRepository.save(n);
+            pushNotificationCount(user);
+        } catch (Exception ex) {
+            log.error("notifyReportApprovedUserWarning failed userId={}", user.getId(), ex);
         }
     }
 

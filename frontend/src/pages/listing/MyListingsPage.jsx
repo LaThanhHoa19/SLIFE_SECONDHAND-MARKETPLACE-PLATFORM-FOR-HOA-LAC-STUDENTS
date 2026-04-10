@@ -72,6 +72,8 @@ const selectSx = {
     '&.Mui-focused fieldset': { borderColor: STITCH_PURPLE },
 };
 
+const CONTENT_MIN_HEIGHT = 430;
+
 const menuProps = {
     PaperProps: {
         sx: {
@@ -543,7 +545,7 @@ export default function MyListingsPage() {
                     )}
                 </Stack>
 
-                <Box sx={{ mb: 3, overflow: 'hidden' }}>
+                <Box sx={{ mb: 3, overflow: 'hidden', minHeight: 52 }}>
                     <Tabs
                         value={activeTab}
                         onChange={handleTabChange}
@@ -644,45 +646,36 @@ export default function MyListingsPage() {
                     </Tabs>
                 </Box>
 
-                {error ? (
-                    <Box sx={{
-                        textAlign: 'center', py: 10, borderRadius: '16px',
-                        bgcolor: 'rgba(255,71,87,0.06)', border: '1px solid rgba(255,71,87,0.18)',
-                    }}>
-                        <Typography color="#ff4757" fontSize={14}>{error}</Typography>
-                    </Box>
-                ) : isLoading ? (
-                    <Box
-                        sx={{
-                            display: 'grid',
-                            gap: 2.5,
-                            gridTemplateColumns: {
-                                xs: '1fr',
-                                sm: 'repeat(2, 1fr)',
-                                md: 'repeat(3, 1fr)',
-                                lg: 'repeat(4, 1fr)',
-                            },
-                        }}
-                    >
-                        {[...Array(8)].map((_, i) => <MyListingsGridCardSkeleton key={i} />)}
-                    </Box>
-                ) : listings.length === 0 ? (
-                    <MyListingsEmptyState tab={activeTab} />
-                ) : filteredListings.length === 0 ? (
-                    <Box sx={{
-                        textAlign: 'center', py: 10, borderRadius: '16px',
-                        bgcolor: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
-                    }}>
-                        <Typography fontSize={36} sx={{ mb: 1 }}>🔍</Typography>
-                        <Typography fontSize={16} fontWeight={600} color="rgba(255,255,255,0.6)" sx={{ mb: 0.5 }}>
-                            Không tìm thấy kết quả
-                        </Typography>
-                        <Typography fontSize={13} color="rgba(255,255,255,0.35)">
-                            Thử đổi bộ lọc hoặc từ khóa tìm kiếm.
-                        </Typography>
-                    </Box>
-                ) : (
-                    <>
+                <Box
+                    sx={{
+                        minHeight: { xs: 300, md: CONTENT_MIN_HEIGHT },
+                        transition: 'min-height 0.2s ease',
+                        position: 'relative',
+                    }}
+                >
+                    {error ? (
+                        <Box sx={{
+                            textAlign: 'center', py: 10, borderRadius: '16px',
+                            bgcolor: 'rgba(255,71,87,0.06)', border: '1px solid rgba(255,71,87,0.18)',
+                        }}>
+                            <Typography color="#ff4757" fontSize={14}>{error}</Typography>
+                        </Box>
+                    ) : listings.length === 0 ? (
+                        <MyListingsEmptyState tab={activeTab} />
+                    ) : filteredListings.length === 0 ? (
+                        <Box sx={{
+                            textAlign: 'center', py: 10, borderRadius: '16px',
+                            bgcolor: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+                        }}>
+                            <Typography fontSize={36} sx={{ mb: 1 }}>🔍</Typography>
+                            <Typography fontSize={16} fontWeight={600} color="rgba(255,255,255,0.6)" sx={{ mb: 0.5 }}>
+                                Không tìm thấy kết quả
+                            </Typography>
+                            <Typography fontSize={13} color="rgba(255,255,255,0.35)">
+                                Thử đổi bộ lọc hoặc từ khóa tìm kiếm.
+                            </Typography>
+                        </Box>
+                    ) : (
                         <Box
                             sx={{
                                 display: 'grid',
@@ -709,8 +702,33 @@ export default function MyListingsPage() {
                             ))}
                             <MyListingsAddPlaceholder onClick={() => checkVerification(() => navigate('/listings/new'))} />
                         </Box>
-                    </>
-                )}
+                    )}
+
+                    {isLoading && listings.length > 0 && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                inset: 0,
+                                zIndex: 2,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(10, 12, 24, 0.45)',
+                                backdropFilter: 'blur(2px)',
+                                pointerEvents: 'none',
+                                display: 'grid',
+                                gap: 2.5,
+                                gridTemplateColumns: {
+                                    xs: '1fr',
+                                    sm: 'repeat(2, 1fr)',
+                                    md: 'repeat(3, 1fr)',
+                                    lg: 'repeat(4, 1fr)',
+                                },
+                                p: 0,
+                            }}
+                        >
+                            {[...Array(8)].map((_, i) => <MyListingsGridCardSkeleton key={`loading-overlay-${i}`} />)}
+                        </Box>
+                    )}
+                </Box>
 
                 <DeleteDraftDialog
                     open={deleteDialog.open}
