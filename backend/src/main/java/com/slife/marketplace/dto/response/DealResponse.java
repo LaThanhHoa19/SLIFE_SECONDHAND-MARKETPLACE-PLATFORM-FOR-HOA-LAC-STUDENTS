@@ -67,4 +67,12 @@ public class DealResponse {
 
     @JsonProperty("updatedAt")
     private LocalDateTime updatedAt;
+
+    /**
+     * Thời hạn cuối buyer có thể đánh giá = thời điểm deal SUCCESS + 7 ngày.
+     * Chỉ có giá trị khi status = SUCCESS và chưa đánh giá.
+     * null nếu deal chưa SUCCESS hoặc đã hết hạn (hoặc đã review).
+     */
+    @JsonProperty("reviewDeadline")
+    private LocalDateTime reviewDeadline;
 }

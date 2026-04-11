@@ -12,6 +12,7 @@ import com.slife.marketplace.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -97,16 +98,24 @@ public class BlockService {
                 || blockRepository.existsByBlocker_IdAndBlocked_Id(userB, userA);
     }
 
+    /**
+     * @param sort {@code recent} = chặn gần nhất trước (mặc định), {@code oldest} = chặn lâu nhất trước
+     */
     @Transactional(readOnly = true)
-    public Page<FollowUserSummaryResponse> getBlockedUsers(Long blockerId, int page, int size) {
+    public Page<FollowUserSummaryResponse> getBlockedUsers(Long blockerId, int page, int size, String q, String sort) {
         if (blockerId == null) {
             throw new SlifeException(ErrorCode.INVALID_INPUT);
         }
         if (!userRepository.existsById(blockerId)) {
             throw new SlifeException(ErrorCode.USER_NOT_FOUND);
         }
-        Pageable pageable = PageRequest.of(Math.max(0, page), clampPageSize(size));
-        return blockRepository.findBlockedUserSummariesByBlockerId(blockerId, pageable);
+        boolean qBlank = q == null || q.isBlank();
+        String qNorm = qBlank ? "" : q.trim();
+        Sort sortObj = "oldest".equalsIgnoreCase(sort == null ? "" : sort.trim())
+                ? Sort.by(Sort.Direction.ASC, "createdAt")
+                : Sort.by(Sort.Direction.DESC, "createdAt");
+        Pageable pageable = PageRequest.of(Math.max(0, page), clampPageSize(size), sortObj);
+        return blockRepository.findBlockedUserSummariesByBlockerId(blockerId, qNorm, qBlank, pageable);
     }
 
     private static int clampPageSize(int size) {

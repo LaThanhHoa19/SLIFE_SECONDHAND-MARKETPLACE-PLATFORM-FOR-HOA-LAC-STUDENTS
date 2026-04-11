@@ -59,7 +59,6 @@ const TAB_CONTEXT_PHRASE = {
     DRAFT: 'bản nháp',
     EXPIRED: 'hết hạn',
     // SOLD:     'đã bán',
-    REPORTED: 'bị báo cáo',
 };
 
 const selectSx = {

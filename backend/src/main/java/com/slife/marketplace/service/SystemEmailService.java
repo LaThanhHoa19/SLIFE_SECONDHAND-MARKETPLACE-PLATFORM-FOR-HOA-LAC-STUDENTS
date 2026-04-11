@@ -376,14 +376,13 @@ public class SystemEmailService {
             sent++;
 
             String pickupStr = deal.getPickupTime().format(DT_FMT);
-            int reminderHours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3));
-            String hourPhrase = reminderHours == 1 ? "1 giờ" : reminderHours + " giờ";
+            String approxRemaining = formatApproxRemainingToPickup(deal.getPickupTime());
             String subRem = "[SLIFE] Nhắc nhận hàng — #" + deal.getId() + " — " + trunc(title, 50);
             send(buyer.getEmail(), subRem,
-                    buildPickupReminderEmailDocument(deal, listing, buyer, seller, true, pickupStr, hourPhrase));
+                    buildPickupReminderEmailDocument(deal, listing, buyer, seller, true, pickupStr, approxRemaining));
             sent++;
             send(seller.getEmail(), subRem,
-                    buildPickupReminderEmailDocument(deal, listing, seller, buyer, false, pickupStr, hourPhrase));
+                    buildPickupReminderEmailDocument(deal, listing, seller, buyer, false, pickupStr, approxRemaining));
             sent++;
 
             log.info("sendDevMailSamples: queued {} messages (force-to={})", sent,
@@ -427,23 +426,50 @@ public class SystemEmailService {
         }
         String pickupStr = pickup.format(DT_FMT);
         String titleShort = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
-        int reminderHours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", 3));
-        String hourPhrase = reminderHours == 1 ? "1 giờ" : reminderHours + " giờ";
+        String approxRemaining = formatApproxRemainingToPickup(pickup);
         String subject = "[SLIFE] Nhắc nhận hàng — #" + deal.getId() + " — " + trunc(titleShort, 50);
         try {
             if (buyer.getEmail() != null && !buyer.getEmail().isBlank()) {
                 String body = buildPickupReminderEmailDocument(
-                        deal, listing, buyer, seller, true, pickupStr, hourPhrase);
+                        deal, listing, buyer, seller, true, pickupStr, approxRemaining);
                 send(buyer.getEmail(), subject, body);
             }
             if (seller.getEmail() != null && !seller.getEmail().isBlank()) {
                 String body = buildPickupReminderEmailDocument(
-                        deal, listing, seller, buyer, false, pickupStr, hourPhrase);
+                        deal, listing, seller, buyer, false, pickupStr, approxRemaining);
                 send(seller.getEmail(), subject, body);
             }
         } catch (Exception ex) {
             log.warn("sendPickupReminderEmails dealId={}: {}", deal.getId(), ex.getMessage());
         }
+    }
+
+    /**
+     * Ước lượng thời gian còn lại đến {@code pickup} (cùng quy ước giờ VN với cột deal).
+     * Email gửi theo cron nên lệch vài phút so với thực tế — không cần độ chính xác tuyệt đối.
+     */
+    private String formatApproxRemainingToPickup(LocalDateTime pickup) {
+        if (pickup == null) {
+            return "—";
+        }
+        LocalDateTime now = LocalDateTime.now(TimeZones.VIETNAM);
+        Duration d = Duration.between(now, pickup);
+        long minutes = d.toMinutes();
+        if (minutes <= 0L) {
+            return "vài phút";
+        }
+        if (minutes < 60L) {
+            return minutes + " phút";
+        }
+        long h = minutes / 60L;
+        long m = minutes % 60L;
+        if (m == 0L) {
+            return h == 1L ? "1 giờ" : h + " giờ";
+        }
+        if (m < 15L) {
+            return h + " giờ";
+        }
+        return h + " giờ " + m + " phút";
     }
 
     /**
@@ -456,7 +482,7 @@ public class SystemEmailService {
             User otherParty,
             boolean recipientIsBuyer,
             String pickupStr,
-            String hourPhrase) {
+            String approxRemainingPhrase) {
         Long listingId = listing.getId();
         String listingLink = esc(listingUrl(listingId));
         String chatLink = esc(chatOrListingUrl(listingId, null));
@@ -472,7 +498,7 @@ public class SystemEmailService {
                 + emailDetailRow("Giá thỏa thuận", esc(formatMoney(deal.getDealPrice())))
                 + emailDetailRow("Giờ nhận hàng (dự kiến)", esc(pickupStr))
                 + emailDetailRow(otherLabel, esc(displayName(otherParty)))
-                + emailDetailRow("Nhắc trước", "Còn khoảng " + esc(hourPhrase));
+                + emailDetailRow("Nhắc trước", "Còn khoảng " + esc(approxRemainingPhrase));
 
         String bodyContent = ""
                 + "<p style=\"margin:0 0 16px 0;\">Xin chào <strong>" + esc(displayName(recipient)) + "</strong>,</p>"

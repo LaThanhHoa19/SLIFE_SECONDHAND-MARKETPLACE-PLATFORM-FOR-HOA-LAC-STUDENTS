@@ -460,8 +460,9 @@ public class ChatService {
      * Upload a chat image. Validates size and type.
      * Stores to uploads/chats/{sessionId}/{uuid}.ext
      * Returns the public URL path.
+     * Phải ghi DB khi chỉ có listingId (getOrCreateSession) — không dùng readOnly.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public String uploadChatImage(String sessionId, Long listingId, MultipartFile file) {
         String resolvedSessionId = (sessionId != null && !sessionId.isBlank()) ? sessionId.trim() : null;
         if (resolvedSessionId == null) {
@@ -867,6 +868,7 @@ public class ChatService {
         return ChatSessionResponse.builder()
                 .sessionId(c.getSessionUuid())
                 .listingId(c.getListing() != null ? c.getListing().getId() : null)
+                .listingCode(c.getListing() != null ? com.slife.marketplace.util.IdHasher.encode(c.getListing().getId()) : null)
                 .listingTitle(c.getListing() != null ? c.getListing().getTitle() : null)
                 .buyerId(buyerId)
                 .sellerId(sellerId)

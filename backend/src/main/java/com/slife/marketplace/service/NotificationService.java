@@ -93,8 +93,8 @@ public class NotificationService {
     }
 
     /**
-     * Người mua đề xuất giá — refType OFFER + refId = conversation_id khi đã có hội thoại (mở thẳng chat),
-     * ngược lại LISTING + listingId (mở trang tin).
+     * Người mua gửi deal trong chat — refType OFFER + refId = conversation_id để mở thẳng chat,
+     * fallback về OFFER_CHAT + listingId để frontend navigate đến /chat?listingId=X.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyOfferProposal(User seller, User buyer, Long listingId, String listingTitle,
@@ -102,10 +102,12 @@ public class NotificationService {
         try {
             String buyerName = displayName(buyer);
             String title = listingTitle != null && !listingTitle.isBlank() ? listingTitle.trim() : "tin đăng";
-            String text = buyerName + " đề xuất giá " + amount.toPlainString() + "đ cho sản phẩm «"
-                    + truncate(title, 52) + "» — mở chat để xem chi tiết.";
+            String text = buyerName + " vừa gửi đề xuất giá "
+                    + String.format("%,.0fđ", amount) + " cho sản phẩm «"
+                    + truncate(title, 48) + "» — vào chat để phản hồi.";
             Long convId = resolveConversationId(listingId, buyer, seller);
-            String refType = convId != null ? "OFFER" : "LISTING";
+            // Luôn ưu tiên link chat qua sessionId; fallback OFFER_CHAT + listingId
+            String refType = convId != null ? "OFFER" : "OFFER_CHAT";
             Long refId = convId != null ? convId : listingId;
             Notification n = buildNotification(seller, TYPE_OFFER, refType, refId, text);
             notificationRepository.save(n);
@@ -193,7 +195,8 @@ public class NotificationService {
         return "Người dùng";
     }
 
-    /** Notify listing owner when a deal is finalized (SUCCESS) or cancelled by buyer. */
+    /** Notify listing owner when a deal is finalized (SUCCESS) or cancelled by buyer.
+     *  refType ORDER_HISTORY → frontend route /my-listings (quản lý đơn hàng của seller). */
     @Transactional
     public void notifyDealFinalized(User seller, User buyer, Long listingId, String listingTitle, boolean isSuccess, boolean rated) {
         try {
@@ -202,19 +205,15 @@ public class NotificationService {
             String text;
             if (isSuccess) {
                 if (rated) {
-                    text = "Giao dịch thành công! " + buyerName + " đã xác nhận nhận hàng và để lại đánh giá cho bạn về sản phẩm «" + truncate(title, 40) + "».";
+                    text = "✅ Giao dịch thành công! " + buyerName + " đã xác nhận nhận hàng và đánh giá bạn — sản phẩm «" + truncate(title, 36) + "».";
                 } else {
-                    text = "Giao dịch thành công! " + buyerName + " đã xác nhận nhận hàng cho sản phẩm «" + truncate(title, 40) + "». Hãy kiểm tra uy tín của bạn!";
+                    text = "✅ Giao dịch thành công! " + buyerName + " đã xác nhận nhận sản phẩm «" + truncate(title, 36) + "».";
                 }
             } else {
-                text = buyerName + " đã hủy chốt đơn cho sản phẩm «" + truncate(title, 40) + "». Tin đăng đã khả dụng trở lại.";
+                text = "❌ " + buyerName + " đã hủy giao dịch cho sản phẩm «" + truncate(title, 36) + "». Tin đăng đã khả dụng trở lại.";
             }
-
-            Long convId = resolveConversationId(listingId, buyer, seller);
-            String refType = convId != null ? "DEAL" : "LISTING";
-            Long refId = convId != null ? convId : listingId;
-
-            Notification n = buildNotification(seller, TYPE_DEAL, refType, refId, text);
+            // Link đến trang My Listings / quản lý đơn hàng của seller (không lộ ID chat)
+            Notification n = buildNotification(seller, TYPE_DEAL, "ORDER_HISTORY", listingId, text);
             notificationRepository.save(n);
             pushNotificationCount(seller);
         } catch (Exception ex) {
@@ -222,17 +221,17 @@ public class NotificationService {
         }
     }
 
-    /** Thông báo cho người bán khi nhận được đánh giá mới. */
+    /** Thông báo cho người bán khi nhận được đánh giá mới.
+     *  refType SELLER_PROFILE + refId = seller.id → frontend route /profile/{sellerId}. */
     @Transactional
     public void notifyNewReview(User seller, User buyer, Long listingId, String listingTitle, int rating, Long conversationId) {
         try {
-            String text = displayName(buyer) + " đã gửi đánh giá " + rating + " sao cho bài đăng «" + truncate(listingTitle, 40) + "».";
-            Long refId = (conversationId != null) ? conversationId : resolveConversationId(listingId, buyer, seller);
-            String refType = (refId != null) ? "DEAL" : "LISTING";
-            // refId uses conversation_id if DEAL, listing_id if LISTING
-            Long targetRefId = (refId != null) ? refId : listingId;
-
-            Notification n = buildNotification(seller, TYPE_DEAL, refType, targetRefId, text);
+            String stars = "⭐".repeat(Math.max(1, Math.min(5, rating)));
+            String text = displayName(buyer) + " đã đánh giá " + stars + " cho bạn về sản phẩm «"
+                    + truncate(listingTitle, 38) + "» — xem hồ sơ của bạn.";
+            // Link đến profile của chính seller (người được đánh giá)
+            Long sellerId = seller.getId();
+            Notification n = buildNotification(seller, TYPE_DEAL, "SELLER_PROFILE", sellerId, text);
             notificationRepository.save(n);
             pushNotificationCount(seller);
         } catch (Exception ex) {
@@ -240,18 +239,13 @@ public class NotificationService {
         }
     }
 
-    /** Notify listing owner when their listing is reported. */
+    /**
+     * Intentionally no-op: do not notify owner immediately when a listing is merely reported.
+     * Owner is notified only when moderation action is taken (e.g. admin hides listing / bans user).
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyListingReported(User listingOwner, User reporter, Long listingId, String listingTitle) {
-        try {
-            Notification n = buildNotification(listingOwner, TYPE_REPORT,
-                    "LISTING", listingId,
-                    "Tin đăng \"" + truncate(listingTitle, 40) + "\" của bạn đã bị báo cáo bởi " + reporter.getFullName());
-            notificationRepository.save(n);
-            pushNotificationCount(listingOwner);
-        } catch (Exception ex) {
-            log.error("notifyListingReported failed listingId={}", listingId, ex);
-        }
+        log.debug("notifyListingReported skipped listingId={}", listingId);
     }
 
     /** Notify listing owner when admin hides their listing due to violation/report. */
@@ -486,14 +480,16 @@ public class NotificationService {
     public com.slife.marketplace.dto.response.CursorPageResponse<NotificationResponse> getNotificationResponsesPage(
             Long userId,
             int limit,
-            String cursor
+            String cursor,
+            NotificationScope scope
     ) {
         int size = Math.max(1, Math.min(limit, 50));
         NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
         Instant cursorCreatedAt = c != null ? c.createdAt() : null;
         Long cursorId = c != null ? c.id() : null;
         Pageable pageable = PageRequest.of(0, size);
-        List<Notification> list = notificationRepository.findPageByUser(userId, cursorCreatedAt, cursorId, pageable);
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        List<Notification> list = notificationRepository.findPageByUser(userId, scopeName, cursorCreatedAt, cursorId, pageable);
         List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
         boolean hasMore = list.size() == size;
         String nextCursor = null;
@@ -509,7 +505,8 @@ public class NotificationService {
             Long userId,
             String q,
             int limit,
-            String cursor
+            String cursor,
+            NotificationScope scope
     ) {
         String query = q != null ? q.trim() : "";
         if (query.length() > 100) query = query.substring(0, 100);
@@ -518,7 +515,8 @@ public class NotificationService {
         Instant cursorCreatedAt = c != null ? c.createdAt() : null;
         Long cursorId = c != null ? c.id() : null;
         Pageable pageable = PageRequest.of(0, size);
-        List<Notification> list = notificationRepository.searchPageByUser(userId, query, cursorCreatedAt, cursorId, pageable);
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        List<Notification> list = notificationRepository.searchPageByUser(userId, scopeName, query, cursorCreatedAt, cursorId, pageable);
         List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
         boolean hasMore = list.size() == size;
         String nextCursor = null;
@@ -530,19 +528,22 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public long getUnreadCount(Long userId) {
-        return notificationRepository.countByUser_IdAndIsReadFalse(userId);
+    public long getUnreadCount(Long userId, NotificationScope scope) {
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        return notificationRepository.countUnreadByScope(userId, scopeName);
     }
 
     @Transactional
-    public void markRead(Long userId, Long notificationId) {
+    public void markRead(Long userId, Long notificationId, NotificationScope scope) {
         if (userId == null || notificationId == null) return;
-        notificationRepository.markReadForUser(notificationId, userId);
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        notificationRepository.markReadForUser(notificationId, userId, scopeName);
     }
 
     @Transactional
-    public void markAllRead(Long userId) {
-        notificationRepository.markAllReadForUser(userId);
+    public void markAllRead(Long userId, NotificationScope scope) {
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        notificationRepository.markAllReadForUser(userId, scopeName);
     }
 
     // ── Internals ─────────────────────────────────────────────────────────────
@@ -606,7 +607,7 @@ public class NotificationService {
 
     private void pushNotificationCount(User user) {
         try {
-            long count = notificationRepository.countByUser_IdAndIsReadFalse(user.getId());
+            long count = notificationRepository.countUnreadByScope(user.getId(), NotificationScope.ALL.name());
             messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notifications", count);
         } catch (Exception ex) {
             log.warn("WS notification count push failed userId={}", user.getId());

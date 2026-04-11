@@ -42,8 +42,6 @@ services:
       APP_MAIL_HTTP_URL: ${APP_MAIL_HTTP_URL:-}
       APP_MAIL_HTTP_SECRET: ${APP_MAIL_HTTP_SECRET:-}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-noreply@slife.local}
-      # Dev: gửi mọi email thử nghiệm vào một hộp thư (users.email vẫn unique trong DB)
-      APP_MAIL_FORCE_TO: ${APP_MAIL_FORCE_TO:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1}
     volumes:
       - uploads_data:/app/uploads

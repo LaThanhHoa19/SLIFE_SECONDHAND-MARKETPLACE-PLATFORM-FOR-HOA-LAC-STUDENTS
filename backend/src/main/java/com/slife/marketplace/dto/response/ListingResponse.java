@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 @Data
 public class ListingResponse {
     private Long id;
+    private String code; // Hash code for URL
     private String title;
     private String description;
     private BigDecimal price;

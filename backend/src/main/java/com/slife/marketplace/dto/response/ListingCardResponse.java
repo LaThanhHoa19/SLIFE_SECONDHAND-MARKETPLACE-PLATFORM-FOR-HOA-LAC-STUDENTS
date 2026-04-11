@@ -15,6 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ListingCardResponse {
     private Long id;
+    private String code; // Hashed ID for secure URLs
     private String title;
     private BigDecimal price;
     private String location;
@@ -38,6 +39,7 @@ public class ListingCardResponse {
 
     // Thông tin người bán để hiển thị trên feed
     private Long sellerId;
+    private String sellerCode; // Hashed seller ID
     private String sellerName;
     private String sellerAvatarUrl;
 

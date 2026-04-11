@@ -44,13 +44,8 @@ import {
     SuspenseAdminLoginPage,
     SuspenseTermsPage,
     SuspenseCommunityFeedPage,
-    SuspenseCommunityCreatePostPage,
     SuspenseCommunityPostDetailPage,
     SuspenseBlockedUsersPage,
-    SuspenseSupportContactPage,
-    SuspenseSellerGuidePage,
-    SuspenseBuyerGuidePage,
-    SuspenseSafetyGuidePage,
 } from './LazyRoutes';
 
 export default function AppRouter() {
@@ -106,23 +101,36 @@ export default function AppRouter() {
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/feed" element={<SuspenseListingsPage />} />
                 <Route path="/community" element={<SuspenseCommunityFeedPage />} />
-                <Route path="/community/posts/:id" element={<SuspenseCommunityPostDetailPage />} />
                 <Route
-                    path="/community/new"
+                    path="/community/mine"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseCommunityCreatePostPage />
+                            <SuspenseCommunityFeedPage />
                         </RouteGuard>
                     }
                 />
+                <Route
+                    path="/community/saved"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCommunityFeedPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/community/liked"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCommunityFeedPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route path="/community/posts/:id" element={<SuspenseCommunityPostDetailPage />} />
+
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />
                 <Route path="/terms" element={<SuspenseTermsPage />} />
-                <Route path="/contact" element={<SuspenseSupportContactPage />} />
-                <Route path="/seller-guide" element={<SuspenseSellerGuidePage />} />
-                <Route path="/buyer-guide" element={<SuspenseBuyerGuidePage />} />
-                <Route path="/safety" element={<SuspenseSafetyGuidePage />} />
 
                 {/* Google OAuth2 redirect callback — no guard, no layout needed */}
                 <Route path="/auth/google/callback" element={<SuspenseGoogleCallbackPage />} />

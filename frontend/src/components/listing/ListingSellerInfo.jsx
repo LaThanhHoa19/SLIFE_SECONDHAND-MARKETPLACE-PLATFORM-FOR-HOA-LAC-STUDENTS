@@ -24,11 +24,19 @@ export default function ListingSellerInfo({
     const navigate = useNavigate();
 
     const handleNavigateProfile = () => {
-        const targetId = sellerId ?? seller?.id ?? seller?.userId;
+        const targetId = seller?.code || sellerId || seller?.id || seller?.userId;
         if (!targetId) return;
+        
         const currentUserData = localStorage.getItem('user');
         const currentUser = currentUserData ? JSON.parse(currentUserData) : null;
-        if (String(targetId) === String(currentUser?.id)) navigate('/profile');
+        
+        // Kiểm tra đối khớp bằng ID gốc (nếu có thể parse được targetId thành số) hoặc gán hash id cho chắc
+        const isSelf = currentUser && (
+            String(targetId) === String(currentUser.id) || 
+            String(targetId) === String(currentUser.code)
+        );
+
+        if (isSelf) navigate('/profile');
         else navigate(`/profile/${targetId}`);
     };
 

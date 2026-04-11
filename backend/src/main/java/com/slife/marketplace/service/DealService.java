@@ -33,8 +33,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class DealService {
@@ -51,6 +53,10 @@ public class DealService {
     /** Người mua từ chối sau khi người bán chốt đơn (deal đang PENDING). */
     public static final String STATUS_REJECTED = "REJECTED";
 
+    /** Một tin chỉ có tối đa một giao dịch ở các trạng thái này cùng lúc (đã chiếm chỗ). */
+    private static final Set<String> LISTING_RESERVATION_STATUSES = Set.of(
+            STATUS_COMPLETED, STATUS_CONFIRMED, STATUS_SUCCESS);
+
     private final DealRepository dealRepository;
     private final ListingImageRepository listingImageRepository;
     private final ListingRepository listingRepository;
@@ -63,6 +69,7 @@ public class DealService {
     private final BlockService blockService;
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
+    private final ConfigService configService;
 
     public DealService(DealRepository dealRepository,
                        ListingImageRepository listingImageRepository,
@@ -75,7 +82,8 @@ public class DealService {
                        UserService userService,
                        NotificationService notificationService,
                        BlockService blockService,
-                       SystemEmailService systemEmailService) {
+                       SystemEmailService systemEmailService,
+                       ConfigService configService) {
         this.dealRepository = dealRepository;
         this.listingImageRepository = listingImageRepository;
         this.listingRepository = listingRepository;
@@ -88,13 +96,75 @@ public class DealService {
         this.notificationService = notificationService;
         this.blockService = blockService;
         this.systemEmailService = systemEmailService;
+        this.configService = configService;
+    }
+
+    private void assertListingOpenForNegotiation(Listing listing) {
+        if (listing.getStatus() != null && "SOLD".equalsIgnoreCase(listing.getStatus().trim())) {
+            throw new SlifeException(ErrorCode.LISTING_DEAL_CONFLICT,
+                    "Tin đã bán — không thể thực hiện giao dịch.");
+        }
+        Long lid = listing.getId();
+        if (dealRepository.existsByListing_IdAndDeletedAtIsNullAndStatusIn(lid, LISTING_RESERVATION_STATUSES)) {
+            throw new SlifeException(ErrorCode.LISTING_DEAL_CONFLICT,
+                    "Tin này đã có giao dịch đang hoặc đã hoàn tất với một người mua.");
+        }
+    }
+
+    /** Hủy deal PENDING của các buyer khác khi seller chốt với một người. */
+    private void rejectOtherPendingDealsForBuyer(Long listingId, Long keepBuyerUserId) {
+        List<Deal> pendings = dealRepository.findByListing_IdAndDeletedAtIsNullAndStatus(listingId, STATUS_PENDING);
+        List<Deal> toSave = new ArrayList<>();
+        for (Deal d : pendings) {
+            User pb = d.getProposedBy();
+            if (pb != null && pb.getId() != null && !pb.getId().equals(keepBuyerUserId)) {
+                d.setStatus(STATUS_REJECTED);
+                toSave.add(d);
+            }
+        }
+        if (!toSave.isEmpty()) {
+            dealRepository.saveAll(toSave);
+        }
+    }
+
+    /** Trước khi một deal PENDING chuyển COMPLETED: hủy mọi deal PENDING khác cùng tin. */
+    private void rejectPendingDealsExcept(Long listingId, Long winningDealId) {
+        List<Deal> pendings = dealRepository.findByListing_IdAndDeletedAtIsNullAndStatus(listingId, STATUS_PENDING);
+        List<Deal> toSave = new ArrayList<>();
+        for (Deal d : pendings) {
+            if (!d.getId().equals(winningDealId)) {
+                d.setStatus(STATUS_REJECTED);
+                toSave.add(d);
+            }
+        }
+        if (!toSave.isEmpty()) {
+            dealRepository.saveAll(toSave);
+        }
+    }
+
+    /**
+     * Khóa tin, đảm bảo chưa có deal terminal, hủy deal PENDING của buyer khác — dùng khi seller chốt đơn hoặc accept offer.
+     */
+    private void prepareExclusiveBuyerDealOnListing(Listing listing, Long keepBuyerUserId) {
+        assertListingOpenForNegotiation(listing);
+        rejectOtherPendingDealsForBuyer(listing.getId(), keepBuyerUserId);
+    }
+
+    /**
+     * Cùng nghiệp vụ {@link #prepareExclusiveBuyerDealOnListing(Listing, Long)} nhưng tự khóa theo id (luồng Offer).
+     */
+    public void lockAndPrepareExclusiveBuyerDealOnListing(Long listingId, Long keepBuyerUserId) {
+        Listing listing = listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        prepareExclusiveBuyerDealOnListing(listing, keepBuyerUserId);
     }
 
     @Transactional
     public DealResponse createDeal(Long listingId, DealRequest request) {
         User buyer = userService.getCurrentUser();
-        Listing listing = listingRepository.findById(listingId)
+        Listing listing = listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        assertListingOpenForNegotiation(listing);
 
         // Business Rules
         if (listing.getSeller().getId().equals(buyer.getId())) {
@@ -132,7 +202,7 @@ public class DealService {
     @Transactional
     public DealResponse sealDealBySeller(Long listingId, SealDealRequest request) {
         User seller = userService.getCurrentUser();
-        Listing listing = listingRepository.findById(listingId)
+        Listing listing = listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
         if (listing.getSeller() == null || !listing.getSeller().getId().equals(seller.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN, "Chỉ người bán mới chốt đơn");
@@ -154,6 +224,8 @@ public class DealService {
         if (request.getPickupTime() != null && !request.getPickupTime().isAfter(Instant.now())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Thời gian nhận hàng phải sau thời điểm hiện tại");
         }
+
+        prepareExclusiveBuyerDealOnListing(listing, buyer.getId());
 
         Offer offerForDeal = resolveOfferForSeal(listingId, seller, buyer, request.getPrice(), request.getOfferId())
                 .orElseGet(() -> persistNewPendingOffer(listing, buyer, request.getPrice()));
@@ -193,6 +265,9 @@ public class DealService {
     @Transactional
     public DealResponse buyerAcceptPendingDeal(Long listingId) {
         User buyer = userService.getCurrentUser();
+        listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
         Deal deal = dealRepository
                 .findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         listingId, buyer.getId(), STATUS_PENDING)
@@ -201,7 +276,12 @@ public class DealService {
         if (!STATUS_PENDING.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
         }
+        if (dealRepository.existsOtherDealInStatuses(listingId, deal.getId(), LISTING_RESERVATION_STATUSES)) {
+            throw new SlifeException(ErrorCode.LISTING_DEAL_CONFLICT,
+                    "Tin này đã có giao dịch hoàn tất với người mua khác.");
+        }
         assertNoBlockBetweenDealParties(deal, buyer);
+        rejectPendingDealsExcept(listingId, deal.getId());
         deal.setStatus(STATUS_COMPLETED);
         deal.setConfirmedAt(LocalDateTime.now(ZONE_VIETNAM));
         Deal saved = dealRepository.save(deal);
@@ -317,6 +397,11 @@ public class DealService {
         if (!STATUS_CONFIRMED.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ giao dịch CONFIRMED mới gửi được nhắc nhở");
         }
+        if (deal.getPickupTime() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chưa có thời gian nhận hàng — không thể gửi email nhắc nhở");
+        }
+        // Gửi email 2 bên (cùng template với job tự động). Trước đây chỉ set reminder_sent nên UI test không thấy mail.
+        systemEmailService.sendPickupReminderEmails(deal);
         deal.setReminderSent(true);
         dealRepository.save(deal);
     }
@@ -570,24 +655,31 @@ public class DealService {
                 .isReviewed(reviewed)
                 .createdAt(deal.getCreatedAt())
                 .updatedAt(deal.getUpdatedAt())
+                .reviewDeadline(resolveReviewDeadline(deal, reviewed))
                 .build();
     }
 
     /**
      * Tự động hoàn thành các deal ở trạng thái COMPLETED (đã chốt trong chat)
-     * mà người mua không bấm gì sau 7 ngày.
+     * mà người mua không bấm gì sau khoảng thời gian cấu hình (DEAL_TIMEOUT_DAYS + DEAL_TIMEOUT_UNIT).
+     * Đọc từ DB config — không cần restart Docker khi thay đổi giá trị.
      */
     @Scheduled(cron = "0 0 1 * * ?") // Runs daily at 1:00 AM
     @Transactional
     public void autoFinalizeDeals() {
-        // Auto-finalize deals that were confirmed (accepted) by buyer but not finalized after 7 days
-        LocalDateTime sevenDaysAgo = LocalDateTime.now(ZONE_VIETNAM).minusDays(7);
-        // We use confirmedAt if available, otherwise createdAt
-        List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
+        int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 7));
+        String timeoutUnit = java.util.Objects.requireNonNullElse(
+                configService.getConfigValue("DEAL_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+
+        LocalDateTime now = LocalDateTime.now(ZONE_VIETNAM);
+        LocalDateTime cutoff = "MINUTES".equals(timeoutUnit)
+                ? now.minusMinutes(timeoutValue)
+                : now.minusDays(timeoutValue);
+
+        List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, cutoff);
 
         for (Deal deal : pendingDeals) {
             try {
-                // Tương đương hành động Buyer bấm "Hoàn thành"
                 Listing listing = deal.getListing();
                 if (listing != null) {
                     listing.setStatus("SOLD");
@@ -625,6 +717,23 @@ public class DealService {
 
         if (!STATUS_SUCCESS.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh giá giao dịch đã hoàn thành");
+        }
+
+        // Kiểm tra hạn đánh giá: đọc từ config (REVIEW_TIMEOUT_VALUE + REVIEW_TIMEOUT_UNIT)
+        LocalDateTime soldAt = deal.getUpdatedAt();
+        if (soldAt != null) {
+            int reviewValue = Math.max(1, configService.getIntConfigValue("REVIEW_TIMEOUT_VALUE", 7));
+            String reviewUnit = java.util.Objects.requireNonNullElse(
+                    configService.getConfigValue("REVIEW_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+            LocalDateTime deadline = "MINUTES".equals(reviewUnit)
+                    ? soldAt.plusMinutes(reviewValue)
+                    : soldAt.plusDays(reviewValue);
+            if (LocalDateTime.now(ZONE_VIETNAM).isAfter(deadline)) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT,
+                        "Thời hạn đánh giá đã kết thúc vào ngày "
+                        + deadline.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        + ". Bạn không thể đánh giá sau thời điểm này.");
+            }
         }
 
         // Kiểm tra đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu để tránh conflict với deal cũ)
@@ -681,6 +790,26 @@ public class DealService {
             user.setReputationScore(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
             userRepository.saveAndFlush(user);
         }
+    }
+
+    /**
+     * Tính thời hạn đánh giá dựa trên REVIEW_TIMEOUT_VALUE + REVIEW_TIMEOUT_UNIT từ config.
+     * Trả null nếu deal chưa SUCCESS, đã review, hoặc updatedAt bị null.
+     */
+    private LocalDateTime resolveReviewDeadline(Deal deal, boolean alreadyReviewed) {
+        if (!STATUS_SUCCESS.equals(deal.getStatus()) || alreadyReviewed) {
+            return null;
+        }
+        LocalDateTime soldAt = deal.getUpdatedAt();
+        if (soldAt == null) {
+            return null;
+        }
+        int reviewValue = Math.max(1, configService.getIntConfigValue("REVIEW_TIMEOUT_VALUE", 7));
+        String reviewUnit = java.util.Objects.requireNonNullElse(
+                configService.getConfigValue("REVIEW_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+        return "MINUTES".equals(reviewUnit)
+                ? soldAt.plusMinutes(reviewValue)
+                : soldAt.plusDays(reviewValue);
     }
 
     private void notifyDealStatusEmail(Deal deal, String buyerHeadline, String sellerHeadline, User actor) {

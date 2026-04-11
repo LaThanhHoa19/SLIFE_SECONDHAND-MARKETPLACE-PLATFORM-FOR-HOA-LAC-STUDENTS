@@ -57,10 +57,18 @@ const getIconForNotification = (n) => {
     }
 };
 
-export default function NotificationDropdown({ anchorEl, open, onClose }) {
+export default function NotificationDropdown({ anchorEl, open, onClose, mode = 'all' }) {
     const { notifications, unreadCount, markRead, markAllRead } =
         useContext(NotificationContext);
     const navigate = useNavigate();
+
+    const sourceFilteredNotifications = (Array.isArray(notifications) ? notifications : []).filter((n) => {
+        if (mode !== 'community') return true;
+        return String(n?.refType || '').toUpperCase() === 'COMMUNITY_POST';
+    });
+    const sourceUnreadCount = mode === 'community'
+        ? sourceFilteredNotifications.filter((n) => !n?.isRead).length
+        : unreadCount;
 
     const handleItemClick = async (n) => {
         if (!n.isRead) {
@@ -68,9 +76,16 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
         }
         onClose?.();
 
+        // Chat: có sessionId → mở đúng cuộc trò chuyện
         if (n?.sessionId) {
             const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
             navigate(`/chat?sessionId=${encodeURIComponent(n.sessionId)}${qp}`);
+            return;
+        }
+
+        // Tin nhắn/offer đề xuất giá fallback (chưa có sessionId) → chat với listingId
+        if (n?.refType === 'OFFER_CHAT' && n?.refId) {
+            navigate(`/chat?listingId=${encodeURIComponent(n.refId)}`);
             return;
         }
 
@@ -79,16 +94,28 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
             return;
         }
 
-        if (n?.refType === 'LISTING' && n?.refId) {
-            navigate(`/listings/${n.refId}`, { state: { fromNotification: true } });
+        // Deal hoàn thành / hủy → my-listings của seller (không lộ chat ID)
+        if (n?.refType === 'ORDER_HISTORY') {
+            navigate('/my-listings');
+            return;
+        }
+
+        // Review mới → profile của seller (người được đánh giá)
+        if (n?.refType === 'SELLER_PROFILE' && (n?.refCode || n?.refId)) {
+            navigate(`/profile/${n.refCode || n.refId}`);
+            return;
+        }
+
+        if (n?.refType === 'LISTING' && (n?.refCode || n?.refId)) {
+            navigate(`/listings/${n.refCode || n.refId}`, { state: { fromNotification: true } });
             return;
         }
         if (n?.refType === 'COMMUNITY_POST' && n?.refId) {
             navigate(`/community/posts/${n.refId}`, { state: { fromNotification: true } });
             return;
         }
-        if (n.refType === 'USER' && n.refId) {
-            navigate(`/profile/${n.refId}`);
+        if (n.refType === 'USER' && (n.refCode || n.refId)) {
+            navigate(`/profile/${n.refCode || n.refId}`);
         }
     };
 
@@ -97,7 +124,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
         navigate('/notifications');
     };
 
-    const topNotifications = notifications.slice(0, 5);
+    const topNotifications = sourceFilteredNotifications.slice(0, 5);
 
     return (
         <Popover
@@ -131,9 +158,9 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                 }}
             >
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#FFFFFF' }}>
-                    Thông báo
+                    {mode === 'community' ? 'Thông báo cộng đồng' : 'Thông báo'}
                 </Typography>
-                {unreadCount > 0 && (
+                {sourceUnreadCount > 0 && (
                     <Button
                         size="small"
                         startIcon={<DoneAllIcon sx={{ fontSize: 16 }} />}
@@ -154,7 +181,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                 )}
             </Box>
 
-            {notifications.length === 0 ? (
+            {sourceFilteredNotifications.length === 0 ? (
                 <Box
                     sx={{
                         px: 2,
