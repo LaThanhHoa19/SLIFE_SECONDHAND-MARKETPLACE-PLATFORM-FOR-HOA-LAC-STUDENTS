@@ -79,9 +79,28 @@ function normalizeCreatedPostToCard(created) {
 
 function FeedSkeleton() {
     return (
-        <Stack spacing={0}>
+        <Stack spacing={1.1} sx={{ p: 1 }}>
             {[1, 2, 3].map((k) => (
-                <Skeleton key={k} variant="rounded" height={136} sx={{ borderRadius: 0, bgcolor: 'rgba(255,255,255,0.05)', mb: 0.6 }} />
+                <Box
+                    key={k}
+                    sx={{
+                        borderRadius: 2.2,
+                        p: 1.2,
+                        border: '1px solid rgba(255,255,255,0.07)',
+                        bgcolor: 'rgba(255,255,255,0.018)',
+                        backdropFilter: 'blur(8px)',
+                    }}
+                >
+                    <Stack direction="row" spacing={1.2} alignItems="flex-start">
+                        <Skeleton variant="circular" width={36} height={36} sx={{ bgcolor: 'rgba(255,255,255,0.09)' }} />
+                        <Box sx={{ flex: 1 }}>
+                            <Skeleton variant="text" width="34%" height={22} sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
+                            <Skeleton variant="text" width="95%" height={18} sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+                            <Skeleton variant="text" width="75%" height={18} sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+                            <Skeleton variant="rounded" height={150} sx={{ mt: 1, borderRadius: 1.6, bgcolor: 'rgba(255,255,255,0.07)' }} />
+                        </Box>
+                    </Stack>
+                </Box>
             ))}
         </Stack>
     );
@@ -478,9 +497,10 @@ export default function CommunityFeedPage() {
                 borderRadius: { xs: 0, md: 5 },
                 p: { xs: 1, sm: 1.5, md: 2 },
                 background: isDark
-                    ? 'radial-gradient(circle at 20% 0%, rgba(92,61,168,0.2) 0%, rgba(13,16,44,0.95) 46%, #080d2a 100%)'
+                    ? 'radial-gradient(1200px 420px at 18% -8%, rgba(128,88,255,0.24) 0%, rgba(20,24,56,0.96) 46%, #070b22 100%)'
                     : alpha(theme.palette.primary.main, 0.04),
-                border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent',
+                border: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
+                boxShadow: isDark ? '0 20px 60px rgba(6,10,28,0.45), inset 0 1px 0 rgba(255,255,255,0.04)' : 'none',
             }}
         >
             <Box sx={{ display: 'flex', gap: { xs: 1.5, lg: 2.5 }, alignItems: 'flex-start', maxWidth: 1220, mx: 'auto', width: '100%', justifyContent: 'center' }}>
@@ -491,28 +511,30 @@ export default function CommunityFeedPage() {
                             borderTopRightRadius: '24px',
                             borderBottomLeftRadius: 0,
                             borderBottomRightRadius: 0,
-                            bgcolor: 'rgba(9,12,27,0.88)',
+                            bgcolor: 'rgba(10,13,30,0.88)',
+                            backdropFilter: 'blur(10px)',
                             border: '1px solid rgba(255,255,255,0.12)',
                             borderBottom: 'none',
                             overflow: 'hidden',
                             mb: 0,
+                            boxShadow: '0 14px 36px rgba(6,10,28,0.35)',
                         }}
                     >
                         {isMineRoute && (
                             <Box sx={{ px: 2, py: 1.2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                <Typography sx={{ fontSize: 16, fontWeight: 800, color: '#d8cdff' }}>Bài đăng của tôi</Typography>
+                                <Typography sx={{ fontSize: { xs: 15, sm: 16 }, fontWeight: 800, color: '#e5dcff', letterSpacing: 0.2 }}>Bài đăng của tôi</Typography>
                             </Box>
                         )}
 
                         {isLikedRoute && (
                             <Box sx={{ px: 2, py: 1.2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                <Typography sx={{ fontSize: 16, fontWeight: 800, color: '#d8cdff' }}>Bài viết đã thích</Typography>
+                                <Typography sx={{ fontSize: { xs: 15, sm: 16 }, fontWeight: 800, color: '#e5dcff', letterSpacing: 0.2 }}>Bài viết đã thích</Typography>
                             </Box>
                         )}
 
                         {isSavedRoute && (
                             <Box sx={{ px: 2, py: 1.2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                <Typography sx={{ fontSize: 16, fontWeight: 800, color: '#d8cdff' }}>Bài viết đã lưu</Typography>
+                                <Typography sx={{ fontSize: { xs: 15, sm: 16 }, fontWeight: 800, color: '#e5dcff', letterSpacing: 0.2 }}>Bài viết đã lưu</Typography>
                             </Box>
                         )}
 
@@ -523,11 +545,24 @@ export default function CommunityFeedPage() {
                                     onChange={setSortTab}
                                     centered
                                     sx={{
-                                        minHeight: 40,
+                                        minHeight: 44,
                                         borderBottom: '1px solid rgba(255,255,255,0.08)',
-                                        '& .MuiTab-root': { minHeight: 40, py: 0.2, fontWeight: 700, color: 'rgba(255,255,255,0.55)' },
-                                        '& .Mui-selected': { color: '#d8cdff !important' },
-                                        '& .MuiTabs-indicator': { bgcolor: '#9D6EED', height: 2.5 },
+                                        '& .MuiTab-root': {
+                                            minHeight: 44,
+                                            py: 0.35,
+                                            fontWeight: 700,
+                                            letterSpacing: 0.2,
+                                            color: 'rgba(255,255,255,0.58)',
+                                            transition: 'all .2s ease',
+                                        },
+                                        '& .MuiTab-root:hover': { color: 'rgba(255,255,255,0.9)' },
+                                        '& .Mui-selected': { color: '#efe9ff !important' },
+                                        '& .MuiTabs-indicator': {
+                                            bgcolor: '#A98CFF',
+                                            height: 3,
+                                            borderRadius: 999,
+                                            boxShadow: '0 0 16px rgba(169,140,255,0.65)',
+                                        },
                                     }}
                                 >
                                     <Tab label="Dành cho bạn" value="latest" />
@@ -588,10 +623,12 @@ export default function CommunityFeedPage() {
                             borderTopRightRadius: 0,
                             borderBottomLeftRadius: '24px',
                             borderBottomRightRadius: '24px',
-                            bgcolor: 'rgba(9,12,27,0.88)',
+                            bgcolor: 'rgba(10,13,30,0.88)',
+                            backdropFilter: 'blur(10px)',
                             border: '1px solid rgba(255,255,255,0.12)',
                             borderTop: 'none',
                             overflow: 'hidden',
+                            boxShadow: '0 16px 38px rgba(6,10,28,0.36)',
                         }}
                     >
                         {loading ? (
@@ -600,14 +637,20 @@ export default function CommunityFeedPage() {
                             <Card elevation={0} sx={{ borderRadius: 0, bgcolor: 'transparent', border: 'none' }}>
                                 <CardContent sx={{ py: 5, textAlign: 'center' }}>
                                     <Typography variant="subtitle1" fontWeight={800} gutterBottom sx={{ color: '#d5ccff' }}>
-                                        {queryFilter ? 'Không tìm thấy bài viết phù hợp' : 'Chưa có bài đăng cộng đồng'}
+                                        {queryFilter
+                                            ? 'Không tìm thấy bài viết phù hợp'
+                                            : isSavedRoute
+                                                ? 'Bài viết bạn lưu sẽ hiển thị ở đây.'
+                                                : 'Chưa có bài đăng cộng đồng'}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
                                         {queryFilter
                                             ? 'Thử từ khóa khác hoặc xóa tìm kiếm để xem toàn bộ bài viết.'
-                                            : 'Hãy là người đầu tiên chia sẻ với cộng đồng sinh viên Hòa Lạc.'}
+                                            : isSavedRoute
+                                                ? ''
+                                                : 'Hãy là người đầu tiên chia sẻ với cộng đồng sinh viên Hòa Lạc.'}
                                     </Typography>
-                                    {!queryFilter && (
+                                    {!queryFilter && !isSavedRoute && (
                                         <Button variant="text" onClick={goCreatePost} sx={{ fontWeight: 700 }}>
                                             Tạo bài đăng ngay
                                         </Button>

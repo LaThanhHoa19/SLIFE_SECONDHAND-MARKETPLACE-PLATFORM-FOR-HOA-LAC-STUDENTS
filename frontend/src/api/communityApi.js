@@ -32,6 +32,13 @@ export const getCommunityHashtagTrending = (params = {}, config = {}) =>
 export const getCommunityPost = (id) => axiosClient.get(`/api/community/posts/${id}`);
 export const updateCommunityPost = (id, payload) => axiosClient.put(`/api/community/posts/${id}`, payload);
 export const deleteCommunityPost = (id) => axiosClient.delete(`/api/community/posts/${id}`);
+export const uploadCommunityPostImages = (id, imageFiles = []) => {
+    const formData = new FormData();
+    (imageFiles || []).forEach((f) => formData.append('images', f));
+    return axiosClient.post(`/api/community/posts/${id}/images`, formData, { timeout: 120000 });
+};
+export const deleteCommunityPostImage = (id, imageId) =>
+    axiosClient.delete(`/api/community/posts/${id}/images/${imageId}`);
 
 export const toggleCommunityPostLike = (id) => axiosClient.post(`/api/community/posts/${id}/like`);
 export const toggleCommunityPostSave = (id) => axiosClient.post(`/api/community/posts/${id}/save`);
