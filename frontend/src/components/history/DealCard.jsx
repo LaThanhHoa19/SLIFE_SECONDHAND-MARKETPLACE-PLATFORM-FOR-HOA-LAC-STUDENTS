@@ -45,17 +45,17 @@ export default function DealCard({ deal, onComplete, onCancel, onRate }) {
     // 1. SUCCESS -> Hiện "Đánh giá ngay" (nếu chưa đánh giá)
     // 2. COMPLETED -> Hiện "Hủy" và "Đã nhận"
     // 3. CANCELLED -> Không hiện gì
-    // Logic hiển thị nút:
     const showReview = status === 'SUCCESS';
     const showActions = status === 'COMPLETED';
 
-    // Logic 7 ngày đánh giá kể từ lúc "Chốt trong chat" (confirmedAt hoặc createdAt)
+    // Đọc reviewDeadline từ backend (backend tính: updatedAt khi deal thành SUCCESS + 7 ngày)
+    // Backend trả null nếu đã review hoặc deal chưa SUCCESS
     let reviewDaysLeft = null;
-    const startPoint = confirmedAt || createdAt;
-    if (showReview && startPoint) {
-        const deadline = new Date(startPoint);
-        deadline.setDate(deadline.getDate() + 7);
+    let reviewDeadlineLabel = null;
+    if (showReview && deal.reviewDeadline) {
+        const deadline = new Date(deal.reviewDeadline);
         reviewDaysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+        reviewDeadlineLabel = deadline.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
 
     return (
@@ -191,9 +191,24 @@ export default function DealCard({ deal, onComplete, onCancel, onRate }) {
                             >
                                 Đánh giá ngay
                             </Button>
-                            {reviewDaysLeft !== null && (
-                                <Typography textAlign="center" fontSize={9.5} color={(reviewDaysLeft <= 2 && reviewDaysLeft > 0) ? '#EF4444' : 'rgba(255,255,255,0.45)'} fontWeight={600} letterSpacing={0.2}>
-                                    {reviewDaysLeft > 0 ? `Còn ${reviewDaysLeft} ngày để đánh giá` : 'Đã quá thời hạn đánh giá'}
+                            {reviewDeadlineLabel && (
+                                <Typography
+                                    textAlign="center"
+                                    fontSize={9.5}
+                                    fontWeight={600}
+                                    letterSpacing={0.2}
+                                    color={
+                                        reviewDaysLeft <= 0
+                                            ? '#EF4444'
+                                            : reviewDaysLeft <= 2
+                                                ? '#F59E0B'
+                                                : 'rgba(255,255,255,0.45)'
+                                    }
+                                >
+                                    {reviewDaysLeft > 0
+                                        ? `Có thể đánh giá trước ngày ${reviewDeadlineLabel}`
+                                        : `Đã hết hạn đánh giá (${reviewDeadlineLabel})`
+                                    }
                                 </Typography>
                             )}
                         </>

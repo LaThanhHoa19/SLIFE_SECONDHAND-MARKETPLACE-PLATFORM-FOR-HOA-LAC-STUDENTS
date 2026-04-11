@@ -153,7 +153,7 @@ export default function ProfilePage() {
     updateAuthUser,
   });
 
-  const isMe = !id || id === 'me' || (currentUser && String(currentUser.id) === String(id));
+  const isMe = !id || id === 'me' || (currentUser && (String(currentUser.id) === String(id) || String(currentUser.code) === String(id)));
 
   const loadUser = useCallback(async () => {
     // Nếu là trang "me" mà không có user -> không làm gì (hoặc AppRouter sẽ đá ra login)
@@ -752,8 +752,8 @@ export default function ProfilePage() {
                     )}
                   </Box>
               )}
-              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 2 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter((l) => String(l?.status || l?.itemStatus || '').toUpperCase() === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
+              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.code || l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {tab === 2 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter((l) => String(l?.status || l?.itemStatus || '').toUpperCase() === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.code || l.id || l.listingId}`)} />}
               {tab === 3 && (
                   <ReviewSection userId={profileUser?.id} />
               )}

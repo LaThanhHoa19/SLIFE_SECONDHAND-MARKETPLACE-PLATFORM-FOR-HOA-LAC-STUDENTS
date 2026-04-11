@@ -12,6 +12,7 @@ public class NotificationResponse {
     private String type;
     private String refType;
     private Long refId;
+    private String refCode; // Hashed refId for secure URLs
     private String content;
     private Boolean isRead;
     private Instant createdAt;
@@ -26,6 +27,15 @@ public class NotificationResponse {
         dto.setType(n.getType());
         dto.setRefType(n.getRefType());
         dto.setRefId(n.getRefId());
+        
+        // Tự động gán code bảo mật cho các refType cần hash URL
+        if (n.getRefId() != null) {
+            String rt = n.getRefType();
+            if ("LISTING".equals(rt) || "SELLER_PROFILE".equals(rt) || "OFFER_CHAT".equals(rt)) {
+                dto.setRefCode(com.slife.marketplace.util.IdHasher.encode(n.getRefId()));
+            }
+        }
+        
         dto.setContent(n.getContent());
         dto.setIsRead(n.getIsRead());
         dto.setCreatedAt(n.getCreatedAt());

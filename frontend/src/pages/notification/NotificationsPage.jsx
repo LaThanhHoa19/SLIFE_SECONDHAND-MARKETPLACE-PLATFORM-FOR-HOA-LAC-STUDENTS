@@ -142,10 +142,16 @@ export default function NotificationsPage() {
         if (!n.isRead) await markNotificationRead(n.id);
         setItems((prev) => (Array.isArray(prev) ? prev : []).map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
 
-        // Có session chat (tin nhắn, đề xuất giá, chấp nhận/từ chối trả giá, …)
+        // Chat: có sessionId → mở đúng cuộc trò chuyện
         if (n?.sessionId) {
             const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
             navigate(`/chat?sessionId=${encodeURIComponent(n.sessionId)}${qp}`);
+            return;
+        }
+
+        // Tin nhắn/offer đề xuất giá fallback (chưa có sessionId) → chat với listingId
+        if (n?.refType === 'OFFER_CHAT' && n?.refId) {
+            navigate(`/chat?listingId=${encodeURIComponent(n.refId)}`);
             return;
         }
 
@@ -155,8 +161,20 @@ export default function NotificationsPage() {
             return;
         }
 
-        if (n?.refType === 'LISTING' && n?.refId) {
-            navigate(`/listings/${n.refId}`, { state: { fromNotification: true } });
+        // Deal hoàn thành / hủy → my-listings của seller (không lộ chat ID)
+        if (n?.refType === 'ORDER_HISTORY') {
+            navigate('/my-listings');
+            return;
+        }
+
+        // Review mới → profile của seller (người được đánh giá)
+        if (n?.refType === 'SELLER_PROFILE' && (n?.refCode || n?.refId)) {
+            navigate(`/profile/${n.refCode || n.refId}`);
+            return;
+        }
+
+        if (n?.refType === 'LISTING' && (n?.refCode || n?.refId)) {
+            navigate(`/listings/${n.refCode || n.refId}`, { state: { fromNotification: true } });
             return;
         }
         if (n?.refType === 'COMMUNITY_POST' && n?.refId) {
