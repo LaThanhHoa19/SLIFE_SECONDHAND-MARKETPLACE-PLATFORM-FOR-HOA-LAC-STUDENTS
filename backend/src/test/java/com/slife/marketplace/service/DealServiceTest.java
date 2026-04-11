@@ -60,6 +60,7 @@ class DealServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private BlockService blockService;
     @Mock private SystemEmailService systemEmailService;
+    @Mock private ConfigService configService;
 
     private DealService dealService;
 
@@ -77,8 +78,11 @@ class DealServiceTest {
                 userService,
                 notificationService,
                 blockService,
-                systemEmailService
+                systemEmailService,
+                configService
         );
+        lenient().when(configService.getIntConfigValue(anyString(), anyInt())).thenAnswer(inv -> inv.getArgument(1));
+        lenient().when(configService.getConfigValue(anyString())).thenReturn(null);
     }
 
     private static User user(long id) {
@@ -150,7 +154,7 @@ class DealServiceTest {
         @DisplayName("Listing không tồn tại -> LISTING_NOT_FOUND")
         void listingMissing() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
-            when(listingRepository.findById(10L)).thenReturn(Optional.empty());
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.empty());
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("50"));
             assertThrows(SlifeException.class, () -> dealService.createDeal(10L, req));
@@ -162,7 +166,7 @@ class DealServiceTest {
             User u = user(2L);
             Listing l = listing(10L, u, new BigDecimal("100"), false);
             when(userService.getCurrentUser()).thenReturn(u);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("50"));
             SlifeException ex = assertThrows(SlifeException.class, () -> dealService.createDeal(10L, req));
@@ -176,7 +180,7 @@ class DealServiceTest {
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
             when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("50"));
@@ -191,7 +195,7 @@ class DealServiceTest {
             User seller = user(2L);
             Listing l = listing(10L, seller, BigDecimal.ZERO, true);
             when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("0"));
@@ -207,7 +211,7 @@ class DealServiceTest {
             Listing l = listing(10L, seller, new BigDecimal("500"), false);
             Conversation conv = conversation(50L, l, buyer, seller);
             when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
             when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L)).thenReturn(Optional.of(conv));
             when(offerRepository.findFirstByListing_IdAndBuyer_IdAndAmountAndStatusInOrderByCreatedAtDesc(
@@ -252,7 +256,7 @@ class DealServiceTest {
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
             when(userService.getCurrentUser()).thenReturn(stranger);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             SealDealRequest req = new SealDealRequest();
             req.setBuyerId(1L);
             req.setPrice(new BigDecimal("50"));
@@ -267,7 +271,7 @@ class DealServiceTest {
             User buyer = user(1L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
             when(userService.getCurrentUser()).thenReturn(seller);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(userService.getUserById(1L)).thenReturn(buyer);
             when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
             when(conversationRepository.findActiveByListingBuyerSeller(10L, 1L, 2L)).thenReturn(Optional.empty());
@@ -285,7 +289,7 @@ class DealServiceTest {
             User buyer = user(1L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
             when(userService.getCurrentUser()).thenReturn(seller);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(userService.getUserById(1L)).thenReturn(buyer);
             when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
             when(conversationRepository.findActiveByListingBuyerSeller(10L, 1L, 2L)).thenReturn(Optional.of(conversation(1L, l, buyer, seller)));
@@ -305,7 +309,7 @@ class DealServiceTest {
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
             Conversation conv = conversation(88L, l, buyer, seller);
             when(userService.getCurrentUser()).thenReturn(seller);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(userService.getUserById(1L)).thenReturn(buyer);
             when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
             when(conversationRepository.findActiveByListingBuyerSeller(10L, 1L, 2L)).thenReturn(Optional.of(conv));
@@ -347,7 +351,7 @@ class DealServiceTest {
             Conversation conv = conversation(88L, l, buyer, seller);
             Deal existing = dealEntity(55L, buyer, l, conv, STATUS_PENDING);
             when(userService.getCurrentUser()).thenReturn(seller);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(userService.getUserById(1L)).thenReturn(buyer);
             when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
             when(conversationRepository.findActiveByListingBuyerSeller(10L, 1L, 2L)).thenReturn(Optional.of(conv));
@@ -377,7 +381,11 @@ class DealServiceTest {
         @Test
         @DisplayName("buyerAccept: không có deal PENDING -> DEAL_NOT_FOUND")
         void acceptMissing() {
-            when(userService.getCurrentUser()).thenReturn(user(1L));
+            User buyer = user(1L);
+            User seller = user(2L);
+            Listing l = listing(10L, seller, new BigDecimal("100"), false);
+            when(userService.getCurrentUser()).thenReturn(buyer);
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                     10L, 1L, STATUS_PENDING)).thenReturn(Optional.empty());
             assertEquals(ErrorCode.DEAL_NOT_FOUND,
@@ -393,6 +401,7 @@ class DealServiceTest {
             Conversation conv = conversation(1L, l, buyer, seller);
             Deal d = dealEntity(1L, buyer, l, conv, STATUS_PENDING);
             when(userService.getCurrentUser()).thenReturn(buyer);
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                     10L, 1L, STATUS_PENDING)).thenReturn(Optional.of(d));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
@@ -409,6 +418,7 @@ class DealServiceTest {
             Conversation conv = conversation(1L, l, buyer, seller);
             Deal d = dealEntity(1L, buyer, l, conv, STATUS_PENDING);
             when(userService.getCurrentUser()).thenReturn(buyer);
+            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                     10L, 1L, STATUS_PENDING)).thenReturn(Optional.of(d));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
@@ -548,6 +558,7 @@ class DealServiceTest {
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
             Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_CONFIRMED);
+            d.setPickupTime(LocalDateTime.now().plusDays(1));
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);

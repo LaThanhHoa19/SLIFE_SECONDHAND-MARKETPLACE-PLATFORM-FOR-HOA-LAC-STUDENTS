@@ -33,6 +33,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class OfferServiceTest {
@@ -41,6 +42,7 @@ class OfferServiceTest {
     @Mock private ListingRepository listingRepository;
     @Mock private ConversationRepository conversationRepository;
     @Mock private DealRepository dealRepository;
+    @Mock private DealService dealService;
     @Mock private UserService userService;
     @Mock private NotificationService notificationService;
     @Mock private SystemEmailService systemEmailService;
@@ -55,11 +57,13 @@ class OfferServiceTest {
                 listingRepository,
                 conversationRepository,
                 dealRepository,
+                dealService,
                 userService,
                 notificationService,
                 systemEmailService,
                 blockService
         );
+        lenient().doNothing().when(dealService).lockAndPrepareExclusiveBuyerDealOnListing(anyLong(), anyLong());
     }
 
     private static User user(long id) {

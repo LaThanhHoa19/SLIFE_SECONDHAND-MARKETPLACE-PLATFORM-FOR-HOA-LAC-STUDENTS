@@ -10,9 +10,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,7 +36,8 @@ class DealPickupReminderServiceTest {
     @Test
     @DisplayName("processDueReminders: không có deal -> no-op")
     void noDeals_noop() {
-        when(dealRepository.findDealsForPickupReminder(any(), any())).thenReturn(List.of());
+        when(dealRepository.findDealsForPickupReminder(any(LocalDateTime.class), any(LocalDateTime.class),
+                any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
         service.processDueReminders();
         verifyNoInteractions(systemEmailService);
         verify(dealRepository, never()).save(any());
@@ -46,7 +49,8 @@ class DealPickupReminderServiceTest {
         Deal d = new Deal();
         d.setId(1L);
         d.setReminderSent(false);
-        when(dealRepository.findDealsForPickupReminder(any(), any())).thenReturn(List.of(d));
+        when(dealRepository.findDealsForPickupReminder(any(LocalDateTime.class), any(LocalDateTime.class),
+                any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of(d));
         when(dealRepository.save(any(Deal.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.processDueReminders();
@@ -62,7 +66,8 @@ class DealPickupReminderServiceTest {
         d1.setId(1L);
         Deal d2 = new Deal();
         d2.setId(2L);
-        when(dealRepository.findDealsForPickupReminder(any(), any())).thenReturn(List.of(d1, d2));
+        when(dealRepository.findDealsForPickupReminder(any(LocalDateTime.class), any(LocalDateTime.class),
+                any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of(d1, d2));
         doThrow(new RuntimeException("mail")).when(systemEmailService).sendPickupReminderEmails(d1);
 
         assertDoesNotThrow(() -> service.processDueReminders());

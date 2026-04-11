@@ -95,7 +95,7 @@ class NotificationServiceTest {
             msg.setListingTitle("L");
 
             when(notificationRepository.save(any(Notification.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(3L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(3L);
 
             notificationService.notifyNewMessage(recipient, msg, "sess");
 
@@ -134,7 +134,7 @@ class NotificationServiceTest {
             User buyer = user(1L, "b@ex.com");
             when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
                     .thenReturn(Optional.of(conversation(99L, "sess")));
-            when(notificationRepository.countByUser_IdAndIsReadFalse(2L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(2L, "ALL")).thenReturn(1L);
 
             notificationService.notifyOfferProposal(seller, buyer, 10L, "Title", new BigDecimal("900"));
 
@@ -145,19 +145,19 @@ class NotificationServiceTest {
         }
 
         @Test
-        @DisplayName("Đề xuất giá: nếu không resolve được hội thoại thì refType=LISTING và refId=listingId")
-        void notifyOfferProposal_noConv_shouldUseListingRef() {
+        @DisplayName("Đề xuất giá: nếu không resolve được hội thoại thì refType=OFFER_CHAT và refId=listingId")
+        void notifyOfferProposal_noConv_shouldUseOfferChatRef() {
             User seller = user(2L, "s@ex.com");
             User buyer = user(1L, "b@ex.com");
             when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
                     .thenReturn(Optional.empty());
-            when(notificationRepository.countByUser_IdAndIsReadFalse(2L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(2L, "ALL")).thenReturn(1L);
 
             notificationService.notifyOfferProposal(seller, buyer, 10L, "Title", new BigDecimal("900"));
 
             ArgumentCaptor<Notification> cap = ArgumentCaptor.forClass(Notification.class);
             verify(notificationRepository).save(cap.capture());
-            assertEquals("LISTING", cap.getValue().getRefType());
+            assertEquals("OFFER_CHAT", cap.getValue().getRefType());
             assertEquals(10L, cap.getValue().getRefId());
         }
 
@@ -166,8 +166,8 @@ class NotificationServiceTest {
         void notifyDealConfirmed_shouldSaveTwoAndPushCount() {
             User buyer = user(1L, "b@ex.com");
             User seller = user(2L, "s@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(5L);
-            when(notificationRepository.countByUser_IdAndIsReadFalse(2L)).thenReturn(6L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(5L);
+            when(notificationRepository.countUnreadByScope(2L, "ALL")).thenReturn(6L);
 
             notificationService.notifyDealConfirmed(buyer, seller, 10L, "Title", 99L);
 
@@ -183,7 +183,7 @@ class NotificationServiceTest {
             User seller = user(2L, "s@ex.com");
             when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
                     .thenReturn(Optional.of(conversation(77L, "sess")));
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(1L);
 
             notificationService.notifyOfferRejected(buyer, seller, 10L, "Title", new BigDecimal("900"));
 
@@ -198,9 +198,7 @@ class NotificationServiceTest {
         void notifyDealFinalized_variants_shouldSave() {
             User seller = user(2L, "s@ex.com");
             User buyer = user(1L, "b@ex.com");
-            when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
-                    .thenReturn(Optional.empty());
-            when(notificationRepository.countByUser_IdAndIsReadFalse(2L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(2L, "ALL")).thenReturn(1L);
 
             notificationService.notifyDealFinalized(seller, buyer, 10L, "Title", true, true);
             notificationService.notifyDealFinalized(seller, buyer, 10L, "Title", false, false);
@@ -222,7 +220,7 @@ class NotificationServiceTest {
         void notifyNewFollower_shouldSaveAndPush() {
             User followed = user(1L, "f@ex.com");
             User follower = user(2L, "x@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(2L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(2L);
             notificationService.notifyNewFollower(followed, follower);
             verify(notificationRepository).save(any(Notification.class));
             verify(messagingTemplate).convertAndSendToUser(eq("f@ex.com"), eq("/queue/notifications"), eq(2L));
@@ -242,7 +240,7 @@ class NotificationServiceTest {
         @DisplayName("Thông báo follower khi có tin mới: bỏ qua followerId = null / chính seller")
         void notifyFollowersAboutNewListing_shouldSkipNullAndSelf() {
             User seller = user(5L, "s@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(anyLong())).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(anyLong(), eq("ALL"))).thenReturn(1L);
             notificationService.notifyFollowersAboutNewListing(seller, 10L, "T", Set.of(5L, 6L));
             verify(notificationRepository, times(1)).save(any(Notification.class)); // only followerId=6
         }
@@ -252,29 +250,28 @@ class NotificationServiceTest {
         void notifyNewReview_shouldSaveAndPush() {
             User seller = user(2L, "s@ex.com");
             User buyer = user(1L, "b@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(2L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(2L, "ALL")).thenReturn(1L);
             notificationService.notifyNewReview(seller, buyer, 10L, "Title", 5, 99L);
             verify(notificationRepository).save(any(Notification.class));
             verify(messagingTemplate).convertAndSendToUser(eq("s@ex.com"), eq("/queue/notifications"), eq(1L));
         }
 
         @Test
-        @DisplayName("Tin bị báo cáo: lưu notification + đẩy số chưa đọc")
-        void notifyListingReported_shouldSaveAndPush() {
+        @DisplayName("Tin bị báo cáo: no-op (chỉ log, không lưu / không đẩy WS)")
+        void notifyListingReported_shouldNoOp() {
             User owner = user(1L, "o@ex.com");
             User reporter = user(2L, "r@ex.com");
             reporter.setFullName("Reporter");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(2L);
             notificationService.notifyListingReported(owner, reporter, 10L, "Title");
-            verify(notificationRepository).save(any(Notification.class));
-            verify(messagingTemplate).convertAndSendToUser(eq("o@ex.com"), eq("/queue/notifications"), eq(2L));
+            verifyNoInteractions(notificationRepository);
+            verifyNoInteractions(messagingTemplate);
         }
 
         @Test
         @DisplayName("Hành động admin (ẩn tin / khóa user): lưu notification + đẩy số chưa đọc")
         void notifyAdminActions_shouldSaveAndPush() {
             User owner = user(1L, "o@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(3L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(3L);
             notificationService.notifyAdminHiddenListing(owner, 10L, "Title", 5L, "R1");
             notificationService.notifyAdminBannedUser(owner, 5L, "R2");
             verify(notificationRepository, times(2)).save(any(Notification.class));
@@ -285,7 +282,7 @@ class NotificationServiceTest {
         @DisplayName("Cảnh báo report user được duyệt nhưng chưa bị ban: lưu notification + đẩy số chưa đọc")
         void notifyReportApprovedUserWarning_shouldSaveAndPush() {
             User target = user(1L, "o@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(4L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(4L);
 
             notificationService.notifyReportApprovedUserWarning(target, 5L, "SPAM", 1, 3);
 
@@ -302,7 +299,7 @@ class NotificationServiceTest {
         void listingInteractionNotifies_shouldSaveAndPush() {
             User owner = user(1L, "o@ex.com");
             User actor = user(2L, "a@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(1L);
 
             notificationService.notifyListingCommented(owner, actor, 10L);
             notificationService.notifyListingLiked(owner, actor, 10L);
@@ -318,7 +315,7 @@ class NotificationServiceTest {
         void communityInteractionNotifies_shouldSaveAndPush() {
             User author = user(1L, "o@ex.com");
             User actor = user(2L, "a@ex.com");
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(1L);
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(1L);
 
             notificationService.notifyCommunityPostLiked(author, actor, 10L);
             notificationService.notifyCommunityPostCommented(author, actor, 10L);
@@ -356,28 +353,28 @@ class NotificationServiceTest {
         }
 
         @Test
-        @DisplayName("getUnreadCount: trả về số notification chưa đọc")
+        @DisplayName("getUnreadCount: trả về số notification chưa đọc (theo scope)")
         void getUnreadCount_shouldDelegate() {
-            when(notificationRepository.countByUser_IdAndIsReadFalse(1L)).thenReturn(7L);
-            assertEquals(7L, notificationService.getUnreadCount(1L));
+            when(notificationRepository.countUnreadByScope(1L, "ALL")).thenReturn(7L);
+            assertEquals(7L, notificationService.getUnreadCount(1L, NotificationScope.ALL));
         }
 
         @Test
         @DisplayName("markRead: nếu thiếu tham số thì bỏ qua; nếu đủ thì gọi repository")
         void markRead_shouldGuardNulls() {
-            notificationService.markRead(null, 1L);
-            notificationService.markRead(1L, null);
+            notificationService.markRead(null, 1L, NotificationScope.ALL);
+            notificationService.markRead(1L, null, NotificationScope.ALL);
             verifyNoInteractions(notificationRepository);
 
-            notificationService.markRead(1L, 2L);
-            verify(notificationRepository).markReadForUser(2L, 1L);
+            notificationService.markRead(1L, 2L, NotificationScope.ALL);
+            verify(notificationRepository).markReadForUser(2L, 1L, "ALL");
         }
 
         @Test
         @DisplayName("markAllRead: đánh dấu toàn bộ đã đọc")
         void markAllRead_shouldCallRepo() {
-            notificationService.markAllRead(1L);
-            verify(notificationRepository).markAllReadForUser(1L);
+            notificationService.markAllRead(1L, NotificationScope.ALL);
+            verify(notificationRepository).markAllReadForUser(1L, "ALL");
         }
 
         @Test
@@ -386,10 +383,10 @@ class NotificationServiceTest {
             User u = user(1L, "a@ex.com");
             Notification n1 = n(1L, u, "SYSTEM", "LISTING", 10L, "c1", false, Instant.now());
             Notification n2 = n(2L, u, "SYSTEM", "LISTING", 10L, "c2", false, Instant.now().minusSeconds(1));
-            when(notificationRepository.findPageByUser(eq(1L), any(), any(), any(Pageable.class)))
+            when(notificationRepository.findPageByUser(eq(1L), eq("ALL"), any(), any(), any(Pageable.class)))
                     .thenReturn(List.of(n1, n2));
 
-            var res = notificationService.getNotificationResponsesPage(1L, 2, null);
+            var res = notificationService.getNotificationResponsesPage(1L, 2, null, NotificationScope.ALL);
             assertNotNull(res);
             assertTrue(res.isHasMore());
             assertNotNull(res.getNextCursor());
@@ -399,11 +396,11 @@ class NotificationServiceTest {
         @Test
         @DisplayName("searchNotificationResponsesPage: trim/truncate query và phân trang an toàn")
         void searchNotificationResponsesPage_shouldTrimAndClamp() {
-            when(notificationRepository.searchPageByUser(eq(1L), anyString(), any(), any(), any(Pageable.class)))
+            when(notificationRepository.searchPageByUser(eq(1L), eq("ALL"), anyString(), any(), any(), any(Pageable.class)))
                     .thenReturn(List.of());
-            var res = notificationService.searchNotificationResponsesPage(1L, "  abc  ", 999, null);
+            var res = notificationService.searchNotificationResponsesPage(1L, "  abc  ", 999, null, NotificationScope.ALL);
             assertNotNull(res);
-            verify(notificationRepository).searchPageByUser(eq(1L), eq("abc"), any(), any(), any(Pageable.class));
+            verify(notificationRepository).searchPageByUser(eq(1L), eq("ALL"), eq("abc"), any(), any(), any(Pageable.class));
         }
 
         @Test

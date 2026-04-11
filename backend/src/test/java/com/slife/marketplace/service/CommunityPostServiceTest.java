@@ -16,6 +16,7 @@ import com.slife.marketplace.repository.CommunityPostImageRepository;
 import com.slife.marketplace.repository.CommunityPostLikeRepository;
 import com.slife.marketplace.repository.CommunityPostRepository;
 import com.slife.marketplace.repository.HashtagRepository;
+import com.slife.marketplace.repository.SavedCommunityPostRepository;
 import com.slife.marketplace.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,11 +46,12 @@ class CommunityPostServiceTest {
     @Mock private CommunityPostLikeRepository likeRepository;
     @Mock private CommunityPostCommentRepository commentRepository;
     @Mock private HashtagRepository hashtagRepository;
+    @Mock private SavedCommunityPostRepository savedCommunityPostRepository;
     @Mock private CommunityPostImageService imageService;
-    @Mock private CommunityPostLikeService likeService;
     @Mock private BlockService blockService;
     @Mock private ConfigService configService;
     @Mock private ContentModerationService contentModerationService;
+    @Mock private CommunityPostStatsBroadcastService communityPostStatsBroadcastService;
 
     private CommunityPostService service;
 
@@ -61,11 +63,12 @@ class CommunityPostServiceTest {
                 likeRepository,
                 commentRepository,
                 hashtagRepository,
+                savedCommunityPostRepository,
                 imageService,
-                likeService,
                 blockService,
                 configService,
-                contentModerationService
+                contentModerationService,
+                communityPostStatsBroadcastService
         );
     }
 
@@ -82,7 +85,7 @@ class CommunityPostServiceTest {
         CommunityPost p = new CommunityPost();
         p.setId(id);
         p.setAuthor(author);
-        p.setTitle("T");
+        p.setDescription("T");
         p.setStatus(CommunityPost.STATUS_ACTIVE);
         p.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
         p.setUpdatedAt(Instant.parse("2026-01-01T00:00:00Z"));
@@ -126,7 +129,6 @@ class CommunityPostServiceTest {
         @DisplayName("author null -> UNAUTHORIZED")
         void authorNull_shouldThrow() {
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
-            req.setTitle("x");
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.createPostWithImages(null, req, List.of()));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
@@ -138,7 +140,6 @@ class CommunityPostServiceTest {
             when(configService.getIntConfigValue("MAX_IMAGES_PER_POST", 10)).thenReturn(1);
             when(configService.getIntConfigValue("MAX_IMAGES", 1)).thenReturn(1);
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
-            req.setTitle("x");
 
             SlifeException ex = assertThrows(SlifeException.class, () -> service.createPostWithImages(
                     user(1L, "USER"),
@@ -150,11 +151,10 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("happy path: trim title + sync hashtag từ description+payload + upload images + trả detail")
+        @DisplayName("happy path: trim description + sync hashtag từ description+payload + upload images + trả detail")
         void happyPath_shouldSaveSyncUploadAndBuildDetail() {
             User author = user(1L, "USER");
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
-            req.setTitle("  Hello  ");
             req.setDescription("desc #TagOne and #tag_two");
             req.setHashtags(List.of("#TAGTHREE", "bad tag", "#tag_two"));
 
@@ -186,15 +186,15 @@ class CommunityPostServiceTest {
             // buildDetailResponse fetches these
             when(postRepository.findById(99L)).thenAnswer(inv -> Optional.ofNullable(savedRef[0]));
             when(imageRepository.findByPost_IdOrderByDisplayOrderAsc(99L)).thenReturn(List.of());
-            when(likeService.countByPostId(99L)).thenReturn(0L);
+            when(likeRepository.countByPost_Id(99L)).thenReturn(0L);
             when(commentRepository.countByPost_IdAndDeletedAtIsNull(99L)).thenReturn(0L);
-            when(likeService.isLikedBy(author.getId(), 99L)).thenReturn(false);
+            when(likeRepository.existsByUser_IdAndPost_Id(author.getId(), 99L)).thenReturn(false);
 
             CommunityPostResponse out = service.createPostWithImages(
                     author, req, List.of(img("a.png", false), img("b.png", false)));
 
             assertEquals(99L, out.getId());
-            assertEquals("Hello", out.getTitle());
+            assertEquals("desc #TagOne and #tag_two", out.getDescription());
             verify(imageService).uploadPostImages(eq(99L), anyList(), eq(author));
 
             // verify hashtags đã được normalize + unique (tagone, tag_two, tagthree)
@@ -227,27 +227,24 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("title blank -> không đổi title; description null -> không đổi; hashtags null -> không sync")
+        @DisplayName("description null -> không đổi; hashtags null -> không sync")
         void blanks_shouldNotOverwrite() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
-            p.setTitle("Keep");
             p.setDescription("KeepDesc");
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
 
             UpdateCommunityPostRequest req = new UpdateCommunityPostRequest();
-            req.setTitle("   ");
             req.setDescription(null);
             req.setHashtags(null);
 
             // buildDetailResponse
             when(imageRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
-            when(likeService.countByPostId(1L)).thenReturn(0L);
+            when(likeRepository.countByPost_Id(1L)).thenReturn(0L);
             when(commentRepository.countByPost_IdAndDeletedAtIsNull(1L)).thenReturn(0L);
-            when(likeService.isLikedBy(1L, 1L)).thenReturn(false);
+            when(likeRepository.existsByUser_IdAndPost_Id(1L, 1L)).thenReturn(false);
 
             CommunityPostResponse out = service.updatePost(1L, author, req);
-            assertEquals("Keep", out.getTitle());
             assertEquals("KeepDesc", out.getDescription());
             verifyNoInteractions(hashtagRepository);
         }
@@ -273,9 +270,9 @@ class CommunityPostServiceTest {
             });
 
             when(imageRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
-            when(likeService.countByPostId(1L)).thenReturn(0L);
+            when(likeRepository.countByPost_Id(1L)).thenReturn(0L);
             when(commentRepository.countByPost_IdAndDeletedAtIsNull(1L)).thenReturn(0L);
-            when(likeService.isLikedBy(1L, 1L)).thenReturn(false);
+            when(likeRepository.existsByUser_IdAndPost_Id(1L, 1L)).thenReturn(false);
 
             CommunityPostResponse out = service.updatePost(1L, author, req);
             assertTrue(out.getHashtags().containsAll(List.of("a", "b", "c")));
@@ -300,6 +297,7 @@ class CommunityPostServiceTest {
             assertNotNull(p.getDeletedAt());
             assertEquals(CommunityPost.STATUS_DELETED, p.getStatus());
             verify(postRepository).save(p);
+            verify(communityPostStatsBroadcastService).broadcastPostDeleted(1L);
         }
     }
 
@@ -325,6 +323,8 @@ class CommunityPostServiceTest {
             when(likeRepository.countLikesByPostIds(List.of(1L))).thenReturn(List.<Object[]>of(new Object[]{1L, 7L}));
             when(commentRepository.countCommentsByPostIds(List.of(1L))).thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
             when(likeRepository.findPostIdsLikedByUser(viewer.getId(), List.of(1L))).thenReturn(List.of(1L));
+            when(savedCommunityPostRepository.findSavedPostIdsByUserAndPostIds(viewer.getId(), List.of(1L)))
+                    .thenReturn(List.of());
 
             var out = service.getFeed(-1, 999, null, "latest", viewer);
             assertEquals(1, out.getContent().size());
@@ -371,6 +371,8 @@ class CommunityPostServiceTest {
             when(likeRepository.countLikesByPostIds(List.of(2L, 1L))).thenReturn(List.of());
             when(commentRepository.countCommentsByPostIds(List.of(2L, 1L))).thenReturn(List.of());
             when(likeRepository.findPostIdsLikedByUser(eq(viewer.getId()), any())).thenReturn(List.of());
+            when(savedCommunityPostRepository.findSavedPostIdsByUserAndPostIds(eq(viewer.getId()), any()))
+                    .thenReturn(List.of());
 
             CursorPageResponse<CommunityPostCardResponse> out = service.getFeedCursor(2, null, null, "latest", viewer);
             assertTrue(out.isHasMore());
@@ -455,9 +457,9 @@ class CommunityPostServiceTest {
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             when(blockService.isBlockedByCurrentUser(anyLong(), anyLong())).thenReturn(false);
             when(imageRepository.findByPost_IdOrderByDisplayOrderAsc(1L)).thenReturn(List.of());
-            when(likeService.countByPostId(1L)).thenReturn(0L);
+            when(likeRepository.countByPost_Id(1L)).thenReturn(0L);
             when(commentRepository.countByPost_IdAndDeletedAtIsNull(1L)).thenReturn(0L);
-            when(likeService.isLikedBy(owner.getId(), 1L)).thenReturn(false);
+            when(likeRepository.existsByUser_IdAndPost_Id(owner.getId(), 1L)).thenReturn(false);
 
             CommunityPostResponse out = service.getById(1L, owner);
             assertEquals(1L, out.getId());

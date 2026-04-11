@@ -102,8 +102,8 @@ class ListingLikeServiceTest {
 
             ToggleLikeResponse out = service.toggle(me, 10L);
 
-            assertFalse(out.isLiked());
-            assertEquals(7L, out.getLikeCount());
+            assertFalse(out.liked());
+            assertEquals(7L, out.likeCount());
             verify(likeRepository).deleteByUser_IdAndListing_Id(1L, 10L);
             verify(notificationService, never()).notifyListingLiked(any(), any(), anyLong());
         }
@@ -135,8 +135,8 @@ class ListingLikeServiceTest {
 
             ToggleLikeResponse out = service.toggle(me, 10L);
 
-            assertTrue(out.isLiked());
-            assertEquals(8L, out.getLikeCount());
+            assertTrue(out.liked());
+            assertEquals(8L, out.likeCount());
             verify(likeRepository).save(any());
             verify(notificationService).notifyListingLiked(seller, me, 10L);
         }

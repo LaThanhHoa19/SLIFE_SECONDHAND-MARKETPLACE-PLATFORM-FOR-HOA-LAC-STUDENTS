@@ -189,7 +189,8 @@ class BlockServiceTest {
         @Test
         @DisplayName("blockerId null -> INVALID_INPUT")
         void nullBlocker_shouldThrow() {
-            SlifeException ex = assertThrows(SlifeException.class, () -> blockService.getBlockedUsers(null, 0, 20));
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> blockService.getBlockedUsers(null, 0, 20, null, null));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
@@ -197,7 +198,8 @@ class BlockServiceTest {
         @DisplayName("blockerId không tồn tại -> USER_NOT_FOUND")
         void blockerMissing_shouldThrow() {
             when(userRepository.existsById(1L)).thenReturn(false);
-            SlifeException ex = assertThrows(SlifeException.class, () -> blockService.getBlockedUsers(1L, 0, 20));
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> blockService.getBlockedUsers(1L, 0, 20, null, null));
             assertEquals(ErrorCode.USER_NOT_FOUND, ex.getErrorCode());
         }
 
@@ -205,14 +207,14 @@ class BlockServiceTest {
         @DisplayName("Clamp page/size: page<0 -> 0; size<=0 -> 1; size>50 -> 50")
         void paging_shouldClamp() {
             when(userRepository.existsById(1L)).thenReturn(true);
-            when(blockRepository.findBlockedUserSummariesByBlockerId(eq(1L), any(Pageable.class)))
+            when(blockRepository.findBlockedUserSummariesByBlockerId(eq(1L), eq(""), eq(true), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
 
-            blockService.getBlockedUsers(1L, -3, 0);
-            blockService.getBlockedUsers(1L, 0, 999);
+            blockService.getBlockedUsers(1L, -3, 0, null, null);
+            blockService.getBlockedUsers(1L, 0, 999, null, null);
 
             ArgumentCaptor<Pageable> cap = ArgumentCaptor.forClass(Pageable.class);
-            verify(blockRepository, times(2)).findBlockedUserSummariesByBlockerId(eq(1L), cap.capture());
+            verify(blockRepository, times(2)).findBlockedUserSummariesByBlockerId(eq(1L), eq(""), eq(true), cap.capture());
             List<Pageable> p = cap.getAllValues();
             assertEquals(0, p.get(0).getPageNumber());
             assertEquals(1, p.get(0).getPageSize());
@@ -224,8 +226,9 @@ class BlockServiceTest {
         void happyPath_shouldReturnPage() {
             when(userRepository.existsById(1L)).thenReturn(true);
             Page<FollowUserSummaryResponse> page = new PageImpl<>(List.of());
-            when(blockRepository.findBlockedUserSummariesByBlockerId(eq(1L), any(Pageable.class))).thenReturn(page);
-            assertSame(page, blockService.getBlockedUsers(1L, 0, 20));
+            when(blockRepository.findBlockedUserSummariesByBlockerId(eq(1L), eq(""), eq(true), any(Pageable.class)))
+                    .thenReturn(page);
+            assertSame(page, blockService.getBlockedUsers(1L, 0, 20, null, null));
         }
     }
 }

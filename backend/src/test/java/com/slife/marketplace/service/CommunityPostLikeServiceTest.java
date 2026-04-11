@@ -29,12 +29,14 @@ class CommunityPostLikeServiceTest {
     @Mock private CommunityPostRepository postRepository;
     @Mock private NotificationService notificationService;
     @Mock private CommunityPostStatsBroadcastService statsBroadcastService;
+    @Mock private CommunityPostService communityPostService;
 
     private CommunityPostLikeService service;
 
     @BeforeEach
     void setUp() {
-        service = new CommunityPostLikeService(likeRepository, postRepository, notificationService, statsBroadcastService);
+        service = new CommunityPostLikeService(
+                likeRepository, postRepository, notificationService, statsBroadcastService, communityPostService);
     }
 
     private static User user(long id, String status) {
@@ -109,8 +111,8 @@ class CommunityPostLikeServiceTest {
 
             ToggleLikeResponse out = service.toggle(me, 1L);
 
-            assertFalse(out.isLiked());
-            assertEquals(7L, out.getLikeCount());
+            assertFalse(out.liked());
+            assertEquals(7L, out.likeCount());
             verify(likeRepository).deleteByUser_IdAndPost_Id(1L, 1L);
             verify(statsBroadcastService).broadcastStats(1L);
             verify(notificationService, never()).notifyCommunityPostLiked(any(), any(), anyLong());
@@ -128,8 +130,8 @@ class CommunityPostLikeServiceTest {
 
             ToggleLikeResponse out = service.toggle(me, 1L);
 
-            assertTrue(out.isLiked());
-            assertEquals(8L, out.getLikeCount());
+            assertTrue(out.liked());
+            assertEquals(8L, out.likeCount());
             verify(likeRepository).save(any());
             verify(notificationService).notifyCommunityPostLiked(author, me, 1L);
             verify(statsBroadcastService).broadcastStats(1L);

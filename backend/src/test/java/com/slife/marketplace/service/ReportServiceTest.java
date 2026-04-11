@@ -3,9 +3,7 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.dto.request.ReportRequest;
 import com.slife.marketplace.dto.response.ReportResponseDTO;
 import com.slife.marketplace.entity.Comment;
-import com.slife.marketplace.entity.Conversation;
 import com.slife.marketplace.entity.Listing;
-import com.slife.marketplace.entity.Message;
 import com.slife.marketplace.entity.Report;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
@@ -205,26 +203,12 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("message: reporter not participant -> NOT_CHAT_PARTICIPANT")
-        void message_notParticipant_shouldThrow() {
+        @DisplayName("message: loại MESSAGE không còn trong VALID_TARGET_TYPES -> REPORT_INVALID_TARGET")
+        void message_targetTypeUnsupported_shouldThrow() {
             User reporter = user(9L, "USER");
-            Message m = new Message();
-            m.setId(7L);
-            Conversation conv = new Conversation();
-            conv.setId(1L);
-            conv.setUserId1(user(1L, "USER"));
-            conv.setUserId2(user(2L, "USER"));
-            m.setConversation(conv);
-            m.setSender(user(1L, "USER"));
-            m.setContent("hi");
-            m.setSentAt(Instant.now());
-            m.setIsRead(false);
-
-            when(reportRepository.existsByReporter_IdAndTargetTypeAndTargetId(9L, "MESSAGE", 7L)).thenReturn(false);
-            when(messageRepository.findById(7L)).thenReturn(Optional.of(m));
-
             SlifeException ex = assertThrows(SlifeException.class, () -> service.createReport(reporter, req("MESSAGE", 7)));
-            assertEquals(ErrorCode.NOT_CHAT_PARTICIPANT, ex.getErrorCode());
+            assertEquals(ErrorCode.REPORT_INVALID_TARGET, ex.getErrorCode());
+            verifyNoInteractions(messageRepository);
         }
     }
 
