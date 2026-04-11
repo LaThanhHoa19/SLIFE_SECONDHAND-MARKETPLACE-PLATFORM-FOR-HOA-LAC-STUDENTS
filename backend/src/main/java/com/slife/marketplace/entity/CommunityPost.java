@@ -40,10 +40,6 @@ public class CommunityPost {
     @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
-    @Size(max = 50)
-    @Column(name = "title", length = 300)
-    private String title;
-
     @Size(max = 1000)
     @Lob
     @Column(name = "description")

@@ -33,7 +33,7 @@ import { getCommunityPost, toggleCommunityPostLike } from '../../api/communityAp
 import { unwrapApiData } from '../../utils/apiPayload';
 import { fullImageUrl } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
-import { useFollowActions } from '../../hooks/useFollowActions';
+import { getCachedFollowState, useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
 import CommunityPostComments from '../../components/community/CommunityPostComments';
 import CommunityPostExpandableDescription from '../../components/community/CommunityPostExpandableDescription';
@@ -113,6 +113,19 @@ export default function CommunityPostDetailPage() {
     const author = post?.authorSummary || {};
     const authorId = author.userId;
     const authorName = (author.fullName || '').trim() || 'Thành viên';
+
+    useEffect(() => {
+        if (!authorId) {
+            setFollowed(false);
+            return;
+        }
+        const cached = getCachedFollowState(authorId);
+        if (typeof cached === 'boolean') {
+            setFollowed(cached);
+            return;
+        }
+        setFollowed(false);
+    }, [authorId]);
     const isMe = isAuthenticated && user && authorId && String(user.id) === String(authorId);
     const showFollowBtn = authorId && !isMe;
     const images = Array.isArray(post?.images) ? post.images.map(fullImageUrl).filter(Boolean) : [];

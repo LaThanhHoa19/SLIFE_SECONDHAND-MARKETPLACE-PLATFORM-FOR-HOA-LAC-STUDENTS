@@ -9,7 +9,6 @@ import java.util.Map;
 @Data
 public class CommunityPostResponse {
     private Long id;
-    private String title;
     private String description;
     private String status;
     private Long viewCount;

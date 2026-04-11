@@ -39,12 +39,59 @@ public class CommunityPostStatsBroadcastService {
             long likes = communityPostLikeRepository.countByPost_Id(postId);
             long comments = communityPostCommentRepository.countByPost_IdAndDeletedAtIsNull(postId);
             Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "STATS");
             payload.put("postId", postId);
             payload.put("likeCount", likes);
             payload.put("commentCount", comments);
             messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
         } catch (Exception ex) {
             log.warn("broadcast community post stats failed postId={}", postId, ex);
+        }
+    }
+
+    public void broadcastSavedToggled(Long postId, Long userId, boolean saved) {
+        if (postId == null || userId == null) {
+            return;
+        }
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "SAVED_TOGGLED");
+            payload.put("postId", postId);
+            payload.put("userId", userId);
+            payload.put("saved", saved);
+            messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+        } catch (Exception ex) {
+            log.warn("broadcast community post saved toggle failed postId={}, userId={}", postId, userId, ex);
+        }
+    }
+
+    public void broadcastLikedToggled(Long postId, Long userId, boolean liked) {
+        if (postId == null || userId == null) {
+            return;
+        }
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "LIKED_TOGGLED");
+            payload.put("postId", postId);
+            payload.put("userId", userId);
+            payload.put("liked", liked);
+            messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+        } catch (Exception ex) {
+            log.warn("broadcast community post liked toggle failed postId={}, userId={}", postId, userId, ex);
+        }
+    }
+
+    public void broadcastPostDeleted(Long postId) {
+        if (postId == null) {
+            return;
+        }
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", "POST_DELETED");
+            payload.put("postId", postId);
+            messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+        } catch (Exception ex) {
+            log.warn("broadcast community post deleted failed postId={}", postId, ex);
         }
     }
 }

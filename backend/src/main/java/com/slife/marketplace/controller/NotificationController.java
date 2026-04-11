@@ -4,6 +4,7 @@ import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.CursorPageResponse;
 import com.slife.marketplace.dto.response.NotificationResponse;
 import com.slife.marketplace.entity.User;
+import com.slife.marketplace.service.NotificationScope;
 import com.slife.marketplace.service.NotificationService;
 import com.slife.marketplace.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +24,12 @@ public class NotificationController {
     @GetMapping("/api/notifications")
     public ResponseEntity<ApiResponse<CursorPageResponse<NotificationResponse>>> getNotifications(
             @RequestParam(value = "limit", required = false, defaultValue = "30") int limit,
-            @RequestParam(value = "cursor", required = false) String cursor
+            @RequestParam(value = "cursor", required = false) String cursor,
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
     ) {
         User user = userService.getCurrentUser();
-        CursorPageResponse<NotificationResponse> page = notificationService.getNotificationResponsesPage(user.getId(), limit, cursor);
+        NotificationScope s = NotificationScope.from(scope);
+        CursorPageResponse<NotificationResponse> page = notificationService.getNotificationResponsesPage(user.getId(), limit, cursor, s);
         return ResponseEntity.ok(ApiResponse.success("OK", page));
     }
 
@@ -34,30 +37,42 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<CursorPageResponse<NotificationResponse>>> searchNotifications(
             @RequestParam("q") String q,
             @RequestParam(value = "limit", required = false, defaultValue = "30") int limit,
-            @RequestParam(value = "cursor", required = false) String cursor
+            @RequestParam(value = "cursor", required = false) String cursor,
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
     ) {
         User user = userService.getCurrentUser();
-        CursorPageResponse<NotificationResponse> page = notificationService.searchNotificationResponsesPage(user.getId(), q, limit, cursor);
+        NotificationScope s = NotificationScope.from(scope);
+        CursorPageResponse<NotificationResponse> page = notificationService.searchNotificationResponsesPage(user.getId(), q, limit, cursor, s);
         return ResponseEntity.ok(ApiResponse.success("OK", page));
     }
 
     @GetMapping("/api/notifications/unread-count")
-    public ResponseEntity<ApiResponse<Long>> getUnreadCount() {
+    public ResponseEntity<ApiResponse<Long>> getUnreadCount(
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
+    ) {
         User user = userService.getCurrentUser();
-        return ResponseEntity.ok(ApiResponse.success("OK", notificationService.getUnreadCount(user.getId())));
+        NotificationScope s = NotificationScope.from(scope);
+        return ResponseEntity.ok(ApiResponse.success("OK", notificationService.getUnreadCount(user.getId(), s)));
     }
 
     @PatchMapping("/api/notifications/{id}/read")
-    public ResponseEntity<ApiResponse<Void>> markRead(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> markRead(
+            @PathVariable Long id,
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
+    ) {
         User user = userService.getCurrentUser();
-        notificationService.markRead(user.getId(), id);
+        NotificationScope s = NotificationScope.from(scope);
+        notificationService.markRead(user.getId(), id, s);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
     @PatchMapping("/api/notifications/read-all")
-    public ResponseEntity<ApiResponse<Void>> markAllRead() {
+    public ResponseEntity<ApiResponse<Void>> markAllRead(
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
+    ) {
         User user = userService.getCurrentUser();
-        notificationService.markAllRead(user.getId());
+        NotificationScope s = NotificationScope.from(scope);
+        notificationService.markAllRead(user.getId(), s);
         return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 }

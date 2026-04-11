@@ -12,7 +12,6 @@ import java.util.List;
 @AllArgsConstructor
 public class CommunityPostCardResponse {
     private Long id;
-    private String title;
     /** Mô tả rút gọn trên feed (có thể null). */
     private String description;
     private String thumbUrl;
@@ -27,4 +26,6 @@ public class CommunityPostCardResponse {
     private List<String> hashtags;
     /** null nếu khách chưa đăng nhập */
     private Boolean isLiked;
+    /** null nếu khách chưa đăng nhập */
+    private Boolean isSaved;
 }

@@ -9,9 +9,6 @@ import java.util.List;
 @Data
 public class CreateCommunityPostRequest {
 
-    @Size(max = 50)
-    private String title;
-
     @Size(max = 1000)
     private String description;
 

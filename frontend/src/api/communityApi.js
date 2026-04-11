@@ -30,8 +30,19 @@ export const getCommunityHashtagTrending = (params = {}, config = {}) =>
     axiosClient.get('/api/community/hashtags/trending', { params, ...config });
 
 export const getCommunityPost = (id) => axiosClient.get(`/api/community/posts/${id}`);
+export const updateCommunityPost = (id, payload) => axiosClient.put(`/api/community/posts/${id}`, payload);
+export const deleteCommunityPost = (id) => axiosClient.delete(`/api/community/posts/${id}`);
 
 export const toggleCommunityPostLike = (id) => axiosClient.post(`/api/community/posts/${id}/like`);
+export const toggleCommunityPostSave = (id) => axiosClient.post(`/api/community/posts/${id}/save`);
+export const getSavedCommunityPosts = (params = {}, config = {}) =>
+    axiosClient.get('/api/community/posts/saved', { params, ...config });
+export const getLikedCommunityPosts = (params = {}, config = {}) =>
+    axiosClient.get('/api/community/posts/liked', { params, ...config });
+export const getCommunityPostsByAuthor = (authorId, params = {}, config = {}) =>
+    axiosClient.get(`/api/community/posts/by-author/${authorId}`, { params, ...config });
+export const getMyCommunityPosts = (params = {}, config = {}) =>
+    axiosClient.get('/api/community/posts/mine', { params, ...config });
 
 export const getCommunityPostComments = (postId) =>
     axiosClient.get(`/api/v1/community-posts/${postId}/comments`);

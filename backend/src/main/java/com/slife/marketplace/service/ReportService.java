@@ -564,7 +564,7 @@ public class ReportService {
             }
             if ("COMMUNITY_POST".equals(targetType)) {
                 return communityPostRepository.findById(targetId)
-                        .map(p -> new TargetContext(truncate(p.getTitle(), 120), p.getId(), null, null))
+                        .map(p -> new TargetContext(truncate(p.getDescription(), 120), p.getId(), null, null))
                         .orElse(new TargetContext("[Community post not found]", null, null, null));
             }
             if ("COMMUNITY_POST_COMMENT".equals(targetType)) {

@@ -28,11 +28,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import RightPanel from '../../components/layout/RightPanel';
 import { useAuth } from '../../hooks/useAuth';
 import CommunityPostCard from '../../components/community/CommunityPostCard';
-import { createCommunityPostWithImages, getCommunityPosts } from '../../api/communityApi';
+import { createCommunityPostWithImages, getCommunityPosts, getSavedCommunityPosts, getLikedCommunityPosts, getMyCommunityPosts } from '../../api/communityApi';
+import { getFollowing } from '../../api/followApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import useCommunityFeedRealtime from '../../hooks/useCommunityFeedRealtime';
 import { fullImageUrl } from '../../utils/constants';
@@ -53,6 +54,29 @@ function normalizeCursor(res) {
     };
 }
 
+function normalizeCreatedPostToCard(created) {
+    if (!created || typeof created !== 'object') return null;
+    const authorSummary = created.authorSummary || {};
+    const imageUrls = Array.isArray(created.imageUrls)
+        ? created.imageUrls
+        : Array.isArray(created.images)
+            ? created.images
+            : [];
+
+    return {
+        ...created,
+        authorId: created.authorId ?? authorSummary.userId ?? null,
+        authorName: created.authorName ?? authorSummary.fullName ?? 'Thành viên',
+        authorAvatarUrl: created.authorAvatarUrl ?? authorSummary.avatarUrl ?? null,
+        imageUrls,
+        thumbUrl: created.thumbUrl ?? imageUrls[0] ?? null,
+        likeCount: Number(created.likeCount ?? 0),
+        commentCount: Number(created.commentCount ?? 0),
+        isLiked: typeof created.isLiked === 'boolean' ? created.isLiked : false,
+        isSaved: typeof created.isSaved === 'boolean' ? created.isSaved : false,
+    };
+}
+
 function FeedSkeleton() {
     return (
         <Stack spacing={0}>
@@ -66,6 +90,7 @@ function FeedSkeleton() {
 export default function CommunityFeedPage() {
     const theme = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const { isAuthenticated, user } = useAuth();
     const { showToast } = useToast();
@@ -74,6 +99,10 @@ export default function CommunityFeedPage() {
 
     const hashtagFilter = useMemo(() => (searchParams.get('hashtag') || '').trim(), [searchParams]);
     const sortFeed = useMemo(() => (searchParams.get('sort') === 'top' ? 'top' : 'latest'), [searchParams]);
+    const queryFilter = useMemo(() => (searchParams.get('q') || '').trim().toLowerCase(), [searchParams]);
+    const isMineRoute = location.pathname === '/community/mine';
+    const isSavedRoute = location.pathname === '/community/saved';
+    const isLikedRoute = location.pathname === '/community/liked';
 
     const [posts, setPosts] = useState([]);
     const [cursor, setCursor] = useState(null);
@@ -87,6 +116,7 @@ export default function CommunityFeedPage() {
     const [composerError, setComposerError] = useState('');
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState('');
+    const [followingIds, setFollowingIds] = useState([]);
     const abortRef = useRef(null);
     const loadMoreLockRef = useRef(false);
     const sentinelRef = useRef(null);
@@ -94,6 +124,7 @@ export default function CommunityFeedPage() {
     const imageInputRef = useRef(null);
     const previewStripRef = useRef(null);
     const previewDragRef = useRef({ isDown: false, startX: 0, startLeft: 0 });
+    const loadMoreCooldownRef = useRef(0);
 
     const goCreatePost = () => {
         if (!isAuthenticated) {
@@ -116,8 +147,22 @@ export default function CommunityFeedPage() {
                 const params = { limit: PAGE_SIZE, sort: sortFeed };
                 if (nextCursor) params.cursor = nextCursor;
                 if (hashtagFilter) params.hashtag = hashtagFilter;
-                const res = await getCommunityPosts(params, { signal: ac.signal });
-                const { items, nextCursor: nc, hasMore: hm } = normalizeCursor(res);
+                const res = isSavedRoute
+                    ? await getSavedCommunityPosts({ page: nextCursor ? Number(nextCursor) : 0, size: PAGE_SIZE }, { signal: ac.signal })
+                    : isLikedRoute
+                        ? await getLikedCommunityPosts({ page: nextCursor ? Number(nextCursor) : 0, size: PAGE_SIZE }, { signal: ac.signal })
+                        : isMineRoute
+                            ? await getMyCommunityPosts({ page: nextCursor ? Number(nextCursor) : 0, size: PAGE_SIZE }, { signal: ac.signal })
+                            : await getCommunityPosts(params, { signal: ac.signal });
+                const data = unwrapApiData(res);
+                const normalized = (isSavedRoute || isLikedRoute || isMineRoute)
+                    ? {
+                        items: Array.isArray(data?.content) ? data.content : [],
+                        nextCursor: data?.last ? null : String((data?.number ?? 0) + 1),
+                        hasMore: !data?.last,
+                    }
+                    : normalizeCursor(res);
+                const { items, nextCursor: nc, hasMore: hm } = normalized;
                 setError('');
                 setPosts((prev) => (append ? [...prev, ...items] : items));
                 setCursor(nc);
@@ -128,7 +173,7 @@ export default function CommunityFeedPage() {
                 if (!append) setPosts([]);
             }
         },
-        [hashtagFilter, sortFeed],
+        [hashtagFilter, sortFeed, isSavedRoute, isLikedRoute, isMineRoute],
     );
 
     const loadInitial = useCallback(async () => {
@@ -143,6 +188,42 @@ export default function CommunityFeedPage() {
         loadInitial();
         return () => abortRef.current?.abort();
     }, [loadInitial]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const uid = user?.id;
+        if (!isAuthenticated || !uid) {
+            setFollowingIds([]);
+            return undefined;
+        }
+
+        const loadFollowingIds = async () => {
+            try {
+                const res = await getFollowing(uid, { page: 0, size: 200 });
+                const body = res?.data;
+                const raw = body?.data ?? body;
+                const list = Array.isArray(raw?.content)
+                    ? raw.content
+                    : Array.isArray(raw)
+                        ? raw
+                        : Array.isArray(body?.content)
+                            ? body.content
+                            : [];
+                const ids = list
+                    .map((it) => it?.id ?? it?.userId ?? it?.followingId ?? it?.followedUserId)
+                    .filter((v) => v != null)
+                    .map((v) => String(v));
+                if (!cancelled) setFollowingIds(ids);
+            } catch {
+                if (!cancelled) setFollowingIds([]);
+            }
+        };
+
+        void loadFollowingIds();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, user?.id]);
 
     useEffect(() => {
         restoreScrollRef.current = true;
@@ -176,13 +257,19 @@ export default function CommunityFeedPage() {
 
     const loadMore = useCallback(async () => {
         if (loadMoreLockRef.current || !hasMore || !cursor) return;
+        const now = Date.now();
+        if (now - loadMoreCooldownRef.current < 700) return;
+        loadMoreCooldownRef.current = now;
+
         loadMoreLockRef.current = true;
         setLoadingMore(true);
         try {
             await fetchPage(cursor, true);
         } finally {
             setLoadingMore(false);
-            loadMoreLockRef.current = false;
+            window.setTimeout(() => {
+                loadMoreLockRef.current = false;
+            }, 120);
         }
     }, [fetchPage, cursor, hasMore]);
 
@@ -192,11 +279,73 @@ export default function CommunityFeedPage() {
         setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
     }, []);
 
+    const handleDeletePost = useCallback((postId) => {
+        setPosts((prev) => prev.filter((p) => Number(p.id) !== Number(postId)));
+    }, []);
+
     const handleRealtimeStats = useCallback(({ postId, likeCount, commentCount }) => {
         setPosts((prev) => prev.map((p) => (Number(p.id) === Number(postId) ? { ...p, likeCount, commentCount } : p)));
     }, []);
 
-    useCommunityFeedRealtime(true, handleRealtimeStats);
+    const visiblePosts = useMemo(() => {
+        let next = posts;
+
+        if (sortFeed === 'top') {
+            if (!isAuthenticated) return [];
+            const followSet = new Set(followingIds.map(String));
+            next = next.filter((p) => followSet.has(String(p?.authorId)));
+        }
+
+        if (!queryFilter) return next;
+
+        return next.filter((p) => {
+            const desc = (p?.description || '').toLowerCase();
+            const author = (p?.authorName || '').toLowerCase();
+            const hashtags = Array.isArray(p?.hashtags) ? p.hashtags.join(' ').toLowerCase() : '';
+            return desc.includes(queryFilter) || author.includes(queryFilter) || hashtags.includes(queryFilter);
+        });
+    }, [posts, queryFilter, sortFeed, followingIds, isAuthenticated]);
+
+    const handleRealtimeEvent = useCallback(
+        (evt) => {
+            const type = String(evt?.type || '');
+            const postId = Number(evt?.postId);
+            if (!Number.isFinite(postId)) return;
+
+            if (type === 'POST_DELETED') {
+                setPosts((prev) => prev.filter((p) => Number(p.id) !== postId));
+                return;
+            }
+
+            if (type === 'SAVED_TOGGLED') {
+                const evUserId = Number(evt?.userId);
+                if (!Number.isFinite(evUserId) || Number(user?.id) !== evUserId) return;
+                const saved = !!evt?.saved;
+                setPosts((prev) => {
+                    if (isSavedRoute && !saved) {
+                        return prev.filter((p) => Number(p.id) !== postId);
+                    }
+                    return prev.map((p) => (Number(p.id) === postId ? { ...p, isSaved: saved } : p));
+                });
+                return;
+            }
+
+            if (type === 'LIKED_TOGGLED') {
+                const evUserId = Number(evt?.userId);
+                if (!Number.isFinite(evUserId) || Number(user?.id) !== evUserId) return;
+                const liked = !!evt?.liked;
+                setPosts((prev) => {
+                    if (isLikedRoute && !liked) {
+                        return prev.filter((p) => Number(p.id) !== postId);
+                    }
+                    return prev.map((p) => (Number(p.id) === postId ? { ...p, isLiked: liked } : p));
+                });
+            }
+        },
+        [user?.id, isSavedRoute, isLikedRoute],
+    );
+
+    useCommunityFeedRealtime(true, handleRealtimeStats, handleRealtimeEvent);
 
     useEffect(() => {
         const el = sentinelRef.current;
@@ -207,7 +356,7 @@ export default function CommunityFeedPage() {
                 if (!e?.isIntersecting || !hasMore || loadingMore || loading) return;
                 void loadMore();
             },
-            { root: null, rootMargin: '600px', threshold: 0 },
+            { root: null, rootMargin: '280px', threshold: 0.01 },
         );
         obs.observe(el);
         return () => obs.disconnect();
@@ -296,18 +445,13 @@ export default function CommunityFeedPage() {
         setComposerSubmitting(true);
         setComposerError('');
         try {
-            const normalizedTitleSeed = (description || '')
-                .replace(/\s+/g, ' ')
-                .trim();
-            const autoTitle = (normalizedTitleSeed || 'Bài viết cộng đồng').slice(0, 50).trim();
             const payload = {
-                title: autoTitle || 'Bài viết cộng đồng',
                 description: description || null,
                 hashtags: [],
             };
             const res = await createCommunityPostWithImages(payload, composerImages);
-            const created = unwrapApiData(res);
-            if (created && typeof created === 'object') setPosts((prev) => [created, ...prev]);
+            const created = normalizeCreatedPostToCard(unwrapApiData(res));
+            if (created) setPosts((prev) => [created, ...prev]);
             setComposerOpen(false);
             setComposerDesc('');
             setComposerImages([]);
@@ -354,60 +498,82 @@ export default function CommunityFeedPage() {
                             mb: 0,
                         }}
                     >
-                        <Tabs
-                            value={sortFeed}
-                            onChange={setSortTab}
-                            centered
-                            sx={{
-                                minHeight: 40,
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                                '& .MuiTab-root': { minHeight: 40, py: 0.2, fontWeight: 700, color: 'rgba(255,255,255,0.55)' },
-                                '& .Mui-selected': { color: '#d8cdff !important' },
-                                '& .MuiTabs-indicator': { bgcolor: '#9D6EED', height: 2.5 },
-                            }}
-                        >
-                            <Tab label="Dành cho bạn" value="latest" />
-                            <Tab label="Đang theo dõi" value="top" />
-                        </Tabs>
+                        {isMineRoute && (
+                            <Box sx={{ px: 2, py: 1.2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                <Typography sx={{ fontSize: 16, fontWeight: 800, color: '#d8cdff' }}>Bài đăng của tôi</Typography>
+                            </Box>
+                        )}
 
-                        <Box sx={{ px: 1.25, py: 1.1 }}>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Avatar
-                                    src={fullImageUrl(user?.avatarUrl || user?.avatar || user?.profilePicture || user?.imageUrl || '')}
-                                    alt={user?.fullName || user?.username || 'Bạn'}
-                                    sx={{ width: 34, height: 34, bgcolor: '#90caf9', color: '#112' }}
-                                >
-                                    {(user?.fullName || user?.username || 'B').slice(0, 1).toUpperCase()}
-                                </Avatar>
-                                <TextField
-                                    fullWidth
-                                    size="small"
-                                    value={composerText}
-                                    onClick={goCreatePost}
-                                    placeholder="Có gì mới?"
-                                    inputProps={{ readOnly: true }}
-                                    autoComplete="off"
+                        {isLikedRoute && (
+                            <Box sx={{ px: 2, py: 1.2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                <Typography sx={{ fontSize: 16, fontWeight: 800, color: '#d8cdff' }}>Bài viết đã thích</Typography>
+                            </Box>
+                        )}
+
+                        {isSavedRoute && (
+                            <Box sx={{ px: 2, py: 1.2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                <Typography sx={{ fontSize: 16, fontWeight: 800, color: '#d8cdff' }}>Bài viết đã lưu</Typography>
+                            </Box>
+                        )}
+
+                        {!isSavedRoute && !isLikedRoute && !isMineRoute && (
+                            <>
+                                <Tabs
+                                    value={sortFeed}
+                                    onChange={setSortTab}
+                                    centered
                                     sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            height: 40,
-                                            borderRadius: '999px',
-                                            bgcolor: 'rgba(255,255,255,0.04)',
-                                            cursor: 'pointer',
-                                            '& fieldset': { borderColor: 'rgba(255,255,255,0.16)' },
-                                            '&:hover fieldset': { borderColor: 'rgba(183,167,255,0.45)' },
-                                        },
-                                        '& .MuiInputBase-input': { color: '#fff', fontSize: 14, px: 1.6, cursor: 'pointer' },
+                                        minHeight: 40,
+                                        borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                        '& .MuiTab-root': { minHeight: 40, py: 0.2, fontWeight: 700, color: 'rgba(255,255,255,0.55)' },
+                                        '& .Mui-selected': { color: '#d8cdff !important' },
+                                        '& .MuiTabs-indicator': { bgcolor: '#9D6EED', height: 2.5 },
                                     }}
-                                />
-                                <Button
-                                    variant="contained"
-                                    onClick={goCreatePost}
-                                    sx={{ borderRadius: 12, px: 1.8, minWidth: 74, fontWeight: 700, bgcolor: 'rgba(157,110,237,0.95)', '&:hover': { bgcolor: '#ad88ff' } }}
                                 >
-                                    Đăng
-                                </Button>
-                            </Stack>
-                        </Box>
+                                    <Tab label="Dành cho bạn" value="latest" />
+                                    <Tab label="Đang theo dõi" value="top" />
+                                </Tabs>
+
+                                <Box sx={{ px: 1.25, py: 1.1 }}>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        <Avatar
+                                            src={fullImageUrl(user?.avatarUrl || user?.avatar || user?.profilePicture || user?.imageUrl || '')}
+                                            alt={user?.fullName || user?.username || 'Bạn'}
+                                            sx={{ width: 34, height: 34, bgcolor: '#90caf9', color: '#112' }}
+                                        >
+                                            {(user?.fullName || user?.username || 'B').slice(0, 1).toUpperCase()}
+                                        </Avatar>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            value={composerText}
+                                            onClick={goCreatePost}
+                                            placeholder="Có gì mới?"
+                                            inputProps={{ readOnly: true }}
+                                            autoComplete="off"
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    height: 40,
+                                                    borderRadius: '999px',
+                                                    bgcolor: 'rgba(255,255,255,0.04)',
+                                                    cursor: 'pointer',
+                                                    '& fieldset': { borderColor: 'rgba(255,255,255,0.16)' },
+                                                    '&:hover fieldset': { borderColor: 'rgba(183,167,255,0.45)' },
+                                                },
+                                                '& .MuiInputBase-input': { color: '#fff', fontSize: 14, px: 1.6, cursor: 'pointer' },
+                                            }}
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            onClick={goCreatePost}
+                                            sx={{ borderRadius: 12, px: 1.8, minWidth: 74, fontWeight: 700, bgcolor: 'rgba(157,110,237,0.95)', '&:hover': { bgcolor: '#ad88ff' } }}
+                                        >
+                                            Đăng
+                                        </Button>
+                                    </Stack>
+                                </Box>
+                            </>
+                        )}
                     </Box>
 
                     {error ? (
@@ -430,37 +596,41 @@ export default function CommunityFeedPage() {
                     >
                         {loading ? (
                             <FeedSkeleton />
-                        ) : posts.length === 0 ? (
+                        ) : visiblePosts.length === 0 ? (
                             <Card elevation={0} sx={{ borderRadius: 0, bgcolor: 'transparent', border: 'none' }}>
                                 <CardContent sx={{ py: 5, textAlign: 'center' }}>
                                     <Typography variant="subtitle1" fontWeight={800} gutterBottom sx={{ color: '#d5ccff' }}>
-                                        Chưa có bài đăng cộng đồng
+                                        {queryFilter ? 'Không tìm thấy bài viết phù hợp' : 'Chưa có bài đăng cộng đồng'}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
-                                        Hãy là người đầu tiên chia sẻ với cộng đồng sinh viên Hòa Lạc.
+                                        {queryFilter
+                                            ? 'Thử từ khóa khác hoặc xóa tìm kiếm để xem toàn bộ bài viết.'
+                                            : 'Hãy là người đầu tiên chia sẻ với cộng đồng sinh viên Hòa Lạc.'}
                                     </Typography>
-                                    <Button variant="text" onClick={goCreatePost} sx={{ fontWeight: 700 }}>
-                                        Tạo bài đăng ngay
-                                    </Button>
+                                    {!queryFilter && (
+                                        <Button variant="text" onClick={goCreatePost} sx={{ fontWeight: 700 }}>
+                                            Tạo bài đăng ngay
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         ) : (
                             <Stack spacing={0}>
-                                {posts.map((post) => (
-                                    <CommunityPostCard key={post.id} post={post} onOpen={openPost} onPatchPost={handlePatchPost} />
+                                {visiblePosts.map((post) => (
+                                    <CommunityPostCard
+                                        key={post.id}
+                                        post={post}
+                                        onOpen={openPost}
+                                        onPatchPost={handlePatchPost}
+                                        onDeletePost={handleDeletePost}
+                                    />
                                 ))}
 
                                 <Box ref={sentinelRef} sx={{ height: 1 }} />
 
-                                {hasMore ? (
+                                {hasMore && loadingMore ? (
                                     <Box sx={{ textAlign: 'center', py: 1.2 }}>
-                                        {loadingMore ? (
-                                            <CircularProgress size={22} />
-                                        ) : (
-                                            <Button variant="outlined" onClick={loadMore} sx={{ fontWeight: 700, minWidth: 160 }}>
-                                                Xem thêm
-                                            </Button>
-                                        )}
+                                        <CircularProgress size={22} />
                                     </Box>
                                 ) : null}
                             </Stack>

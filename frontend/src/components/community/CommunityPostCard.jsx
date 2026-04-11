@@ -5,14 +5,19 @@ import { memo, useEffect, useRef, useState } from 'react';
 import {
     Avatar,
     Box,
+    Button,
     CircularProgress,
     Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     IconButton,
     Menu,
     MenuItem,
     ListItemIcon,
     ListItemText,
     Stack,
+    TextField,
     Typography,
 } from '@mui/material';
 import {
@@ -21,22 +26,27 @@ import {
     Person as PersonIcon,
     FavoriteBorder,
     Favorite as FavoriteFilledIcon,
+    BookmarkBorder as BookmarkBorderIcon,
+    Bookmark as BookmarkFilledIcon,
     ModeCommentOutlined as CommentIconOutlined,
     ShareOutlined as ShareIconOutlined,
     MoreHoriz as MoreIcon,
     Close as CloseIcon,
     Flag as ReportIcon,
+    EditOutlined as EditIcon,
+    DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { fullImageUrl } from '../../utils/constants';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { useAuth } from '../../hooks/useAuth';
-import { useFollowActions } from '../../hooks/useFollowActions';
+import { getCachedFollowState, useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
-import { toggleCommunityPostLike } from '../../api/communityApi';
+import { toggleCommunityPostLike, toggleCommunityPostSave, updateCommunityPost, deleteCommunityPost } from '../../api/communityApi';
 import CommunityCommentModal from './CommunityCommentModal';
 import CommunityPostExpandableDescription from './CommunityPostExpandableDescription';
 import ReportDialog from '../report/ReportDialog';
+import ConfirmDialog from '../common/ConfirmDialog';
 
 const LIKE_RED = '#FF4757';
 const PURPLE = '#9D6EED';
@@ -73,7 +83,7 @@ const formatRelativeShort = (value) => {
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 };
 
-function CommunityPostCard({ post, onOpen, onPatchPost }) {
+function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -87,14 +97,35 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
     const isMe = isAuthenticated && user && authorId && String(user.id) === String(authorId);
 
     const [followed, setFollowed] = useState(false);
+
+    useEffect(() => {
+        if (!authorId) {
+            setFollowed(false);
+            return;
+        }
+        const cached = getCachedFollowState(authorId);
+        if (typeof cached === 'boolean') {
+            setFollowed(cached);
+            return;
+        }
+        setFollowed(false);
+    }, [authorId]);
     const [commentOpen, setCommentOpen] = useState(false);
     const [likeCount, setLikeCount] = useState(() => Number(post?.likeCount ?? 0));
     const [isLiked, setIsLiked] = useState(() => !!(post?.isLiked ?? false));
     const [likeSubmitting, setLikeSubmitting] = useState(false);
     const [commentCount, setCommentCount] = useState(() => Number(post?.commentCount ?? 0));
+    const [isSaved, setIsSaved] = useState(() => !!(post?.isSaved ?? false));
+    const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editSubmitting, setEditSubmitting] = useState(false);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [editDescription, setEditDescription] = useState(post?.description || '');
+    const [editError, setEditError] = useState('');
     const [likePop, setLikePop] = useState(false);
     const [commentPop, setCommentPop] = useState(false);
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -141,14 +172,15 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
         setLikeCount(Number(post?.likeCount ?? 0));
         setIsLiked(!!(post?.isLiked ?? false));
         setCommentCount(Number(post?.commentCount ?? 0));
-    }, [post?.id, post?.likeCount, post?.isLiked, post?.commentCount]);
+        setIsSaved(!!(post?.isSaved ?? false));
+    }, [post?.id, post?.likeCount, post?.isLiked, post?.commentCount, post?.isSaved]);
+
+    useEffect(() => {
+        setEditDescription(post?.description || '');
+    }, [post?.id, post?.description]);
 
     const showFollowBtn = authorId && !isMe;
 
-    const goDetail = () => {
-        if (typeof onOpen === 'function' && id != null) onOpen(id);
-        else if (id != null) navigate(`/community/posts/${id}`);
-    };
 
     const handleFollowClick = async (e) => {
         e.stopPropagation();
@@ -202,16 +234,43 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
         }
     };
 
+    const handleSaveClick = async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!id || saveSubmitting) return;
+        if (!token) {
+            showToast('Bạn cần đăng nhập để lưu bài viết.', 'warning');
+            navigate('/login', { state: { from: location.pathname } });
+            return;
+        }
+        const prev = isSaved;
+        setIsSaved(!prev);
+        setSaveSubmitting(true);
+        try {
+            const res = await toggleCommunityPostSave(id);
+            const raw = unwrapApiData(res);
+            const nextSaved = raw?.saved ?? raw?.isSaved;
+            const finalSaved = typeof nextSaved === 'boolean' ? nextSaved : !prev;
+            setIsSaved(finalSaved);
+            onPatchPost?.(id, { isSaved: finalSaved });
+            showToast(finalSaved ? 'Đã lưu bài viết.' : 'Đã bỏ lưu bài viết.', 'success');
+        } catch {
+            setIsSaved(prev);
+            showToast('Không thể lưu bài viết. Vui lòng thử lại.', 'error');
+        } finally {
+            setSaveSubmitting(false);
+        }
+    };
+
     const handleShareClick = async (e) => {
         e.stopPropagation();
         e.preventDefault();
         if (!id || shareSubmitting) return;
         setShareSubmitting(true);
         const shareUrl = `${window.location.origin}/community/posts/${id}`;
-        const shareTitle = post?.title || 'Bài cộng đồng';
         try {
             if (navigator.share) {
-                await navigator.share({ title: shareTitle, url: shareUrl });
+                await navigator.share({ title: 'Bài cộng đồng', url: shareUrl });
                 return;
             }
             await navigator.clipboard.writeText(shareUrl);
@@ -240,6 +299,61 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
             return;
         }
         setReportOpen(true);
+    };
+
+    const handleEditOpen = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setMoreAnchorEl(null);
+        setEditDescription(post?.description || '');
+        setEditError('');
+        setEditOpen(true);
+    };
+
+    const handleEditSubmit = async () => {
+        if (!id || editSubmitting) return;
+        const description = (editDescription || '').trim();
+        if (!description && !(post?.imageUrls?.length > 0)) {
+            setEditError('Bài viết cần có nội dung hoặc ít nhất 1 ảnh.');
+            return;
+        }
+        setEditSubmitting(true);
+        try {
+            await updateCommunityPost(id, {
+                description,
+            });
+            onPatchPost?.(id, {
+                description,
+            });
+            showToast('Đã cập nhật bài viết.', 'success');
+            setEditOpen(false);
+        } catch {
+            showToast('Không thể cập nhật bài viết.', 'error');
+        } finally {
+            setEditSubmitting(false);
+        }
+    };
+
+    const handleDeleteClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setMoreAnchorEl(null);
+        setDeleteConfirmOpen(true);
+    };
+
+    const handleDeletePostConfirm = async () => {
+        if (!id || deleteSubmitting) return;
+        setDeleteSubmitting(true);
+        try {
+            await deleteCommunityPost(id);
+            showToast('Đã xóa bài viết.', 'success');
+            setDeleteConfirmOpen(false);
+            onDeletePost?.(id);
+        } catch {
+            showToast('Không thể xóa bài viết.', 'error');
+        } finally {
+            setDeleteSubmitting(false);
+        }
     };
 
     const onThreadDelta = (delta) => {
@@ -365,6 +479,7 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
                             <Typography
                                 component={RouterLink}
                                 to={String(authorId) === String(user?.id) ? '/profile' : authorId ? `/profile/${authorId}` : '#'}
+                                state={{ profileTab: 'posts' }}
                                 sx={{ textDecoration: 'none', color: '#fff', fontSize: 14, fontWeight: 700 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
@@ -374,29 +489,12 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
                                 {formatRelativeShort(post?.createdAt) || 'Vừa đăng'}
                             </Typography>
                         </Stack>
-                        {!isMe ? (
-                            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.45)' }} onClick={handleMoreOpen}>
-                                <MoreIcon fontSize="small" />
-                            </IconButton>
-                        ) : null}
+                        <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.45)' }} onClick={handleMoreOpen}>
+                            <MoreIcon fontSize="small" />
+                        </IconButton>
                     </Box>
 
                     <Box sx={{ mb: mediaUrls.length > 0 ? 1 : 0.7 }}>
-                        {post?.title ? (
-                            <Typography
-                                onClick={goDetail}
-                                sx={{
-                                    color: 'rgba(255,255,255,0.96)',
-                                    fontSize: 14,
-                                    fontWeight: 650,
-                                    lineHeight: 1.35,
-                                    mb: post?.description ? 0.35 : 0,
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                {post.title}
-                            </Typography>
-                        ) : null}
                         <CommunityPostExpandableDescription text={post?.description} lineClamp={4} />
                     </Box>
 
@@ -430,9 +528,9 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
                                         key={`${id || 'post'}-img-${idx}`}
                                         data-idx={idx}
                                         sx={{
-                                            flex: { xs: '0 0 88%', sm: '0 0 82%' },
-                                            width: { xs: '88%', sm: '82%' },
-                                            maxHeight: { xs: 190, sm: 230 },
+                                            flex: '0 0 100%',
+                                            width: '100%',
+                                            maxHeight: { xs: 220, sm: 280 },
                                             borderRadius: 1.25,
                                             border: '1px solid rgba(255,255,255,0.06)',
                                             bgcolor: 'rgba(255,255,255,0.02)',
@@ -449,7 +547,7 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
                                             sx={{
                                                 width: '100%',
                                                 height: '100%',
-                                                objectFit: 'contain',
+                                                objectFit: 'cover',
                                                 display: 'block',
                                                 pointerEvents: 'none',
                                             }}
@@ -482,6 +580,15 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
                             <CommentIconOutlined sx={{ fontSize: 18 }} />
                         </IconButton>
                         <Typography sx={{ fontSize: 12.5, color: commentPop ? PURPLE : 'rgba(255,255,255,0.62)' }}>{commentCount || 0}</Typography>
+
+                        <IconButton
+                            size="small"
+                            onClick={handleSaveClick}
+                            disabled={saveSubmitting}
+                            sx={{ color: isSaved ? '#FFD166' : 'rgba(255,255,255,0.72)', p: 0.6 }}
+                        >
+                            {isSaved ? <BookmarkFilledIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
+                        </IconButton>
 
                         <IconButton
                             size="small"
@@ -581,39 +688,183 @@ function CommunityPostCard({ post, onOpen, onPatchPost }) {
                 </Box>
             </Dialog>
 
-            {!isMe && (
-                <>
-                    <Menu
-                        anchorEl={moreAnchorEl}
-                        open={Boolean(moreAnchorEl)}
-                        onClose={() => setMoreAnchorEl(null)}
-                        onClick={(e) => e.stopPropagation()}
-                        PaperProps={{
-                            sx: {
-                                bgcolor: '#25232C',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                color: '#fff',
-                                minWidth: 160,
-                                boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
-                            },
-                        }}
-                    >
+            <>
+                <Menu
+                    anchorEl={moreAnchorEl}
+                    open={Boolean(moreAnchorEl)}
+                    onClose={() => setMoreAnchorEl(null)}
+                    onClick={(e) => e.stopPropagation()}
+                    PaperProps={{
+                        sx: {
+                            bgcolor: '#25232C',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            color: '#fff',
+                            minWidth: 180,
+                            boxShadow: '0 8px 16px rgba(0,0,0,0.4)',
+                        },
+                    }}
+                >
+                    {isMe ? (
+                        [
+                            <MenuItem key="edit" onClick={handleEditOpen}>
+                                <ListItemIcon sx={{ color: '#9D6EED', minWidth: '32px !important' }}>
+                                    <EditIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText primary="Chỉnh sửa" primaryTypographyProps={{ fontSize: 14 }} />
+                            </MenuItem>,
+                            <MenuItem key="delete" onClick={handleDeleteClick} disabled={deleteSubmitting}>
+                                <ListItemIcon sx={{ color: '#FF6B6B', minWidth: '32px !important' }}>
+                                    <DeleteIcon fontSize="small" />
+                                </ListItemIcon>
+                                <ListItemText primary="Xóa bài viết" primaryTypographyProps={{ fontSize: 14 }} />
+                            </MenuItem>,
+                        ]
+                    ) : (
                         <MenuItem onClick={handleReportClick}>
                             <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
                                 <ReportIcon fontSize="small" />
                             </ListItemIcon>
                             <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
                         </MenuItem>
-                    </Menu>
-                    <ReportDialog
-                        open={reportOpen}
-                        onClose={() => setReportOpen(false)}
-                        targetType="COMMUNITY_POST"
-                        targetId={id}
-                        targetTitle={post?.title}
-                    />
-                </>
-            )}
+                    )}
+                </Menu>
+
+                <Dialog
+                    open={editOpen}
+                    onClose={() => setEditOpen(false)}
+                    fullWidth
+                    maxWidth="md"
+                    PaperProps={{
+                        sx: {
+                            bgcolor: '#10121a',
+                            color: '#fff',
+                            borderRadius: 3,
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            width: { xs: '96vw', sm: '92vw', md: '860px' },
+                            maxWidth: '860px',
+                            maxHeight: '92vh',
+                        },
+                    }}
+                >
+                    <DialogTitle sx={{ fontWeight: 800, py: 1.25, px: 2, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32 }}>
+                            <IconButton
+                                onClick={() => setEditOpen(false)}
+                                size="small"
+                                sx={{ color: '#fff', zIndex: 2, pointerEvents: 'auto' }}
+                                aria-label="Đóng"
+                            >
+                                <CloseIcon fontSize="small" />
+                            </IconButton>
+                            <Typography sx={{ fontSize: 22, fontWeight: 800, lineHeight: 1 }}>Chỉnh sửa bài viết</Typography>
+                            <Box sx={{ width: 32 }} />
+                        </Box>
+                    </DialogTitle>
+
+                    <DialogContent
+                        sx={{
+                            pt: 4,
+                            pb: 1,
+                            px: 2,
+                            overflowY: 'auto',
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: 'rgba(172,146,255,0.55) rgba(255,255,255,0.08)',
+                            '&::-webkit-scrollbar': { width: 10 },
+                            '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.06)', borderRadius: 999 },
+                            '&::-webkit-scrollbar-thumb': {
+                                background: 'linear-gradient(180deg, rgba(180,153,255,0.85), rgba(126,94,230,0.9))',
+                                borderRadius: 999,
+                                border: '2px solid rgba(255,255,255,0.06)',
+                            },
+                        }}
+                    >
+                        <Stack direction="row" spacing={1.2} alignItems="flex-start" sx={{ mt: 1.5 }}>
+                            <Avatar
+                                src={fullImageUrl(user?.avatarUrl || user?.avatar || user?.profilePicture || user?.imageUrl || '')}
+                                alt={user?.fullName || user?.username || 'Bạn'}
+                                sx={{ width: 38, height: 38, mt: 0.2 }}
+                            >
+                                {(user?.fullName || user?.username || 'B').slice(0, 1).toUpperCase()}
+                            </Avatar>
+
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Stack direction="row" alignItems="center" spacing={0.8}>
+                                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>
+                                        {user?.username || user?.fullName || 'Bạn'}
+                                    </Typography>
+                                </Stack>
+
+                                <TextField
+                                    fullWidth
+                                    multiline
+                                    minRows={4}
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                    placeholder="Có gì mới?"
+                                    variant="standard"
+                                    inputProps={{ maxLength: 1000 }}
+                                    sx={{
+                                        mt: 1,
+                                        '& .MuiInputBase-root': { color: '#fff' },
+                                        '& .MuiInputBase-input': { color: '#fff', fontSize: 16, lineHeight: 1.45 },
+                                        '& .MuiInputBase-input::placeholder': { color: 'rgba(255,255,255,0.48)', opacity: 1 },
+                                        '& .MuiInput-underline:before, & .MuiInput-underline:after': { display: 'none' },
+                                    }}
+                                />
+
+                                {editError ? (
+                                    <Typography sx={{ color: '#f87171', fontSize: 13, mt: 1 }}>
+                                        {editError}
+                                    </Typography>
+                                ) : null}
+                            </Box>
+                        </Stack>
+                    </DialogContent>
+
+                    <DialogActions sx={{ px: 2, py: 1.25, borderTop: '1px solid rgba(255,255,255,0.08)', justifyContent: 'flex-end' }}>
+                        <Stack direction="row" spacing={1.25} alignItems="center">
+                            <Button
+                                variant="contained"
+                                onClick={handleEditSubmit}
+                                disabled={editSubmitting || (!editDescription.trim() && !(post?.imageUrls?.length > 0))}
+                                sx={{
+                                    fontWeight: 700,
+                                    borderRadius: 2,
+                                    px: 2.25,
+                                    minWidth: 132,
+                                    bgcolor: 'rgba(255,255,255,0.08)',
+                                    color: '#fff',
+                                    boxShadow: 'none',
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.15)', boxShadow: 'none' },
+                                    '&.Mui-disabled': { bgcolor: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.35)' },
+                                }}
+                            >
+                                {editSubmitting ? 'Đang lưu…' : 'Lưu thay đổi'}
+                            </Button>
+                        </Stack>
+                    </DialogActions>
+                </Dialog>
+
+                <ConfirmDialog
+                    open={deleteConfirmOpen}
+                    onClose={() => setDeleteConfirmOpen(false)}
+                    onConfirm={handleDeletePostConfirm}
+                    loading={deleteSubmitting}
+                    variant="danger"
+                    title="Xóa bài viết?"
+                    content="Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa bài viết này?"
+                    confirmLabel="Xóa"
+                    cancelLabel="Hủy"
+                />
+
+                <ReportDialog
+                    open={reportOpen}
+                    onClose={() => setReportOpen(false)}
+                    targetType="COMMUNITY_POST"
+                    targetId={id}
+                    targetTitle={post?.description || 'Bài viết cộng đồng'}
+                />
+            </>
         </Box>
     );
 }

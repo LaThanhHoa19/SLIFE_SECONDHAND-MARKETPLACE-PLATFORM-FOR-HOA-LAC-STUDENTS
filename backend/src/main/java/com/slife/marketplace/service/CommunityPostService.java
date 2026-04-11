@@ -18,6 +18,7 @@ import com.slife.marketplace.repository.CommunityPostImageRepository;
 import com.slife.marketplace.repository.CommunityPostLikeRepository;
 import com.slife.marketplace.repository.CommunityPostRepository;
 import com.slife.marketplace.repository.HashtagRepository;
+import com.slife.marketplace.repository.SavedCommunityPostRepository;
 import com.slife.marketplace.util.Constants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +51,6 @@ public class CommunityPostService {
 
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
 
-    public static final int MAX_TITLE_LENGTH = 50;
     public static final int MAX_DESCRIPTION_LENGTH = 1000;
 
     /**
@@ -65,11 +65,12 @@ public class CommunityPostService {
     private final CommunityPostLikeRepository communityPostLikeRepository;
     private final CommunityPostCommentRepository communityPostCommentRepository;
     private final HashtagRepository hashtagRepository;
+    private final SavedCommunityPostRepository savedCommunityPostRepository;
     private final CommunityPostImageService communityPostImageService;
-    private final CommunityPostLikeService communityPostLikeService;
     private final BlockService blockService;
     private final ConfigService configService;
     private final ContentModerationService contentModerationService;
+    private final CommunityPostStatsBroadcastService communityPostStatsBroadcastService;
 
     public int getMaxImagesPerPost() {
         int perPost = Math.max(1, configService.getIntConfigValue("MAX_IMAGES_PER_POST", DEFAULT_MAX_IMAGES_PER_POST));
@@ -89,12 +90,10 @@ public class CommunityPostService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
         }
 
-        String normalizedTitle = trimToNull(request.getTitle());
-        contentModerationService.assertNoBannedKeywords(normalizedTitle != null ? normalizedTitle : "", trimToNull(request.getDescription()));
+        contentModerationService.assertNoBannedKeywords("", trimToNull(request.getDescription()));
 
         CommunityPost post = new CommunityPost();
         post.setAuthor(author);
-        post.setTitle(normalizedTitle);
         post.setDescription(trimToNull(request.getDescription()));
         post.setStatus(CommunityPost.STATUS_ACTIVE);
         post.setViewCount(0L);
@@ -117,14 +116,10 @@ public class CommunityPostService {
     @Transactional
     public CommunityPostResponse updatePost(Long postId, User author, UpdateCommunityPostRequest request) {
         CommunityPost post = loadOwnedPost(postId, author);
-        if (request.getTitle() != null && !request.getTitle().isBlank()) {
-            post.setTitle(request.getTitle().trim());
-        }
         if (request.getDescription() != null) {
             post.setDescription(trimToNull(request.getDescription()));
         }
-        String modTitle = post.getTitle() != null ? post.getTitle() : "";
-        contentModerationService.assertNoBannedKeywords(modTitle, post.getDescription());
+        contentModerationService.assertNoBannedKeywords("", post.getDescription());
         if (request.getDescription() != null || request.getHashtags() != null) {
             List<String> explicit = request.getHashtags() != null ? request.getHashtags() : List.of();
             syncHashtags(post, mergeHashtagSources(explicit, post.getDescription()));
@@ -141,6 +136,30 @@ public class CommunityPostService {
         post.setStatus(CommunityPost.STATUS_DELETED);
         post.setUpdatedAt(Instant.now());
         communityPostRepository.save(post);
+        communityPostStatsBroadcastService.broadcastPostDeleted(post.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<CommunityPostCardResponse> getMine(User user, int page, int size) {
+        if (user == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+        int pageIdx = Math.max(page, 0);
+        int s = size > 0 ? Math.min(size, 50) : 20;
+        Pageable pageable = PageRequest.of(pageIdx, s);
+        Page<CommunityPost> pageResult = communityPostRepository.findMineVisibleByAuthorId(user.getId(), pageable);
+        return toCardPage(pageResult, user.getId(), false);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<CommunityPostCardResponse> getByAuthor(Long authorId, int page, int size, User viewer) {
+        int pageIdx = Math.max(page, 0);
+        int s = size > 0 ? Math.min(size, 50) : 20;
+        Long viewerId = viewer != null ? viewer.getId() : null;
+        Pageable pageable = PageRequest.of(pageIdx, s);
+        Page<CommunityPost> pageResult = communityPostRepository.findVisibleByAuthorIdForViewer(
+                authorId, CommunityPost.STATUS_ACTIVE, viewerId, pageable);
+        return toCardPage(pageResult, viewerId, false);
     }
 
     @Transactional(readOnly = true)
@@ -173,27 +192,7 @@ public class CommunityPostService {
                     CommunityPost.STATUS_ACTIVE, viewerId, pageable);
         }
 
-        List<CommunityPost> posts = pageResult.getContent();
-        List<Long> ids = posts.stream().map(CommunityPost::getId).filter(Objects::nonNull).toList();
-        Map<Long, String> thumbByPost = firstThumbByPostId(ids);
-        Map<Long, List<String>> imageUrlsByPost = imageUrlsByPostId(ids);
-        Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
-        Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
-        Set<Long> likedByViewer = new HashSet<>();
-        if (viewerId != null && !ids.isEmpty()) {
-            likedByViewer.addAll(communityPostLikeRepository.findPostIdsLikedByUser(viewerId, ids));
-        }
-
-        List<CommunityPostCardResponse> cards = posts.stream()
-                .map(p -> toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer))
-                .collect(Collectors.toList());
-
-        return new PagedResponse<>(
-                cards,
-                pageResult.getNumber(),
-                pageResult.getSize(),
-                pageResult.getTotalElements(),
-                pageResult.getTotalPages());
+        return toCardPage(pageResult, viewerId, false);
     }
 
     @Transactional(readOnly = true)
@@ -242,12 +241,14 @@ public class CommunityPostService {
         Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
         Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
         Set<Long> likedByViewer = new HashSet<>();
+        Set<Long> savedByViewer = new HashSet<>();
         if (viewerId != null && !ids.isEmpty()) {
             likedByViewer.addAll(communityPostLikeRepository.findPostIdsLikedByUser(viewerId, ids));
+            savedByViewer.addAll(savedCommunityPostRepository.findSavedPostIdsByUserAndPostIds(viewerId, ids));
         }
 
         List<CommunityPostCardResponse> cards = posts.stream()
-                .map(p -> toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer))
+                .map(p -> toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer, savedByViewer))
                 .collect(Collectors.toList());
 
         if (hasMore && !posts.isEmpty()) {
@@ -313,12 +314,12 @@ public class CommunityPostService {
 
         List<String> tagStrings = post.getHashtags().stream().map(Hashtag::getTag).sorted().toList();
 
-        long likeCount = communityPostLikeService.countByPostId(postId);
+        long likeCount = communityPostLikeRepository.countByPost_Id(postId);
         long commentCount = communityPostCommentRepository.countByPost_IdAndDeletedAtIsNull(postId);
 
         Boolean isLiked = null;
         if (viewer != null) {
-            isLiked = communityPostLikeService.isLikedBy(viewer.getId(), postId);
+            isLiked = communityPostLikeRepository.existsByUser_IdAndPost_Id(viewer.getId(), postId);
         }
 
         User a = post.getAuthor();
@@ -329,7 +330,6 @@ public class CommunityPostService {
 
         CommunityPostResponse r = new CommunityPostResponse();
         r.setId(post.getId());
-        r.setTitle(post.getTitle());
         r.setDescription(post.getDescription());
         r.setStatus(post.getStatus());
         r.setViewCount(post.getViewCount());
@@ -345,20 +345,59 @@ public class CommunityPostService {
         return r;
     }
 
+    public PagedResponse<CommunityPostCardResponse> toCardPage(Page<CommunityPost> pageResult, Long viewerId, boolean forceSavedTrue) {
+        List<CommunityPost> posts = pageResult.getContent();
+        List<Long> ids = posts.stream().map(CommunityPost::getId).filter(Objects::nonNull).toList();
+        Map<Long, String> thumbByPost = firstThumbByPostId(ids);
+        Map<Long, List<String>> imageUrlsByPost = imageUrlsByPostId(ids);
+        Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
+        Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
+        Set<Long> likedByViewer = new HashSet<>();
+        Set<Long> savedByViewer = new HashSet<>();
+        if (viewerId != null && !ids.isEmpty()) {
+            likedByViewer.addAll(communityPostLikeRepository.findPostIdsLikedByUser(viewerId, ids));
+            savedByViewer.addAll(savedCommunityPostRepository.findSavedPostIdsByUserAndPostIds(viewerId, ids));
+        }
+
+        List<CommunityPostCardResponse> cards = posts.stream()
+                .map(p -> toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer, savedByViewer, forceSavedTrue))
+                .collect(Collectors.toList());
+
+        return new PagedResponse<>(
+                cards,
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages());
+    }
+
     private CommunityPostCardResponse toCard(CommunityPost p,
                                              Map<Long, String> thumbByPost,
                                              Map<Long, List<String>> imageUrlsByPost,
                                              Map<Long, Long> likes,
                                              Map<Long, Long> comments,
                                              Long viewerId,
-                                             Set<Long> likedByViewer) {
+                                             Set<Long> likedByViewer,
+                                             Set<Long> savedByViewer) {
+        return toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer, savedByViewer, false);
+    }
+
+    private CommunityPostCardResponse toCard(CommunityPost p,
+                                             Map<Long, String> thumbByPost,
+                                             Map<Long, List<String>> imageUrlsByPost,
+                                             Map<Long, Long> likes,
+                                             Map<Long, Long> comments,
+                                             Long viewerId,
+                                             Set<Long> likedByViewer,
+                                             Set<Long> savedByViewer,
+                                             boolean forceSavedTrue) {
         Long id = p.getId();
         User a = p.getAuthor();
         List<String> tags = p.getHashtags().stream().map(Hashtag::getTag).sorted().toList();
         Boolean isLiked = viewerId == null ? null : likedByViewer.contains(id);
+        Boolean isSaved = viewerId == null ? null : (forceSavedTrue || savedByViewer.contains(id));
         return new CommunityPostCardResponse(
                 id,
-                p.getTitle(),
                 p.getDescription(),
                 thumbByPost.get(id),
                 imageUrlsByPost.getOrDefault(id, List.of()),
@@ -369,7 +408,8 @@ public class CommunityPostService {
                 likes.getOrDefault(id, 0L),
                 comments.getOrDefault(id, 0L),
                 tags,
-                isLiked);
+                isLiked,
+                isSaved);
     }
 
     private Map<Long, String> firstThumbByPostId(List<Long> ids) {
