@@ -35,7 +35,8 @@ public class SchedulerService {
         int timeoutDays = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", DEFAULT_DEAL_TIMEOUT_DAYS));
         LocalDateTime threshold = LocalDateTime.now(TimeZones.VIETNAM).minusDays(timeoutDays);
 
-        List<Deal> overdueDeals = dealRepository.findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull("CONFIRMED", threshold);
+        List<Deal> overdueDeals = dealRepository.findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull("CONFIRMED",
+                threshold);
         if (overdueDeals.isEmpty()) {
             return;
         }

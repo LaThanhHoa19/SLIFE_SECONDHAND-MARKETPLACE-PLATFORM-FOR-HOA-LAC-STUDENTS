@@ -45,8 +45,10 @@ public class ConfigService {
             "DEAL_TIMEOUT_DAYS", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
             "AUTO_HIDE_REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."),
             "PICKUP_REMINDER_HOURS", new ConfigValidationMetaDTO("integer", 1, 168, "Giá trị hợp lệ: 1–168 giờ."),
-            "MAX_ACTIVE_LISTINGS_PER_USER", new ConfigValidationMetaDTO("integer", 0, 5000, "0 = không giới hạn; 1–5000 tin ACTIVE."),
-            "LISTING_EXPIRING_SOON_HOURS_BEFORE", new ConfigValidationMetaDTO("integer", 1, 720, "Giá trị hợp lệ: 1–720 giờ trước khi hết hạn."));
+            "MAX_ACTIVE_LISTINGS_PER_USER",
+            new ConfigValidationMetaDTO("integer", 0, 5000, "0 = không giới hạn; 1–5000 tin ACTIVE."),
+            "LISTING_EXPIRING_SOON_HOURS_BEFORE",
+            new ConfigValidationMetaDTO("integer", 1, 720, "Giá trị hợp lệ: 1–720 giờ trước khi hết hạn."));
     private final ConfigRepository configRepository;
 
     public ConfigService(ConfigRepository configRepository) {

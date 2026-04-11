@@ -570,6 +570,7 @@ public class DealService {
                 .isReviewed(reviewed)
                 .createdAt(deal.getCreatedAt())
                 .updatedAt(deal.getUpdatedAt())
+                .reviewDeadline(resolveReviewDeadline(deal, reviewed))
                 .build();
     }
 
@@ -627,6 +628,18 @@ public class DealService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh giá giao dịch đã hoàn thành");
         }
 
+        // Kiểm tra hạn đánh giá: buyer chỉ có 7 ngày kể từ khi deal chuyển sang SUCCESS (listing được SOLD)
+        LocalDateTime soldAt = deal.getUpdatedAt();
+        if (soldAt != null) {
+            LocalDateTime deadline = soldAt.plusDays(7);
+            if (LocalDateTime.now(ZONE_VIETNAM).isAfter(deadline)) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT,
+                        "Thời hạn đánh giá đã kết thúc vào ngày "
+                        + deadline.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        + ". Bạn không thể đánh giá sau thời điểm này.");
+            }
+        }
+
         // Kiểm tra đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu để tránh conflict với deal cũ)
         if (deal.getConversation() != null && deal.getBuyer() != null) {
             java.time.LocalDateTime startPoint = deal.getConfirmedAt() != null ? deal.getConfirmedAt() : deal.getCreatedAt();
@@ -681,6 +694,21 @@ public class DealService {
             user.setReputationScore(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
             userRepository.saveAndFlush(user);
         }
+    }
+
+    /**
+     * Tính thời hạn đánh giá = ngày deal chuyển SUCCESS (updatedAt) + 7 ngày.
+     * Trả null nếu deal chưa SUCCESS, đã review, hoặc updatedAt bị null.
+     */
+    private LocalDateTime resolveReviewDeadline(Deal deal, boolean alreadyReviewed) {
+        if (!STATUS_SUCCESS.equals(deal.getStatus()) || alreadyReviewed) {
+            return null;
+        }
+        LocalDateTime soldAt = deal.getUpdatedAt();
+        if (soldAt == null) {
+            return null;
+        }
+        return soldAt.plusDays(7);
     }
 
     private void notifyDealStatusEmail(Deal deal, String buyerHeadline, String sellerHeadline, User actor) {

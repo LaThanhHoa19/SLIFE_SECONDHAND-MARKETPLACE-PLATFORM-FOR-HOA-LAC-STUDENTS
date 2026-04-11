@@ -293,15 +293,16 @@ export default function ListingDetailPage() {
     };
 
     const handleShare = async () => {
-        if (!listing?.id || shareSubmitting) return;
+        const shareId = listing?.code || listing?.id;
+        if (!shareId || shareSubmitting) return;
         setShareSubmitting(true);
-        let shareUrl = `${window.location.origin}/listings/${listing.id}`;
+        let shareUrl = `${window.location.origin}/listings/${shareId}`;
         let shareTitle = listing?.title || 'Tin đăng';
         try {
             const res = await getListingShareInfo(listing.id);
             const payload = getPayload(res);
             const data = payload?.data ?? payload;
-            shareUrl = normalizeShareUrl(data?.shareUrl, listing.id);
+            shareUrl = normalizeShareUrl(data?.shareUrl, shareId);
             shareTitle = data?.title || data?.listing?.title || shareTitle;
         } catch {
             // fallback to local url

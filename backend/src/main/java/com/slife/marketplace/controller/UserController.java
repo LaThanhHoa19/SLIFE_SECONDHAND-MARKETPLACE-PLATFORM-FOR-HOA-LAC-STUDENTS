@@ -53,7 +53,18 @@ public class UserController {
     }
 
     @GetMapping("/api/users/{id}")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(@PathVariable("id") String idOrCode) {
+        Long id;
+        try {
+            id = Long.parseLong(idOrCode);
+        } catch (NumberFormatException e) {
+            id = com.slife.marketplace.util.IdHasher.decode(idOrCode);
+        }
+
+        if (id == null) {
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
         Long viewerId = userService.getCurrentUserOptional().map(User::getId).orElse(null);
@@ -106,7 +117,17 @@ public class UserController {
     }
 
     @GetMapping("/api/users/{id}/reviews")
-    public ResponseEntity<?> getUserReviews(@PathVariable Long id) {
+    public ResponseEntity<?> getUserReviews(@PathVariable("id") String idOrCode) {
+        Long id;
+        try {
+            id = Long.parseLong(idOrCode);
+        } catch (NumberFormatException e) {
+            id = com.slife.marketplace.util.IdHasher.decode(idOrCode);
+        }
+
+        if (id == null) {
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
         return ResponseEntity.ok(ApiResponse.success("Success", reviewService.getUserReviews(id)));
     }
 }
