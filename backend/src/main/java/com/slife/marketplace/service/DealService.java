@@ -317,6 +317,11 @@ public class DealService {
         if (!STATUS_CONFIRMED.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ giao dịch CONFIRMED mới gửi được nhắc nhở");
         }
+        if (deal.getPickupTime() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Chưa có thời gian nhận hàng — không thể gửi email nhắc nhở");
+        }
+        // Gửi email 2 bên (cùng template với job tự động). Trước đây chỉ set reminder_sent nên UI test không thấy mail.
+        systemEmailService.sendPickupReminderEmails(deal);
         deal.setReminderSent(true);
         dealRepository.save(deal);
     }

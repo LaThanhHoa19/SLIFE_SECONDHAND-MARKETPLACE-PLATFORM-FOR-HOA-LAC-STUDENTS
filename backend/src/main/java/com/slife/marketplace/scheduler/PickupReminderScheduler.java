@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Mỗi 5 phút: tìm deal có {@code pickup_time} rơi vào khoảng ~3 giờ nữa và gửi email 2 bên.
+ * Mỗi 5 phút: deal CONFIRMED/COMPLETED có {@code pickup_time} trong khoảng ~PICKUP_REMINDER_HOURS nữa → gửi email 2 bên.
  */
 @Component
 public class PickupReminderScheduler {
