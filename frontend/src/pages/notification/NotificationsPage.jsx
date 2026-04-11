@@ -1,7 +1,20 @@
 /**
  * SCRUM-172: Trang danh sách thông báo đầy đủ.
  */
-import { Box, Button, CircularProgress, IconButton, InputAdornment, Skeleton, TextField, Typography } from '@mui/material';
+import {
+    Box,
+    Button,
+    CircularProgress,
+    FormControl,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Select,
+    Skeleton,
+    TextField,
+    Typography,
+} from '@mui/material';
 import { useEffect, useMemo, useRef, useState, useContext } from 'react';
 import { DoneAll as DoneAllIcon, NotificationsOff as EmptyIcon } from '@mui/icons-material';
 import { NotificationContext } from '../../providers/NotificationProvider';
@@ -22,6 +35,38 @@ const formatNotificationTime = (createdAt) => {
     return d.toLocaleDateString('vi-VN');
 };
 
+const TYPE_FILTER_OPTIONS = [
+    { value: 'ALL', label: 'Tất cả loại' },
+    { value: 'MESSAGE', label: 'Tin nhắn' },
+    { value: 'DEAL', label: 'Deal / Đơn hàng' },
+    { value: 'SOCIAL', label: 'Theo dõi / Tương tác' },
+    { value: 'LISTING', label: 'Tin đăng' },
+    { value: 'SYSTEM', label: 'Hệ thống' },
+    { value: 'OTHER', label: 'Khác' },
+];
+
+const detectNotificationType = (n) => {
+    const type = String(n?.type || '').toUpperCase();
+    const refType = String(n?.refType || '').toUpperCase();
+
+    if (n?.sessionId || refType === 'MESSAGE' || refType === 'CONVERSATION' || refType === 'OFFER_CHAT' || type === 'MESSAGE') {
+        return 'MESSAGE';
+    }
+    if (refType === 'ORDER_HISTORY' || type.includes('DEAL') || type.includes('ORDER') || type.includes('OFFER')) {
+        return 'DEAL';
+    }
+    if (refType === 'SELLER_PROFILE' || type.includes('FOLLOW') || type.includes('LIKE') || type.includes('COMMENT')) {
+        return 'SOCIAL';
+    }
+    if (refType === 'LISTING' || type.includes('LISTING') || type.includes('REPORT')) {
+        return 'LISTING';
+    }
+    if (type.includes('SYSTEM') || type.includes('ADMIN') || type.includes('CONFIG')) {
+        return 'SYSTEM';
+    }
+    return 'OTHER';
+};
+
 export default function NotificationsPage() {
     const { unreadCount, markAllRead } = useContext(NotificationContext);
     const navigate = useNavigate();
@@ -33,6 +78,9 @@ export default function NotificationsPage() {
     const [initialLoading, setInitialLoading] = useState(true);
     const [q, setQ] = useState('');
     const [debouncedQ, setDebouncedQ] = useState('');
+    const [readFilter, setReadFilter] = useState('ALL');
+    const [typeFilter, setTypeFilter] = useState('ALL');
+    const [sortBy, setSortBy] = useState('NEWEST');
     const restoreScrollRef = useRef(false);
     const sentinelRef = useRef(null);
 
@@ -182,6 +230,37 @@ export default function NotificationsPage() {
         }
     };
 
+    const filteredItems = useMemo(() => {
+        let list = Array.isArray(items) ? [...items] : [];
+
+        if (readFilter === 'UNREAD') {
+            list = list.filter((n) => !n?.isRead);
+        } else if (readFilter === 'READ') {
+            list = list.filter((n) => Boolean(n?.isRead));
+        }
+
+        if (typeFilter !== 'ALL') {
+            list = list.filter((n) => detectNotificationType(n) === typeFilter);
+        }
+
+        list.sort((a, b) => {
+            const ta = new Date(a?.createdAt || 0).getTime();
+            const tb = new Date(b?.createdAt || 0).getTime();
+            return sortBy === 'OLDEST' ? ta - tb : tb - ta;
+        });
+
+        return list;
+    }, [items, readFilter, typeFilter, sortBy]);
+
+    const activeFilterCount =
+        (readFilter !== 'ALL' ? 1 : 0) + (typeFilter !== 'ALL' ? 1 : 0) + (sortBy !== 'NEWEST' ? 1 : 0);
+
+    const resetFilters = () => {
+        setReadFilter('ALL');
+        setTypeFilter('ALL');
+        setSortBy('NEWEST');
+    };
+
     const skeletons = useMemo(
         () =>
             Array.from({ length: 7 }).map((_, i) => (
@@ -232,19 +311,31 @@ export default function NotificationsPage() {
     return (
         <Box
             sx={{
-                px: 2,
-                py: 3,
-                maxWidth: 640,
+                width: '100%',
+                px: { xs: 1.5, md: 3 },
+                py: { xs: 2.5, md: 3.5 },
+                maxWidth: '100%',
                 mx: 'auto',
-                bgcolor: '#201D26',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 4,
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Typography variant="h5" fontWeight={800} sx={{ color: '#FFFFFF' }}>
-                    Thông báo
-                </Typography>
+            <Box
+                sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', md: 'row' },
+                    alignItems: { xs: 'flex-start', md: 'center' },
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    mb: 3,
+                }}
+            >
+                <Box>
+                    <Typography variant="h4" fontWeight={900} sx={{ color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                        Thông báo
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.55)', mt: 0.75 }}>
+                        Theo dõi cập nhật từ người theo dõi, tin nhắn, deal và tin đăng của bạn.
+                    </Typography>
+                </Box>
                 {unreadCount > 0 && (
                     <Button
                         variant="outlined"
@@ -256,6 +347,7 @@ export default function NotificationsPage() {
                             color: '#9D6EED',
                             textTransform: 'none',
                             borderRadius: 999,
+                            alignSelf: { xs: 'stretch', md: 'center' },
                             '&:hover': { borderColor: '#7C3AED', bgcolor: 'rgba(157,110,237,0.12)' },
                         }}
                     >
@@ -264,7 +356,15 @@ export default function NotificationsPage() {
                 )}
             </Box>
 
-            <Box sx={{ mb: 2 }}>
+            <Box
+                sx={{
+                    mb: 2.5,
+                    display: 'flex',
+                    flexDirection: { xs: 'column', xl: 'row' },
+                    gap: 1.75,
+                    alignItems: { xs: 'stretch', xl: 'center' },
+                }}
+            >
                 <TextField
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
@@ -286,6 +386,7 @@ export default function NotificationsPage() {
                         ) : null,
                     }}
                     sx={{
+                        width: { xs: '100%', xl: 'min(620px, 100%)' },
                         '& .MuiOutlinedInput-root': {
                             borderRadius: 999,
                             bgcolor: 'rgba(255,255,255,0.06)',
@@ -297,77 +398,274 @@ export default function NotificationsPage() {
                         '& input::placeholder': { color: 'rgba(255,255,255,0.55)', opacity: 1 },
                     }}
                 />
-                <Typography
-                    variant="body2"
+
+                <Box
                     sx={{
-                        display: 'block',
-                        mt: 0.75,
-                        minHeight: 18,
-                        color: 'rgba(255,255,255,0.6)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        display: 'grid',
+                        gap: 1,
+                        alignItems: 'center',
+                        justifyContent: { xs: 'flex-start', xl: 'flex-end' },
+                        flex: 1,
+                        pl: { xl: 2 },
+                        borderLeft: { xl: '1px solid rgba(255,255,255,0.08)' },
+                        gridTemplateColumns: {
+                            xs: '1fr',
+                            sm: 'repeat(2, minmax(160px, 1fr))',
+                            lg: 'repeat(3, minmax(160px, 1fr))',
+                        },
                     }}
-                    title={isSearching ? `Kết quả cho “${debouncedQ.trim()}”` : '30 thông báo mới nhất'}
                 >
-                    {isSearching ? `Kết quả cho “${debouncedQ.trim()}”` : `${pageSize} thông báo mới nhất`}
-                </Typography>
+                    <FormControl size="small" fullWidth>
+                        <InputLabel id="notification-read-filter-label" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                            Trạng thái
+                        </InputLabel>
+                        <Select
+                            labelId="notification-read-filter-label"
+                            value={readFilter}
+                            label="Trạng thái"
+                            onChange={(e) => setReadFilter(e.target.value)}
+                            sx={{
+                                color: 'rgba(255,255,255,0.92)',
+                                borderRadius: 999,
+                                bgcolor: 'rgba(255,255,255,0.06)',
+                                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)' },
+                                '&:hover fieldset': { borderColor: 'rgba(157,110,237,0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: '#9D6EED' },
+                            }}
+                        >
+                            <MenuItem value="ALL">Tất cả</MenuItem>
+                            <MenuItem value="UNREAD">Chưa đọc</MenuItem>
+                            <MenuItem value="READ">Đã đọc</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    <FormControl size="small" fullWidth>
+                        <InputLabel id="notification-type-filter-label" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                            Loại thông báo
+                        </InputLabel>
+                        <Select
+                            labelId="notification-type-filter-label"
+                            value={typeFilter}
+                            label="Loại thông báo"
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            sx={{
+                                color: 'rgba(255,255,255,0.92)',
+                                borderRadius: 999,
+                                bgcolor: 'rgba(255,255,255,0.06)',
+                                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)' },
+                                '&:hover fieldset': { borderColor: 'rgba(157,110,237,0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: '#9D6EED' },
+                            }}
+                        >
+                            {TYPE_FILTER_OPTIONS.map((option) => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <FormControl size="small" fullWidth>
+                        <InputLabel id="notification-sort-label" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                            Sắp xếp
+                        </InputLabel>
+                        <Select
+                            labelId="notification-sort-label"
+                            value={sortBy}
+                            label="Sắp xếp"
+                            onChange={(e) => setSortBy(e.target.value)}
+                            sx={{
+                                color: 'rgba(255,255,255,0.92)',
+                                borderRadius: 999,
+                                bgcolor: 'rgba(255,255,255,0.06)',
+                                '& fieldset': { borderColor: 'rgba(255,255,255,0.12)' },
+                                '&:hover fieldset': { borderColor: 'rgba(157,110,237,0.5)' },
+                                '&.Mui-focused fieldset': { borderColor: '#9D6EED' },
+                            }}
+                        >
+                            <MenuItem value="NEWEST">Mới nhất</MenuItem>
+                            <MenuItem value="OLDEST">Cũ nhất</MenuItem>
+                        </Select>
+                    </FormControl>
+
+                    {activeFilterCount > 0 && (
+                        <Button
+                            variant="text"
+                            onClick={resetFilters}
+                            sx={{
+                                textTransform: 'none',
+                                color: 'rgba(255,255,255,0.75)',
+                                borderRadius: 999,
+                                px: 1.5,
+                                justifySelf: { xs: 'start', lg: 'end' },
+                            }}
+                        >
+                            Xóa bộ lọc
+                        </Button>
+                    )}
+                </Box>
             </Box>
 
-            {initialLoading ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{skeletons}</Box>
-            ) : items.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                    <EmptyIcon sx={{ fontSize: 64, color: 'rgba(255,255,255,0.18)', mb: 2 }} />
-                    <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.72)' }} gutterBottom>
-                        {isSearching ? 'Không tìm thấy thông báo phù hợp' : 'Chưa có thông báo'}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                        {isSearching
-                            ? 'Hãy thử từ khóa khác.'
-                            : 'Bạn sẽ nhận thông báo khi có tin nhắn mới, người theo dõi, offer, deal xác nhận hoặc tin đăng bị báo cáo.'}
-                    </Typography>
-                </Box>
-            ) : (
-                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                    {items.map((n) => (
-                        <Box key={n.id} sx={{ pb: 2 }}>
+            <Box
+                sx={{
+                    width: '100%',
+                    bgcolor: '#201D26',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 4,
+                    p: { xs: 2, md: 3 },
+                    minHeight: 420,
+                }}
+            >
+                {initialLoading ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>{skeletons}</Box>
+                ) : items.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 8 }}>
+                        <EmptyIcon sx={{ fontSize: 64, color: 'rgba(255,255,255,0.18)', mb: 2 }} />
+                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.72)' }} gutterBottom>
+                            {isSearching ? 'Không tìm thấy thông báo phù hợp' : 'Chưa có thông báo'}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                            {isSearching
+                                ? 'Hãy thử từ khóa khác.'
+                                : 'Bạn sẽ nhận thông báo khi có tin nhắn mới, người theo dõi, offer, deal xác nhận hoặc tin đăng bị báo cáo.'}
+                        </Typography>
+                    </Box>
+                ) : filteredItems.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 8 }}>
+                        <EmptyIcon sx={{ fontSize: 56, color: 'rgba(255,255,255,0.16)', mb: 1.5 }} />
+                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.72)' }} gutterBottom>
+                            Không có thông báo khớp bộ lọc
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                            Hãy đổi điều kiện lọc hoặc bấm “Xóa bộ lọc”.
+                        </Typography>
+                    </Box>
+                ) : (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 1,
+                                mb: 0.5,
+                            }}
+                        >
                             <Box
+                                sx={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 0.75,
+                                    px: 1.25,
+                                    py: 0.55,
+                                    borderRadius: 999,
+                                    bgcolor: 'rgba(157,110,237,0.12)',
+                                    border: '1px solid rgba(157,110,237,0.38)',
+                                }}
+                            >
+                                <Typography variant="caption" sx={{ color: 'rgba(157,110,237,0.95)', fontWeight: 700, letterSpacing: '0.02em' }}>
+                                    {isSearching ? 'KẾT QUẢ TÌM KIẾM' : 'THÔNG BÁO MỚI NHẤT'}
+                                </Typography>
+                            </Box>
+
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.66)', fontWeight: 600 }}>
+                                {filteredItems.length} mục hiển thị
+                            </Typography>
+                        </Box>
+
+                        {filteredItems.map((n) => (
+                            <Box
+                                key={n.id}
                                 onClick={() => void handleNotificationClick(n)}
                                 sx={{
-                                    p: 2.25,
-                                    borderRadius: '12px',
+                                    p: { xs: 2, md: 2.25 },
+                                    borderRadius: '14px',
                                     bgcolor: n.isRead ? 'rgba(255,255,255,0.05)' : 'rgba(157,110,237,0.14)',
                                     border: '1px solid',
                                     borderColor: n.isRead ? 'rgba(255,255,255,0.10)' : 'rgba(157,110,237,0.35)',
                                     cursor: 'pointer',
-                                    transition: 'background 0.2s',
-                                    '&:hover': { bgcolor: n.isRead ? 'rgba(255,255,255,0.08)' : 'rgba(157,110,237,0.20)' },
+                                    position: 'relative',
+                                    transition: 'background 0.2s, transform 0.2s',
+                                    '&:hover': {
+                                        bgcolor: n.isRead ? 'rgba(255,255,255,0.08)' : 'rgba(157,110,237,0.20)',
+                                        transform: 'translateY(-1px)',
+                                    },
+                                    '&::before': {
+                                        content: '""',
+                                        position: 'absolute',
+                                        left: 0,
+                                        top: 10,
+                                        bottom: 10,
+                                        width: 3,
+                                        borderRadius: 999,
+                                        bgcolor: n.isRead ? 'transparent' : 'rgba(157,110,237,0.9)',
+                                    },
                                 }}
                             >
                                 <Typography
                                     sx={{
                                         fontSize: '15.5px',
-                                        lineHeight: 1.35,
+                                        lineHeight: 1.4,
                                         fontWeight: n.isRead ? 500 : 800,
                                         color: 'rgba(255,255,255,0.94)',
+                                        pr: { xs: 0, md: 2 },
                                     }}
                                 >
                                     {n.content}
                                 </Typography>
-                                <Typography sx={{ fontSize: '13px', color: 'rgba(157,110,237,0.95)', mt: 0.75, fontWeight: 600 }}>
+                                <Typography sx={{ fontSize: '13px', color: 'rgba(157,110,237,0.95)', mt: 0.9, fontWeight: 600 }}>
                                     {formatNotificationTime(n.createdAt)}
                                 </Typography>
                             </Box>
-                        </Box>
-                    ))}
+                        ))}
 
-                    {/* Sentinel for infinite scroll */}
-                    <Box ref={sentinelRef} sx={{ height: 1 }} />
+                        {filteredItems.length <= 2 && !loading && (
+                            <Box
+                                sx={{
+                                    mt: 0.75,
+                                    px: { xs: 1.5, md: 2 },
+                                    py: 1.35,
+                                    borderRadius: 2,
+                                    border: '1px dashed rgba(255,255,255,0.16)',
+                                    bgcolor: 'rgba(255,255,255,0.025)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 1,
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.58)' }}>
+                                    Bạn đã xem gần hết thông báo. Hãy quay lại sau để xem cập nhật mới.
+                                </Typography>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                    sx={{
+                                        textTransform: 'none',
+                                        borderRadius: 999,
+                                        borderColor: 'rgba(255,255,255,0.26)',
+                                        color: 'rgba(255,255,255,0.8)',
+                                        '&:hover': {
+                                            borderColor: 'rgba(157,110,237,0.6)',
+                                            bgcolor: 'rgba(157,110,237,0.1)',
+                                        },
+                                    }}
+                                >
+                                    Lên đầu trang
+                                </Button>
+                            </Box>
+                        )}
 
-                    <Footer />
-                </Box>
-            )}
+                        {/* Sentinel for infinite scroll */}
+                        <Box ref={sentinelRef} sx={{ height: 1 }} />
+
+                        <Footer />
+                    </Box>
+                )}
+            </Box>
         </Box>
     );
 }
