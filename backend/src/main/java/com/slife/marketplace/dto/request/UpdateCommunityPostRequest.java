@@ -8,9 +8,6 @@ import java.util.List;
 @Data
 public class UpdateCommunityPostRequest {
 
-    @Size(max = 50)
-    private String title;
-
     @Size(max = 1000)
     private String description;
 

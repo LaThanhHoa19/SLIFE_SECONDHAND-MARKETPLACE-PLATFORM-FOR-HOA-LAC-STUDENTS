@@ -8,11 +8,13 @@ import com.slife.marketplace.dto.response.CommunityPostResponse;
 import com.slife.marketplace.dto.response.CursorPageResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.dto.response.ToggleLikeResponse;
+import com.slife.marketplace.dto.response.ToggleSaveResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.CommunityPostImageService;
 import com.slife.marketplace.service.CommunityPostLikeService;
 import com.slife.marketplace.service.CommunityPostService;
 import com.slife.marketplace.service.UserService;
+import com.slife.marketplace.service.SavedCommunityPostService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,15 +31,18 @@ public class CommunityPostController {
     private final CommunityPostService communityPostService;
     private final CommunityPostImageService communityPostImageService;
     private final CommunityPostLikeService communityPostLikeService;
+    private final SavedCommunityPostService savedCommunityPostService;
     private final UserService userService;
 
     public CommunityPostController(CommunityPostService communityPostService,
                                    CommunityPostImageService communityPostImageService,
                                    CommunityPostLikeService communityPostLikeService,
+                                   SavedCommunityPostService savedCommunityPostService,
                                    UserService userService) {
         this.communityPostService = communityPostService;
         this.communityPostImageService = communityPostImageService;
         this.communityPostLikeService = communityPostLikeService;
+        this.savedCommunityPostService = savedCommunityPostService;
         this.userService = userService;
     }
 
@@ -47,7 +52,6 @@ public class CommunityPostController {
         return ResponseEntity.ok(ApiResponse.success("OK", Map.of(
                 "maxImagesPerPost", max,
                 "maxImageSizeMB", CommunityPostImageService.MAX_IMAGE_MB,
-                "maxTitleLength", CommunityPostService.MAX_TITLE_LENGTH,
                 "maxDescriptionLength", CommunityPostService.MAX_DESCRIPTION_LENGTH)));
     }
 
@@ -129,5 +133,45 @@ public class CommunityPostController {
     public ResponseEntity<ApiResponse<ToggleLikeResponse>> toggleLike(@PathVariable("id") Long id) {
         User user = userService.getCurrentUser();
         return ResponseEntity.ok(ApiResponse.success("OK", communityPostLikeService.toggle(user, id)));
+    }
+
+    @PostMapping("/{id}/save")
+    public ResponseEntity<ApiResponse<ToggleSaveResponse>> toggleSave(@PathVariable("id") Long id) {
+        User user = userService.getCurrentUser();
+        boolean saved = savedCommunityPostService.toggle(user, id);
+        return ResponseEntity.ok(ApiResponse.success("OK", new ToggleSaveResponse(saved)));
+    }
+
+    @GetMapping("/saved")
+    public ResponseEntity<ApiResponse<PagedResponse<CommunityPostCardResponse>>> listSaved(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        User user = userService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.success("OK", savedCommunityPostService.getSavedFeed(user, page, size)));
+    }
+
+    @GetMapping("/liked")
+    public ResponseEntity<ApiResponse<PagedResponse<CommunityPostCardResponse>>> listLiked(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        User user = userService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.success("OK", communityPostLikeService.getLikedFeed(user, page, size)));
+    }
+
+    @GetMapping("/mine")
+    public ResponseEntity<ApiResponse<PagedResponse<CommunityPostCardResponse>>> listMine(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        User user = userService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponse.success("OK", communityPostService.getMine(user, page, size)));
+    }
+
+    @GetMapping("/by-author/{authorId}")
+    public ResponseEntity<ApiResponse<PagedResponse<CommunityPostCardResponse>>> listByAuthor(
+            @PathVariable("authorId") Long authorId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        User viewer = userService.getCurrentUserOptional().orElse(null);
+        return ResponseEntity.ok(ApiResponse.success("OK", communityPostService.getByAuthor(authorId, page, size, viewer)));
     }
 }

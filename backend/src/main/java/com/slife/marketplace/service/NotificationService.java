@@ -486,14 +486,16 @@ public class NotificationService {
     public com.slife.marketplace.dto.response.CursorPageResponse<NotificationResponse> getNotificationResponsesPage(
             Long userId,
             int limit,
-            String cursor
+            String cursor,
+            NotificationScope scope
     ) {
         int size = Math.max(1, Math.min(limit, 50));
         NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
         Instant cursorCreatedAt = c != null ? c.createdAt() : null;
         Long cursorId = c != null ? c.id() : null;
         Pageable pageable = PageRequest.of(0, size);
-        List<Notification> list = notificationRepository.findPageByUser(userId, cursorCreatedAt, cursorId, pageable);
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        List<Notification> list = notificationRepository.findPageByUser(userId, scopeName, cursorCreatedAt, cursorId, pageable);
         List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
         boolean hasMore = list.size() == size;
         String nextCursor = null;
@@ -509,7 +511,8 @@ public class NotificationService {
             Long userId,
             String q,
             int limit,
-            String cursor
+            String cursor,
+            NotificationScope scope
     ) {
         String query = q != null ? q.trim() : "";
         if (query.length() > 100) query = query.substring(0, 100);
@@ -518,7 +521,8 @@ public class NotificationService {
         Instant cursorCreatedAt = c != null ? c.createdAt() : null;
         Long cursorId = c != null ? c.id() : null;
         Pageable pageable = PageRequest.of(0, size);
-        List<Notification> list = notificationRepository.searchPageByUser(userId, query, cursorCreatedAt, cursorId, pageable);
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        List<Notification> list = notificationRepository.searchPageByUser(userId, scopeName, query, cursorCreatedAt, cursorId, pageable);
         List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
         boolean hasMore = list.size() == size;
         String nextCursor = null;
@@ -530,19 +534,22 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public long getUnreadCount(Long userId) {
-        return notificationRepository.countByUser_IdAndIsReadFalse(userId);
+    public long getUnreadCount(Long userId, NotificationScope scope) {
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        return notificationRepository.countUnreadByScope(userId, scopeName);
     }
 
     @Transactional
-    public void markRead(Long userId, Long notificationId) {
+    public void markRead(Long userId, Long notificationId, NotificationScope scope) {
         if (userId == null || notificationId == null) return;
-        notificationRepository.markReadForUser(notificationId, userId);
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        notificationRepository.markReadForUser(notificationId, userId, scopeName);
     }
 
     @Transactional
-    public void markAllRead(Long userId) {
-        notificationRepository.markAllReadForUser(userId);
+    public void markAllRead(Long userId, NotificationScope scope) {
+        String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
+        notificationRepository.markAllReadForUser(userId, scopeName);
     }
 
     // ── Internals ─────────────────────────────────────────────────────────────
@@ -606,7 +613,7 @@ public class NotificationService {
 
     private void pushNotificationCount(User user) {
         try {
-            long count = notificationRepository.countByUser_IdAndIsReadFalse(user.getId());
+            long count = notificationRepository.countUnreadByScope(user.getId(), NotificationScope.ALL.name());
             messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notifications", count);
         } catch (Exception ex) {
             log.warn("WS notification count push failed userId={}", user.getId());

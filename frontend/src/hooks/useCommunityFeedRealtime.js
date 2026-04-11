@@ -19,11 +19,14 @@ function sockJsChatUrl(token) {
 /**
  * @param {boolean} enabled
  * @param {(payload: { postId: number, likeCount: number, commentCount: number }) => void} onStats
+ * @param {(event: { type: string, postId?: number, userId?: number, saved?: boolean, likeCount?: number, commentCount?: number }) => void} [onEvent]
  */
-export default function useCommunityFeedRealtime(enabled, onStats) {
+export default function useCommunityFeedRealtime(enabled, onStats, onEvent) {
     const { token } = useAuth();
     const onStatsRef = useRef(onStats);
+    const onEventRef = useRef(onEvent);
     onStatsRef.current = onStats;
+    onEventRef.current = onEvent;
 
     useEffect(() => {
         if (!enabled) return undefined;
@@ -38,14 +41,27 @@ export default function useCommunityFeedRealtime(enabled, onStats) {
                         const raw = message?.body;
                         if (raw == null || raw === '') return;
                         const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                        const type = String(data?.type || 'STATS');
                         const postId = Number(data?.postId);
                         if (!Number.isFinite(postId)) return;
-                        const likeCount = Number(data?.likeCount);
-                        const commentCount = Number(data?.commentCount);
-                        onStatsRef.current?.({
+
+                        if (type === 'STATS') {
+                            const likeCount = Number(data?.likeCount);
+                            const commentCount = Number(data?.commentCount);
+                            onStatsRef.current?.({
+                                postId,
+                                likeCount: Number.isFinite(likeCount) ? likeCount : 0,
+                                commentCount: Number.isFinite(commentCount) ? commentCount : 0,
+                            });
+                        }
+
+                        onEventRef.current?.({
+                            type,
                             postId,
-                            likeCount: Number.isFinite(likeCount) ? likeCount : 0,
-                            commentCount: Number.isFinite(commentCount) ? commentCount : 0,
+                            userId: Number(data?.userId),
+                            saved: typeof data?.saved === 'boolean' ? data.saved : undefined,
+                            likeCount: Number(data?.likeCount),
+                            commentCount: Number(data?.commentCount),
                         });
                     } catch {
                         /* ignore malformed */
