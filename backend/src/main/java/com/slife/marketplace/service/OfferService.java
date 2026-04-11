@@ -39,6 +39,7 @@ public class OfferService {
     private final ListingRepository listingRepository;
     private final ConversationRepository conversationRepository;
     private final DealRepository dealRepository;
+    private final DealService dealService;
     private final UserService userService;
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
@@ -48,6 +49,7 @@ public class OfferService {
                         ListingRepository listingRepository,
                         ConversationRepository conversationRepository,
                         DealRepository dealRepository,
+                        DealService dealService,
                         UserService userService,
                         NotificationService notificationService,
                         SystemEmailService systemEmailService,
@@ -56,6 +58,7 @@ public class OfferService {
         this.listingRepository = listingRepository;
         this.conversationRepository = conversationRepository;
         this.dealRepository = dealRepository;
+        this.dealService = dealService;
         this.userService = userService;
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
@@ -290,10 +293,14 @@ public class OfferService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Offer is not pending");
         }
         User buyerUser = offer.getBuyer();
-        if (buyerUser != null && buyerUser.getId() != null
-                && blockService.isBlockedEitherDirection(current.getId(), buyerUser.getId())) {
+        if (buyerUser == null || buyerUser.getId() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Đề nghị không có người mua hợp lệ");
+        }
+        if (blockService.isBlockedEitherDirection(current.getId(), buyerUser.getId())) {
             throw new SlifeException(ErrorCode.OFFER_NOT_FOUND);
         }
+        dealService.lockAndPrepareExclusiveBuyerDealOnListing(offer.getListing().getId(), buyerUser.getId());
+
         offer.setStatus(STATUS_ACCEPTED);
         offer.setUpdatedAt(Instant.now());
         offerRepository.save(offer);
@@ -360,10 +367,14 @@ public class OfferService {
             throw new SlifeException(ErrorCode.OFFER_NOT_PENDING);
         }
         User offerBuyer = offer.getBuyer();
-        if (offerBuyer != null && offerBuyer.getId() != null
-                && blockService.isBlockedEitherDirection(currentUser.getId(), offerBuyer.getId())) {
+        if (offerBuyer == null || offerBuyer.getId() == null) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Đề nghị không có người mua hợp lệ");
+        }
+        if (blockService.isBlockedEitherDirection(currentUser.getId(), offerBuyer.getId())) {
             throw new SlifeException(ErrorCode.OFFER_NOT_FOUND);
         }
+
+        dealService.lockAndPrepareExclusiveBuyerDealOnListing(listing.getId(), offerBuyer.getId());
 
         Instant now = Instant.now();
         offer.setStatus(STATUS_ACCEPTED);

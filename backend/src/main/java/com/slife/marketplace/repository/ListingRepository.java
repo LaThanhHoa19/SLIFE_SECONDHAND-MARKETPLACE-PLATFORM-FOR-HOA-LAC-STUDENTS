@@ -4,7 +4,9 @@ import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * SCRUM-43: Listing search repository.
@@ -371,4 +374,11 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
 
     @Query("SELECT COUNT(r) FROM Report r WHERE r.targetType = 'LISTING' AND r.targetId = :listingId")
     long countReportsByListingId(@Param("listingId") Long listingId);
+
+    /**
+     * Khóa pessimistic khi xử lý chốt đơn / chấp nhận để tránh race nhiều deal cùng tin.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM Listing l WHERE l.id = :id AND l.deletedAt IS NULL")
+    Optional<Listing> findByIdAndDeletedAtIsNullForUpdate(@Param("id") Long id);
 }

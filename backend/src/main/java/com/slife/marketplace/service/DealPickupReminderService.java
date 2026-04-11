@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Nhắc email 2 bên trước giờ nhận hàng ({@code PICKUP_REMINDER_HOURS}, mặc định 3) — cửa sổ ±7 phút theo chu kỳ cron.
+ * Nếu thời gian còn lại đến {@code pickupTime} &lt; H giờ (đã lỡ mốc nhắc “H giờ trước”) thì gửi ngay ở lần quét kế.
  * Chỉ deal {@code CONFIRMED} hoặc {@code COMPLETED} (đã qua PENDING — không nhắc khi mua chưa chấp nhận).
  */
 @Service
@@ -44,7 +45,8 @@ public class DealPickupReminderService {
         int hours = Math.max(1, configService.getIntConfigValue("PICKUP_REMINDER_HOURS", DEFAULT_PICKUP_REMINDER_HOURS));
         LocalDateTime lower = now.plusHours(hours).minusMinutes(7);
         LocalDateTime upper = now.plusHours(hours).plusMinutes(7);
-        List<Deal> deals = dealRepository.findDealsForPickupReminder(lower, upper);
+        LocalDateTime nowPlusH = now.plusHours(hours);
+        List<Deal> deals = dealRepository.findDealsForPickupReminder(now, lower, upper, nowPlusH);
         for (Deal d : deals) {
             try {
                 systemEmailService.sendPickupReminderEmails(d);
