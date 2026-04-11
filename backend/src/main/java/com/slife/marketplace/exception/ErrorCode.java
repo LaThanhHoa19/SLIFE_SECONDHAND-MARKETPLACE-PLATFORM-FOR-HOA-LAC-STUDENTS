@@ -29,6 +29,8 @@ public enum ErrorCode {
 
     // Listing related
     LISTING_NOT_FOUND("LISTING_NOT_FOUND", "Không tìm thấy tin đăng", HttpStatus.NOT_FOUND),
+    /** Tin đã có giao dịch hoàn tất / đang giữ chỗ — không chốt đơn hoặc chấp nhận trùng. */
+    LISTING_DEAL_CONFLICT("LISTING_DEAL_CONFLICT", "Tin này đã có giao dịch với người mua khác hoặc đã bán.", HttpStatus.CONFLICT),
     COMMUNITY_POST_NOT_FOUND("COMMUNITY_POST_NOT_FOUND", "Không tìm thấy bài viết cộng đồng", HttpStatus.NOT_FOUND),
     LISTING_NOT_DRAFT("LISTING_NOT_DRAFT", "Chỉ tin nháp mới có thể xóa", HttpStatus.CONFLICT),
     LISTING_NOT_EXPIRED("LISTING_NOT_EXPIRED", "Chỉ tin đã hết hạn mới có thể đăng lại", HttpStatus.CONFLICT),

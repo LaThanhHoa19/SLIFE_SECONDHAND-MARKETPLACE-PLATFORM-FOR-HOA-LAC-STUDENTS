@@ -33,8 +33,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class DealService {
@@ -50,6 +52,10 @@ public class DealService {
     public static final String STATUS_SUCCESS = "SUCCESS";
     /** Người mua từ chối sau khi người bán chốt đơn (deal đang PENDING). */
     public static final String STATUS_REJECTED = "REJECTED";
+
+    /** Một tin chỉ có tối đa một giao dịch ở các trạng thái này cùng lúc (đã chiếm chỗ). */
+    private static final Set<String> LISTING_RESERVATION_STATUSES = Set.of(
+            STATUS_COMPLETED, STATUS_CONFIRMED, STATUS_SUCCESS);
 
     private final DealRepository dealRepository;
     private final ListingImageRepository listingImageRepository;
@@ -93,11 +99,72 @@ public class DealService {
         this.configService = configService;
     }
 
+    private void assertListingOpenForNegotiation(Listing listing) {
+        if (listing.getStatus() != null && "SOLD".equalsIgnoreCase(listing.getStatus().trim())) {
+            throw new SlifeException(ErrorCode.LISTING_DEAL_CONFLICT,
+                    "Tin đã bán — không thể thực hiện giao dịch.");
+        }
+        Long lid = listing.getId();
+        if (dealRepository.existsByListing_IdAndDeletedAtIsNullAndStatusIn(lid, LISTING_RESERVATION_STATUSES)) {
+            throw new SlifeException(ErrorCode.LISTING_DEAL_CONFLICT,
+                    "Tin này đã có giao dịch đang hoặc đã hoàn tất với một người mua.");
+        }
+    }
+
+    /** Hủy deal PENDING của các buyer khác khi seller chốt với một người. */
+    private void rejectOtherPendingDealsForBuyer(Long listingId, Long keepBuyerUserId) {
+        List<Deal> pendings = dealRepository.findByListing_IdAndDeletedAtIsNullAndStatus(listingId, STATUS_PENDING);
+        List<Deal> toSave = new ArrayList<>();
+        for (Deal d : pendings) {
+            User pb = d.getProposedBy();
+            if (pb != null && pb.getId() != null && !pb.getId().equals(keepBuyerUserId)) {
+                d.setStatus(STATUS_REJECTED);
+                toSave.add(d);
+            }
+        }
+        if (!toSave.isEmpty()) {
+            dealRepository.saveAll(toSave);
+        }
+    }
+
+    /** Trước khi một deal PENDING chuyển COMPLETED: hủy mọi deal PENDING khác cùng tin. */
+    private void rejectPendingDealsExcept(Long listingId, Long winningDealId) {
+        List<Deal> pendings = dealRepository.findByListing_IdAndDeletedAtIsNullAndStatus(listingId, STATUS_PENDING);
+        List<Deal> toSave = new ArrayList<>();
+        for (Deal d : pendings) {
+            if (!d.getId().equals(winningDealId)) {
+                d.setStatus(STATUS_REJECTED);
+                toSave.add(d);
+            }
+        }
+        if (!toSave.isEmpty()) {
+            dealRepository.saveAll(toSave);
+        }
+    }
+
+    /**
+     * Khóa tin, đảm bảo chưa có deal terminal, hủy deal PENDING của buyer khác — dùng khi seller chốt đơn hoặc accept offer.
+     */
+    private void prepareExclusiveBuyerDealOnListing(Listing listing, Long keepBuyerUserId) {
+        assertListingOpenForNegotiation(listing);
+        rejectOtherPendingDealsForBuyer(listing.getId(), keepBuyerUserId);
+    }
+
+    /**
+     * Cùng nghiệp vụ {@link #prepareExclusiveBuyerDealOnListing(Listing, Long)} nhưng tự khóa theo id (luồng Offer).
+     */
+    public void lockAndPrepareExclusiveBuyerDealOnListing(Long listingId, Long keepBuyerUserId) {
+        Listing listing = listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        prepareExclusiveBuyerDealOnListing(listing, keepBuyerUserId);
+    }
+
     @Transactional
     public DealResponse createDeal(Long listingId, DealRequest request) {
         User buyer = userService.getCurrentUser();
-        Listing listing = listingRepository.findById(listingId)
+        Listing listing = listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+        assertListingOpenForNegotiation(listing);
 
         // Business Rules
         if (listing.getSeller().getId().equals(buyer.getId())) {
@@ -135,7 +202,7 @@ public class DealService {
     @Transactional
     public DealResponse sealDealBySeller(Long listingId, SealDealRequest request) {
         User seller = userService.getCurrentUser();
-        Listing listing = listingRepository.findById(listingId)
+        Listing listing = listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
         if (listing.getSeller() == null || !listing.getSeller().getId().equals(seller.getId())) {
             throw new SlifeException(ErrorCode.FORBIDDEN, "Chỉ người bán mới chốt đơn");
@@ -157,6 +224,8 @@ public class DealService {
         if (request.getPickupTime() != null && !request.getPickupTime().isAfter(Instant.now())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Thời gian nhận hàng phải sau thời điểm hiện tại");
         }
+
+        prepareExclusiveBuyerDealOnListing(listing, buyer.getId());
 
         Offer offerForDeal = resolveOfferForSeal(listingId, seller, buyer, request.getPrice(), request.getOfferId())
                 .orElseGet(() -> persistNewPendingOffer(listing, buyer, request.getPrice()));
@@ -196,6 +265,9 @@ public class DealService {
     @Transactional
     public DealResponse buyerAcceptPendingDeal(Long listingId) {
         User buyer = userService.getCurrentUser();
+        listingRepository.findByIdAndDeletedAtIsNullForUpdate(listingId)
+                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+
         Deal deal = dealRepository
                 .findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
                         listingId, buyer.getId(), STATUS_PENDING)
@@ -204,7 +276,12 @@ public class DealService {
         if (!STATUS_PENDING.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Giao dịch không còn ở trạng thái chờ");
         }
+        if (dealRepository.existsOtherDealInStatuses(listingId, deal.getId(), LISTING_RESERVATION_STATUSES)) {
+            throw new SlifeException(ErrorCode.LISTING_DEAL_CONFLICT,
+                    "Tin này đã có giao dịch hoàn tất với người mua khác.");
+        }
         assertNoBlockBetweenDealParties(deal, buyer);
+        rejectPendingDealsExcept(listingId, deal.getId());
         deal.setStatus(STATUS_COMPLETED);
         deal.setConfirmedAt(LocalDateTime.now(ZONE_VIETNAM));
         Deal saved = dealRepository.save(deal);
