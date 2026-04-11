@@ -3,6 +3,7 @@ import { Box, Typography, Tooltip, Button, Divider, useTheme, useMediaQuery } fr
 import {
     Home as HomeIcon,
     Bookmark as BookmarkIcon,
+    FavoriteBorder as FavoriteIcon,
     Chat as ChatIcon,
     PeopleAlt as PeopleIcon,
     Add as AddIcon,
@@ -16,7 +17,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { APP_SHELL_BG, SIDEBAR_WIDTH, SIDEBAR_MINI_WIDTH, SIDEBAR_TOP_OFFSET } from '../../utils/layoutConstants';
 
-const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/community/new', '/chat', '/settings/blocked'];
+const AUTH_REQUIRED_PATHS = ['/saved', '/listings/new', '/community/new', '/chat', '/settings/blocked', '/community/mine', '/community/saved', '/community/liked'];
 
 export default function Sidebar({ open = true }) {
     const navigate = useNavigate();
@@ -27,18 +28,30 @@ export default function Sidebar({ open = true }) {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-    let NAV_ITEMS = [
-        { label: 'Feed', icon: HomeIcon, path: '/feed' },
-        { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
-        { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
-        { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
-        { label: 'Lịch sử chốt đơn', icon: FactCheckIcon, path: '/order-history' },
-        ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
-        ...(isAuthenticated ? [{ label: 'Đã chặn', icon: BlockIcon, path: '/settings/blocked' }] : []),
-    ];
+    const isCommunityArea = location.pathname === '/community' || location.pathname.startsWith('/community/');
+
+    const COMMUNITY_MARKET_ITEM = { label: 'Chợ', icon: HomeIcon, path: '/feed' };
+
+    let NAV_ITEMS = isCommunityArea
+        ? [
+            { label: 'Cộng đồng', icon: PeopleIcon, path: '/community' },
+            COMMUNITY_MARKET_ITEM,
+            { label: 'Bài đăng của tôi', icon: ListAltIcon, path: '/community/mine' },
+            { label: 'Đã lưu', icon: BookmarkIcon, path: '/community/saved' },
+            { label: 'Đã thích', icon: FavoriteIcon, path: '/community/liked' },
+        ]
+        : [
+            { label: 'Feed', icon: HomeIcon, path: '/feed' },
+            { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
+            { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
+            { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
+            { label: 'Lịch sử chốt đơn', icon: FactCheckIcon, path: '/order-history' },
+            ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
+            ...(isAuthenticated ? [{ label: 'Đã chặn', icon: BlockIcon, path: '/settings/blocked' }] : []),
+        ];
 
     // Thêm nút Đăng tin vào sidebar nếu màn hình nhỏ (khi nút trên header ẩn đi)
-    if (isMobile) {
+    if (isMobile && !isCommunityArea) {
         NAV_ITEMS = [
             { label: 'Đăng tin', icon: AddIcon, path: '/listings/new', color: '#FF6B6B' },
             ...NAV_ITEMS
@@ -77,6 +90,7 @@ export default function Sidebar({ open = true }) {
     const isActive = (path) => {
         const current = location.pathname;
         if (path === '/feed') return current === '/feed' || (current.startsWith('/listings/') && !current.includes('/new'));
+        if (path === '/community') return current === '/community';
         if (path.startsWith('/profile')) {
             return current.startsWith('/profile');
         }
@@ -192,59 +206,63 @@ export default function Sidebar({ open = true }) {
                 })}
             </Box>
 
-            <Divider sx={{ width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH, mx: 'auto', my: 1.4, borderColor: 'rgba(255,255,255,0.08)', transition: 'width 0.3s ease' }} />
+            {!isCommunityArea && (
+                <>
+                    <Divider sx={{ width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH, mx: 'auto', my: 1.4, borderColor: 'rgba(255,255,255,0.08)', transition: 'width 0.3s ease' }} />
 
-            {/* Cộng đồng */}
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <Tooltip title={!open ? "Cộng đồng" : ''} placement="right" disableHoverListener={open}>
-                    <Box
-                        onClick={() => navigate('/community')}
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-start',
-                            width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH,
-                            height: '44px',
-                            cursor: 'pointer',
-                            borderRadius: '22px',
-                            mb: 0.5,
-                            background: isActive('/community')
-                                ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
-                                : 'transparent',
-                            boxShadow: isActive('/community') ? '0 8px 24px rgba(157, 110, 237, 0.4)' : 'none',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                                backgroundColor: isActive('/community') ? undefined : 'rgba(255,255,255,0.06)',
-                                transform: open && !isActive('/community') ? 'translateX(4px)' : 'none',
-                            },
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <PeopleIcon sx={{
-                            fontSize: 20,
-                            color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.6)',
-                            flexShrink: 0,
-                            ml: open ? 2 : '12px',
-                            transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }} />
-                        <Typography
-                            sx={{
-                                fontSize: '14px',
-                                fontWeight: isActive('/community') ? 800 : 600,
-                                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                                color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.7)',
-                                whiteSpace: 'nowrap',
-                                ml: 1.5,
-                                opacity: open ? 1 : 0,
-                                maxWidth: open ? '120px' : 0,
-                                transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s',
-                            }}
-                        >
-                            Cộng đồng
-                        </Typography>
+                    {/* Cộng đồng */}
+                    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Tooltip title={!open ? "Cộng đồng" : ''} placement="right" disableHoverListener={open}>
+                            <Box
+                                onClick={() => navigate('/community')}
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'flex-start',
+                                    width: open ? OPEN_PILL_WIDTH : CLOSED_PILL_WIDTH,
+                                    height: '44px',
+                                    cursor: 'pointer',
+                                    borderRadius: '22px',
+                                    mb: 0.5,
+                                    background: isActive('/community')
+                                        ? 'linear-gradient(135deg, #A78BFA 0%, #9D6EED 100%)'
+                                        : 'transparent',
+                                    boxShadow: isActive('/community') ? '0 8px 24px rgba(157, 110, 237, 0.4)' : 'none',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    '&:hover': {
+                                        backgroundColor: isActive('/community') ? undefined : 'rgba(255,255,255,0.06)',
+                                        transform: open && !isActive('/community') ? 'translateX(4px)' : 'none',
+                                    },
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <PeopleIcon sx={{
+                                    fontSize: 20,
+                                    color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.6)',
+                                    flexShrink: 0,
+                                    ml: open ? 2 : '12px',
+                                    transition: 'margin 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }} />
+                                <Typography
+                                    sx={{
+                                        fontSize: '14px',
+                                        fontWeight: isActive('/community') ? 800 : 600,
+                                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                        color: isActive('/community') ? '#FFFFFF' : 'rgba(226,232,240,0.7)',
+                                        whiteSpace: 'nowrap',
+                                        ml: 1.5,
+                                        opacity: open ? 1 : 0,
+                                        maxWidth: open ? '120px' : 0,
+                                        transition: 'max-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s',
+                                    }}
+                                >
+                                    Cộng đồng
+                                </Typography>
+                            </Box>
+                        </Tooltip>
                     </Box>
-                </Tooltip>
-            </Box>
+                </>
+            )}
 
             {isAuthenticated && (
                 <Box sx={{ mt: 'auto', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 1.6, pb: 1.6 }}>

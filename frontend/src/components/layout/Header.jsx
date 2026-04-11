@@ -28,8 +28,8 @@ import {
     Logout as LogoutIcon,
     PostAdd as PostAddIcon
 } from '@mui/icons-material';
-import { useContext, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useContext, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
@@ -97,23 +97,6 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
     },
 }));
 
-const NavButton = styled(Button)(({ theme }) => ({
-    color: 'rgba(255,255,255,0.85)',
-    backgroundColor: 'transparent',
-    textTransform: 'none',
-    fontSize: '14px',
-    fontWeight: 500,
-    letterSpacing: '0.02em',
-    padding: theme.spacing(0.75, 1.5),
-    borderRadius: '10px',
-    minWidth: 'auto',
-    transition: 'color 0.2s, background-color 0.2s',
-    '&:hover': {
-        backgroundColor: ACCENT_SUBTLE,
-        color: '#fff',
-    },
-}));
-
 const ActionButton = styled(Button)(({ theme }) => ({
     color: '#fff',
     textTransform: 'none',
@@ -159,6 +142,7 @@ export default function Header({ onToggleSidebar }) {
     const { unreadCount } = useContext(NotificationContext);
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [searchValue, setSearchValue] = useState('');
@@ -166,11 +150,29 @@ export default function Header({ onToggleSidebar }) {
     const [userMenuAnchor, setUserMenuAnchor] = useState(null);
     const { checkVerification } = usePhoneVerification();
 
+    const isCommunityArea = useMemo(
+        () => location.pathname === '/community' || location.pathname.startsWith('/community/'),
+        [location.pathname],
+    );
+
+    const headerUnreadCount = unreadCount;
+
+
     const userAvatar = user?.avatarUrl || user?.avatar || '';
 
     const handleSearch = (e) => {
         e.preventDefault();
         const q = searchValue.trim();
+
+        if (isCommunityArea) {
+            const params = new URLSearchParams(location.search);
+            if (q) params.set('q', q);
+            else params.delete('q');
+            const next = params.toString();
+            navigate(next ? `/community?${next}` : '/community');
+            return;
+        }
+
         if (q) {
             navigate(`/search?q=${encodeURIComponent(q)}`);
         } else {
@@ -216,16 +218,17 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleLikeIconClick = () => {
+        const target = isCommunityArea ? '/community/liked' : '/liked';
         if (!user) {
             navigate('/login', {
                 state: {
-                    from: '/liked',
+                    from: target,
                     message: 'Bạn cần đăng nhập để xem tin đã thích',
                 },
             });
             return;
         }
-        navigate('/liked');
+        navigate(target);
     };
 
     return (
@@ -284,7 +287,7 @@ export default function Header({ onToggleSidebar }) {
                         </SearchIconWrapper>
                         <form onSubmit={handleSearch} style={{ width: '100%', height: '100%' }}>
                             <StyledInputBase
-                                placeholder="Tìm sản phẩm..."
+                                placeholder={isCommunityArea ? 'Tìm bài viết cộng đồng...' : 'Tìm sản phẩm...'}
                                 inputProps={{ 'aria-label': 'search' }}
                                 value={searchValue}
                                 onChange={(e) => setSearchValue(e.target.value)}
@@ -317,26 +320,28 @@ export default function Header({ onToggleSidebar }) {
                             '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
                         }}
                     >
-                        <Badge badgeContent={unreadCount} color="error">
+                        <Badge badgeContent={headerUnreadCount} color="error">
                             <NotificationsIcon sx={{ fontSize: '22px' }} />
                         </Badge>
                     </IconButton>
-                    <IconButton
-                        color="inherit"
-                        onClick={() => navigate('/chat')}
-                        sx={{
-                            color: 'rgba(255,255,255,0.85)',
-                            p: 1,
-                            borderRadius: '10px',
-                            '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
-                        }}
-                    >
-                        <ChatIcon sx={{ fontSize: '22px' }} />
-                    </IconButton>
+                    {!isCommunityArea && (
+                        <IconButton
+                            color="inherit"
+                            onClick={() => navigate('/chat')}
+                            sx={{
+                                color: 'rgba(255,255,255,0.85)',
+                                p: 1,
+                                borderRadius: '10px',
+                                '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
+                            }}
+                        >
+                            <ChatIcon sx={{ fontSize: '22px' }} />
+                        </IconButton>
+                    )}
 
                     {user ? (
                         <>
-                            {!isMobile && (
+                            {!isMobile && !isCommunityArea && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1.5 }}>
                                     <ActionButton sx={{ gap: 0.5 }} startIcon={<PostAddIcon sx={{ fontSize: '18px !important' }} />} onClick={handleCreatePost}>Đăng tin</ActionButton>
                                 </Box>
@@ -464,6 +469,7 @@ export default function Header({ onToggleSidebar }) {
                 anchorEl={notifAnchorEl}
                 open={Boolean(notifAnchorEl)}
                 onClose={() => setNotifAnchorEl(null)}
+                mode={isCommunityArea ? 'community' : 'all'}
             />
         </AppBar>
     );

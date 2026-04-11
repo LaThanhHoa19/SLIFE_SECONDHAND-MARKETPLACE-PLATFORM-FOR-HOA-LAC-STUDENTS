@@ -1,0 +1,2 @@
+ALTER TABLE community_posts
+    MODIFY COLUMN title VARCHAR(300) NULL;

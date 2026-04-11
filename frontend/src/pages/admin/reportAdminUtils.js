@@ -35,6 +35,8 @@ export const REPORT_ADMIN_MOCK_ROWS = [
         listingId: 2002,
         conversationId: null,
         reason: 'Hình ảnh không khớp mô tả, nghi ngờ hàng nhái.',
+        targetViolationCount: 1,
+        violationThreshold: 3,
         status: 'PENDING',
         adminNote: null,
         createdAt: '2026-03-11T14:22:00.000Z',
@@ -65,6 +67,8 @@ export const REPORT_ADMIN_MOCK_ROWS = [
         listingId: 2004,
         conversationId: null,
         reason: 'Giá niêm yết thấp bất thường, nghi ngờ scam.',
+        targetViolationCount: 2,
+        violationThreshold: 3,
         status: 'PENDING',
         adminNote: null,
         createdAt: '2026-03-13T16:05:00.000Z',
@@ -85,21 +89,7 @@ export const REPORT_ADMIN_MOCK_ROWS = [
         createdAt: '2026-03-14T11:30:00.000Z',
         _mock: true,
     },
-    {
-        reportId: 99006,
-        reporterName: 'Bùi Gia Bảo',
-        reporterAvatarUrl: null,
-        targetType: 'MESSAGE',
-        targetId: 6006,
-        targetPreview: 'Chuyển khoản trước mới giao hàng…',
-        listingId: 2011,
-        conversationId: 88,
-        reason: 'Tin nhắn yêu cầu thanh toán ngoài nền tảng.',
-        status: 'REJECTED',
-        adminNote: 'Không đủ bằng chứng.',
-        createdAt: '2026-03-14T18:00:00.000Z',
-        _mock: true,
-    },
+
 ];
 
 export function isReportAdminMockEnabled() {
@@ -222,11 +212,12 @@ export function reportRowId(row) {
 
 const RAW_TYPE = (row) => String(row?.targetType ?? row?.target_type ?? '').toUpperCase();
 
-/** Tab filter: LISTING | USER | OTHER (COMMENT + MESSAGE). */
+/** Tab filter: LISTING | USER | OTHER (COMMENT + COMMUNITY). MESSAGE bị loại bỏ. */
 export function reportCategoryTab(row) {
     const t = RAW_TYPE(row);
     if (t === 'LISTING' || t === 'POST') return 'LISTING';
     if (t === 'USER') return 'USER';
+    if (t === 'MESSAGE') return '__HIDDEN__';
     return 'OTHER';
 }
 
@@ -236,7 +227,6 @@ export function targetTypeLabel(targetType) {
     if (t === 'LISTING' || t === 'POST') return 'Tin đăng';
     if (t === 'USER') return 'Người dùng';
     if (t === 'COMMENT') return 'Bình luận';
-    if (t === 'MESSAGE') return 'Tin nhắn';
     return 'Đối tượng';
 }
 
@@ -246,7 +236,6 @@ export function targetSubjectLabel(targetType) {
     if (t === 'LISTING' || t === 'POST') return 'Tin đăng bị báo cáo';
     if (t === 'USER') return 'Người bị báo cáo';
     if (t === 'COMMENT') return 'Bình luận bị báo cáo';
-    if (t === 'MESSAGE') return 'Tin nhắn bị báo cáo';
     return 'Đối tượng bị báo cáo';
 }
 
@@ -276,6 +265,16 @@ export function reportedUserAvatarUrl(row) {
         row?.reported?.avatarUrl ??
         row?.reported?.avatar_url ??
         row?.reported?.avatar ??
+        null;
+    return fullImageUrl(raw);
+}
+
+export function reportEvidenceImageUrl(row) {
+    const raw =
+        row?.evidenceImageUrl ??
+        row?.evidence_image_url ??
+        row?.evidenceImage ??
+        row?.evidence_image ??
         null;
     return fullImageUrl(raw);
 }

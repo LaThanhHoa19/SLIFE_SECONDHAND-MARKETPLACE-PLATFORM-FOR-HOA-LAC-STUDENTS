@@ -12,19 +12,14 @@ import {
 import { Close as CloseIcon } from '@mui/icons-material';
 import ListingComments from './ListingComments';
 import { fullImageUrl } from '../../utils/constants';
-
-const PURPLE = '#9D6EED';
+import { getPurposeInfo } from '../../utils/listingFormatUtils';
 
 export default function CommentModal({ open, onClose, listingId, listing }) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
-    const formatPrice = (p) => {
-        if (!p && p !== 0) return 'Miễn phí';
-        return Number(p).toLocaleString('vi-VN') + ' đ';
-    };
-
     const imageUrl = listing?.images?.[0] ? fullImageUrl(listing.images[0]) : null;
+    const purposeInfo = getPurposeInfo(listing?.isGiveaway, listing?.price, { fullLabel: true });
 
     return (
         <Dialog
@@ -114,9 +109,9 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                         <Typography 
                             fontSize={16} 
                             fontWeight={800} 
-                            color={PURPLE}
+                            color={purposeInfo.color}
                         >
-                            {listing?.isGiveaway ? 'Tặng miễn phí' : formatPrice(listing?.price)}
+                            {purposeInfo.priceText}
                         </Typography>
                     </Box>
                 </Box>

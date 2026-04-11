@@ -215,6 +215,60 @@ public class SystemEmailService {
     }
 
     @Async("emailTaskExecutor")
+    public void sendReportApprovedListingModerationEmail(User owner, Long reportId, String listingTitle,
+                                                         Long listingId, int violationCount, int threshold,
+                                                         boolean autoBanned, String reason) {
+        if (!mailEnabled || owner == null || owner.getEmail() == null || owner.getEmail().isBlank()) return;
+        try {
+            String subject = autoBanned
+                    ? "[SLIFE] Tin vi phạm đã bị ẩn và tài khoản của bạn đã bị khóa"
+                    : "[SLIFE] Tin vi phạm đã bị ẩn bởi quản trị viên";
+            String reasonLine = (reason != null && !reason.isBlank())
+                    ? "<p>Lý do xử lý: <strong>" + esc(reason.trim()) + "</strong></p>"
+                    : "";
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(owner)) + ",</p>"
+                            + "<p>Báo cáo #" + (reportId != null ? reportId : "?")
+                            + " đã được <strong>duyệt</strong>. Tin đăng của bạn đã bị ẩn: <strong>" + esc(trunc(listingTitle, 90)) + "</strong>.</p>"
+                            + reasonLine
+                            + "<p>Điểm vi phạm hiện tại: <strong>" + violationCount + " / " + threshold + "</strong>.</p>"
+                            + (autoBanned
+                            ? "<p>Tài khoản của bạn đã bị <strong>khóa tự động</strong> do đạt ngưỡng vi phạm.</p>"
+                            : "<p>Vui lòng tuân thủ quy định cộng đồng để tránh bị khóa tài khoản ở các lần vi phạm tiếp theo.</p>")
+                            + "<p><a href=\"" + esc(listingUrl(listingId)) + "\">Xem tin đăng</a></p>");
+            send(owner.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendReportApprovedListingModerationEmail failed: {}", ex.getMessage());
+        }
+    }
+
+    @Async("emailTaskExecutor")
+    public void sendReportApprovedUserModerationEmail(User targetUser, Long reportId, int violationCount,
+                                                      int threshold, boolean bannedNow, String reason) {
+        if (!mailEnabled || targetUser == null || targetUser.getEmail() == null || targetUser.getEmail().isBlank()) return;
+        try {
+            String subject = bannedNow
+                    ? "[SLIFE] Báo cáo vi phạm được duyệt — tài khoản đã bị khóa"
+                    : "[SLIFE] Báo cáo vi phạm được duyệt";
+            String reasonLine = (reason != null && !reason.isBlank())
+                    ? "<p>Lý do xử lý: <strong>" + esc(reason.trim()) + "</strong></p>"
+                    : "";
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(targetUser)) + ",</p>"
+                            + "<p>Báo cáo #" + (reportId != null ? reportId : "?") + " về tài khoản của bạn đã được <strong>duyệt</strong>.</p>"
+                            + reasonLine
+                            + "<p>Điểm vi phạm hiện tại: <strong>" + violationCount + " / " + threshold + "</strong>.</p>"
+                            + (bannedNow
+                            ? "<p>Tài khoản của bạn đã bị <strong>khóa</strong> do đạt ngưỡng vi phạm.</p>"
+                            : "<p>Tài khoản của bạn hiện vẫn hoạt động, nhưng đã bị ghi nhận vi phạm. Vui lòng tuân thủ quy định cộng đồng.</p>")
+                            + "<p><a href=\"" + esc(frontendUrl) + "\">Mở SLIFE</a></p>");
+            send(targetUser.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendReportApprovedUserModerationEmail failed: {}", ex.getMessage());
+        }
+    }
+
+    @Async("emailTaskExecutor")
     public void sendListingExpiringSoonEmail(User seller, String listingTitle, Long listingId, LocalDateTime expiresAt) {
         if (!mailEnabled || seller == null || seller.getEmail() == null || seller.getEmail().isBlank()) {
             return;
@@ -613,7 +667,7 @@ public class SystemEmailService {
     }
 
     private String emailPrimarySecondaryActions(String primaryUrlEscaped, String secondaryUrlEscaped,
-                                             String primaryLabel, String secondaryLabel) {
+                                                String primaryLabel, String secondaryLabel) {
         StringBuilder sb = new StringBuilder();
         sb.append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin-top:24px;\">");
         if (primaryUrlEscaped != null && primaryLabel != null) {

@@ -10,6 +10,7 @@ import {
     Grid,
     IconButton,
     Paper,
+    Skeleton,
     Stack,
     TextField,
     Tooltip,
@@ -21,6 +22,8 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getAdminReportById, processReport } from '../../api/reportApi';
+import { getListing } from '../../api/listingApi';
+import { getUserById } from '../../api/userApi';
 import { useToast } from '../../context/ToastContext';
 import { ADMIN_THEME as t } from '../../theme/adminTheme';
 import {
@@ -28,6 +31,7 @@ import {
     isMockReportRow,
     isPendingRow,
     isReportAdminMockEnabled,
+    reportEvidenceImageUrl,
     reportedDisplay,
     reportedUserAvatarUrl,
     reportRowId,
@@ -37,6 +41,7 @@ import {
     targetTypeLabel,
     writeReportMockPatch,
 } from './reportAdminUtils';
+import { fullImageUrl } from '../../utils/constants';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const STITCH_PAGE_GRADIENT = `linear-gradient(165deg, #0b0e1e 0%, #0f0e18 40%, ${t.bgApp} 100%)`;
@@ -127,12 +132,16 @@ export default function ReportDetailPage() {
     const { reportId: reportIdParam } = useParams();
     const navigate = useNavigate();
     const [report, setReport] = useState(null);
+    const [listingImageUrl, setListingImageUrl] = useState('');
+    const [listingInfo, setListingInfo] = useState(null);
+    const [listingImageBroken, setListingImageBroken] = useState(false);
+    const [evidenceImageBroken, setEvidenceImageBroken] = useState(false);
+    const [reportedUserInfo, setReportedUserInfo] = useState(null);
+    const [relatedLoading, setRelatedLoading] = useState(false);
     const [loadError, setLoadError] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [adminNote, setAdminNote] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [quickActionLoading, setQuickActionLoading] = useState(false);
-    const [autoClosedByQuickAction, setAutoClosedByQuickAction] = useState(false);
     const [confirmDialog, setConfirmDialog] = useState({
         open: false,
         action: null,
@@ -192,7 +201,6 @@ export default function ReportDetailPage() {
     }, [reportIdParam]);
 
     useEffect(() => {
-        setAutoClosedByQuickAction(false);
         loadReport();
     }, [loadReport]);
 
@@ -202,6 +210,72 @@ export default function ReportDetailPage() {
         } else {
             setAdminNote('');
         }
+    }, [report]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const loadRelatedTargets = async () => {
+            const tt = String(report?.targetType || '').toUpperCase();
+            const id = report?.listingId ?? report?.targetId;
+            if (!cancelled) {
+                setRelatedLoading(true);
+                setListingImageBroken(false);
+                setEvidenceImageBroken(false);
+            }
+
+            if ((tt === 'LISTING' || tt === 'POST') && id && !isMockReportRow(report)) {
+                try {
+                    const res = await getListing(id);
+                    const payload = res?.data?.data ?? res?.data;
+                    const images = Array.isArray(payload?.images) ? payload.images : [];
+                    const first = images[0];
+                    const raw = typeof first === 'string' ? first : first?.imageUrl || first?.url || '';
+                    if (!cancelled) {
+                        setListingInfo(payload || null);
+                        setListingImageUrl(fullImageUrl(raw));
+                        const sellerId = payload?.sellerId ?? payload?.seller?.id ?? payload?.userId;
+                        if (sellerId) {
+                            try {
+                                const ures = await getUserById(sellerId);
+                                const up = ures?.data?.data ?? ures?.data;
+                                if (!cancelled) setReportedUserInfo(up || null);
+                            } catch {
+                                if (!cancelled) setReportedUserInfo(null);
+                            }
+                        } else {
+                            setReportedUserInfo(null);
+                        }
+                    }
+                    if (!cancelled) setRelatedLoading(false);
+                    return;
+                } catch {
+                    if (!cancelled) {
+                        setListingInfo(null);
+                        setListingImageUrl('');
+                    }
+                }
+            }
+
+            if (tt === 'USER' && report?.targetId && !isMockReportRow(report)) {
+                try {
+                    const res = await getUserById(report.targetId);
+                    const payload = res?.data?.data ?? res?.data;
+                    if (!cancelled) setReportedUserInfo(payload || null);
+                } catch {
+                    if (!cancelled) setReportedUserInfo(null);
+                }
+            } else {
+                if (!cancelled) setReportedUserInfo(null);
+            }
+            if (!cancelled) {
+                setListingInfo(null);
+                setRelatedLoading(false);
+            }
+        };
+        loadRelatedTargets();
+        return () => {
+            cancelled = true;
+        };
     }, [report]);
 
     const handleBack = () => {
@@ -221,7 +295,7 @@ export default function ReportDetailPage() {
     };
 
     const closeConfirmDialog = () => {
-        if (submitting || quickActionLoading) return;
+        if (submitting) return;
         setConfirmDialog((prev) => ({ ...prev, open: false }));
     };
 
@@ -268,48 +342,6 @@ export default function ReportDetailPage() {
         }
     };
 
-    const handleQuickHideListing = async () => {
-        const id = reportRowId(report);
-        const listingId = report?.listingId ?? report?.targetId;
-        if (!id || !listingId) return;
-
-        try {
-            setQuickActionLoading(true);
-            await processReport(id, {
-                action: 'HIDE_LISTING_APPROVE',
-                note: adminNote.trim() || `Admin đã ẩn tin #${listingId} do vi phạm.`,
-            });
-            setAutoClosedByQuickAction(true);
-            showToast(`Đã ẩn tin #${listingId} và đóng báo cáo.`, 'success');
-            await loadReport();
-        } catch (error) {
-            showToast(error?.message || 'Không thể ẩn tin.', 'error');
-        } finally {
-            setQuickActionLoading(false);
-        }
-    };
-
-    const handleQuickBanUser = async () => {
-        const id = reportRowId(report);
-        const userId = report?.targetId;
-        if (!id || !userId) return;
-
-        try {
-            setQuickActionLoading(true);
-            await processReport(id, {
-                action: 'BAN_USER_APPROVE',
-                note: adminNote.trim() || `Admin đã khóa tài khoản ID ${userId} do vi phạm.`,
-            });
-            setAutoClosedByQuickAction(true);
-            showToast('Đã khóa tài khoản và đóng báo cáo.', 'success');
-            await loadReport();
-        } catch (error) {
-            showToast(error?.message || 'Không thể ban user.', 'error');
-        } finally {
-            setQuickActionLoading(false);
-        }
-    };
-
     const handleConfirmAction = async () => {
         if (!confirmDialog.action) return;
         const currentAction = confirmDialog.action;
@@ -317,14 +349,6 @@ export default function ReportDetailPage() {
 
         if (currentAction === 'APPROVE' || currentAction === 'REJECT') {
             await submitProcess(currentAction);
-            return;
-        }
-        if (currentAction === 'HIDE_LISTING_APPROVE') {
-            await handleQuickHideListing();
-            return;
-        }
-        if (currentAction === 'BAN_USER_APPROVE') {
-            await handleQuickBanUser();
         }
     };
 
@@ -406,7 +430,7 @@ export default function ReportDetailPage() {
 
     const rid = reportRowId(report);
     const canAct = isPendingRow(report);
-    const isActionLocked = submitting || quickActionLoading || !canAct;
+    const isActionLocked = submitting || !canAct;
     const subjectLabel = targetSubjectLabel(report.targetType);
     const typeLabel = targetTypeLabel(report.targetType);
     const displayTitle = reportedDisplay(report);
@@ -415,6 +439,7 @@ export default function ReportDetailPage() {
     const listingId =
         report.listingId ?? (tt === 'LISTING' || tt === 'POST' ? report.targetId : null);
     const reportedAvatar = reportedUserAvatarUrl(report);
+    const evidenceImage = reportEvidenceImageUrl(report);
 
     return (
         <Box
@@ -479,7 +504,7 @@ export default function ReportDetailPage() {
                 alignItems={{ xs: 'stretch', md: 'flex-start' }}
                 justifyContent="space-between"
                 gap={2.5}
-                sx={{ mb: 3 }}
+                sx={{ mb: 1.5 }}
             >
                 <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography
@@ -543,6 +568,38 @@ export default function ReportDetailPage() {
                         </Typography>
                     </Box>
                 </Paper>
+            </Stack>
+
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2.25 }}>
+                <Chip
+                    size="small"
+                    label={`Report #${rid ?? '—'}`}
+                    sx={{ bgcolor: 'rgba(99, 102, 241, 0.16)', color: '#c7d2fe', border: '1px solid rgba(129, 140, 248, 0.35)', fontWeight: 700 }}
+                />
+                <Chip
+                    size="small"
+                    label={`Loại: ${typeLabel}`}
+                    sx={{ ...targetTypeBadgeSx(report.targetType), fontWeight: 800 }}
+                />
+                {report?.targetId != null && (
+                    <Chip
+                        size="small"
+                        label={`Target ID: ${report.targetId}`}
+                        sx={{ bgcolor: 'rgba(148, 163, 184, 0.15)', color: '#cbd5e1', border: '1px solid rgba(148, 163, 184, 0.32)', fontWeight: 700 }}
+                    />
+                )}
+                <Chip
+                    size="small"
+                    label={`Trạng thái: ${statusLabel(report.status)}`}
+                    sx={{ bgcolor: statusSx.bgcolor, color: '#e2e8f0', border: statusSx.border, fontWeight: 700 }}
+                />
+                {(tt === 'LISTING' || tt === 'POST') && (
+                    <Chip
+                        size="small"
+                        label={`Cờ vi phạm: ${report?.targetViolationCount ?? 0}/${report?.violationThreshold ?? 3}`}
+                        sx={{ bgcolor: 'rgba(251, 191, 36, 0.14)', color: '#fde68a', border: '1px solid rgba(251, 191, 36, 0.42)', fontWeight: 800 }}
+                    />
+                )}
             </Stack>
 
             <Grid container spacing={2.5}>
@@ -687,6 +744,71 @@ export default function ReportDetailPage() {
                                 {report.conversationId != null && `Hội thoại: #${report.conversationId}`}
                             </Typography>
                         )}
+
+                        <Box sx={{ mt: 2.25 }}>
+                            <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.06em' }}>
+                                ẢNH BẰNG CHỨNG
+                            </Typography>
+                            {!evidenceImage ? (
+                                <Typography variant="body2" sx={{ color: 'rgba(148,163,184,0.9)', mt: 1 }}>
+                                    Không có ảnh bằng chứng.
+                                </Typography>
+                            ) : (
+                                <Box sx={{ mt: 1, display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
+                                    <Box
+                                        component="a"
+                                        href={evidenceImage}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        sx={{
+                                            width: 132,
+                                            height: 132,
+                                            borderRadius: 2,
+                                            overflow: 'hidden',
+                                            border: '1px solid rgba(129, 140, 248, 0.35)',
+                                            bgcolor: 'rgba(15,23,42,0.82)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                        }}
+                                    >
+                                        {!evidenceImageBroken ? (
+                                            <img
+                                                src={evidenceImage}
+                                                alt="evidence-thumbnail"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                                onError={() => setEvidenceImageBroken(true)}
+                                            />
+                                        ) : (
+                                            <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.9)', px: 1.5, textAlign: 'center' }}>
+                                                Ảnh không tải được
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Button
+                                        size="small"
+                                        variant="outlined"
+                                        startIcon={<OpenInNewIcon fontSize="small" />}
+                                        component="a"
+                                        href={evidenceImage}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        sx={{
+                                            textTransform: 'none',
+                                            fontWeight: 700,
+                                            borderColor: 'rgba(129, 140, 248, 0.5)',
+                                            color: '#c7d2fe',
+                                            '&:hover': {
+                                                borderColor: 'rgba(129, 140, 248, 0.8)',
+                                                bgcolor: 'rgba(79,70,229,0.12)',
+                                            },
+                                        }}
+                                    >
+                                        Xem ảnh lớn
+                                    </Button>
+                                </Box>
+                            )}
+                        </Box>
                     </Paper>
                 </Grid>
 
@@ -704,76 +826,191 @@ export default function ReportDetailPage() {
                             </Typography>
                         </Paper>
 
-                        <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
-                            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                        {relatedLoading ? (
+                            <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                                <Skeleton variant="text" width="60%" height={24} sx={{ bgcolor: 'rgba(148,163,184,0.22)' }} />
+                                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1.5 }}>
+                                    <Skeleton variant="circular" width={44} height={44} sx={{ bgcolor: 'rgba(148,163,184,0.2)' }} />
+                                    <Box sx={{ flex: 1 }}>
+                                        <Skeleton variant="text" width="75%" height={22} sx={{ bgcolor: 'rgba(148,163,184,0.22)' }} />
+                                        <Skeleton variant="text" width="55%" height={18} sx={{ bgcolor: 'rgba(148,163,184,0.18)' }} />
+                                    </Box>
+                                </Stack>
+                            </Paper>
+                        ) : reportedUserInfo ? (
+                            <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
                                 <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
-                                    LIÊN QUAN
+                                    {tt === 'LISTING' || tt === 'POST' ? 'NGƯỜI ĐĂNG TIN' : 'NGƯỜI DÙNG BỊ BÁO CÁO'}
                                 </Typography>
-                                {listingId != null && (
-                                    <Tooltip title="Mở tin đăng">
-                                        <IconButton
-                                            size="small"
-                                            onClick={() => navigate(`/listings/${listingId}`)}
-                                            sx={{
-                                                color: STITCH_INDIGO,
-                                                bgcolor: 'rgba(99, 102, 241, 0.12)',
-                                                '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.22)' },
-                                            }}
-                                        >
-                                            <OpenInNewIcon fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
-                            </Stack>
-                            <Stack direction="row" spacing={1.5} alignItems="center">
-                                <Box
-                                    sx={{
-                                        width: 64,
-                                        height: 64,
-                                        flexShrink: 0,
-                                        borderRadius: 2,
-                                        bgcolor: 'rgba(99, 102, 241, 0.12)',
-                                        border: `1px solid ${CARD_BORDER}`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    {tt === 'USER' ? (
-                                        <Avatar
-                                            src={reportedAvatar || undefined}
-                                            imgProps={{ referrerPolicy: 'no-referrer' }}
-                                            sx={{
-                                                width: '100%',
-                                                height: '100%',
-                                                borderRadius: 2,
-                                                bgcolor: 'rgba(34, 211, 238, 0.22)',
-                                                color: '#cffafe',
-                                                fontWeight: 900,
-                                            }}
-                                        >
-                                            {reporterInitials(displayTitle)}
-                                        </Avatar>
-                                    ) : (
-                                        <Typography variant="h6" sx={{ color: STITCH_INDIGO, fontWeight: 900 }}>
-                                            {(displayTitle || '?').slice(0, 1).toUpperCase()}
+                                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1.5 }}>
+                                    <Avatar
+                                        src={fullImageUrl(reportedUserInfo?.avatarUrl || reportedUserInfo?.avatar || report?.reportedUserAvatarUrl || '') || undefined}
+                                        imgProps={{ referrerPolicy: 'no-referrer' }}
+                                        sx={{
+                                            width: 44,
+                                            height: 44,
+                                            bgcolor: 'rgba(99, 102, 241, 0.35)',
+                                            color: '#e0e7ff',
+                                            border: `1px solid ${CARD_BORDER}`,
+                                            fontWeight: 800,
+                                        }}
+                                    >
+                                        {reporterInitials(reportedUserInfo?.fullName || reportedUserInfo?.name || '')}
+                                    </Avatar>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="subtitle2" sx={{ color: '#f8fafc', fontWeight: 700 }} noWrap>
+                                            {reportedUserInfo?.fullName || reportedUserInfo?.name || '—'}
                                         </Typography>
+                                        <Typography variant="caption" sx={{ color: MUTED_LABEL }} noWrap>
+                                            {reportedUserInfo?.email || '—'}
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
+                                    <Chip
+                                        size="small"
+                                        label={`ID: ${reportedUserInfo?.id ?? report?.targetId ?? '—'}`}
+                                        sx={{
+                                            bgcolor: 'rgba(99, 102, 241, 0.14)',
+                                            color: '#c7d2fe',
+                                            border: '1px solid rgba(129, 140, 248, 0.4)',
+                                            fontWeight: 700,
+                                        }}
+                                    />
+                                    {reportedUserInfo?.status ? (
+                                        <Chip
+                                            size="small"
+                                            label={`Trạng thái: ${reportedUserInfo.status}`}
+                                            sx={{
+                                                bgcolor: 'rgba(148, 163, 184, 0.14)',
+                                                color: '#e2e8f0',
+                                                border: '1px solid rgba(148, 163, 184, 0.35)',
+                                                fontWeight: 700,
+                                            }}
+                                        />
+                                    ) : null}
+                                    {(tt === 'USER' && (report?.violationThreshold != null || report?.targetViolationCount != null)) ? (
+                                        <Chip
+                                            size="small"
+                                            label={`Vi phạm: ${report?.targetViolationCount ?? reportedUserInfo?.violationCount ?? 0} / ${report?.violationThreshold ?? 3}`}
+                                            sx={{
+                                                bgcolor: 'rgba(251, 191, 36, 0.14)',
+                                                color: '#fde68a',
+                                                border: '1px solid rgba(251, 191, 36, 0.42)',
+                                                fontWeight: 800,
+                                            }}
+                                        />
+                                    ) : null}
+                                </Stack>
+                            </Paper>
+                        ) : null}
+
+                        {tt !== 'USER' && (
+                            <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
+                                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+                                    <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em' }}>
+                                        {tt === 'LISTING' || tt === 'POST' ? 'TIN ĐĂNG BỊ BÁO CÁO' : tt === 'USER' ? 'TÓM TẮT ĐỐI TƯỢNG' : 'ĐỐI TƯỢNG LIÊN QUAN'}
+                                    </Typography>
+                                    {listingId != null && (
+                                        <Tooltip title="Mở tin đăng">
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => navigate(`/listings/${listingId}`)}
+                                                sx={{
+                                                    color: STITCH_INDIGO,
+                                                    bgcolor: 'rgba(99, 102, 241, 0.12)',
+                                                    '&:hover': { bgcolor: 'rgba(99, 102, 241, 0.22)' },
+                                                }}
+                                            >
+                                                <OpenInNewIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
                                     )}
-                                </Box>
-                                <Box sx={{ minWidth: 0 }}>
-                                    <Typography variant="subtitle2" sx={{ color: '#f1f5f9', fontWeight: 700 }} noWrap>
-                                        {listingId != null ? `Tin #${listingId}` : `Đối tượng #${report.targetId ?? '—'}`}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: MUTED_LABEL, display: 'block', mt: 0.25 }} noWrap>
-                                        {relatedCategoryLine(report.targetType)}
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: 'rgba(226, 232, 240, 0.88)', mt: 0.75, lineHeight: 1.4 }} noWrap>
-                                        {displayTitle}
-                                    </Typography>
-                                </Box>
-                            </Stack>
-                        </Paper>
+                                </Stack>
+                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                    <Box
+                                        sx={{
+                                            width: 64,
+                                            height: 64,
+                                            flexShrink: 0,
+                                            borderRadius: 2,
+                                            bgcolor: 'rgba(99, 102, 241, 0.12)',
+                                            border: `1px solid ${CARD_BORDER}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        {tt === 'USER' ? (
+                                            <Avatar
+                                                src={reportedAvatar || undefined}
+                                                imgProps={{ referrerPolicy: 'no-referrer' }}
+                                                sx={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    borderRadius: 2,
+                                                    bgcolor: 'rgba(34, 211, 238, 0.22)',
+                                                    color: '#cffafe',
+                                                    fontWeight: 900,
+                                                }}
+                                            >
+                                                {reporterInitials(displayTitle)}
+                                            </Avatar>
+                                        ) : (tt === 'LISTING' || tt === 'POST') && listingImageUrl && !listingImageBroken ? (
+                                            <img
+                                                src={listingImageUrl}
+                                                alt="listing-thumbnail"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                onError={() => setListingImageBroken(true)}
+                                            />
+                                        ) : (
+                                            <Typography variant="caption" sx={{ color: 'rgba(148,163,184,0.95)', fontWeight: 700, textAlign: 'center', px: 1 }}>
+                                                {(tt === 'LISTING' || tt === 'POST')
+                                                    ? (listingImageUrl ? 'Ảnh không tải được' : 'Không có ảnh')
+                                                    : (displayTitle || '?').slice(0, 1).toUpperCase()}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="subtitle2" sx={{ color: '#f1f5f9', fontWeight: 700 }} noWrap>
+                                            {listingId != null ? `Tin #${listingId}` : `Đối tượng #${report.targetId ?? '—'}`}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: MUTED_LABEL, display: 'block', mt: 0.25 }} noWrap>
+                                            {relatedCategoryLine(report.targetType)}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'rgba(226, 232, 240, 0.88)', mt: 0.75, lineHeight: 1.4 }} noWrap>
+                                            {displayTitle}
+                                        </Typography>
+                                        {(tt === 'LISTING' || tt === 'POST') && (
+                                            <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                                {(listingInfo?.price != null || listingInfo?.formattedPrice != null) && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`Giá: ${listingInfo?.formattedPrice || listingInfo?.price}`}
+                                                        sx={{ bgcolor: 'rgba(99, 102, 241, 0.14)', color: '#c7d2fe', border: '1px solid rgba(129, 140, 248, 0.32)', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                                {listingInfo?.status && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`Trạng thái tin: ${listingInfo.status}`}
+                                                        sx={{ bgcolor: 'rgba(148, 163, 184, 0.14)', color: '#e2e8f0', border: '1px solid rgba(148, 163, 184, 0.32)', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                                {(reportedUserInfo?.fullName || reportedUserInfo?.name) && (
+                                                    <Chip
+                                                        size="small"
+                                                        label={`Người đăng: ${reportedUserInfo?.fullName || reportedUserInfo?.name}`}
+                                                        sx={{ bgcolor: 'rgba(34, 197, 94, 0.14)', color: '#86efac', border: '1px solid rgba(34, 197, 94, 0.32)', fontWeight: 700 }}
+                                                    />
+                                                )}
+                                            </Stack>
+                                        )}
+                                    </Box>
+                                </Stack>
+                            </Paper>
+                        )}
 
                         <Paper elevation={0} sx={{ ...cardSx, p: 2.25 }}>
                             <Typography variant="caption" sx={{ color: MUTED_LABEL, fontWeight: 700, letterSpacing: '0.08em', mb: 1, display: 'block' }}>
@@ -851,84 +1088,42 @@ export default function ReportDetailPage() {
                                 ? `Hoàn tất điều tra cho báo cáo${rid != null ? ` #${rid}` : ''}. Duyệt: ghi nhận vi phạm. Từ chối: báo cáo không được chấp nhận.`
                                 : 'Báo cáo này đã được xử lý. Bạn có thể xem lại thông tin phía trên.'}
                         </Typography>
-                        {autoClosedByQuickAction && (
-                            <Chip
-                                size="small"
-                                label="Đã đóng tự động sau thao tác quản trị"
+                        {canAct && (
+                            <Box
                                 sx={{
                                     mt: 1,
-                                    height: 24,
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    bgcolor: 'rgba(34, 197, 94, 0.14)',
-                                    color: '#86efac',
-                                    border: '1px solid rgba(34, 197, 94, 0.35)',
+                                    px: 1.25,
+                                    py: 0.9,
+                                    borderRadius: 1.5,
+                                    bgcolor: 'rgba(251, 191, 36, 0.1)',
+                                    border: '1px solid rgba(251, 191, 36, 0.35)',
                                 }}
-                            />
+                            >
+                                <Typography variant="caption" sx={{ color: '#fde68a', display: 'block', lineHeight: 1.5, fontWeight: 700 }}>
+                                    Duyệt = +1 cờ vi phạm{tt === 'LISTING' || tt === 'POST' ? ' + ẩn bài đăng' : ''}.
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'rgba(253, 230, 138, 0.95)', display: 'block', lineHeight: 1.45 }}>
+                                    Nếu (X + 1) {'>='} ngưỡng cấu hình thì hệ thống tự động khóa tài khoản.
+                                </Typography>
+                            </Box>
                         )}
                     </Box>
                 </Stack>
                 <Stack direction="row" spacing={1.25} justifyContent="flex-end" flexWrap="wrap" useFlexGap sx={{ flexShrink: 0 }}>
                     {canAct && (tt === 'LISTING' || tt === 'POST') && (
-                        <Button
-                            variant="outlined"
-                            onClick={() =>
-                                openConfirmDialog({
-                                    action: 'HIDE_LISTING_APPROVE',
-                                    title: 'Xác nhận ẩn bài đăng',
-                                    message: 'Bạn sắp ẩn bài đăng liên quan và đóng báo cáo này. Hành động này ảnh hưởng trực tiếp đến khả năng hiển thị của tin đăng.',
-                                    confirmLabel: 'Xác nhận ẩn bài',
-                                    tone: 'danger',
-                                })
-                            }
-                            disabled={isActionLocked}
+                        <Chip
+                            size="small"
+                            label={`Vi phạm hiện tại: ${report?.targetViolationCount ?? 0} / ${report?.violationThreshold ?? 3}`}
                             sx={{
-                                textTransform: 'none',
+                                height: 32,
+                                px: 0.75,
+                                fontSize: 12,
                                 fontWeight: 800,
-                                borderRadius: 999,
-                                px: 2.5,
-                                borderColor: 'rgba(248, 113, 113, 0.65)',
-                                color: '#fecaca',
-                                bgcolor: 'rgba(127, 29, 29, 0.2)',
-                                '&:hover': {
-                                    borderColor: 'rgba(248, 113, 113, 0.9)',
-                                    bgcolor: 'rgba(127, 29, 29, 0.32)',
-                                },
-                            }}
-                        >
-                            {quickActionLoading ? 'Đang xử lý…' : 'Ẩn bài'}
-                        </Button>
-                    )}
-
-                    {canAct && tt === 'USER' && (
-                        <Button
-                            variant="outlined"
-                            onClick={() =>
-                                openConfirmDialog({
-                                    action: 'BAN_USER_APPROVE',
-                                    title: 'Xác nhận khoá tài khoản',
-                                    message: 'Bạn sắp khóa tài khoản bị báo cáo và đóng hồ sơ này. Đây là quyết định quan trọng, vui lòng kiểm tra lại thông tin trước khi xác nhận.',
-                                    confirmLabel: 'Xác nhận khoá tài khoản',
-                                    tone: 'warning',
-                                })
-                            }
-                            disabled={submitting || quickActionLoading}
-                            sx={{
-                                textTransform: 'none',
-                                fontWeight: 800,
-                                borderRadius: 999,
-                                px: 2.5,
-                                borderColor: 'rgba(251, 191, 36, 0.7)',
+                                bgcolor: 'rgba(251, 191, 36, 0.14)',
                                 color: '#fde68a',
-                                bgcolor: 'rgba(120, 53, 15, 0.2)',
-                                '&:hover': {
-                                    borderColor: 'rgba(251, 191, 36, 0.95)',
-                                    bgcolor: 'rgba(120, 53, 15, 0.34)',
-                                },
+                                border: '1px solid rgba(251, 191, 36, 0.42)',
                             }}
-                        >
-                            {quickActionLoading ? 'Đang xử lý…' : 'Ban user'}
-                        </Button>
+                        />
                     )}
 
                     <Button
@@ -942,7 +1137,7 @@ export default function ReportDetailPage() {
                                 tone: 'danger',
                             })
                         }
-                        disabled={submitting || quickActionLoading || !canAct}
+                        disabled={submitting || !canAct}
                         sx={{
                             textTransform: 'none',
                             fontWeight: 800,
@@ -970,12 +1165,17 @@ export default function ReportDetailPage() {
                             openConfirmDialog({
                                 action: 'APPROVE',
                                 title: 'Xác nhận duyệt báo cáo',
-                                message: 'Bạn sắp duyệt báo cáo này. Thao tác này sẽ ghi nhận vi phạm và cập nhật trạng thái xử lý.',
+                                message:
+                                    tt === 'LISTING' || tt === 'POST'
+                                        ? 'Bạn sắp duyệt báo cáo này. Thao tác này sẽ ẩn bài đăng của user, cộng 1 cờ vi phạm cho user bị báo cáo và cập nhật trạng thái xử lý.'
+                                        : tt === 'USER'
+                                            ? 'Bạn sắp duyệt báo cáo này. Thao tác này sẽ cộng 1 cờ vi phạm cho user bị báo cáo và cập nhật trạng thái xử lý.'
+                                            : 'Bạn sắp duyệt báo cáo này. Thao tác này sẽ ghi nhận vi phạm và cập nhật trạng thái xử lý.',
                                 confirmLabel: 'Xác nhận duyệt',
                                 tone: 'primary',
                             })
                         }
-                        disabled={submitting || quickActionLoading || !canAct}
+                        disabled={submitting || !canAct}
                         sx={{
                             textTransform: 'none',
                             fontWeight: 800,
@@ -1007,7 +1207,7 @@ export default function ReportDetailPage() {
                 cancelLabel="Huỷ"
                 onClose={closeConfirmDialog}
                 onConfirm={handleConfirmAction}
-                loading={submitting || quickActionLoading}
+                loading={submitting}
             />
         </Box>
     );

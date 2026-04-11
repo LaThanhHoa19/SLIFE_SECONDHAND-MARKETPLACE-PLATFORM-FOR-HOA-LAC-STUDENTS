@@ -96,7 +96,11 @@ const normalizeConditionParam = (condition) => {
 
 const applyFeedTypeClientFilter = (items, feedType) => {
     const list = Array.isArray(items) ? items : [];
-    const type = String(feedType || 'FOLLOWING').toUpperCase();
+    const type = String(feedType || '').toUpperCase();
+
+    if (!type || type === 'ALL') {
+        return list;
+    }
 
     if (type === 'GIVEAWAY') {
         return list.filter((item) => {
