@@ -1,5 +1,4 @@
 import {
-    Badge,
     Box,
     Chip,
     CircularProgress,
@@ -277,7 +276,28 @@ export default function ChatSidebar({
                                     <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.65rem' }}>
                                         {formatSessionTimeShort(s.lastMessageAt)}
                                     </Typography>
-                                    {unread && <Badge badgeContent={unreadCount} color="primary" sx={{ mt: 0.5 }} />}
+                                    {unread && (
+                                        <Box
+                                            sx={{
+                                                mt: 0.6,
+                                                minWidth: 20,
+                                                height: 20,
+                                                px: unreadCount > 9 ? 0.7 : 0,
+                                                borderRadius: 999,
+                                                bgcolor: 'primary.main',
+                                                color: '#fff',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: 11,
+                                                fontWeight: 800,
+                                                lineHeight: 1,
+                                                boxShadow: `0 0 0 2px ${alpha(theme.palette.background.paper, 0.9)}`,
+                                            }}
+                                        >
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </Box>
+                                    )}
                                 </Box>
                             </ListItemButton>
                         )})}

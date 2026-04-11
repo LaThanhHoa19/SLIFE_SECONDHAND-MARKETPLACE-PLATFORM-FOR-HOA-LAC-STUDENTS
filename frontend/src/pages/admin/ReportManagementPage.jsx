@@ -57,7 +57,6 @@ function targetTypeLabel(type) {
     if (u === 'LISTING' || u === 'POST') return 'Tin đăng';
     if (u === 'USER') return 'Người dùng';
     if (u === 'COMMENT') return 'Bình luận';
-    if (u === 'MESSAGE') return 'Tin nhắn';
     return 'Khác';
 }
 
@@ -142,7 +141,7 @@ const reportManagementTableSx = {
 function previewColumnLabel(tab) {
     if (tab === 'LISTING') return 'Bài đăng / đích';
     if (tab === 'USER') return 'Người bị báo cáo';
-    return 'Nội dung (bình luận, tin nhắn…)';
+    return 'Nội dung (bình luận / cộng đồng)';
 }
 
 function StatusStitchChip({ status }) {
@@ -241,9 +240,12 @@ export default function ReportManagementPage() {
     }, [loadReports]);
 
     const filteredReports = useMemo(() => {
+        const rows = (Array.isArray(reports) ? reports : []).filter(
+            (r) => String(r?.targetType || '').toUpperCase() !== 'MESSAGE',
+        );
         const q = searchQuery.trim().toLowerCase();
-        if (!q) return reports;
-        return reports.filter((r) => {
+        if (!q) return rows;
+        return rows.filter((r) => {
             const id = String(reportRowId(r) ?? '');
             const prev = reportedDisplay(r).toLowerCase();
             const name = (r.reporterName || '').toLowerCase();
@@ -659,7 +661,7 @@ export default function ReportManagementPage() {
             >
                 <Tab label="Báo cáo bài đăng" value="LISTING" />
                 <Tab label="Báo cáo người dùng" value="USER" />
-                <Tab label="Bình luận & tin nhắn" value="OTHER" />
+                <Tab label="Bình luận & cộng đồng" value="OTHER" />
             </Tabs>
 
             <Box

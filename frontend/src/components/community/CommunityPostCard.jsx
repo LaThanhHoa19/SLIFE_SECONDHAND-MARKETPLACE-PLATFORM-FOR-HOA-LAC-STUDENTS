@@ -30,6 +30,7 @@ import {
     Bookmark as BookmarkFilledIcon,
     ModeCommentOutlined as CommentIconOutlined,
     ShareOutlined as ShareIconOutlined,
+    AddPhotoAlternateOutlined as AddPhotoAlternateOutlinedIcon,
     MoreHoriz as MoreIcon,
     Close as CloseIcon,
     Flag as ReportIcon,
@@ -42,7 +43,7 @@ import { unwrapApiData } from '../../utils/apiPayload';
 import { useAuth } from '../../hooks/useAuth';
 import { getCachedFollowState, useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
-import { toggleCommunityPostLike, toggleCommunityPostSave, updateCommunityPost, deleteCommunityPost } from '../../api/communityApi';
+import { toggleCommunityPostLike, toggleCommunityPostSave, updateCommunityPost, deleteCommunityPost, getCommunityPost, uploadCommunityPostImages, deleteCommunityPostImage } from '../../api/communityApi';
 import CommunityCommentModal from './CommunityCommentModal';
 import CommunityPostExpandableDescription from './CommunityPostExpandableDescription';
 import ReportDialog from '../report/ReportDialog';
@@ -126,6 +127,10 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [editDescription, setEditDescription] = useState(post?.description || '');
     const [editError, setEditError] = useState('');
+    const [editCurrentImages, setEditCurrentImages] = useState([]);
+    const [editRemovedImageIds, setEditRemovedImageIds] = useState([]);
+    const [editNewImages, setEditNewImages] = useState([]);
+    const editImageInputRef = useRef(null);
     const [likePop, setLikePop] = useState(false);
     const [commentPop, setCommentPop] = useState(false);
     const [viewerOpen, setViewerOpen] = useState(false);
@@ -301,29 +306,62 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
         setReportOpen(true);
     };
 
-    const handleEditOpen = (e) => {
+    const handleEditOpen = async (e) => {
         e.stopPropagation();
         e.preventDefault();
         setMoreAnchorEl(null);
         setEditDescription(post?.description || '');
         setEditError('');
+        setEditCurrentImages((post?.imageUrls || []).map((url, idx) => ({ id: null, imageUrl: url, _k: `legacy-${idx}` })));
+        setEditRemovedImageIds([]);
+        setEditNewImages([]);
         setEditOpen(true);
+        try {
+            const detailRes = await getCommunityPost(id);
+            const detail = unwrapApiData(detailRes);
+            const items = Array.isArray(detail?.imageItems)
+                ? detail.imageItems.map((it, idx) => ({ id: it?.id ?? null, imageUrl: it?.url || it?.imageUrl || '', _k: `srv-${it?.id ?? idx}` })).filter((it) => !!it.imageUrl)
+                : [];
+            if (items.length > 0) setEditCurrentImages(items);
+        } catch {
+            // giữ fallback từ card
+        }
     };
 
     const handleEditSubmit = async () => {
         if (!id || editSubmitting) return;
         const description = (editDescription || '').trim();
-        if (!description && !(post?.imageUrls?.length > 0)) {
+        const remainedCount = editCurrentImages.length - editRemovedImageIds.length;
+        if (!description && remainedCount + editNewImages.length <= 0) {
             setEditError('Bài viết cần có nội dung hoặc ít nhất 1 ảnh.');
             return;
         }
         setEditSubmitting(true);
         try {
-            await updateCommunityPost(id, {
-                description,
-            });
+            await updateCommunityPost(id, { description });
+
+            const removeIds = editRemovedImageIds.filter((x) => x != null);
+            for (const imageId of removeIds) {
+                // eslint-disable-next-line no-await-in-loop
+                await deleteCommunityPostImage(id, imageId);
+            }
+
+            if (editNewImages.length > 0) {
+                await uploadCommunityPostImages(id, editNewImages);
+            }
+
+            const freshRes = await getCommunityPost(id);
+            const fresh = unwrapApiData(freshRes) || {};
+            const nextImageUrls = Array.isArray(fresh?.images)
+                ? fresh.images
+                : Array.isArray(fresh?.imageItems)
+                    ? fresh.imageItems.map((it) => it?.url || it?.imageUrl).filter(Boolean)
+                    : post?.imageUrls || [];
+
             onPatchPost?.(id, {
                 description,
+                imageUrls: nextImageUrls,
+                thumbUrl: nextImageUrls?.[0] || null,
             });
             showToast('Đã cập nhật bài viết.', 'success');
             setEditOpen(false);
@@ -339,6 +377,27 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
         e.preventDefault();
         setMoreAnchorEl(null);
         setDeleteConfirmOpen(true);
+    };
+
+    const handlePickEditImages = (e) => {
+        const files = Array.from(e.target?.files || []);
+        if (files.length === 0) return;
+        setEditError('');
+        setEditNewImages((prev) => [...prev, ...files].slice(0, 10));
+        e.target.value = '';
+    };
+
+    const handleRemoveCurrentImage = (img) => {
+        if (!img) return;
+        if (img.id != null) {
+            setEditRemovedImageIds((prev) => (prev.includes(img.id) ? prev : [...prev, img.id]));
+        } else {
+            setEditCurrentImages((prev) => prev.filter((x) => x._k !== img._k));
+        }
+    };
+
+    const handleRemoveNewImageAt = (idx) => {
+        setEditNewImages((prev) => prev.filter((_, i) => i !== idx));
     };
 
     const handleDeletePostConfirm = async () => {
@@ -422,9 +481,14 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
     return (
         <Box
             sx={{
-                px: { xs: 1.25, sm: 1.5 },
-                py: 1.45,
+                px: { xs: 1.25, sm: 1.6 },
+                py: 1.6,
                 borderBottom: '1px solid rgba(255,255,255,0.06)',
+                transition: 'background-color .2s ease, box-shadow .2s ease',
+                '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.018)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(255,255,255,0.03)',
+                },
             }}
         >
             <Box sx={{ display: 'flex', gap: 1.25 }}>
@@ -433,6 +497,7 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                         <Avatar
                             component={RouterLink}
                             to={String(authorId) === String(user?.id) ? '/profile' : authorId ? `/profile/${authorId}` : '#'}
+                            state={{ profileTab: 'posts' }}
                             src={fullImageUrl(authorAvatar)}
                             alt={authorName}
                             sx={{
@@ -558,12 +623,19 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                         </Box>
                     ) : null}
 
-                    <Stack direction="row" alignItems="center" spacing={0.9} sx={{ pt: 0.7 }}>
+                    <Stack direction="row" alignItems="center" spacing={1} sx={{ pt: 0.8 }}>
                         <IconButton
                             size="small"
                             disabled={likeSubmitting}
                             onClick={handleLikeClick}
-                            sx={{ color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.72)', p: 0.6 }}
+                            sx={{
+                                color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.72)',
+                                p: 0.65,
+                                borderRadius: 2,
+                                transition: 'all .2s ease',
+                                '&:hover': { bgcolor: 'rgba(255,71,87,0.12)', transform: 'translateY(-1px)' },
+                                '&:active': { transform: 'scale(0.94)' },
+                            }}
                         >
                             {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
                         </IconButton>
@@ -575,7 +647,14 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                                 e.stopPropagation();
                                 setCommentOpen(true);
                             }}
-                            sx={{ color: 'rgba(255,255,255,0.72)', p: 0.6 }}
+                            sx={{
+                                color: 'rgba(255,255,255,0.72)',
+                                p: 0.65,
+                                borderRadius: 2,
+                                transition: 'all .2s ease',
+                                '&:hover': { bgcolor: 'rgba(157,110,237,0.12)', transform: 'translateY(-1px)' },
+                                '&:active': { transform: 'scale(0.94)' },
+                            }}
                         >
                             <CommentIconOutlined sx={{ fontSize: 18 }} />
                         </IconButton>
@@ -585,7 +664,14 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                             size="small"
                             onClick={handleSaveClick}
                             disabled={saveSubmitting}
-                            sx={{ color: isSaved ? '#FFD166' : 'rgba(255,255,255,0.72)', p: 0.6 }}
+                            sx={{
+                                color: isSaved ? '#FFD166' : 'rgba(255,255,255,0.72)',
+                                p: 0.65,
+                                borderRadius: 2,
+                                transition: 'all .2s ease',
+                                '&:hover': { bgcolor: 'rgba(255,209,102,0.12)', transform: 'translateY(-1px)' },
+                                '&:active': { transform: 'scale(0.94)' },
+                            }}
                         >
                             {isSaved ? <BookmarkFilledIcon sx={{ fontSize: 18 }} /> : <BookmarkBorderIcon sx={{ fontSize: 18 }} />}
                         </IconButton>
@@ -594,7 +680,14 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                             size="small"
                             onClick={handleShareClick}
                             disabled={shareSubmitting}
-                            sx={{ color: 'rgba(255,255,255,0.72)', p: 0.6 }}
+                            sx={{
+                                color: 'rgba(255,255,255,0.72)',
+                                p: 0.65,
+                                borderRadius: 2,
+                                transition: 'all .2s ease',
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', transform: 'translateY(-1px)' },
+                                '&:active': { transform: 'scale(0.94)' },
+                            }}
                         >
                             <ShareIconOutlined sx={{ fontSize: 18 }} />
                         </IconButton>
@@ -812,6 +905,51 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                                     }}
                                 />
 
+                                <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: 1 }}>
+                                    <IconButton
+                                        size="small"
+                                        sx={{ color: 'rgba(255,255,255,0.72)' }}
+                                        onClick={() => editImageInputRef.current?.click()}
+                                        aria-label="Thêm ảnh"
+                                    >
+                                        <AddPhotoAlternateOutlinedIcon fontSize="small" />
+                                    </IconButton>
+                                    <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.52)' }}>Thêm ảnh</Typography>
+                                </Stack>
+
+                                <input
+                                    ref={editImageInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    multiple
+                                    style={{ display: 'none' }}
+                                    onChange={handlePickEditImages}
+                                />
+
+                                {(editCurrentImages.length > 0 || editNewImages.length > 0) ? (
+                                    <Box sx={{ mt: 1, display: 'flex', gap: 1, overflowX: 'auto', pb: 0.5 }}>
+                                        {editCurrentImages
+                                            .filter((img) => !(img?.id != null && editRemovedImageIds.includes(img.id)))
+                                            .map((img, idx) => (
+                                                <Box key={img._k || `cur-${idx}`} sx={{ position: 'relative', width: 120, minWidth: 120, borderRadius: 1.2, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
+                                                    <Box component="img" src={fullImageUrl(img.imageUrl)} alt="" sx={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                                                    <IconButton size="small" onClick={() => handleRemoveCurrentImage(img)} sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+                                                        <CloseIcon sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Box>
+                                            ))}
+
+                                        {editNewImages.map((file, idx) => (
+                                            <Box key={`${file.name}-${idx}`} sx={{ position: 'relative', width: 120, minWidth: 120, borderRadius: 1.2, overflow: 'hidden', border: '1px solid rgba(157,110,237,0.45)' }}>
+                                                <Box component="img" src={URL.createObjectURL(file)} alt="" sx={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
+                                                <IconButton size="small" onClick={() => handleRemoveNewImageAt(idx)} sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+                                                    <CloseIcon sx={{ fontSize: 14 }} />
+                                                </IconButton>
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                ) : null}
+
                                 {editError ? (
                                     <Typography sx={{ color: '#f87171', fontSize: 13, mt: 1 }}>
                                         {editError}
@@ -826,7 +964,7 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                             <Button
                                 variant="contained"
                                 onClick={handleEditSubmit}
-                                disabled={editSubmitting || (!editDescription.trim() && !(post?.imageUrls?.length > 0))}
+                                disabled={editSubmitting || (!editDescription.trim() && ((editCurrentImages.length - editRemovedImageIds.length) + editNewImages.length <= 0))}
                                 sx={{
                                     fontWeight: 700,
                                     borderRadius: 2,

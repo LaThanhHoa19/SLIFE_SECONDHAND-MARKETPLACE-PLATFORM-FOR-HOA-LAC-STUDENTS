@@ -53,7 +53,7 @@ public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of(
-            "LISTING", "POST", "USER", "COMMENT", "MESSAGE",
+            "LISTING", "POST", "USER", "COMMENT",
             "COMMUNITY_POST", "COMMUNITY_POST_COMMENT");
     private static final Set<String> VALID_MODERATION_ACTIONS = Set.of("HIDE_LISTING_APPROVE", "BAN_USER_APPROVE");
     private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
@@ -122,7 +122,6 @@ public class ReportService {
             case "LISTING" -> createListingReport(reporter, request, targetType);
             case "USER" -> createUserReport(reporter, request, targetType);
             case "COMMENT" -> createCommentReport(reporter, request, targetType);
-            case "MESSAGE" -> createMessageReport(reporter, request, targetType);
             case "COMMUNITY_POST" -> createCommunityPostReport(reporter, request, targetType);
             case "COMMUNITY_POST_COMMENT" -> createCommunityPostCommentReport(reporter, request, targetType);
             default -> throw new SlifeException(ErrorCode.REPORT_INVALID_TARGET);
