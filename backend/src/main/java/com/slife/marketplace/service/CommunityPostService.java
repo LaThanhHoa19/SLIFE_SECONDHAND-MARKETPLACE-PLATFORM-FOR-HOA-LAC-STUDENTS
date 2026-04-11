@@ -89,11 +89,12 @@ public class CommunityPostService {
             throw new SlifeException(ErrorCode.INVALID_INPUT, Constants.MSG18);
         }
 
-        contentModerationService.assertNoBannedKeywords(request.getTitle().trim(), trimToNull(request.getDescription()));
+        String normalizedTitle = trimToNull(request.getTitle());
+        contentModerationService.assertNoBannedKeywords(normalizedTitle != null ? normalizedTitle : "", trimToNull(request.getDescription()));
 
         CommunityPost post = new CommunityPost();
         post.setAuthor(author);
-        post.setTitle(request.getTitle().trim());
+        post.setTitle(normalizedTitle);
         post.setDescription(trimToNull(request.getDescription()));
         post.setStatus(CommunityPost.STATUS_ACTIVE);
         post.setViewCount(0L);
@@ -175,6 +176,7 @@ public class CommunityPostService {
         List<CommunityPost> posts = pageResult.getContent();
         List<Long> ids = posts.stream().map(CommunityPost::getId).filter(Objects::nonNull).toList();
         Map<Long, String> thumbByPost = firstThumbByPostId(ids);
+        Map<Long, List<String>> imageUrlsByPost = imageUrlsByPostId(ids);
         Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
         Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
         Set<Long> likedByViewer = new HashSet<>();
@@ -183,7 +185,7 @@ public class CommunityPostService {
         }
 
         List<CommunityPostCardResponse> cards = posts.stream()
-                .map(p -> toCard(p, thumbByPost, likes, comments, viewerId, likedByViewer))
+                .map(p -> toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer))
                 .collect(Collectors.toList());
 
         return new PagedResponse<>(
@@ -236,6 +238,7 @@ public class CommunityPostService {
 
         List<Long> ids = posts.stream().map(CommunityPost::getId).filter(Objects::nonNull).toList();
         Map<Long, String> thumbByPost = firstThumbByPostId(ids);
+        Map<Long, List<String>> imageUrlsByPost = imageUrlsByPostId(ids);
         Map<Long, Long> likes = toCountMap(communityPostLikeRepository.countLikesByPostIds(ids));
         Map<Long, Long> comments = toCountMap(communityPostCommentRepository.countCommentsByPostIds(ids));
         Set<Long> likedByViewer = new HashSet<>();
@@ -244,7 +247,7 @@ public class CommunityPostService {
         }
 
         List<CommunityPostCardResponse> cards = posts.stream()
-                .map(p -> toCard(p, thumbByPost, likes, comments, viewerId, likedByViewer))
+                .map(p -> toCard(p, thumbByPost, imageUrlsByPost, likes, comments, viewerId, likedByViewer))
                 .collect(Collectors.toList());
 
         if (hasMore && !posts.isEmpty()) {
@@ -344,6 +347,7 @@ public class CommunityPostService {
 
     private CommunityPostCardResponse toCard(CommunityPost p,
                                              Map<Long, String> thumbByPost,
+                                             Map<Long, List<String>> imageUrlsByPost,
                                              Map<Long, Long> likes,
                                              Map<Long, Long> comments,
                                              Long viewerId,
@@ -357,6 +361,7 @@ public class CommunityPostService {
                 p.getTitle(),
                 p.getDescription(),
                 thumbByPost.get(id),
+                imageUrlsByPost.getOrDefault(id, List.of()),
                 p.getCreatedAt(),
                 a != null ? a.getId() : null,
                 a != null ? a.getFullName() : null,
@@ -376,6 +381,19 @@ public class CommunityPostService {
         for (CommunityPostImage i : imgs) {
             Long pid = i.getPost().getId();
             m.putIfAbsent(pid, i.getImageUrl());
+        }
+        return m;
+    }
+
+    private Map<Long, List<String>> imageUrlsByPostId(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        List<CommunityPostImage> imgs = communityPostImageRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(ids);
+        Map<Long, List<String>> m = new HashMap<>();
+        for (CommunityPostImage i : imgs) {
+            Long pid = i.getPost().getId();
+            m.computeIfAbsent(pid, __ -> new ArrayList<>()).add(i.getImageUrl());
         }
         return m;
     }

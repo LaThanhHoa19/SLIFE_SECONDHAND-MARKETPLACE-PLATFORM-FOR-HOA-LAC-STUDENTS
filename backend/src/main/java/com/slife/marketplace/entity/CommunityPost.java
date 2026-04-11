@@ -41,8 +41,7 @@ public class CommunityPost {
     private User author;
 
     @Size(max = 50)
-    @NotNull
-    @Column(name = "title", nullable = false, length = 300)
+    @Column(name = "title", length = 300)
     private String title;
 
     @Size(max = 1000)

@@ -1,19 +1,18 @@
 /**
- * Thẻ bài cộng đồng — layout đồng bộ ListingCard (dark feed): avatar + follow, media, thích / bình luận / chia sẻ.
+ * Thẻ bài cộng đồng — phong cách feed gọn kiểu thread, giữ logic tương tác hiện tại.
  */
 import { memo, useEffect, useRef, useState } from 'react';
 import {
     Avatar,
     Box,
-    Card,
     CircularProgress,
+    Dialog,
     IconButton,
     Menu,
     MenuItem,
     ListItemIcon,
     ListItemText,
     Stack,
-    Tooltip,
     Typography,
 } from '@mui/material';
 import {
@@ -25,6 +24,7 @@ import {
     ModeCommentOutlined as CommentIconOutlined,
     ShareOutlined as ShareIconOutlined,
     MoreHoriz as MoreIcon,
+    Close as CloseIcon,
     Flag as ReportIcon,
 } from '@mui/icons-material';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
@@ -40,7 +40,6 @@ import ReportDialog from '../report/ReportDialog';
 
 const LIKE_RED = '#FF4757';
 const PURPLE = '#9D6EED';
-const CARD_BG = '#201D26';
 
 function parseToggleLikePayload(res) {
     let raw = unwrapApiData(res);
@@ -74,7 +73,7 @@ const formatRelativeShort = (value) => {
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 };
 
-function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' }) {
+function CommunityPostCard({ post, onOpen, onPatchPost }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -98,10 +97,16 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
     const [reportOpen, setReportOpen] = useState(false);
     const [likePop, setLikePop] = useState(false);
     const [commentPop, setCommentPop] = useState(false);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
     const prevLikeFromPost = useRef(undefined);
     const prevCommentFromPost = useRef(undefined);
+    const mediaStripRef = useRef(null);
+    const mediaDragRef = useRef({ isDown: false, startX: 0, startLeft: 0, moved: false, activeIndex: null });
 
-    const thumb = post?.thumbUrl ? fullImageUrl(post.thumbUrl) : null;
+    const mediaUrls = Array.isArray(post?.imageUrls) && post.imageUrls.length > 0
+        ? post.imageUrls.map((u) => fullImageUrl(u)).filter(Boolean)
+        : (post?.thumbUrl ? [fullImageUrl(post.thumbUrl)] : []);
 
     useEffect(() => {
         prevLikeFromPost.current = undefined;
@@ -245,245 +250,248 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
         });
     };
 
+    const onMediaPointerDown = (e) => {
+        const el = mediaStripRef.current;
+        if (!el) return;
+        const targetEl = e.target?.closest?.('[data-idx]');
+        const index = targetEl ? Number(targetEl.getAttribute('data-idx')) : null;
+        mediaDragRef.current = {
+            isDown: true,
+            startX: e.clientX,
+            startLeft: el.scrollLeft,
+            moved: false,
+            activeIndex: Number.isInteger(index) ? index : null,
+        };
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+    };
+
+    const onMediaPointerMove = (e) => {
+        const el = mediaStripRef.current;
+        const st = mediaDragRef.current;
+        if (!el || !st.isDown) return;
+        const dx = e.clientX - st.startX;
+        if (Math.abs(dx) > 12) {
+            st.moved = true;
+        }
+        if (st.moved) {
+            e.preventDefault();
+            el.scrollLeft = st.startLeft - dx;
+        }
+    };
+
+    const endMediaDrag = (e) => {
+        const st = mediaDragRef.current;
+        if (st.isDown && !st.moved && Number.isInteger(st.activeIndex)) {
+            setViewerIndex(st.activeIndex);
+            setViewerOpen(true);
+        }
+        st.isDown = false;
+        st.moved = false;
+        st.activeIndex = null;
+        if (e?.currentTarget?.releasePointerCapture && e?.pointerId != null) {
+            try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {
+                // ignore
+            }
+        }
+    };
+
+    const goPrevViewerImage = () => {
+        setViewerIndex((prev) => (mediaUrls.length ? (prev - 1 + mediaUrls.length) % mediaUrls.length : 0));
+    };
+
+    const goNextViewerImage = () => {
+        setViewerIndex((prev) => (mediaUrls.length ? (prev + 1) % mediaUrls.length : 0));
+    };
+
     return (
-        <Card
+        <Box
             sx={{
-                width: '100%',
-                maxWidth: cardVariant === 'fullWidth' ? 'none' : 640,
-                mx: cardVariant === 'fullWidth' ? 0 : 'auto',
-                bgcolor: CARD_BG,
-                borderRadius: '16px',
-                border: '1px solid rgba(255,255,255,0.05)',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
+                px: { xs: 1.25, sm: 1.5 },
+                py: 1.45,
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}
         >
-            <Box sx={{ display: 'flex', p: 2, pb: 1.5, gap: 1.5 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 44 }}>
-                    <Box sx={{ position: 'relative', width: 44, height: 44, mb: 1.5 }}>
-                        <Tooltip title="Xem hồ sơ">
-                            <Avatar
-                                component={RouterLink}
-                                to={
-                                    String(authorId) === String(user?.id)
-                                        ? '/profile'
-                                        : authorId
-                                          ? `/profile/${authorId}`
-                                          : '#'
-                                }
-                                src={fullImageUrl(authorAvatar)}
-                                alt={authorName}
-                                sx={{
-                                    width: 44,
-                                    height: 44,
-                                    cursor: 'pointer',
-                                    textDecoration: 'none',
-                                    bgcolor: PURPLE,
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <PersonIcon sx={{ fontSize: 24, color: 'rgba(255,255,255,0.85)' }} />
-                            </Avatar>
-                        </Tooltip>
+            <Box sx={{ display: 'flex', gap: 1.25 }}>
+                <Box sx={{ width: 40, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Box sx={{ position: 'relative' }}>
+                        <Avatar
+                            component={RouterLink}
+                            to={String(authorId) === String(user?.id) ? '/profile' : authorId ? `/profile/${authorId}` : '#'}
+                            src={fullImageUrl(authorAvatar)}
+                            alt={authorName}
+                            sx={{
+                                width: 36,
+                                height: 36,
+                                cursor: 'pointer',
+                                textDecoration: 'none',
+                                bgcolor: PURPLE,
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <PersonIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.85)' }} />
+                        </Avatar>
                         {showFollowBtn && (
-                            <Tooltip title={followed ? 'Bỏ theo dõi' : 'Theo dõi'}>
-                                <Box
-                                    component="span"
-                                    onClick={handleFollowClick}
-                                    sx={{
-                                        position: 'absolute',
-                                        bottom: -1,
-                                        right: -1,
-                                        width: 22,
-                                        height: 22,
-                                        borderRadius: '50%',
-                                        bgcolor: followed ? PURPLE : '#FFF',
-                                        border: '1.5px solid #201D26',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        color: followed ? '#FFF' : '#201D26',
-                                        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
-                                        zIndex: 2,
-                                    }}
-                                >
-                                    {followLoading ? (
-                                        <CircularProgress size={12} color="inherit" />
-                                    ) : followed ? (
-                                        <CheckIcon sx={{ fontSize: 16, fontWeight: 900 }} />
-                                    ) : (
-                                        <AddIcon sx={{ fontSize: 18, fontWeight: 900 }} />
-                                    )}
-                                </Box>
-                            </Tooltip>
+                            <Box
+                                component="span"
+                                onClick={handleFollowClick}
+                                sx={{
+                                    position: 'absolute',
+                                    right: -4,
+                                    bottom: -2,
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: '50%',
+                                    bgcolor: followed ? PURPLE : '#fff',
+                                    border: '1px solid #0f1430',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: followed ? '#fff' : '#111',
+                                }}
+                            >
+                                {followLoading ? <CircularProgress size={10} color="inherit" /> : followed ? <CheckIcon sx={{ fontSize: 11 }} /> : <AddIcon sx={{ fontSize: 12 }} />}
+                            </Box>
                         )}
                     </Box>
-                    <Box sx={{ flexGrow: 1, width: '2px', bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
+                    <Box sx={{ flexGrow: 1, width: 2, mt: 0.6, bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 3 }} />
                 </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.2 }}>
+                        <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
                             <Typography
                                 component={RouterLink}
-                                to={
-                                    String(authorId) === String(user?.id)
-                                        ? '/profile'
-                                        : authorId
-                                          ? `/profile/${authorId}`
-                                          : '#'
-                                }
-                                fontSize={14.5}
-                                fontWeight={600}
-                                color="#FFF"
-                                sx={{ textDecoration: 'none', '&:hover': { opacity: 0.8 } }}
+                                to={String(authorId) === String(user?.id) ? '/profile' : authorId ? `/profile/${authorId}` : '#'}
+                                sx={{ textDecoration: 'none', color: '#fff', fontSize: 14, fontWeight: 700 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {authorName}
                             </Typography>
-                            <Typography fontSize={13} color="rgba(255,255,255,0.45)">
+                            <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
                                 {formatRelativeShort(post?.createdAt) || 'Vừa đăng'}
                             </Typography>
                         </Stack>
-                        {!isMe && (
-                            <Tooltip title="Tùy chọn">
-                                <IconButton
-                                    size="small"
-                                    sx={{ color: 'rgba(255,255,255,0.5)', mt: -0.5, mr: -1 }}
-                                    onClick={handleMoreOpen}
-                                >
-                                    <MoreIcon />
-                                </IconButton>
-                            </Tooltip>
-                        )}
+                        {!isMe ? (
+                            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.45)' }} onClick={handleMoreOpen}>
+                                <MoreIcon fontSize="small" />
+                            </IconButton>
+                        ) : null}
                     </Box>
 
-                    <Box sx={{ mb: thumb ? 1.5 : 0 }}>
-                        <Typography
-                            fontSize={15}
-                            fontWeight={600}
-                            color="rgba(255,255,255,0.95)"
-                            sx={{ lineHeight: 1.4, mb: 1, cursor: 'pointer', outline: 'none' }}
-                            onClick={goDetail}
-                            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && goDetail()}
-                            role="link"
-                            tabIndex={0}
-                        >
-                            {post?.title || 'Không có tiêu đề'}
-                        </Typography>
-                        <CommunityPostExpandableDescription text={post?.description} lineClamp={2} />
+                    <Box sx={{ mb: mediaUrls.length > 0 ? 1 : 0.7 }}>
+                        {post?.title ? (
+                            <Typography
+                                onClick={goDetail}
+                                sx={{
+                                    color: 'rgba(255,255,255,0.96)',
+                                    fontSize: 14,
+                                    fontWeight: 650,
+                                    lineHeight: 1.35,
+                                    mb: post?.description ? 0.35 : 0,
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                {post.title}
+                            </Typography>
+                        ) : null}
+                        <CommunityPostExpandableDescription text={post?.description} lineClamp={4} />
                     </Box>
 
-                    {thumb && (
+                    {mediaUrls.length > 0 ? (
                         <Box
-                            onClick={goDetail}
+                            ref={mediaStripRef}
+                            onPointerDown={onMediaPointerDown}
+                            onPointerMove={onMediaPointerMove}
+                            onPointerUp={endMediaDrag}
+                            onPointerCancel={endMediaDrag}
+                            onPointerLeave={endMediaDrag}
                             sx={{
-                                position: 'relative',
-                                overflow: 'hidden',
-                                borderRadius: '16px',
-                                mb: 0.5,
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                cursor: 'pointer',
+                                mt: 0.4,
+                                borderRadius: 2,
+                                overflowX: 'auto',
+                                overflowY: 'hidden',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                cursor: 'grab',
+                                bgcolor: 'rgba(255,255,255,0.02)',
+                                userSelect: 'none',
+                                touchAction: 'pan-y',
+                                WebkitOverflowScrolling: 'touch',
+                                scrollbarWidth: 'none',
+                                '&::-webkit-scrollbar': { display: 'none' },
+                                '&:active': { cursor: 'grabbing' },
                             }}
                         >
-                            <Box
-                                component="img"
-                                src={thumb}
-                                alt=""
-                                loading="lazy"
-                                sx={{
-                                    width: '100%',
-                                    aspectRatio: '4/3',
-                                    objectFit: 'cover',
-                                    display: 'block',
-                                    filter: 'brightness(0.92)',
-                                }}
-                            />
+                            <Box sx={{ display: 'flex', gap: 1.2, minWidth: '100%', px: 1, py: 0.75 }}>
+                                {mediaUrls.map((url, idx) => (
+                                    <Box
+                                        key={`${id || 'post'}-img-${idx}`}
+                                        data-idx={idx}
+                                        sx={{
+                                            flex: { xs: '0 0 88%', sm: '0 0 82%' },
+                                            width: { xs: '88%', sm: '82%' },
+                                            maxHeight: { xs: 190, sm: 230 },
+                                            borderRadius: 1.25,
+                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            bgcolor: 'rgba(255,255,255,0.02)',
+                                            cursor: 'zoom-in',
+                                            overflow: 'hidden',
+                                        }}
+                                    >
+                                        <Box
+                                            component="img"
+                                            src={url}
+                                            alt=""
+                                            loading="lazy"
+                                            draggable={false}
+                                            sx={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain',
+                                                display: 'block',
+                                                pointerEvents: 'none',
+                                            }}
+                                        />
+                                    </Box>
+                                ))}
+                            </Box>
                         </Box>
-                    )}
+                    ) : null}
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3.5, pt: 1 }}>
-                        <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: -1 }}>
-                                <IconButton
-                                    size="small"
-                                    disabled={likeSubmitting}
-                                    onClick={handleLikeClick}
-                                    sx={{
-                                        color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: LIKE_RED, bgcolor: 'rgba(255,71,87,0.1)' },
-                                    }}
-                                >
-                                    {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
-                                </IconButton>
-                                <Typography
-                                    fontSize={13}
-                                    fontWeight={700}
-                                    color={likePop ? LIKE_RED : 'rgba(255,255,255,0.6)'}
-                                    sx={{
-                                        display: 'inline-block',
-                                        minWidth: '1ch',
-                                        transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s',
-                                        transform: likePop ? 'scale(1.35)' : 'scale(1)',
-                                    }}
-                                >
-                                    {likeCount || 0}
-                                </Typography>
-                            </Box>
-                        </Tooltip>
-                        <Tooltip title="Bình luận">
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <IconButton
-                                    size="small"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setCommentOpen(true);
-                                    }}
-                                    sx={{
-                                        color: 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: PURPLE, bgcolor: 'rgba(157,110,237,0.1)' },
-                                    }}
-                                >
-                                    <CommentIconOutlined sx={{ fontSize: 18 }} />
-                                </IconButton>
-                                <Typography
-                                    fontSize={13}
-                                    fontWeight={700}
-                                    color={commentPop ? PURPLE : 'rgba(255,255,255,0.6)'}
-                                    sx={{
-                                        display: 'inline-block',
-                                        minWidth: '1ch',
-                                        transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s',
-                                        transform: commentPop ? 'scale(1.35)' : 'scale(1)',
-                                    }}
-                                >
-                                    {commentCount || 0}
-                                </Typography>
-                            </Box>
-                        </Tooltip>
-                        <Tooltip title="Chia sẻ">
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <IconButton
-                                    size="small"
-                                    onClick={handleShareClick}
-                                    disabled={shareSubmitting}
-                                    sx={{
-                                        color: 'rgba(255,255,255,0.6)',
-                                        p: 1,
-                                        '&:hover': { color: '#1D9BF0', bgcolor: 'rgba(29,155,240,0.1)' },
-                                    }}
-                                >
-                                    <ShareIconOutlined sx={{ fontSize: 19 }} />
-                                </IconButton>
-                            </Box>
-                        </Tooltip>
-                    </Box>
+                    <Stack direction="row" alignItems="center" spacing={0.9} sx={{ pt: 0.7 }}>
+                        <IconButton
+                            size="small"
+                            disabled={likeSubmitting}
+                            onClick={handleLikeClick}
+                            sx={{ color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.72)', p: 0.6 }}
+                        >
+                            {isLiked ? <FavoriteFilledIcon sx={{ fontSize: 18 }} /> : <FavoriteBorder sx={{ fontSize: 18 }} />}
+                        </IconButton>
+                        <Typography sx={{ fontSize: 12.5, color: likePop ? LIKE_RED : 'rgba(255,255,255,0.62)' }}>{likeCount || 0}</Typography>
+
+                        <IconButton
+                            size="small"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setCommentOpen(true);
+                            }}
+                            sx={{ color: 'rgba(255,255,255,0.72)', p: 0.6 }}
+                        >
+                            <CommentIconOutlined sx={{ fontSize: 18 }} />
+                        </IconButton>
+                        <Typography sx={{ fontSize: 12.5, color: commentPop ? PURPLE : 'rgba(255,255,255,0.62)' }}>{commentCount || 0}</Typography>
+
+                        <IconButton
+                            size="small"
+                            onClick={handleShareClick}
+                            disabled={shareSubmitting}
+                            sx={{ color: 'rgba(255,255,255,0.72)', p: 0.6 }}
+                        >
+                            <ShareIconOutlined sx={{ fontSize: 18 }} />
+                        </IconButton>
+                    </Stack>
                 </Box>
             </Box>
 
@@ -494,6 +502,84 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
                 post={post}
                 onThreadDelta={onThreadDelta}
             />
+
+            <Dialog
+                open={viewerOpen}
+                onClose={() => setViewerOpen(false)}
+                fullScreen
+                PaperProps={{ sx: { bgcolor: '#000' } }}
+            >
+                <Box sx={{ position: 'relative', width: '100vw', height: '100vh', bgcolor: '#000' }}>
+                    <IconButton
+                        onClick={() => setViewerOpen(false)}
+                        sx={{
+                            position: 'absolute',
+                            top: 14,
+                            left: 14,
+                            zIndex: 5,
+                            bgcolor: 'rgba(255,255,255,0.08)',
+                            color: '#fff',
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                        }}
+                        aria-label="Đóng xem ảnh"
+                    >
+                        <CloseIcon />
+                    </IconButton>
+
+                    {mediaUrls.length > 1 ? (
+                        <>
+                            <IconButton
+                                onClick={goPrevViewerImage}
+                                sx={{
+                                    position: 'absolute',
+                                    left: 14,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    zIndex: 5,
+                                    bgcolor: 'rgba(255,255,255,0.08)',
+                                    color: '#fff',
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                                }}
+                                aria-label="Ảnh trước"
+                            >
+                                <Typography sx={{ fontSize: 22, lineHeight: 1 }}>{'‹'}</Typography>
+                            </IconButton>
+                            <IconButton
+                                onClick={goNextViewerImage}
+                                sx={{
+                                    position: 'absolute',
+                                    right: 14,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    zIndex: 5,
+                                    bgcolor: 'rgba(255,255,255,0.08)',
+                                    color: '#fff',
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                                }}
+                                aria-label="Ảnh sau"
+                            >
+                                <Typography sx={{ fontSize: 22, lineHeight: 1 }}>{'›'}</Typography>
+                            </IconButton>
+                        </>
+                    ) : null}
+
+                    <Box
+                        component="img"
+                        src={mediaUrls[viewerIndex] || ''}
+                        alt=""
+                        sx={{
+                            width: 'auto',
+                            maxWidth: { xs: '82vw', md: '72vw' },
+                            height: '100%',
+                            objectFit: 'contain',
+                            display: 'block',
+                            mx: 'auto',
+                            userSelect: 'none',
+                            WebkitUserDrag: 'none',
+                        }}
+                    />
+                </Box>
+            </Dialog>
 
             {!isMe && (
                 <>
@@ -528,7 +614,7 @@ function CommunityPostCard({ post, onOpen, onPatchPost, cardVariant = 'default' 
                     />
                 </>
             )}
-        </Card>
+        </Box>
     );
 }
 

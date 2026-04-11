@@ -45,6 +45,15 @@ export default function CommunityCreatePostPage() {
     const [suggestOpen, setSuggestOpen] = useState(false);
     const [suggestLoading, setSuggestLoading] = useState(false);
 
+    useEffect(() => {
+        const key = 'community.create.prefill.description';
+        const prefill = sessionStorage.getItem(key);
+        if (prefill && prefill.trim()) {
+            setDescription(prefill);
+            sessionStorage.removeItem(key);
+        }
+    }, []);
+
     const canSubmit = useMemo(() => title.trim().length > 0 && !submitting, [title, submitting]);
     const hashtagPreview = useMemo(() => previewHashtagsFromDescription(description), [description]);
 

@@ -16,6 +16,8 @@ public class CommunityPostCardResponse {
     /** Mô tả rút gọn trên feed (có thể null). */
     private String description;
     private String thumbUrl;
+    /** Danh sách ảnh của bài viết để feed có thể kéo ngang. */
+    private List<String> imageUrls;
     private Instant createdAt;
     private Long authorId;
     private String authorName;
