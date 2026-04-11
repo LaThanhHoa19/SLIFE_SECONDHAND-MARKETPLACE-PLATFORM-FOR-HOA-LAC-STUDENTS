@@ -44,7 +44,6 @@ import {
     SuspenseAdminLoginPage,
     SuspenseTermsPage,
     SuspenseCommunityFeedPage,
-    SuspenseCommunityCreatePostPage,
     SuspenseCommunityPostDetailPage,
     SuspenseBlockedUsersPage,
 } from './LazyRoutes';
@@ -102,15 +101,32 @@ export default function AppRouter() {
                 {/* ===== PUBLIC ROUTES - Ai cũng truy cập được ===== */}
                 <Route path="/feed" element={<SuspenseListingsPage />} />
                 <Route path="/community" element={<SuspenseCommunityFeedPage />} />
-                <Route path="/community/posts/:id" element={<SuspenseCommunityPostDetailPage />} />
                 <Route
-                    path="/community/new"
+                    path="/community/mine"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseCommunityCreatePostPage />
+                            <SuspenseCommunityFeedPage />
                         </RouteGuard>
                     }
                 />
+                <Route
+                    path="/community/saved"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCommunityFeedPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route
+                    path="/community/liked"
+                    element={
+                        <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
+                            <SuspenseCommunityFeedPage />
+                        </RouteGuard>
+                    }
+                />
+                <Route path="/community/posts/:id" element={<SuspenseCommunityPostDetailPage />} />
+
                 <Route path="/search" element={<SuspenseSearchPage />} />
                 <Route path="/listings/:id" element={<SuspenseListingDetailPage />} />
                 <Route path="/backendtest" element={<SuspenseBackendTestPage />} />

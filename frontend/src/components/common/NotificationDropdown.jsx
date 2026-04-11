@@ -57,10 +57,18 @@ const getIconForNotification = (n) => {
     }
 };
 
-export default function NotificationDropdown({ anchorEl, open, onClose }) {
+export default function NotificationDropdown({ anchorEl, open, onClose, mode = 'all' }) {
     const { notifications, unreadCount, markRead, markAllRead } =
         useContext(NotificationContext);
     const navigate = useNavigate();
+
+    const sourceFilteredNotifications = (Array.isArray(notifications) ? notifications : []).filter((n) => {
+        if (mode !== 'community') return true;
+        return String(n?.refType || '').toUpperCase() === 'COMMUNITY_POST';
+    });
+    const sourceUnreadCount = mode === 'community'
+        ? sourceFilteredNotifications.filter((n) => !n?.isRead).length
+        : unreadCount;
 
     const handleItemClick = async (n) => {
         if (!n.isRead) {
@@ -97,7 +105,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
         navigate('/notifications');
     };
 
-    const topNotifications = notifications.slice(0, 5);
+    const topNotifications = sourceFilteredNotifications.slice(0, 5);
 
     return (
         <Popover
@@ -131,9 +139,9 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                 }}
             >
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#FFFFFF' }}>
-                    Thông báo
+                    {mode === 'community' ? 'Thông báo cộng đồng' : 'Thông báo'}
                 </Typography>
-                {unreadCount > 0 && (
+                {sourceUnreadCount > 0 && (
                     <Button
                         size="small"
                         startIcon={<DoneAllIcon sx={{ fontSize: 16 }} />}
@@ -154,7 +162,7 @@ export default function NotificationDropdown({ anchorEl, open, onClose }) {
                 )}
             </Box>
 
-            {notifications.length === 0 ? (
+            {sourceFilteredNotifications.length === 0 ? (
                 <Box
                     sx={{
                         px: 2,

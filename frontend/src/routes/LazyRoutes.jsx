@@ -51,7 +51,6 @@ export const LazyChatPage = lazy(() => import('../pages/chat/ChatPage'));
 export const LazyOrderHistoryPage = lazy(() => import('../pages/history/OrderHistoryPage'));
 export const LazyTermsPage = lazy(() => import('../pages/legal/TermsPage'));
 export const LazyCommunityFeedPage = lazy(() => import('../pages/community/CommunityFeedPage'));
-export const LazyCommunityCreatePostPage = lazy(() => import('../pages/community/CommunityCreatePostPage'));
 export const LazyCommunityPostDetailPage = lazy(() => import('../pages/community/CommunityPostDetailPage'));
 export const LazyBlockedUsersPage = lazy(() => import('../pages/settings/BlockedUsersPage'));
 
@@ -93,6 +92,5 @@ export const SuspenseChatPage = withSuspense(LazyChatPage, "Đang tải tin nh�
 export const SuspenseOrderHistoryPage = withSuspense(LazyOrderHistoryPage, "Đang tải lịch sử chốt đơn...");
 export const SuspenseTermsPage = withSuspense(LazyTermsPage, "Đang tải quy chế hoạt động...");
 export const SuspenseCommunityFeedPage = withSuspense(LazyCommunityFeedPage, "Đang tải cộng đồng...");
-export const SuspenseCommunityCreatePostPage = withSuspense(LazyCommunityCreatePostPage, "Đang tải tạo bài cộng đồng...");
 export const SuspenseCommunityPostDetailPage = withSuspense(LazyCommunityPostDetailPage, "Đang tải bài cộng đồng...");
 export const SuspenseBlockedUsersPage = withSuspense(LazyBlockedUsersPage, "Đang tải danh sách chặn...");

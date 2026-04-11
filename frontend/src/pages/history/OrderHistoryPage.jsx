@@ -55,7 +55,7 @@ export default function OrderHistoryPage() {
             setDeals(sortedDeals);
         } catch (error) {
             console.error('Failed to fetch deals:', error);
-            showToast('Không thể tải lịch sử chốt đơn', 'error');
+            showToast('Không thể tải danh sách giao dịch', 'error');
         } finally {
             setLoading(false);
         }
@@ -164,7 +164,7 @@ export default function OrderHistoryPage() {
                         color="#fff"
                         sx={{ letterSpacing: '-0.04em', lineHeight: 1.12 }}
                     >
-                        Lịch sử chốt đơn
+                        Hoàn tất giao dịch
                     </Typography>
                     <Typography fontSize={14} lineHeight={1.55} color="rgba(255,255,255,0.45)" sx={{ mt: 1, maxWidth: 640 }}>
                         Theo dõi lịch sử mua hàng, xác nhận nhận hàng và đánh giá người bán để tích lũy uy tín cho cộng đồng.

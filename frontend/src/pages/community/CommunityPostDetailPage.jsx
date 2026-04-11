@@ -8,6 +8,7 @@ import {
     Box,
     Button,
     CircularProgress,
+    Dialog,
     IconButton,
     ListItemIcon,
     ListItemText,
@@ -26,12 +27,13 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import ModeCommentOutlined from '@mui/icons-material/ModeCommentOutlined';
 import ShareOutlined from '@mui/icons-material/ShareOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
 import { getCommunityPost, toggleCommunityPostLike } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { fullImageUrl } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
-import { useFollowActions } from '../../hooks/useFollowActions';
+import { getCachedFollowState, useFollowActions } from '../../hooks/useFollowActions';
 import { useToast } from '../../context/ToastContext';
 import CommunityPostComments from '../../components/community/CommunityPostComments';
 import CommunityPostExpandableDescription from '../../components/community/CommunityPostExpandableDescription';
@@ -61,6 +63,8 @@ export default function CommunityPostDetailPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const commentsRef = useRef(null);
+    const mediaStripRef = useRef(null);
+    const mediaDragRef = useRef({ isDown: false, startX: 0, startLeft: 0, moved: false, activeIndex: null });
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const { showToast } = useToast();
@@ -76,6 +80,8 @@ export default function CommunityPostDetailPage() {
     const [shareSubmitting, setShareSubmitting] = useState(false);
     const [moreAnchor, setMoreAnchor] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const [viewerIndex, setViewerIndex] = useState(0);
 
     const load = useCallback(async () => {
         if (!id) return;
@@ -92,8 +98,8 @@ export default function CommunityPostDetailPage() {
             setPost(null);
             setError(
                 e?.response?.data?.message ||
-                    e?.response?.data?.error ||
-                    'Không tải được bài viết (có thể đã gỡ hoặc ẩn).',
+                e?.response?.data?.error ||
+                'Không tải được bài viết (có thể đã gỡ hoặc ẩn).',
             );
         } finally {
             setLoading(false);
@@ -107,6 +113,19 @@ export default function CommunityPostDetailPage() {
     const author = post?.authorSummary || {};
     const authorId = author.userId;
     const authorName = (author.fullName || '').trim() || 'Thành viên';
+
+    useEffect(() => {
+        if (!authorId) {
+            setFollowed(false);
+            return;
+        }
+        const cached = getCachedFollowState(authorId);
+        if (typeof cached === 'boolean') {
+            setFollowed(cached);
+            return;
+        }
+        setFollowed(false);
+    }, [authorId]);
     const isMe = isAuthenticated && user && authorId && String(user.id) === String(authorId);
     const showFollowBtn = authorId && !isMe;
     const images = Array.isArray(post?.images) ? post.images.map(fullImageUrl).filter(Boolean) : [];
@@ -166,6 +185,65 @@ export default function CommunityPostDetailPage() {
     const onThreadDelta = (delta) => {
         setCommentCount((c) => Math.max(0, c + delta));
         setPost((p) => (p ? { ...p, commentCount: Math.max(0, (p.commentCount || 0) + delta) } : p));
+    };
+
+    const onMediaPointerDown = (e) => {
+        const el = mediaStripRef.current;
+        if (!el) return;
+        const targetEl = e.target?.closest?.('[data-media-index]');
+        const index = targetEl ? Number(targetEl.getAttribute('data-media-index')) : null;
+        mediaDragRef.current = {
+            isDown: true,
+            startX: e.clientX,
+            startLeft: el.scrollLeft,
+            moved: false,
+            activeIndex: Number.isInteger(index) ? index : null,
+        };
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+    };
+
+    const onMediaPointerMove = (e) => {
+        const el = mediaStripRef.current;
+        const st = mediaDragRef.current;
+        if (!el || !st.isDown) return;
+        const dx = e.clientX - st.startX;
+        if (Math.abs(dx) > 4) {
+            st.moved = true;
+        }
+        if (st.moved) {
+            e.preventDefault();
+            el.scrollLeft = st.startLeft - dx;
+        }
+    };
+
+    const endMediaDrag = (e) => {
+        const st = mediaDragRef.current;
+        if (st.isDown && !st.moved && Number.isInteger(st.activeIndex)) {
+            openViewerAt(st.activeIndex);
+        }
+        st.isDown = false;
+        st.moved = false;
+        st.activeIndex = null;
+        if (e?.currentTarget?.releasePointerCapture && e?.pointerId != null) {
+            try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {
+                // ignore
+            }
+        }
+    };
+
+    const openViewerAt = (index) => {
+        setViewerIndex(index);
+        setViewerOpen(true);
+    };
+
+    const goPrevViewerImage = () => {
+        setViewerIndex((prev) => (images.length ? (prev - 1 + images.length) % images.length : 0));
+    };
+
+    const goNextViewerImage = () => {
+        setViewerIndex((prev) => (images.length ? (prev + 1) % images.length : 0));
     };
 
     const onNotify = (msg, variant = 'success') => {
@@ -351,31 +429,56 @@ export default function CommunityPostDetailPage() {
 
                             {images.length > 0 && (
                                 <Box
+                                    ref={mediaStripRef}
+                                    onPointerDown={onMediaPointerDown}
+                                    onPointerMove={onMediaPointerMove}
+                                    onPointerUp={endMediaDrag}
+                                    onPointerCancel={endMediaDrag}
+                                    onPointerLeave={endMediaDrag}
                                     sx={{
                                         display: 'flex',
                                         gap: 1,
                                         overflowX: 'auto',
+                                        overflowY: 'hidden',
                                         borderRadius: '12px',
                                         mb: 2,
-                                        '&::-webkit-scrollbar': { height: 6 },
-                                        '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 3 },
+                                        cursor: 'grab',
+                                        userSelect: 'none',
+                                        touchAction: 'pan-y',
+                                        WebkitOverflowScrolling: 'touch',
+                                        scrollbarWidth: 'none',
+                                        '&::-webkit-scrollbar': { display: 'none' },
+                                        '&:active': { cursor: 'grabbing' },
                                     }}
                                 >
-                                    {images.map((url) => (
+                                    {images.map((url, idx) => (
                                         <Box
-                                            key={url}
-                                            component="img"
-                                            src={url}
-                                            alt=""
+                                            key={`${url}-${idx}`}
+                                            data-media-index={idx}
                                             sx={{
-                                                flexShrink: 0,
-                                                width: images.length === 1 ? '100%' : '85%',
+                                                flex: '0 0 100%',
+                                                width: '100%',
                                                 maxHeight: 360,
-                                                objectFit: 'cover',
                                                 borderRadius: '12px',
                                                 border: '1px solid rgba(255,255,255,0.06)',
+                                                cursor: 'zoom-in',
+                                                overflow: 'hidden',
                                             }}
-                                        />
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={url}
+                                                alt=""
+                                                draggable={false}
+                                                sx={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'contain',
+                                                    display: 'block',
+                                                    pointerEvents: 'none',
+                                                }}
+                                            />
+                                        </Box>
                                     ))}
                                 </Box>
                             )}
@@ -408,6 +511,84 @@ export default function CommunityPostDetailPage() {
                                 </Tooltip>
                             </Stack>
                         </Box>
+
+                        <Dialog
+                            open={viewerOpen}
+                            onClose={() => setViewerOpen(false)}
+                            fullScreen
+                            PaperProps={{ sx: { bgcolor: '#000' } }}
+                        >
+                            <Box sx={{ position: 'relative', width: '100vw', height: '100vh', bgcolor: '#000' }}>
+                                <IconButton
+                                    onClick={() => setViewerOpen(false)}
+                                    sx={{
+                                        position: 'absolute',
+                                        top: 10,
+                                        left: 10,
+                                        zIndex: 5,
+                                        bgcolor: 'rgba(255,255,255,0.08)',
+                                        color: '#fff',
+                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                                    }}
+                                    aria-label="Đóng xem ảnh"
+                                >
+                                    <CloseIcon />
+                                </IconButton>
+
+                                {images.length > 1 ? (
+                                    <>
+                                        <IconButton
+                                            onClick={goPrevViewerImage}
+                                            sx={{
+                                                position: 'absolute',
+                                                left: 10,
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                zIndex: 5,
+                                                bgcolor: 'rgba(255,255,255,0.08)',
+                                                color: '#fff',
+                                                '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                                            }}
+                                            aria-label="Ảnh trước"
+                                        >
+                                            <Typography sx={{ fontSize: 22, lineHeight: 1 }}>{'‹'}</Typography>
+                                        </IconButton>
+                                        <IconButton
+                                            onClick={goNextViewerImage}
+                                            sx={{
+                                                position: 'absolute',
+                                                right: 10,
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                zIndex: 5,
+                                                bgcolor: 'rgba(255,255,255,0.08)',
+                                                color: '#fff',
+                                                '&:hover': { bgcolor: 'rgba(255,255,255,0.16)' },
+                                            }}
+                                            aria-label="Ảnh sau"
+                                        >
+                                            <Typography sx={{ fontSize: 22, lineHeight: 1 }}>{'›'}</Typography>
+                                        </IconButton>
+                                    </>
+                                ) : null}
+
+                                <Box
+                                    component="img"
+                                    src={images[viewerIndex] || ''}
+                                    alt=""
+                                    sx={{
+                                        width: 'auto',
+                                        maxWidth: { xs: '82vw', md: '72vw' },
+                                        height: '100%',
+                                        objectFit: 'contain',
+                                        display: 'block',
+                                        mx: 'auto',
+                                        userSelect: 'none',
+                                        WebkitUserDrag: 'none',
+                                    }}
+                                />
+                            </Box>
+                        </Dialog>
 
                         <Box
                             ref={commentsRef}

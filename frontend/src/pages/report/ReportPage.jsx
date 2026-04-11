@@ -34,7 +34,7 @@ export default function ReportPage() {
     const title = useMemo(() => {
         if (targetType === 'LISTING') return 'Báo cáo tin đăng';
         if (targetType === 'USER') return 'Báo cáo người dùng';
-        if (targetType === 'MESSAGE') return 'Báo cáo tin nhắn';
+
         if (targetType === 'COMMENT') return 'Báo cáo bình luận';
         return 'Báo cáo';
     }, [targetType]);
@@ -61,6 +61,10 @@ export default function ReportPage() {
         }
         if (!targetType || !targetId) {
             setError('Thiếu thông tin đối tượng cần báo cáo.');
+            return;
+        }
+        if (targetType === 'MESSAGE') {
+            setError('Báo cáo tin nhắn đã bị tắt.');
             return;
         }
         if (!reason.trim()) {

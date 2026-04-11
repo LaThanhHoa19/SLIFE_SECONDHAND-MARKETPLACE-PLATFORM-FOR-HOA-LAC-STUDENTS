@@ -20,6 +20,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             FROM Notification n
             WHERE n.user.id = :userId
               AND (
+                   :scope = 'ALL'
+                   OR (:scope = 'COMMUNITY' AND UPPER(COALESCE(n.refType, '')) = 'COMMUNITY_POST')
+                   OR (:scope = 'MARKET' AND UPPER(COALESCE(n.refType, '')) <> 'COMMUNITY_POST')
+              )
+              AND (
                    :cursorCreatedAt IS NULL
                    OR n.createdAt < :cursorCreatedAt
                    OR (n.createdAt = :cursorCreatedAt AND n.id < :cursorId)
@@ -28,6 +33,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             """)
     List<Notification> findPageByUser(
             @Param("userId") Long userId,
+            @Param("scope") String scope,
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable
@@ -37,6 +43,11 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             SELECT n
             FROM Notification n
             WHERE n.user.id = :userId
+              AND (
+                   :scope = 'ALL'
+                   OR (:scope = 'COMMUNITY' AND UPPER(COALESCE(n.refType, '')) = 'COMMUNITY_POST')
+                   OR (:scope = 'MARKET' AND UPPER(COALESCE(n.refType, '')) <> 'COMMUNITY_POST')
+              )
               AND (:q IS NULL OR :q = '' OR n.content LIKE CONCAT('%', :q, '%'))
               AND (
                    :cursorCreatedAt IS NULL
@@ -47,19 +58,50 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             """)
     List<Notification> searchPageByUser(
             @Param("userId") Long userId,
+            @Param("scope") String scope,
             @Param("q") String q,
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable
     );
 
-    long countByUser_IdAndIsReadFalse(Long userId);
+    @Query("""
+            SELECT COUNT(n) FROM Notification n
+            WHERE n.user.id = :userId
+              AND n.isRead = false
+              AND (
+                   :scope = 'ALL'
+                   OR (:scope = 'COMMUNITY' AND UPPER(COALESCE(n.refType, '')) = 'COMMUNITY_POST')
+                   OR (:scope = 'MARKET' AND UPPER(COALESCE(n.refType, '')) <> 'COMMUNITY_POST')
+              )
+            """)
+    long countUnreadByScope(@Param("userId") Long userId, @Param("scope") String scope);
 
     @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true WHERE n.user.id = :userId AND n.isRead = false")
-    int markAllReadForUser(@Param("userId") Long userId);
+    @Query("""
+            UPDATE Notification n
+            SET n.isRead = true
+            WHERE n.user.id = :userId
+              AND n.isRead = false
+              AND (
+                   :scope = 'ALL'
+                   OR (:scope = 'COMMUNITY' AND UPPER(COALESCE(n.refType, '')) = 'COMMUNITY_POST')
+                   OR (:scope = 'MARKET' AND UPPER(COALESCE(n.refType, '')) <> 'COMMUNITY_POST')
+              )
+            """)
+    int markAllReadForUser(@Param("userId") Long userId, @Param("scope") String scope);
 
     @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true WHERE n.id = :id AND n.user.id = :userId")
-    int markReadForUser(@Param("id") Long id, @Param("userId") Long userId);
+    @Query("""
+            UPDATE Notification n
+            SET n.isRead = true
+            WHERE n.id = :id
+              AND n.user.id = :userId
+              AND (
+                   :scope = 'ALL'
+                   OR (:scope = 'COMMUNITY' AND UPPER(COALESCE(n.refType, '')) = 'COMMUNITY_POST')
+                   OR (:scope = 'MARKET' AND UPPER(COALESCE(n.refType, '')) <> 'COMMUNITY_POST')
+              )
+            """)
+    int markReadForUser(@Param("id") Long id, @Param("userId") Long userId, @Param("scope") String scope);
 }

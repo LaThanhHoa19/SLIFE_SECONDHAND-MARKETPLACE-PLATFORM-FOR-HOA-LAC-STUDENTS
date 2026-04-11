@@ -20,16 +20,16 @@ import { API_BASE_URL } from '../utils/constants';
 /** Giống ChatPage: WS ở /chat, không nằm dưới /api */
 function getChatSockJsUrl(token) {
   const base =
-    import.meta.env.VITE_WS_URL ||
-    (typeof window !== 'undefined'
-      ? `${window.location.origin}/chat`
-      : 'http://localhost:8080/chat');
+      import.meta.env.VITE_WS_URL ||
+      (typeof window !== 'undefined'
+          ? `${window.location.origin}/chat`
+          : 'http://localhost:8080/chat');
   if (!token) return base;
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}token=${encodeURIComponent(token)}`;
 }
 
-export default function useNotifications() {
+export default function useNotifications(scope = 'all') {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { token } = useAuth();
@@ -44,7 +44,7 @@ export default function useNotifications() {
       }
 
       try {
-        const response = await getNotificationsPage({ limit: 30 });
+        const response = await getNotificationsPage({ limit: 30, scope });
         const page = response?.data?.data ?? response?.data;
         const items = page?.items ?? [];
         setNotifications(Array.isArray(items) ? items : []);
@@ -57,7 +57,7 @@ export default function useNotifications() {
     const fetchUnreadCount = async () => {
       if (!token) return;
       try {
-        const resp = await getUnreadNotificationCount();
+        const resp = await getUnreadNotificationCount({ scope });
         const n = resp?.data?.data ?? resp?.data;
         if (typeof n === 'number') setUnreadCount(n);
       } catch {
@@ -78,12 +78,11 @@ export default function useNotifications() {
         reconnectDelay: 5000,
         debug: () => {},
         onConnect: () => {
-          stompClient.subscribe('/user/queue/notifications', (message) => {
-            // Payload is unread count (number). We refetch notifications to keep UI consistent.
+          stompClient.subscribe('/user/queue/notifications', () => {
+            // Re-fetch by current scope to keep strict separation.
             if (!token) return;
-            const maybe = Number(message?.body);
-            if (!Number.isNaN(maybe)) setUnreadCount(maybe);
             fetchFirstPage();
+            fetchUnreadCount();
           });
         },
         onStompError: (frame) => {
@@ -96,27 +95,27 @@ export default function useNotifications() {
     }
 
     const pollingId = token
-      ? setInterval(() => {
+        ? setInterval(() => {
           fetchFirstPage();
           fetchUnreadCount();
         }, 30000)
-      : null;
+        : null;
     return () => {
       clearInterval(pollingId);
       if (stompClient && stompClient.active) {
         stompClient.deactivate();
       }
     };
-  }, [token]);
+  }, [token, scope]);
 
   const markRead = async (id) => {
-    await markNotificationRead(id);
+    await markNotificationRead(id, { scope });
     setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnreadCount((c) => Math.max(0, (typeof c === 'number' ? c : 0) - 1));
   };
 
   const markAllRead = async () => {
-    await apiMarkAllRead();
+    await apiMarkAllRead({ scope });
     setNotifications((prev) => (Array.isArray(prev) ? prev : []).map((n) => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };
@@ -124,12 +123,12 @@ export default function useNotifications() {
   const refetch = async () => {
     if (!token) return;
     try {
-      const response = await getNotificationsPage({ limit: 30 });
+      const response = await getNotificationsPage({ limit: 30, scope });
       const page = response?.data?.data ?? response?.data;
       const items = page?.items ?? [];
       setNotifications(Array.isArray(items) ? items : []);
       // Prefer true count from BE
-      const resp2 = await getUnreadNotificationCount();
+      const resp2 = await getUnreadNotificationCount({ scope });
       const n = resp2?.data?.data ?? resp2?.data;
       if (typeof n === 'number') setUnreadCount(n);
     } catch (error) {

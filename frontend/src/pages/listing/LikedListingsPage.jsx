@@ -76,23 +76,27 @@ export default function LikedListingsPage() {
     const patchListing = useCallback((listingId, patch) => {
         if (listingId == null || !patch || typeof patch !== 'object') return;
         if (patch.removeFromList === true) {
-            setData((prev) =>
-                prev.filter((item) => {
+            setData((prev) => {
+                const next = prev.filter((item) => {
                     const lid = item?.id ?? item?.listingId ?? item?.listing_id;
                     return lid == null || String(lid) !== String(listingId);
-                }),
-            );
+                });
+                setMeta((m) => ({ ...m, totalElements: next.length }));
+                return next;
+            });
             return;
         }
-        setData((prev) =>
-            prev
+        setData((prev) => {
+            const next = prev
                 .map((item) => {
                     const lid = item?.id ?? item?.listingId ?? item?.listing_id;
                     if (lid == null || String(lid) !== String(listingId)) return item;
                     return { ...item, ...patch };
                 })
-                .filter((item) => item?.isSaved !== false),
-        );
+                .filter((item) => item?.isLiked !== false);
+            setMeta((m) => ({ ...m, totalElements: next.length }));
+            return next;
+        });
     }, []);
 
     const toggleButtonSx = (active) => ({

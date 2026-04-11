@@ -6,7 +6,7 @@
  *   maxSizeMB      – dung lượng tối đa mỗi ảnh MB (default 5)
  *   variant        – 'default' | 'studioHero' (ảnh đầu lớn + lưới phụ, dùng trang tạo tin)
  */
-import { useState, useEffect, useId, useMemo } from 'react';
+import { useState, useEffect, useId, useMemo, useRef } from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
@@ -72,6 +72,7 @@ export default function ImageUploader({
                                           imageProfile = 'listing',
                                       }) {
     const inputId = useId();
+    const inputRef = useRef(null);
     const [files, setFiles] = useState([]);
     const [previews, setPreviews] = useState([]);
     const [removingId, setRemovingId] = useState(null);
@@ -210,12 +211,14 @@ export default function ImageUploader({
         '&:hover': { background: studioHero ? 'rgba(157,110,237,0.14)' : '#e0d4f7' },
     });
 
+    const triggerFilePicker = () => {
+        inputRef.current?.click();
+    };
+
     const addTile = (sz = TILE.size) => (
-        <label htmlFor={inputId} style={{ display: 'block' }}>
-            <Box sx={addTileSx(sz)}>
-                <AddPhotoAlternateOutlinedIcon sx={{ color: '#9D6EED', fontSize: sz > TILE_SM ? 40 : 32 }} />
-            </Box>
-        </label>
+        <Box sx={addTileSx(sz)} onClick={triggerFilePicker} role="button" tabIndex={0} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFilePicker()}>
+            <AddPhotoAlternateOutlinedIcon sx={{ color: '#9D6EED', fontSize: sz > TILE_SM ? 40 : 32 }} />
+        </Box>
     );
 
     return (
@@ -238,6 +241,7 @@ export default function ImageUploader({
 
             <input
                 type="file"
+                ref={inputRef}
                 accept={acceptAttr}
                 multiple
                 id={inputId}
@@ -246,57 +250,64 @@ export default function ImageUploader({
             />
 
             {showBigDropzone && !studioHero && (
-                <label htmlFor={inputId} style={{ display: 'block' }}>
+                <Box
+                    sx={{
+                        height: 160,
+                        borderRadius: '14px',
+                        background: '#392D4D',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        gap: 1,
+                        '&:hover': { background: '#46365E' },
+                    }}
+                    onClick={triggerFilePicker}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFilePicker()}
+                >
+                    <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 50, color: '#9D6EED' }} />
+                    <Typography fontWeight={600} fontSize={16}>
+                        Thêm ảnh
+                    </Typography>
+                </Box>
+            )}
+
+            {showBigDropzone && studioHero && (
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch' }}>
                     <Box
                         sx={{
-                            height: 160,
+                            flex: '1 1 260px',
+                            minWidth: 240,
+                            maxWidth: '100%',
+                            minHeight: 220,
                             borderRadius: '14px',
-                            background: '#392D4D',
+                            border: '2px dashed rgba(157,110,237,0.45)',
+                            bgcolor: 'rgba(157,110,237,0.06)',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            gap: 1,
-                            '&:hover': { background: '#46365E' },
+                            gap: 0.75,
+                            px: 2,
+                            '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
                         }}
+                        onClick={triggerFilePicker}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFilePicker()}
                     >
-                        <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 50, color: '#9D6EED' }} />
-                        <Typography fontWeight={600} fontSize={16}>
-                            Thêm ảnh
+                        <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 48, color: '#9D6EED' }} />
+                        <Typography fontWeight={700} fontSize={15} color="#e5e7eb" textAlign="center">
+                            Tải ảnh chính
+                        </Typography>
+                        <Typography fontSize={12} color="rgba(255,255,255,0.45)" textAlign="center">
+                            Ảnh bìa nổi bật nhất
                         </Typography>
                     </Box>
-                </label>
-            )}
-
-            {showBigDropzone && studioHero && (
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'stretch' }}>
-                    <label htmlFor={inputId} style={{ display: 'block', flex: '1 1 260px', minWidth: 240, maxWidth: '100%' }}>
-                        <Box
-                            sx={{
-                                minHeight: 220,
-                                borderRadius: '14px',
-                                border: '2px dashed rgba(157,110,237,0.45)',
-                                bgcolor: 'rgba(157,110,237,0.06)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                gap: 0.75,
-                                px: 2,
-                                '&:hover': { bgcolor: 'rgba(157,110,237,0.1)' },
-                            }}
-                        >
-                            <AddPhotoAlternateOutlinedIcon sx={{ fontSize: 48, color: '#9D6EED' }} />
-                            <Typography fontWeight={700} fontSize={15} color="#e5e7eb" textAlign="center">
-                                Tải ảnh chính
-                            </Typography>
-                            <Typography fontSize={12} color="rgba(255,255,255,0.45)" textAlign="center">
-                                Ảnh bìa nổi bật nhất
-                            </Typography>
-                        </Box>
-                    </label>
                     <Box sx={{ flex: '1 1 200px', display: 'flex', flexWrap: 'wrap', gap: 1.5, alignContent: 'flex-start' }}>
                         {cap > 1 && files.length < cap ? addTile(TILE_SM) : null}
                     </Box>

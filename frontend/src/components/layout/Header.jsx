@@ -28,14 +28,13 @@ import {
     Logout as LogoutIcon,
     PostAdd as PostAddIcon
 } from '@mui/icons-material';
-import { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useContext, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { NotificationContext } from '../../providers/NotificationProvider';
 import NotificationDropdown from '../common/NotificationDropdown';
 import { AuthContext } from '../../context/AuthContext';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
 import { uiTokens } from '../../theme/uiTokens';
-import { getChats } from '../../api/chatApi';
 
 
 const HEADER_BG = uiTokens.colors.surface.appHeader;
@@ -141,66 +140,39 @@ const PostButton = styled(Button)(({ theme }) => ({
 
 export default function Header({ onToggleSidebar }) {
     const { unreadCount } = useContext(NotificationContext);
-    const { user, logout, token } = useContext(AuthContext);
+    const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const [searchValue, setSearchValue] = useState('');
     const [notifAnchorEl, setNotifAnchorEl] = useState(null);
     const [userMenuAnchor, setUserMenuAnchor] = useState(null);
-    const [chatUnreadCount, setChatUnreadCount] = useState(0);
     const { checkVerification } = usePhoneVerification();
 
-    useEffect(() => {
-        let alive = true;
-        if (!user || !token) {
-            setChatUnreadCount(0);
-            return () => {
-                alive = false;
-            };
-        }
+    const isCommunityArea = useMemo(
+        () => location.pathname === '/community' || location.pathname.startsWith('/community/'),
+        [location.pathname],
+    );
 
-        const calcUnreadFromSession = (session) => {
-            const raw =
-                session?.unreadCount ?? session?.unread_count ?? session?.unreadMessages ?? session?.unread_messages ?? 0;
-            return Number(raw) || 0;
-        };
+    const headerUnreadCount = unreadCount;
 
-        const fetchChatUnread = async () => {
-            try {
-                const res = await getChats({ filter: 'ALL' });
-                const body = res?.data;
-                const raw = body?.data;
-                const list = Array.isArray(raw?.content)
-                    ? raw.content
-                    : Array.isArray(raw)
-                        ? raw
-                        : Array.isArray(body?.content)
-                            ? body.content
-                            : Array.isArray(body)
-                                ? body
-                                : [];
-                const total = list.reduce((sum, s) => sum + calcUnreadFromSession(s), 0);
-                if (alive) setChatUnreadCount(total);
-            } catch {
-                if (alive) setChatUnreadCount(0);
-            }
-        };
-
-        fetchChatUnread();
-        const intervalId = window.setInterval(fetchChatUnread, 15000);
-
-        return () => {
-            alive = false;
-            window.clearInterval(intervalId);
-        };
-    }, [user]);
 
     const userAvatar = user?.avatarUrl || user?.avatar || '';
 
     const handleSearch = (e) => {
         e.preventDefault();
         const q = searchValue.trim();
+
+        if (isCommunityArea) {
+            const params = new URLSearchParams(location.search);
+            if (q) params.set('q', q);
+            else params.delete('q');
+            const next = params.toString();
+            navigate(next ? `/community?${next}` : '/community');
+            return;
+        }
+
         if (q) {
             navigate(`/search?q=${encodeURIComponent(q)}`);
         } else {
@@ -246,16 +218,17 @@ export default function Header({ onToggleSidebar }) {
     };
 
     const handleLikeIconClick = () => {
+        const target = isCommunityArea ? '/community/liked' : '/liked';
         if (!user) {
             navigate('/login', {
                 state: {
-                    from: '/liked',
+                    from: target,
                     message: 'Bạn cần đăng nhập để xem tin đã thích',
                 },
             });
             return;
         }
-        navigate('/liked');
+        navigate(target);
     };
 
     return (
@@ -314,7 +287,7 @@ export default function Header({ onToggleSidebar }) {
                         </SearchIconWrapper>
                         <form onSubmit={handleSearch} style={{ width: '100%', height: '100%' }}>
                             <StyledInputBase
-                                placeholder="Tìm sản phẩm..."
+                                placeholder={isCommunityArea ? 'Tìm bài viết cộng đồng...' : 'Tìm sản phẩm...'}
                                 inputProps={{ 'aria-label': 'search' }}
                                 value={searchValue}
                                 onChange={(e) => setSearchValue(e.target.value)}
@@ -347,28 +320,28 @@ export default function Header({ onToggleSidebar }) {
                             '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
                         }}
                     >
-                        <Badge badgeContent={unreadCount} color="error">
+                        <Badge badgeContent={headerUnreadCount} color="error">
                             <NotificationsIcon sx={{ fontSize: '22px' }} />
                         </Badge>
                     </IconButton>
-                    <IconButton
-                        color="inherit"
-                        onClick={() => navigate('/chat')}
-                        sx={{
-                            color: 'rgba(255,255,255,0.85)',
-                            p: 1,
-                            borderRadius: '10px',
-                            '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
-                        }}
-                    >
-                        <Badge badgeContent={chatUnreadCount} color="error">
+                    {!isCommunityArea && (
+                        <IconButton
+                            color="inherit"
+                            onClick={() => navigate('/chat')}
+                            sx={{
+                                color: 'rgba(255,255,255,0.85)',
+                                p: 1,
+                                borderRadius: '10px',
+                                '&:hover': { backgroundColor: ACCENT_SUBTLE, color: '#fff' },
+                            }}
+                        >
                             <ChatIcon sx={{ fontSize: '22px' }} />
-                        </Badge>
-                    </IconButton>
+                        </IconButton>
+                    )}
 
                     {user ? (
                         <>
-                            {!isMobile && (
+                            {!isMobile && !isCommunityArea && (
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1.5 }}>
                                     <ActionButton sx={{ gap: 0.5 }} startIcon={<PostAddIcon sx={{ fontSize: '18px !important' }} />} onClick={handleCreatePost}>Đăng tin</ActionButton>
                                 </Box>
@@ -496,6 +469,7 @@ export default function Header({ onToggleSidebar }) {
                 anchorEl={notifAnchorEl}
                 open={Boolean(notifAnchorEl)}
                 onClose={() => setNotifAnchorEl(null)}
+                mode={isCommunityArea ? 'community' : 'all'}
             />
         </AppBar>
     );

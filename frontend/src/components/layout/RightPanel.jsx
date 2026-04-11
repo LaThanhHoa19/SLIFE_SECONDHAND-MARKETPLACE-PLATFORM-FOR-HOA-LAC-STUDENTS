@@ -34,7 +34,6 @@ import { getCategories } from '../../api/categoryApi';
 import { buildCategoryTree } from '../../utils/categoryTree';
 import CategoryTree from '../common/CategoryTree';
 import CommunityCtaCard from '../common/CommunityCtaCard';
-import CommunityTrendingSidebar from '../community/CommunityTrendingSidebar';
 import { uiTokens } from '../../theme/uiTokens';
 
 const CATEGORY_ICONS = {
@@ -157,8 +156,6 @@ export default function RightPanel() {
                 '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.12)', borderRadius: 3 },
             }}
         >
-            {isCommunityArea ? <CommunityTrendingSidebar /> : null}
-
             {!isCommunityArea && (
                 <>
                     {/* Location selector + refresh */}
