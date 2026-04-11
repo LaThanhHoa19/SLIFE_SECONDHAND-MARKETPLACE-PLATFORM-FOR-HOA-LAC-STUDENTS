@@ -167,4 +167,66 @@ class ConfigServiceTest {
         assertNull(cap.getValue().getDeletedAt());
         assertEquals("99", cap.getValue().getConfigValue());
     }
+
+    // ── ENUM unit config tests (DEAL_TIMEOUT_UNIT, REVIEW_TIMEOUT_UNIT) ─────────
+
+    @Test
+    void updateConfigurationById_dealTimeoutUnit_DAYS_accepted() {
+        existing.setConfigName("DEAL_TIMEOUT_UNIT");
+        existing.setConfigValue("DAYS");
+        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+        when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ConfigResponseDTO dto = configService.updateConfigurationById(
+                10L, new ConfigSingleUpdateRequest("DAYS", null), admin);
+        assertEquals("DAYS", dto.configValue());
+    }
+
+    @Test
+    void updateConfigurationById_dealTimeoutUnit_MINUTES_accepted() {
+        existing.setConfigName("DEAL_TIMEOUT_UNIT");
+        existing.setConfigValue("DAYS");
+        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+        when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ConfigResponseDTO dto = configService.updateConfigurationById(
+                10L, new ConfigSingleUpdateRequest("MINUTES", null), admin);
+        assertEquals("MINUTES", dto.configValue());
+    }
+
+    @Test
+    void updateConfigurationById_dealTimeoutUnit_invalidEnum_throws() {
+        existing.setConfigName("DEAL_TIMEOUT_UNIT");
+        existing.setConfigValue("DAYS");
+        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+
+        SlifeException ex = assertThrows(SlifeException.class,
+                () -> configService.updateConfigurationById(
+                        10L, new ConfigSingleUpdateRequest("HOURS", null), admin));
+        assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+    }
+
+    @Test
+    void updateConfigurationById_reviewTimeoutValue_numericRange() {
+        existing.setConfigName("REVIEW_TIMEOUT_VALUE");
+        existing.setConfigValue("7");
+        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+
+        // value 0 is below min=1 → throws
+        assertThrows(SlifeException.class,
+                () -> configService.updateConfigurationById(
+                        10L, new ConfigSingleUpdateRequest("0", null), admin));
+    }
+
+    @Test
+    void updateConfigurationById_reviewTimeoutUnit_MINUTES_accepted() {
+        existing.setConfigName("REVIEW_TIMEOUT_UNIT");
+        existing.setConfigValue("DAYS");
+        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+        when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ConfigResponseDTO dto = configService.updateConfigurationById(
+                10L, new ConfigSingleUpdateRequest("MINUTES", null), admin);
+        assertEquals("MINUTES", dto.configValue());
+    }
 }

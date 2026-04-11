@@ -32,8 +32,14 @@ public class SchedulerService {
     @Transactional
     @Scheduled(cron = "${app.scheduler.auto-confirm-deal-cron:0 0 * * * *}")
     public void autoCompleteConfirmedDeals() {
-        int timeoutDays = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", DEFAULT_DEAL_TIMEOUT_DAYS));
-        LocalDateTime threshold = LocalDateTime.now(TimeZones.VIETNAM).minusDays(timeoutDays);
+        int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", DEFAULT_DEAL_TIMEOUT_DAYS));
+        String timeoutUnit = java.util.Objects.requireNonNullElse(
+                configService.getConfigValue("DEAL_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+
+        LocalDateTime now = LocalDateTime.now(TimeZones.VIETNAM);
+        LocalDateTime threshold = "MINUTES".equals(timeoutUnit)
+                ? now.minusMinutes(timeoutValue)
+                : now.minusDays(timeoutValue);
 
         List<Deal> overdueDeals = dealRepository.findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull("CONFIRMED",
                 threshold);
@@ -45,6 +51,6 @@ public class SchedulerService {
             deal.setStatus("COMPLETED");
         }
         dealRepository.saveAll(overdueDeals);
-        log.info("Auto completed {} deals using DEAL_TIMEOUT_DAYS={}", overdueDeals.size(), timeoutDays);
+        log.info("Auto completed {} deals (timeout={} {})", overdueDeals.size(), timeoutValue, timeoutUnit);
     }
 }

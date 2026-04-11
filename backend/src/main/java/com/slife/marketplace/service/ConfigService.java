@@ -31,18 +31,25 @@ public class ConfigService {
             "LISTING_EXPIRATION",
             "MAX_IMAGES_PER_POST",
             "DEAL_TIMEOUT_DAYS",
+            "REVIEW_TIMEOUT_VALUE",
             "REPORT_THRESHOLD",
             "AUTO_HIDE_REPORT_THRESHOLD",
             "PICKUP_REMINDER_HOURS",
             "MAX_ACTIVE_LISTINGS_PER_USER",
             "LISTING_EXPIRING_SOON_HOURS_BEFORE");
 
+    /** Config khóa chỉ nhận giá trị enum: DAYS hoặc MINUTES. */
+    private static final Set<String> ENUM_UNIT_CONFIG_KEYS = Set.of(
+            "DEAL_TIMEOUT_UNIT",
+            "REVIEW_TIMEOUT_UNIT");
+
     private static final Map<String, ConfigValidationMetaDTO> VALIDATION_RULES = Map.of(
             "LISTING_EXPIRATION", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
             "MAX_IMAGES", new ConfigValidationMetaDTO("integer", 1, 30, "Giá trị hợp lệ: 1–30 ảnh."),
             "MAX_IMAGES_PER_POST", new ConfigValidationMetaDTO("integer", 1, 30, "Giá trị hợp lệ: 1–30 ảnh."),
             "REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."),
-            "DEAL_TIMEOUT_DAYS", new ConfigValidationMetaDTO("integer", 1, 365, "Giá trị hợp lệ: 1–365 ngày."),
+            "DEAL_TIMEOUT_DAYS", new ConfigValidationMetaDTO("integer", 1, 43200, "Giá trị hợp lệ: 1–43200 (tối đa 30 ngày tính theo phút)."),
+            "REVIEW_TIMEOUT_VALUE", new ConfigValidationMetaDTO("integer", 1, 43200, "Giá trị hợp lệ: 1–43200 (tối đa 30 ngày tính theo phút)."),
             "AUTO_HIDE_REPORT_THRESHOLD", new ConfigValidationMetaDTO("integer", 1, 100, "Giá trị hợp lệ: 1–100."),
             "PICKUP_REMINDER_HOURS", new ConfigValidationMetaDTO("integer", 1, 168, "Giá trị hợp lệ: 1–168 giờ."),
             "MAX_ACTIVE_LISTINGS_PER_USER",
@@ -215,6 +222,15 @@ public class ConfigService {
     }
 
     private void validateValueFormat(String key, String value) {
+        // Enum unit keys: chỉ chấp nhận DAYS hoặc MINUTES
+        if (ENUM_UNIT_CONFIG_KEYS.contains(key)) {
+            if (!"DAYS".equalsIgnoreCase(value) && !"MINUTES".equalsIgnoreCase(value)) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT,
+                        key + " chỉ chấp nhận giá trị: DAYS hoặc MINUTES");
+            }
+            return;
+        }
+
         if (!NUMERIC_CONFIG_KEYS.contains(key)) {
             return;
         }
