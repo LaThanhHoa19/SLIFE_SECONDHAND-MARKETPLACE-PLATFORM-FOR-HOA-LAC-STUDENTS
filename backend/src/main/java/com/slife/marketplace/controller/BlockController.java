@@ -45,9 +45,11 @@ public class BlockController {
     @GetMapping("/me/blocks")
     public ResponseEntity<ApiResponse<Page<FollowUserSummaryResponse>>> myBlockedUsers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "recent") String sort) {
         User me = userService.getCurrentUser();
-        Page<FollowUserSummaryResponse> data = blockService.getBlockedUsers(me.getId(), page, size);
+        Page<FollowUserSummaryResponse> data = blockService.getBlockedUsers(me.getId(), page, size, q, sort);
         return ResponseEntity.ok(ApiResponse.success("OK", data));
     }
 }

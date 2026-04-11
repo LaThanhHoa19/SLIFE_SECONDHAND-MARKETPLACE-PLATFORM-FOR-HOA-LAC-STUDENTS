@@ -936,7 +936,7 @@ export default function ListingCard({
                             displayName={seller?.fullName || 'Người bán'}
                             onConfirm={() =>
                                 blockUserById(sellerId).then(() => {
-                                    onPatchListing?.(id, { removeFromList: true });
+                                    onPatchListing?.(id, { removeSellerId: sellerId });
                                     const onListingDetail = /^\/listings\/[^/]+$/.test(location.pathname);
                                     if (onListingDetail) navigate('/feed');
                                 })
