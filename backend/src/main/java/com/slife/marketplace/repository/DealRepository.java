@@ -45,7 +45,9 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
     List<Object[]> countDealsByDayLast(@Param("days") int days);
 
     /**
-     * Deal có giờ giao, chưa gửi nhắc, pickup trong khoảng [lower, upper] (tính theo mốc "còn ~3 giờ").
+     * Deal có giờ giao, chưa gửi nhắc, pickup trong khoảng [lower, upper] (theo PICKUP_REMINDER_HOURS).
+     * Không gồm PENDING (người mua chưa chấp nhận trong chat). CONFIRMED = seller xác nhận trang deal;
+     * COMPLETED = người mua đã chấp nhận trong chat (tên trạng thái nghiệp vụ).
      */
     @EntityGraph(attributePaths = {"listing", "listing.seller", "proposedBy"})
     @Query("""
@@ -53,7 +55,7 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             WHERE d.deletedAt IS NULL
               AND d.reminderSent = false
               AND d.pickupTime IS NOT NULL
-              AND d.status IN ('PENDING', 'CONFIRMED')
+              AND d.status IN ('CONFIRMED', 'COMPLETED')
               AND d.pickupTime >= :lower
               AND d.pickupTime <= :upper
             """)

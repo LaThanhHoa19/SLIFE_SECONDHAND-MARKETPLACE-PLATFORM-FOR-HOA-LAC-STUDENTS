@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Nhắc email 2 bên trước giờ nhận hàng ({@code PICKUP_REMINDER_HOURS}, mặc định 3) — cửa sổ ±7 phút theo chu kỳ cron.
+ * Chỉ deal {@code CONFIRMED} hoặc {@code COMPLETED} (đã qua PENDING — không nhắc khi mua chưa chấp nhận).
  */
 @Service
 public class DealPickupReminderService {

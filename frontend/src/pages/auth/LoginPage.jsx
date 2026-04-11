@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import Footer from '../../components/layout/Footer';
 import { uiTokens } from '../../theme/uiTokens';
+import { isGuestAccessiblePath } from '../../utils/guestRedirect';
 
 const GOOGLE_CLIENT_ID_FALLBACK =
     '318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com';
@@ -41,6 +42,13 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const redirect = params.get('redirect');
     return redirect ? decodeURIComponent(redirect) : '/feed';
+  };
+
+  /** Guest không đăng nhập — chỉ được về URL public; tránh /chat, /saved, ... (sẽ bị guard đẩy lại login / kẹt tải). */
+  const getGuestContinueTarget = () => {
+    const candidate = getRedirectTarget();
+    if (isGuestAccessiblePath(candidate)) return candidate;
+    return '/feed';
   };
 
     const displayError = urlError || googleError || authError || '';
@@ -270,7 +278,7 @@ export default function LoginPage() {
                             fullWidth
                             variant="outlined"
                             startIcon={<GuestIcon />}
-                            onClick={() => navigate(getRedirectTarget())}
+                            onClick={() => navigate(getGuestContinueTarget())}
                             sx={{
                                 textTransform: 'none',
                                 borderRadius: 3,

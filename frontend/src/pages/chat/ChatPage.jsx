@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { bumpDatetimeLocalUntilFuture } from '../../utils/datetimeLocal';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import {
   Box,
@@ -2129,7 +2130,9 @@ function ChatPageInner() {
               <TextField
                 label="Thời gian nhận hàng"
                 value={finalizePickupTimeLocal}
-                onChange={(e) => setFinalizePickupTimeLocal(e.target.value)}
+                onChange={(e) =>
+                  setFinalizePickupTimeLocal(bumpDatetimeLocalUntilFuture(e.target.value))
+                }
                 size="small"
                 fullWidth
                 type="datetime-local"
@@ -2146,7 +2149,7 @@ function ChatPageInner() {
                 helperText={
                   finalizePickupTimeLocal?.trim() &&
                     (!Number.isFinite(finalizePickupMs) || finalizePickupMs <= Date.now())
-                    ? 'Chọn thời gian sau thời điểm hiện tại — không dùng thời gian quá khứ.'
+                    ? 'Thời gian nhận hàng phải sau lúc hiện tại.'
                     : undefined
                 }
                 sx={{
