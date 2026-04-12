@@ -38,11 +38,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -74,7 +69,7 @@ public class ReportService {
     private final ConfigService configService;
     private final AuditLogService auditLogService;
     private final SystemEmailService systemEmailService;
-    private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
     public ReportService(ReportRepository reportRepository,
                          ReportImageRepository reportImageRepository,
@@ -88,7 +83,7 @@ public class ReportService {
                          ConfigService configService,
                          AuditLogService auditLogService,
                          SystemEmailService systemEmailService,
-                         Path uploadBasePath) {
+                         UserFileStorageService fileStorage) {
         this.reportRepository = reportRepository;
         this.reportImageRepository = reportImageRepository;
         this.listingRepository = listingRepository;
@@ -101,7 +96,7 @@ public class ReportService {
         this.configService = configService;
         this.auditLogService = auditLogService;
         this.systemEmailService = systemEmailService;
-        this.uploadBasePath = uploadBasePath;
+        this.fileStorage = fileStorage;
     }
 
     @Transactional
@@ -594,20 +589,7 @@ public class ReportService {
 
         String ext = getImageExtension(file.getOriginalFilename());
         String filename = "report_" + System.currentTimeMillis() + "_" + Math.abs(file.getOriginalFilename() == null ? 0 : file.getOriginalFilename().hashCode()) + ext;
-        Path dir = uploadBasePath.resolve("reports");
-
-        try {
-            Files.createDirectories(dir);
-            Path target = dir.resolve(filename).normalize();
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            log.error("uploadReportEvidenceImage failed", e);
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-
-        return "/uploads/reports/" + filename;
+        return fileStorage.storeMultipart(file, "reports/" + filename);
     }
 
     private String getImageExtension(String filename) {

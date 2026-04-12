@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getGeoClientConfig } from '../../api/geoApi';
+import { buildVietmapStyleUrl, vietmapTransformRequest } from '../../utils/vietmapMapOptions';
 
 const MAP_DEFAULT_ZOOM = 15;
 const VIETMAP_CDN_JS = 'https://unpkg.com/@vietmap/vietmap-gl-js@6.0.1/dist/vietmap-gl.js';
@@ -78,7 +79,6 @@ export default function ListingPickupMapPreview({
     if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return;
 
     let cancelled = false;
-    const origin = window.location.origin;
 
     ensureVietmapCss();
     loadVietmapScript().then((vietmapgl) => {
@@ -95,22 +95,10 @@ export default function ListingPickupMapPreview({
 
         const map = new vietmapgl.Map({
           container,
-          style: `${origin}/maps/styles/tm/style.json?apikey=${vietmapTileKey}`,
+          style: buildVietmapStyleUrl(vietmapTileKey),
           center: [lngNum, latNum],
           zoom: MAP_DEFAULT_ZOOM,
-          transformRequest: (url) => {
-            if (typeof url !== 'string') return { url };
-            const prefix = 'https://maps.vietmap.vn';
-            if (url.startsWith(prefix + '/')) {
-              let rewritten = url.replace(prefix, '');
-              if (rewritten.includes('apikey=') && !rewritten.includes(`apikey=${vietmapTileKey}`)) {
-                rewritten = rewritten.replace(/apikey=[^&]*/, `apikey=${vietmapTileKey}`);
-              }
-              return { url: `${origin}${rewritten}` };
-            }
-            if (url === prefix) return { url: `${origin}/` };
-            return { url };
-          }
+          transformRequest: vietmapTransformRequest,
         });
 
         map.addControl(new vietmapgl.NavigationControl(), 'top-left');

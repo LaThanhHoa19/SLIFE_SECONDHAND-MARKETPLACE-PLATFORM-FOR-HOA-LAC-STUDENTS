@@ -13,11 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 
 @Service
@@ -28,12 +23,11 @@ public class UserService {
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final UserRepository userRepository;
-    private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
-    public UserService(UserRepository userRepository, Path uploadBasePath) {
+    public UserService(UserRepository userRepository, UserFileStorageService fileStorage) {
         this.userRepository = userRepository;
-        this.uploadBasePath = uploadBasePath;
-        log.info("UserService upload base path: {}", this.uploadBasePath);
+        this.fileStorage = fileStorage;
     }
 
     public User getCurrentUser() {
@@ -165,18 +159,14 @@ public class UserService {
         User user = getCurrentUser();
         String subDir = "avatars";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
-        Path dir = uploadBasePath.resolve(subDir);
         try {
-            Files.createDirectories(dir);
-            Path target = dir.resolve(filename).normalize();
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-            }
-            String url = "/uploads/" + subDir + "/" + filename;
+            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
             user.setAvatarUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
-        } catch (IOException e) {
+        } catch (SlifeException e) {
+            throw e;
+        } catch (Exception e) {
             log.error("uploadAvatar failed: {}", e.getMessage(), e);
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
         }
@@ -194,18 +184,14 @@ public class UserService {
         User user = getCurrentUser();
         String subDir = "covers";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
-        Path dir = uploadBasePath.resolve(subDir);
         try {
-            Files.createDirectories(dir);
-            Path target = dir.resolve(filename).normalize();
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-            }
-            String url = "/uploads/" + subDir + "/" + filename;
+            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
             user.setCoverImageUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
-        } catch (IOException e) {
+        } catch (SlifeException e) {
+            throw e;
+        } catch (Exception e) {
             log.error("uploadCover failed: {}", e.getMessage(), e);
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
         }
