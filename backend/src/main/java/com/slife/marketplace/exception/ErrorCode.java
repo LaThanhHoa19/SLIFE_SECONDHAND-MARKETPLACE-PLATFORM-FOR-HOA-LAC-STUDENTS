@@ -21,6 +21,7 @@ public enum ErrorCode {
     // User related
     USER_NOT_FOUND("USER_NOT_FOUND", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),
     EMAIL_ALREADY_IN_USE("EMAIL_ALREADY_IN_USE", "Email này đã được sử dụng", HttpStatus.CONFLICT),
+    PHONE_ALREADY_IN_USE("PHONE_ALREADY_IN_USE", "Số điện thoại này đã được sử dụng", HttpStatus.CONFLICT),
     INVALID_CREDENTIALS("INVALID_CREDENTIALS", "Email hoặc mật khẩu không chính xác", HttpStatus.UNAUTHORIZED),
     INVALID_STUDENT_EMAIL("INVALID_STUDENT_EMAIL", "Chỉ chấp nhận email sinh viên @fpt.edu.vn", HttpStatus.BAD_REQUEST),
     INVALID_GOOGLE_TOKEN("INVALID_GOOGLE_TOKEN", "Phiên đăng nhập Google hết hạn", HttpStatus.UNAUTHORIZED),

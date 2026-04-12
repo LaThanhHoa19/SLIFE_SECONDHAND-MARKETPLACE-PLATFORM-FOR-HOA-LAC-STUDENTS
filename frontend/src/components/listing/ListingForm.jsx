@@ -1042,7 +1042,17 @@ export default function ListingForm({
             setPinStatus('missing_admin');
             return;
         }
-        if (!navigator.geolocation) { alert('Trình duyệt không hỗ trợ GPS.'); return; }
+        if (!navigator.geolocation) {
+            alert('Trình duyệt không hỗ trợ GPS.');
+            return;
+        }
+        // Geolocation chỉ chạy trên HTTPS hoặc localhost (secure context). S3 static website = HTTP → bị chặn.
+        if (typeof window !== 'undefined' && !window.isSecureContext) {
+            alert(
+                'GPS không dùng được trên trang HTTP (vd. S3 website). Hãy chọn vị trí trên bản đồ, hoặc bật HTTPS (CloudFront + chứng chỉ).'
+            );
+            return;
+        }
         if (!mapEnabled) setMapEnabled(true);
         setGpsLoading(true);
         navigator.geolocation.getCurrentPosition(
@@ -1129,7 +1139,17 @@ export default function ListingForm({
                 setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
                 setPinStatus(isValid ? 'valid' : 'invalid');
             },
-            (err) => { setGpsLoading(false); alert(`Không lấy được GPS: ${err.message}`); },
+            (err) => {
+                setGpsLoading(false);
+                const msg = err?.message || String(err);
+                if (/secure origin|Only secure origins/i.test(msg)) {
+                    alert(
+                        'GPS chỉ hoạt động trên HTTPS hoặc localhost. Hãy chọn vị trí trên bản đồ hoặc triển khai HTTPS (CloudFront).'
+                    );
+                    return;
+                }
+                alert(`Không lấy được GPS: ${msg}`);
+            },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     }, [mapEnabled]);

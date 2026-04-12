@@ -14,6 +14,9 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
+
+    /** Người khác đã có phone_number (để kiểm tra trùng SĐT khi xác minh Firebase). */
+    List<User> findByIdNotAndPhoneNumberIsNotNull(Long excludeUserId);
     Page<User> findByRole(String role, Pageable pageable);
 
     Page<User> findByRoleAndStatus(String role, String status, Pageable pageable);

@@ -9,6 +9,10 @@ export const updateUser = (payload) => axiosClient.put('/api/users/me', payload)
 export const verifyPhoneWithFirebase = (payload) =>
   axiosClient.post('/api/users/me/phone-verification/firebase', payload);
 
+/** Kiểm tra SĐT chưa bị tài khoản khác xác minh — gọi trước khi gửi OTP Firebase. */
+export const checkPhoneVerificationEligibility = (payload) =>
+  axiosClient.post('/api/users/me/phone-verification/check', payload);
+
 /** Upload avatar: FormData với key "file". Không set Content-Type để browser tự gửi boundary. */
 export const uploadAvatar = (file) => {
   const form = new FormData();
