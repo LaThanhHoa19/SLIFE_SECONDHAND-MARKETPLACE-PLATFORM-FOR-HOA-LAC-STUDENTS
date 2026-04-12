@@ -1,0 +1,9 @@
+# Image cho EC2: proxy tới Spring trên host (host.docker.internal:8080).
+# Khác Dockerfile (compose): không dùng tên service backend/frontend.
+#
+# docker build -f Dockerfile.ec2 -t anan49/slife-nginx:ec2 .
+# docker run -d --name slife-nginx -p 80:80 --add-host=host.docker.internal:host-gateway anan49/slife-nginx:ec2
+
+FROM nginx:1.27-alpine
+COPY nginx.conf /etc/nginx/nginx.conf
+COPY conf.d/default.ec2-docker.conf /etc/nginx/conf.d/default.conf
