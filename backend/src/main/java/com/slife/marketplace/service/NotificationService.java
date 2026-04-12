@@ -239,18 +239,13 @@ public class NotificationService {
         }
     }
 
-    /** Notify listing owner when their listing is reported. */
+    /**
+     * Intentionally no-op: do not notify owner immediately when a listing is merely reported.
+     * Owner is notified only when moderation action is taken (e.g. admin hides listing / bans user).
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyListingReported(User listingOwner, User reporter, Long listingId, String listingTitle) {
-        try {
-            Notification n = buildNotification(listingOwner, TYPE_REPORT,
-                    "LISTING", listingId,
-                    "Tin đăng \"" + truncate(listingTitle, 40) + "\" của bạn đã bị báo cáo bởi " + reporter.getFullName());
-            notificationRepository.save(n);
-            pushNotificationCount(listingOwner);
-        } catch (Exception ex) {
-            log.error("notifyListingReported failed listingId={}", listingId, ex);
-        }
+        log.debug("notifyListingReported skipped listingId={}", listingId);
     }
 
     /** Notify listing owner when admin hides their listing due to violation/report. */

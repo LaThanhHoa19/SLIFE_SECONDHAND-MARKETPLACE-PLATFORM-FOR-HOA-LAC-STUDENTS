@@ -4,6 +4,7 @@
  */
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import { getPersistedRefreshToken, setPersistedRefreshToken } from './authSessionStore';
 
 let inMemoryAdminAccessToken = null;
 
@@ -66,12 +67,17 @@ async function refreshAdminAccessToken() {
     if (adminRefreshInFlight) return adminRefreshInFlight;
 
     adminRefreshInFlight = (async () => {
-        const response = await adminRefreshClient.post('/api/auth/refresh', {});
+        const rt = getPersistedRefreshToken();
+        const response = await adminRefreshClient.post(
+            '/api/auth/refresh',
+            rt ? { refreshToken: rt } : {},
+        );
         const payload = response?.data?.data ?? response?.data ?? null;
         const nextAccessToken = payload?.accessToken || payload?.token || null;
         if (!nextAccessToken) throw new Error('Missing access token in refresh response');
 
         setAdminAccessToken(nextAccessToken);
+        if (payload?.refreshToken) setPersistedRefreshToken(payload.refreshToken);
         return nextAccessToken;
     })().finally(() => {
         adminRefreshInFlight = null;

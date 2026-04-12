@@ -21,13 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.Normalizer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.*;
 import java.util.Locale;
@@ -51,7 +46,7 @@ public class ChatService {
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
     /** Rate limit: last message timestamp per user id (BR-38: max 1 message per second). */
     private final Map<Long, Instant> lastMessageByUser = new ConcurrentHashMap<>();
@@ -65,7 +60,7 @@ public class ChatService {
                        NotificationService notificationService,
                        SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
-                       Path uploadBasePath) {
+                       UserFileStorageService fileStorage) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
@@ -75,7 +70,7 @@ public class ChatService {
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
-        this.uploadBasePath = uploadBasePath;
+        this.fileStorage = fileStorage;
     }
 
     // ── Session management ────────────────────────────────────────────────────
@@ -458,8 +453,9 @@ public class ChatService {
      * Upload a chat image. Validates size and type.
      * Stores to uploads/chats/{sessionId}/{uuid}.ext
      * Returns the public URL path.
+     * Phải ghi DB khi chỉ có listingId (getOrCreateSession) — không dùng readOnly.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public String uploadChatImage(String sessionId, Long listingId, MultipartFile file) {
         String resolvedSessionId = (sessionId != null && !sessionId.isBlank()) ? sessionId.trim() : null;
         if (resolvedSessionId == null) {
@@ -490,18 +486,8 @@ public class ChatService {
             default -> ".jpg";
         };
         String fileName = UUID.randomUUID() + ext;
-        Path dir = uploadBasePath.resolve(Constants.CHAT_UPLOAD_DIR).resolve(resolvedSessionId);
-        try {
-            Files.createDirectories(dir);
-            Path dest = dir.resolve(fileName);
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            log.error("Chat image upload failed session={}", resolvedSessionId, e);
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-        return "/uploads/" + Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
+        String relative = Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
+        return fileStorage.storeMultipart(file, relative);
     }
 
     // ── Offer negotiation (UC-30) ─────────────────────────────────────────────

@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { bumpDatetimeLocalUntilFuture } from '../../utils/datetimeLocal';
 import {
     Box,
     Button,
@@ -480,7 +481,9 @@ export default function DealDetailPage() {
                             size="small"
                             fullWidth
                             value={pickupTimeLocal}
-                            onChange={(e) => setPickupTimeLocal(e.target.value)}
+                            onChange={(e) =>
+                                setPickupTimeLocal(bumpDatetimeLocalUntilFuture(e.target.value))
+                            }
                             slotProps={{
                                 input: {},
                                 inputLabel: { shrink: true },

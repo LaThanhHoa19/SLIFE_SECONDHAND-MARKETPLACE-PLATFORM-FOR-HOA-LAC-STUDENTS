@@ -11,6 +11,7 @@
  */
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import { getPersistedRefreshToken, setPersistedRefreshToken } from './authSessionStore';
 
 let inMemoryAccessToken = null;
 
@@ -66,13 +67,17 @@ async function refreshAccessToken() {
     if (refreshInFlight) return refreshInFlight;
 
     refreshInFlight = (async () => {
-        // Refresh token ưu tiên HttpOnly cookie; body refreshToken để trống (backend fallback body cho legacy clients).
-        const response = await refreshClient.post('/api/auth/refresh', {});
+        const rt = getPersistedRefreshToken();
+        const response = await refreshClient.post(
+            '/api/auth/refresh',
+            rt ? { refreshToken: rt } : {},
+        );
         const payload = response?.data?.data ?? response?.data ?? null;
         const nextAccessToken = payload?.accessToken || payload?.token || null;
         if (!nextAccessToken) throw new Error('Missing access token in refresh response');
 
         setAccessToken(nextAccessToken);
+        if (payload?.refreshToken) setPersistedRefreshToken(payload.refreshToken);
         return nextAccessToken;
     })().finally(() => {
         refreshInFlight = null;

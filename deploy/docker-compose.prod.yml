@@ -35,9 +35,15 @@ services:
       - .env
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      # Mail: bắt buộc khi dùng Cloud Function (trùng deploy/.env). Nếu thiếu → backend dùng SMTP mặc định và lỗi Authentication.
+      APP_MAIL_TRANSPORT: ${APP_MAIL_TRANSPORT:-smtp}
+      APP_MAIL_HTTP_URL: ${APP_MAIL_HTTP_URL:-}
+      APP_MAIL_HTTP_SECRET: ${APP_MAIL_HTTP_SECRET:-}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-noreply@slife.local}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       mysql:
         condition: service_healthy

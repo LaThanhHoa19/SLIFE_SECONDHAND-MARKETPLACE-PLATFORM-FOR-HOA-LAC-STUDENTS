@@ -20,12 +20,19 @@ public interface BlockRepository extends JpaRepository<Block, BlockId> {
     @Query(
             value = """
                     SELECT new com.slife.marketplace.dto.response.FollowUserSummaryResponse(
-                        u.id, u.fullName, u.avatarUrl, u.reputationScore)
+                        u.id, u.fullName, u.avatarUrl, u.reputationScore, b.createdAt)
                     FROM Block b JOIN b.blocked u
                     WHERE b.blocker.id = :userId
-                    ORDER BY b.createdAt DESC
+                      AND (:qBlank = true OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :q, '%')))
                     """,
-            countQuery = "SELECT count(b) FROM Block b WHERE b.blocker.id = :userId")
+            countQuery = """
+                    SELECT count(b) FROM Block b JOIN b.blocked u
+                    WHERE b.blocker.id = :userId
+                      AND (:qBlank = true OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :q, '%')))
+                    """)
     Page<FollowUserSummaryResponse> findBlockedUserSummariesByBlockerId(
-            @Param("userId") Long userId, Pageable pageable);
+            @Param("userId") Long userId,
+            @Param("q") String q,
+            @Param("qBlank") boolean qBlank,
+            Pageable pageable);
 }

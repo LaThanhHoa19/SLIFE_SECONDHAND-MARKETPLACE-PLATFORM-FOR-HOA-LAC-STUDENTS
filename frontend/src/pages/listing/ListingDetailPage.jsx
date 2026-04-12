@@ -71,11 +71,11 @@ import BlockUserConfirmDialog from '../../components/social/BlockUserConfirmDial
 import CatalogItemUnavailableScreen from '../../components/common/CatalogItemUnavailableScreen';
 import { shouldShowCatalogUnavailableForNotifLink } from '../../utils/catalogAvailability';
 
-import { 
-    getConditionInfo, 
+import {
+    getConditionInfo,
     getPurposeInfo,
     getStatusInfo,
-    BRAND_COLORS, 
+    BRAND_COLORS,
     LISTING_ICONS,
     formatRelativeShort
 } from '../../utils/listingFormatUtils';
@@ -116,6 +116,25 @@ function normalizeShareUrl(rawUrl, fallbackId) {
         return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`;
     } catch {
         return `${window.location.origin}/listings/${fallbackId}`;
+    }
+}
+
+function legacyCopyText(text) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        return copied;
+    } catch {
+        return false;
     }
 }
 
@@ -205,9 +224,9 @@ export default function ListingDetailPage() {
         // Loc theo Danh muc lon (parentId) neu co, neu khong dung danh muc hien tai
         const mainCatId = listing?.category?.parentId || listing?.category?.id || listing?.categoryId;
 
-        const fetchSimilarListings = getListings({ 
-            category: mainCatId, 
-            size: 20 
+        const fetchSimilarListings = getListings({
+            category: mainCatId,
+            size: 20
         }).then((res) => {
             const data = getPayload(res);
             const allList = data?.content || data || [];
@@ -223,7 +242,7 @@ export default function ListingDetailPage() {
 
                     const lCond = l?.condition ?? l?.itemCondition;
                     const lPrice = Number(l?.price ?? 0);
-                    
+
                     // Logic lọc chặt chẽ: cùng danh mục, cùng tình trạng hoặc giá tương đương
                     const itemCatId = l?.category?.id || l?.categoryId;
                     const isSameCategory = String(itemCatId) === String(mainCatId) || String(l?.category?.parentId) === String(mainCatId);
@@ -312,11 +331,26 @@ export default function ListingDetailPage() {
                 await navigator.share({ title: shareTitle, url: shareUrl });
                 return;
             }
-            await navigator.clipboard.writeText(shareUrl);
-            showToast('Đã sao chép liên kết bài đăng.', 'success');
-        } catch {
-            window.prompt('Sao chép liên kết bài đăng:', shareUrl);
-            showToast('Trình duyệt chặn sao chép tự động. Hãy sao chép thủ công.', 'warning');
+
+            let copied = false;
+            if (navigator.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    copied = true;
+                } catch {
+                    copied = false;
+                }
+            }
+
+            if (!copied) {
+                copied = legacyCopyText(shareUrl);
+            }
+
+            if (copied) {
+                showToast('Đã sao chép liên kết bài đăng.', 'success');
+            } else {
+                showToast('Không thể sao chép tự động. Vui lòng sao chép liên kết trên thanh địa chỉ.', 'warning');
+            }
         } finally {
             window.setTimeout(() => setShareSubmitting(false), 800);
         }
@@ -454,7 +488,7 @@ export default function ListingDetailPage() {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {[1, 2, 3, 4].map((n) => (
                             <Skeleton key={n} variant="rectangular" height={n === 1 ? 32 : n === 2 ? 44 : 24}
-                                sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
+                                      sx={{ bgcolor: '#2A2535', borderRadius: 2, width: n === 3 ? '70%' : '100%' }} />
                         ))}
                     </Box>
                 </Box>
@@ -506,7 +540,7 @@ export default function ListingDetailPage() {
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
     // Lấy số điện thoại theo thứ tự ưu tiên: top-level field -> seller object -> sellerSummary object
     // Kiểm tra cả camelCase và snake_case để tránh lỗi serialization
-    const rawPhone = listing?.sellerPhone 
+    const rawPhone = listing?.sellerPhone
         || seller?.phoneNumber || seller?.phone_number
         || listing?.sellerSummary?.phoneNumber || listing?.sellerSummary?.phone_number;
 

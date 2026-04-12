@@ -11,6 +11,7 @@ import ListingsFeed from '../../components/listing/ListingsFeed';
 import Pagination from '../../components/common/Pagination';
 import { getSavedListings } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { getSellerIdFromListingItem } from '../../utils/listingFormatUtils';
 
 const UNAVAILABLE_STATUSES = new Set(['HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
 
@@ -80,7 +81,18 @@ export default function SavedListingsPage() {
     }, [isLoading, error, data.length]);
 
     const patchListing = useCallback((listingId, patch) => {
-        if (listingId == null || !patch || typeof patch !== 'object') return;
+        if (!patch || typeof patch !== 'object') return;
+        if (patch.removeSellerId != null) {
+            const sid = String(patch.removeSellerId);
+            setData((prev) =>
+                prev.filter((item) => {
+                    const itemSid = getSellerIdFromListingItem(item);
+                    return itemSid == null || String(itemSid) !== sid;
+                }),
+            );
+            return;
+        }
+        if (listingId == null) return;
         if (patch.removeFromList === true) {
             setData((prev) =>
                 prev.filter((item) => {
