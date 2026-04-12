@@ -18,6 +18,7 @@ import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
 import { reverseGeocode, getGeoClientConfig } from '../../api/geoApi';
 import LocationPicker from './LocationPicker';
+import { buildVietmapStyleUrl, vietmapTransformRequest } from '../../utils/vietmapMapOptions';
 
 /** Đại học FPT Hà Nội — khuôn viên Hòa Lạc (mặc định bản đồ đăng tin) */
 const FPT_UNIVERSITY_HN_LAT = 21.0135;
@@ -897,9 +898,10 @@ export default function ListingForm({
 
             const map = new window.vietmapgl.Map({
                 container: 'vietmap-container',
-                style: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${vietmapTileKey}`,
+                style: buildVietmapStyleUrl(vietmapTileKey),
                 center: [FPT_UNIVERSITY_HN_LNG, FPT_UNIVERSITY_HN_LAT],
                 zoom: MAP_DEFAULT_ZOOM,
+                transformRequest: vietmapTransformRequest,
             });
 
             map.addControl(new window.vietmapgl.NavigationControl(), 'top-left');
