@@ -19,25 +19,38 @@ public class CorsConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Local dev (Vite 5173) + Docker (nginx port 80)
-        List<String> origins = new java.util.ArrayList<>(List.of(
-                "http://localhost:5173",
-                "http://localhost",
-                "http://localhost:80",
-                "http://127.0.0.1",
-                "http://127.0.0.1:5173",
-                "http://127.0.0.1:80"
+        /*
+         * Dùng allowedOriginPatterns (Spring 5.3+) để khớp mọi hostname S3 static website trong region
+         * và tránh lệch 1 ký tự so với Origin trình duyệt gửi.
+         * Bổ sung origin cụ thể + env app.cors.allowed-origins (CloudFront, domain riêng, …).
+         */
+        List<String> patterns = new java.util.ArrayList<>(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://*.s3-website-ap-southeast-1.amazonaws.com",
+                "https://*.s3-website-ap-southeast-1.amazonaws.com",
+                "http://slife-frontend.s3-website-ap-southeast-1.amazonaws.com",
+                "https://slife-frontend.s3-website-ap-southeast-1.amazonaws.com"
         ));
         if (allowedOriginsExtra != null && !allowedOriginsExtra.isBlank()) {
             for (String o : allowedOriginsExtra.split(",")) {
                 String t = o.trim();
-                if (!t.isEmpty()) origins.add(t);
+                if (!t.isEmpty()) {
+                    if (t.contains("*")) {
+                        patterns.add(t);
+                    } else {
+                        // Chuỗi origin đầy đủ — dùng làm pattern khớp chính nó
+                        patterns.add(t);
+                    }
+                }
             }
         }
-        config.setAllowedOrigins(origins);
+        config.setAllowedOriginPatterns(patterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
+        config.setExposedHeaders(List.of("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
