@@ -22,8 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.nio.file.Path;
@@ -52,6 +50,7 @@ public class ChatService {
     private final SimpMessagingTemplate messagingTemplate;
     private final FileStorage fileStorage;
     private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
     /** Rate limit: last message timestamp per user id (BR-38: max 1 message per second). */
     private final Map<Long, Instant> lastMessageByUser = new ConcurrentHashMap<>();
@@ -67,6 +66,7 @@ public class ChatService {
                        SimpMessagingTemplate messagingTemplate,
                        FileStorage fileStorage,
                        Path uploadBasePath) {
+                       UserFileStorageService fileStorage) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
@@ -78,6 +78,7 @@ public class ChatService {
         this.messagingTemplate = messagingTemplate;
         this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
+        this.fileStorage = fileStorage;
     }
 
     // ── Session management ────────────────────────────────────────────────────
@@ -505,6 +506,8 @@ public class ChatService {
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
         }
         return "/uploads/" + Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
+        String relative = Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
+        return fileStorage.storeMultipart(file, relative);
     }
 
     // ── Offer negotiation (UC-30) ─────────────────────────────────────────────

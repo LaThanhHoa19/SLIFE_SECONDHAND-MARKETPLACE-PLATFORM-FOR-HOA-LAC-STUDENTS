@@ -2,6 +2,7 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.UpdateUserRequest;
 import com.slife.marketplace.dto.request.FirebasePhoneVerifyRequest;
+import com.slife.marketplace.dto.request.PhoneVerificationCheckRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.UserProfileResponse;
 import com.slife.marketplace.entity.User;
@@ -106,6 +107,13 @@ public class UserController {
     @PutMapping("/api/users/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody Object r) {
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/api/users/me/phone-verification/check")
+    public ResponseEntity<ApiResponse<Void>> checkPhoneBeforeVerification(
+            @Valid @RequestBody PhoneVerificationCheckRequest request) {
+        userService.assertPhoneAvailableForVerification(request.getPhoneNumber());
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
     }
 
     @PostMapping("/api/users/me/phone-verification/firebase")

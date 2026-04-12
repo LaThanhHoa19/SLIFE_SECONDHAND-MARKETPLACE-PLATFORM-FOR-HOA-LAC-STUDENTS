@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -29,12 +30,15 @@ public class UserService {
     private final UserRepository userRepository;
     private final FileStorage fileStorage;
     private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
     public UserService(UserRepository userRepository, FileStorage fileStorage, Path uploadBasePath) {
+    public UserService(UserRepository userRepository, UserFileStorageService fileStorage) {
         this.userRepository = userRepository;
         this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
         log.info("UserService upload base path: {}", this.uploadBasePath);
+        this.fileStorage = fileStorage;
     }
 
     public User getCurrentUser() {
@@ -95,6 +99,7 @@ public class UserService {
     @Transactional
     public User markPhoneVerifiedWithFirebase(String phoneNumberE164) {
         User user = getCurrentUser();
+        assertPhoneNotUsedByAnotherAccount(user.getId(), phoneNumberE164);
         user.setPhoneNumber(phoneNumberE164);
         user.setPhoneVerifiedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -104,6 +109,34 @@ public class UserService {
         log.info("markPhoneVerifiedWithFirebase: userId={}, phoneNumber={}, phoneVerifiedAt={}",
                 reloaded.getId(), reloaded.getPhoneNumber(), reloaded.getPhoneVerifiedAt());
         return reloaded;
+    }
+
+    /**
+     * Gọi trước khi gửi OTP Firebase để tránh tốn SMS khi SĐT đã xác minh trên tài khoản khác.
+     */
+    public void assertPhoneAvailableForVerification(String phoneNumberRaw) {
+        User user = getCurrentUser();
+        if (phoneNumberRaw == null || phoneNumberRaw.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Số điện thoại là bắt buộc");
+        }
+        assertPhoneNotUsedByAnotherAccount(user.getId(), phoneNumberRaw.trim());
+        log.info("assertPhoneAvailableForVerification: ok userId={}, phone={}", user.getId(), phoneNumberRaw.trim());
+    }
+
+    /**
+     * Không cho hai tài khoản khác nhau cùng một SĐT (so khớp +84 / 0xx như {@link #sameVietnamMobileNumber}).
+     */
+    private void assertPhoneNotUsedByAnotherAccount(Long currentUserId, String phoneE164) {
+        if (phoneE164 == null || phoneE164.isBlank()) {
+            return;
+        }
+        List<User> others = userRepository.findByIdNotAndPhoneNumberIsNotNull(currentUserId);
+        for (User other : others) {
+            if (other.getPhoneNumber() != null && sameVietnamMobileNumber(other.getPhoneNumber(), phoneE164)) {
+                throw new SlifeException(ErrorCode.PHONE_ALREADY_IN_USE,
+                        "Số điện thoại này đã được xác minh trên tài khoản khác.");
+            }
+        }
     }
 
     @Transactional
@@ -166,8 +199,8 @@ public class UserService {
         User user = getCurrentUser();
         String subDir = "avatars";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
-        Path dir = uploadBasePath.resolve(subDir);
         try {
+            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
             fileStorage.createDirectories(dir);
             Path target = dir.resolve(filename).normalize();
             try (InputStream in = file.getInputStream()) {
@@ -177,7 +210,9 @@ public class UserService {
             user.setAvatarUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
-        } catch (IOException e) {
+        } catch (SlifeException e) {
+            throw e;
+        } catch (Exception e) {
             log.error("uploadAvatar failed: {}", e.getMessage(), e);
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
         }
@@ -195,8 +230,8 @@ public class UserService {
         User user = getCurrentUser();
         String subDir = "covers";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
-        Path dir = uploadBasePath.resolve(subDir);
         try {
+            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
             fileStorage.createDirectories(dir);
             Path target = dir.resolve(filename).normalize();
             try (InputStream in = file.getInputStream()) {
@@ -206,7 +241,9 @@ public class UserService {
             user.setCoverImageUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
-        } catch (IOException e) {
+        } catch (SlifeException e) {
+            throw e;
+        } catch (Exception e) {
             log.error("uploadCover failed: {}", e.getMessage(), e);
             throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED, e.getMessage());
         }

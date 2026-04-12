@@ -44,17 +44,20 @@ public class CommunityPostImageService {
     private final ConfigService configService;
     private final FileStorage fileStorage;
     private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
     public CommunityPostImageService(CommunityPostRepository communityPostRepository,
                                      CommunityPostImageRepository communityPostImageRepository,
                                      ConfigService configService,
                                      FileStorage fileStorage,
                                      Path uploadBasePath) {
+                                     UserFileStorageService fileStorage) {
         this.communityPostRepository = communityPostRepository;
         this.communityPostImageRepository = communityPostImageRepository;
         this.configService = configService;
         this.fileStorage = fileStorage;
         this.uploadBasePath = uploadBasePath;
+        this.fileStorage = fileStorage;
     }
 
     @Transactional
@@ -89,8 +92,8 @@ public class CommunityPostImageService {
             }
 
             String baseName = postId + "_" + System.currentTimeMillis() + "_" + displayOrder;
-            Path dir = uploadBasePath.resolve("community-posts");
             String storedFilename;
+            String url;
             try {
                 fileStorage.createDirectories(dir);
                 try (InputStream raw = file.getInputStream();
@@ -108,6 +111,8 @@ public class CommunityPostImageService {
                     }
                     String ext = jpeg ? ".jpg" : ".png";
                     storedFilename = baseName + ext;
+                    String ct = rawCt != null ? rawCt.trim().toLowerCase(Locale.ROOT) : "image/jpeg";
+                    url = fileStorage.storeStream(in, file.getSize(), ct, "community-posts/" + storedFilename);
                     Path target = dir.resolve(storedFilename).normalize();
                     Path base = dir.toAbsolutePath().normalize();
                     if (!target.startsWith(base)) {
@@ -119,8 +124,6 @@ public class CommunityPostImageService {
                 log.error("uploadPostImages failed postId={}", postId, e);
                 throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
             }
-
-            String url = "/uploads/community-posts/" + storedFilename;
 
             CommunityPostImage image = new CommunityPostImage();
             image.setPost(post);
@@ -172,7 +175,7 @@ public class CommunityPostImageService {
         if (!img.getPost().getId().equals(postId)) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        deleteStoredFileIfSafe(img.getImageUrl());
+        fileStorage.deleteStoredIfExists(img.getImageUrl());
         communityPostImageRepository.delete(img);
     }
 

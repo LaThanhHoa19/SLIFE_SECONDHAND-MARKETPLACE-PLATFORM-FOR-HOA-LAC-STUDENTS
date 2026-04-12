@@ -45,6 +45,9 @@ class ListingImageServiceTest {
     private ConfigService configService;
 
     @Mock
+    private UserFileStorageService fileStorage;
+
+    @Mock
     private FileStorage fileStorage;
 
     @TempDir
@@ -58,6 +61,7 @@ class ListingImageServiceTest {
                 listingRepository,
                 listingImageRepository,
                 configService,
+                fileStorage
                 fileStorage,
                 tempUploadDir
         );

@@ -57,6 +57,8 @@ export default function PhoneVerificationModal({
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [otpCooldownUntil, setOtpCooldownUntil] = useState(0);
     const [otpCooldownNow, setOtpCooldownNow] = useState(Date.now());
+    /** Lỗi từ server (409, v.v.) — hiển thị ngay trên modal, không chỉ console. */
+    const [inlineError, setInlineError] = useState('');
     
     const recaptchaContainerRef = useRef(null);
     const recaptchaVerifierRef = useRef(null);
@@ -75,6 +77,7 @@ export default function PhoneVerificationModal({
             setLoading(false);
             setConfirmationResult(null);
             setOtpCooldownUntil(0);
+            setInlineError('');
         }
     }, [open, initialPhoneNumber, user]);
 
@@ -112,6 +115,9 @@ export default function PhoneVerificationModal({
         return clean.replace(/^0/, '+84');
     };
 
+    const getApiErrorMessage = (err, fallback) =>
+        err?.message || err?.response?.data?.message || fallback;
+
     const handleSendOtp = async () => {
         if (!/^[1-9]\d{8}$/.test(phoneNumber)) {
             showToast('Số điện thoại phải gồm đúng 9 chữ số thuê bao (không gồm số 0 ở đầu).', 'warning');
@@ -119,6 +125,7 @@ export default function PhoneVerificationModal({
         }
 
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setInlineError('');
         setLoading(true);
 
         // Safety timeout for CAPTCHA/Firebase
@@ -130,6 +137,9 @@ export default function PhoneVerificationModal({
 
         try {
             const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+            // Chặn sớm: SĐT đã xác minh trên tài khoản khác — trước khi gửi SMS / reCAPTCHA
+            await userApi.checkPhoneVerificationEligibility({ phoneNumber: normalizedPhone });
             
             // Definitively fix "already rendered" by creating a FRESH element every time
             clearRecaptchaVerifier();
@@ -154,17 +164,27 @@ export default function PhoneVerificationModal({
         } catch (err) {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
             clearRecaptchaVerifier();
-            console.error('[PhoneVerification] send OTP failed', err);
-            const code = err?.code || '';
+            const httpStatus = err?.status ?? err?.response?.status;
+            const serverMsg = getApiErrorMessage(err, null);
+            const firebaseCode = typeof err?.code === 'string' && err.code.startsWith('auth/')
+                ? err.code
+                : '';
 
-            if (code === 'auth/invalid-phone-number') {
+            if (httpStatus === 409 && serverMsg) {
+                setInlineError(serverMsg);
+                showToast(serverMsg, 'error');
+            } else if (serverMsg && httpStatus >= 400 && !firebaseCode) {
+                setInlineError(serverMsg);
+                showToast(serverMsg, 'error');
+            } else if (firebaseCode === 'auth/invalid-phone-number') {
                 showToast('Số điện thoại chưa đúng định dạng.', 'warning');
-            } else if (code === 'auth/captcha-check-failed') {
+            } else if (firebaseCode === 'auth/captcha-check-failed') {
                 showToast('Hệ thống xác thực người máy không thành công. Hãy thử lại.', 'warning');
-            } else if (code === 'auth/too-many-requests') {
+            } else if (firebaseCode === 'auth/too-many-requests') {
                 showToast('Bạn thao tác quá nhanh. Thử lại sau.', 'warning');
             } else {
-                showToast(`Gửi mã thất bại: ${err?.message || 'Vui lòng thử lại sau.'}`, 'error');
+                const hint = firebaseCode ? err?.message : serverMsg;
+                showToast(`Gửi mã thất bại: ${hint || 'Vui lòng thử lại sau.'}`, 'error');
             }
         } finally {
             setLoading(false);
@@ -178,6 +198,7 @@ export default function PhoneVerificationModal({
         }
 
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setInlineError('');
         setLoading(true);
 
         // Safety timeout for validation
@@ -218,12 +239,19 @@ export default function PhoneVerificationModal({
             onClose();
         } catch (err) {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            console.error('[PhoneVerification] verify OTP failed', err);
-            const code = err?.code || '';
-            if (code === 'auth/invalid-verification-code') {
+            const firebaseCode = typeof err?.code === 'string' && err.code.startsWith('auth/')
+                ? err.code
+                : '';
+            const httpStatus = err?.status ?? err?.response?.status;
+            const serverMsg = getApiErrorMessage(err, null);
+
+            if (firebaseCode === 'auth/invalid-verification-code') {
                 showToast('Mã OTP không chính xác.', 'error');
-            } else if (code === 'auth/code-expired') {
+            } else if (firebaseCode === 'auth/code-expired') {
                 showToast('Mã OTP đã hết hạn.', 'warning');
+            } else if (serverMsg && (httpStatus === 409 || httpStatus >= 400)) {
+                setInlineError(serverMsg);
+                showToast(serverMsg, 'error');
             } else {
                 showToast('Xác thực thất bại. Vui lòng thử lại.', 'error');
             }
@@ -369,6 +397,14 @@ export default function PhoneVerificationModal({
                                 ? 'Xác nhận số điện thoại hiện tại của bạn hoặc cập nhật số mới.' 
                                 : 'Nhập số điện thoại để nhận mã xác thực qua tin nhắn (SMS).'}
                         </Typography>
+                        {inlineError ? (
+                            <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.35)' }}>
+                                <ErrorIcon sx={{ fontSize: 20, color: '#f44336', flexShrink: 0, mt: 0.2 }} />
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.92)', lineHeight: 1.45 }}>
+                                    {inlineError}
+                                </Typography>
+                            </Stack>
+                        ) : null}
                         <TextField
                             fullWidth
                             autoFocus
@@ -446,6 +482,14 @@ export default function PhoneVerificationModal({
                         <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', mb: 4 }}>
                             Mã OTP đã được gửi tới <br/> <strong>+84{phoneNumber}</strong>
                         </Typography>
+                        {inlineError ? (
+                            <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ mb: 3, textAlign: 'left', p: 1.5, borderRadius: 2, bgcolor: 'rgba(244,67,54,0.12)', border: '1px solid rgba(244,67,54,0.35)' }}>
+                                <ErrorIcon sx={{ fontSize: 20, color: '#f44336', flexShrink: 0, mt: 0.2 }} />
+                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.92)', lineHeight: 1.45 }}>
+                                    {inlineError}
+                                </Typography>
+                            </Stack>
+                        ) : null}
 
                         <Box sx={{ display: 'flex', gap: 1.2, justifyContent: 'center', mb: 5, position: 'relative' }}>
                             {[0, 1, 2, 3, 4, 5].map((index) => (
