@@ -24,20 +24,20 @@ export const PURPLE = '#9D6EED';
 export const RED = '#FF4757';
 
 export default function ListingImageGallery({
-    images,
-    title,
-    listingId,
-    onShare,
-    onReport,
-    isSaved,
-    onToggleSave,
-    saveDisabled = false,
-    likeCount = 0,
-    isLiked = false,
-    onToggleLike,
-    likeDisabled = false,
-    hideThumbs = false,
-}) {
+                                                images,
+                                                title,
+                                                listingId,
+                                                onShare,
+                                                onReport,
+                                                isSaved,
+                                                onToggleSave,
+                                                saveDisabled = false,
+                                                likeCount = 0,
+                                                isLiked = false,
+                                                onToggleLike,
+                                                likeDisabled = false,
+                                                hideThumbs = false,
+                                            }) {
     const [activeIdx, setActiveIdx] = useState(0);
     const [openZoom, setOpenZoom] = useState(false);
     const count = images.length;
@@ -141,7 +141,10 @@ export default function ListingImageGallery({
                                 <IconButton
                                     size="small"
                                     disabled={likeDisabled}
-                                    onClick={onToggleLike}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onToggleLike?.(e);
+                                    }}
                                     sx={{
                                         color: isLiked ? RED : '#fff',
                                         width: 36,
@@ -167,7 +170,10 @@ export default function ListingImageGallery({
                             <IconButton
                                 size="small"
                                 disabled={saveDisabled}
-                                onClick={onToggleSave}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleSave?.(e);
+                                }}
                                 sx={{
                                     bgcolor: 'rgba(0,0,0,0.55)',
                                     color: isSaved ? PURPLE : '#fff',
@@ -185,7 +191,10 @@ export default function ListingImageGallery({
                     <Tooltip title="Chia sẻ link">
                         <IconButton
                             size="small"
-                            onClick={onShare}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onShare?.(e);
+                            }}
                             sx={{
                                 bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
                                 width: 34, height: 34, backdropFilter: 'blur(4px)',
@@ -199,7 +208,10 @@ export default function ListingImageGallery({
                     <Tooltip title="Báo cáo tin">
                         <IconButton
                             size="small"
-                            onClick={onReport}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onReport?.(e);
+                            }}
                             sx={{
                                 bgcolor: 'rgba(0,0,0,0.55)', color: '#fff',
                                 width: 34, height: 34, backdropFilter: 'blur(4px)',
@@ -280,13 +292,13 @@ export default function ListingImageGallery({
                                 overflow: 'hidden',
                                 border: `2px solid ${i === activeIdx ? PURPLE : 'transparent'}`,
                                 bgcolor: 'rgba(255,255,255,0.03)',
-                                boxShadow: i === activeIdx 
-                                    ? `0 0 0 1px ${PURPLE}22, 0 4px 12px rgba(0,0,0,0.3)` 
+                                boxShadow: i === activeIdx
+                                    ? `0 0 0 1px ${PURPLE}22, 0 4px 12px rgba(0,0,0,0.3)`
                                     : '0 2px 6px rgba(0,0,0,0.1)',
                                 transform: i === activeIdx ? 'translateY(-1px)' : 'none',
                                 cursor: 'pointer',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                '&:hover': { 
+                                '&:hover': {
                                     borderColor: i === activeIdx ? PURPLE : 'rgba(255,255,255,0.3)',
                                     transform: 'translateY(-1.5px)',
                                     zIndex: 2
@@ -306,9 +318,9 @@ export default function ListingImageGallery({
                                 component="img"
                                 src={img}
                                 alt={`thumb-${i}`}
-                                sx={{ 
-                                    width: '100%', 
-                                    height: '100%', 
+                                sx={{
+                                    width: '100%',
+                                    height: '100%',
                                     objectFit: 'cover',
                                     filter: i === activeIdx ? 'none' : 'grayscale(0.2) brightness(0.9)'
                                 }}
