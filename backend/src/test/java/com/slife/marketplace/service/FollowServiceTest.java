@@ -66,11 +66,11 @@ class FollowServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getFollowers/getFollowing")
+    @DisplayName("Nhóm: Follower / following")
     class Lists {
 
         @Test
-        @DisplayName("profileUserId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] profileUserId null → INVALID_INPUT")
         void nullProfile_shouldThrow() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> service.getFollowers(null, 0, 10)).getErrorCode());
@@ -79,7 +79,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("user not found -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] user not found → USER_NOT_FOUND")
         void userNotFound_shouldThrow() {
             when(userRepository.existsById(10L)).thenReturn(false);
             assertEquals(ErrorCode.USER_NOT_FOUND,
@@ -104,7 +104,7 @@ class FollowServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("simple counts/queries")
+    @DisplayName("Đếm / truy vấn đơn giản")
     class Simple {
 
         @Test
@@ -142,25 +142,25 @@ class FollowServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("follow/unfollow")
+    @DisplayName("Nhóm: Follow / unfollow")
     class Mutations {
 
         @Test
-        @DisplayName("follow: followedUserId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] follow: followedUserId null → INVALID_INPUT")
         void follow_nullFollowed_shouldThrow() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> service.follow(user(1L), null)).getErrorCode());
         }
 
         @Test
-        @DisplayName("follow: self -> FOLLOW_SELF")
+        @DisplayName("[Lỗi] follow: self → FOLLOW_SELF")
         void follow_self_shouldThrow() {
             assertEquals(ErrorCode.FOLLOW_SELF,
                     assertThrows(SlifeException.class, () -> service.follow(user(1L), 1L)).getErrorCode());
         }
 
         @Test
-        @DisplayName("follow: blocked either direction -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] follow: blocked either direction → FOLLOW_BLOCKED")
         void follow_blocked_shouldThrow() {
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(1L, 2L)).thenReturn(true);
             assertEquals(ErrorCode.FOLLOW_BLOCKED,
@@ -168,7 +168,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("follow: followed user missing -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] follow: followed user missing → USER_NOT_FOUND")
         void follow_missingUser_shouldThrow() {
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(anyLong(), anyLong())).thenReturn(false);
             when(userRepository.findById(2L)).thenReturn(Optional.empty());
@@ -177,7 +177,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("follow: already exists -> FOLLOW_ALREADY")
+        @DisplayName("[Lỗi] follow: already exists → FOLLOW_ALREADY")
         void follow_already_shouldThrow() {
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(anyLong(), anyLong())).thenReturn(false);
             when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
@@ -187,7 +187,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("follow: happy path -> save + notify")
+        @DisplayName("[Thường] follow: luồng thành công → save + notify")
         void follow_happyPath() {
             User follower = user(1L);
             User followed = user(2L);
@@ -203,7 +203,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("unfollow: not following -> FOLLOW_NOT_FOLLOWING")
+        @DisplayName("[Lỗi] unfollow: not following → FOLLOW_NOT_FOLLOWING")
         void unfollow_notFollowing_shouldThrow() {
             when(followRepository.existsByFollower_IdAndFollowed_Id(1L, 2L)).thenReturn(false);
             assertEquals(ErrorCode.FOLLOW_NOT_FOLLOWING,
@@ -211,7 +211,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("unfollow: happy path -> deleteByFollowerAndFollowed")
+        @DisplayName("[Thường] unfollow: luồng thành công → deleteByFollowerAndFollowed")
         void unfollow_happyPath() {
             when(followRepository.existsByFollower_IdAndFollowed_Id(1L, 2L)).thenReturn(true);
             service.unfollow(user(1L), 2L);
@@ -221,11 +221,11 @@ class FollowServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("buildProfileForViewer")
+    @DisplayName("Nhóm: Hồ sơ cho người xem")
     class Profile {
 
         @Test
-        @DisplayName("viewer null hoặc viewer=profile -> isFollowed/isBlocked/hasBlocked = null")
+        @DisplayName("viewer null hoặc viewer=profile → isFollowed/isBlocked/hasBlocked = null")
         void viewerNullOrSelf_shouldSetNullFlags() {
             User profile = user(5L);
             when(followRepository.countByFollowed_Id(5L)).thenReturn(1L);
@@ -245,7 +245,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("ratingCount>0 + avg!=null -> set reputationScore scale(2)")
+        @DisplayName("ratingCount>0 + avg!=null → set reputationScore scale(2)")
         void ratingCountAndAvg_shouldSetScore() {
             User profile = user(5L);
             when(followRepository.countByFollowed_Id(5L)).thenReturn(0L);
@@ -259,7 +259,7 @@ class FollowServiceTest {
         }
 
         @Test
-        @DisplayName("viewer khác profile -> set isFollowed + block flags")
+        @DisplayName("viewer khác profile → set isFollowed + block flags")
         void viewerOther_shouldSetFlags() {
             User profile = user(5L);
             when(followRepository.countByFollowed_Id(5L)).thenReturn(0L);

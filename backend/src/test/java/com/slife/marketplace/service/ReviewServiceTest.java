@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,7 +43,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("getUserReviews: map basic fields; reviewer/conversation null-safe")
+    @DisplayName("getUserReviews: ánh xạ trường cơ bản; an toàn null (reviewer/conversation)")
     void getUserReviews_mapsAndNullSafe() {
         Review r1 = new Review();
         r1.setId(1L);
@@ -76,7 +77,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    @DisplayName("getUserReviews: map listing fields + first image when exists")
+    @DisplayName("getUserReviews: ánh xạ tin đăng + ảnh đầu tiên nếu có")
     void getUserReviews_mapsListingAndImage() {
         Listing listing = new Listing();
         listing.setId(10L);
@@ -103,6 +104,58 @@ class ReviewServiceTest {
         assertEquals("T", out.getListingTitle());
         assertEquals(BigDecimal.valueOf(12.5), out.getListingPrice());
         assertEquals("img1", out.getListingImage());
+    }
+
+    @Test
+    @DisplayName("getUserReviews: không có review → danh sách rỗng")
+    void getUserReviews_empty_returnsEmpty() {
+        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(7L)).thenReturn(Collections.emptyList());
+        assertTrue(service.getUserReviews(7L).isEmpty());
+    }
+
+    @Test
+    @DisplayName("getUserReviews: conversation không gắn listing → không map listingId/title/price/image")
+    void getUserReviews_conversationWithoutListing_nullListingFields() {
+        Conversation conv = new Conversation();
+        conv.setListing(null);
+        Review r = new Review();
+        r.setId(3L);
+        r.setRating((byte) 5);
+        r.setCreatedAt(Instant.parse("2026-01-03T00:00:00Z"));
+        r.setConversation(conv);
+
+        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r));
+
+        ReviewResponse out = service.getUserReviews(5L).get(0);
+        assertNull(out.getListingId());
+        assertNull(out.getListingTitle());
+        assertNull(out.getListingPrice());
+        assertNull(out.getListingImage());
+    }
+
+    @Test
+    @DisplayName("getUserReviews: listing không có ảnh → listingImage null")
+    void getUserReviews_listingWithEmptyImages_noImageUrl() {
+        Listing listing = new Listing();
+        listing.setId(20L);
+        listing.setTitle("NoImg");
+        listing.setPrice(BigDecimal.ONE);
+        listing.setImages(Collections.emptyList());
+
+        Conversation conv = new Conversation();
+        conv.setListing(listing);
+
+        Review r = new Review();
+        r.setId(4L);
+        r.setRating((byte) 3);
+        r.setCreatedAt(Instant.now());
+        r.setConversation(conv);
+
+        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(2L)).thenReturn(List.of(r));
+
+        ReviewResponse out = service.getUserReviews(2L).get(0);
+        assertEquals(20L, out.getListingId());
+        assertNull(out.getListingImage());
     }
 }
 

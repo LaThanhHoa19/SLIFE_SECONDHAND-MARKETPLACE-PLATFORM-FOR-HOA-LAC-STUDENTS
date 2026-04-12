@@ -5,22 +5,18 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.UserRepository;
-import com.slife.marketplace.storage.FileStorage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.IOException;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -45,16 +41,13 @@ import static org.mockito.Mockito.*;
 class UserServiceTest {
 
     @Mock private UserRepository userRepository;
-    @Mock private FileStorage fileStorage;
-
-    @TempDir
-    Path tempUploadDir;
+    @Mock private UserFileStorageService userFileStorage;
 
     private UserService service;
 
     @BeforeEach
     void setUp() {
-        service = new UserService(userRepository, fileStorage, tempUploadDir.toAbsolutePath().normalize());
+        service = new UserService(userRepository, userFileStorage);
         SecurityContextHolder.clearContext();
     }
 
@@ -79,17 +72,17 @@ class UserServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getCurrentUserEmail/getCurrentUser")
+    @DisplayName("Nhóm: Email & user đăng nhập")
     class CurrentUser {
         @Test
-        @DisplayName("no auth -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] no auth → UNAUTHORIZED")
         void noAuth_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class, () -> service.getCurrentUserEmail());
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("principal string blank -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] principal string blank → UNAUTHORIZED")
         void blankPrincipal_shouldThrow() {
             authAsEmail("   ");
             SlifeException ex = assertThrows(SlifeException.class, () -> service.getCurrentUserEmail());
@@ -97,7 +90,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("getCurrentUser: user not found -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] getCurrentUser: user not found → UNAUTHORIZED")
         void userNotFound_shouldThrow() {
             authAsEmail("a@ex.com");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.empty());
@@ -106,7 +99,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("getCurrentUserOptional: when unauthorized -> empty")
+        @DisplayName("getCurrentUserOptional: when unauthorized → empty")
         void optionalUnauthorized_empty() {
             assertTrue(service.getCurrentUserOptional().isEmpty());
         }
@@ -114,10 +107,31 @@ class UserServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("markPhoneVerifiedWithFirebase")
+    @DisplayName("Nhóm: Lấy user theo id")
+    class GetById {
+        @Test
+        @DisplayName("[Lỗi] user không tồn tại → USER_NOT_FOUND")
+        void missing_shouldThrow() {
+            when(userRepository.findById(404L)).thenReturn(Optional.empty());
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.getUserById(404L));
+            assertEquals(ErrorCode.USER_NOT_FOUND, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("[Thường] luồng thành công → trả entity")
+        void found_shouldReturn() {
+            User u = user(1L, "a@ex.com");
+            when(userRepository.findById(1L)).thenReturn(Optional.of(u));
+            assertSame(u, service.getUserById(1L));
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    @Nested
+    @DisplayName("Nhóm: Xác minh SĐT Firebase")
     class PhoneVerify {
         @Test
-        @DisplayName("happy path: set phone + verifiedAt + reload")
+        @DisplayName("[Thường] luồng thành công: set phone + verifiedAt + reload")
         void happyPath() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
@@ -131,7 +145,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("reload missing -> INTERNAL_ERROR")
+        @DisplayName("[Lỗi] reload missing → INTERNAL_ERROR")
         void reloadMissing_shouldThrow() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
@@ -146,10 +160,10 @@ class UserServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("updateCurrentUser")
+    @DisplayName("Nhóm: Cập nhật thông tin user")
     class Update {
         @Test
-        @DisplayName("null request -> still keeps fullName fallback")
+        @DisplayName("null request → still keeps fullName fallback")
         void nullRequest_shouldFallbackFullName() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
@@ -162,7 +176,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("phone changed -> clear phoneVerifiedAt")
+        @DisplayName("phone changed → clear phoneVerifiedAt")
         void phoneChanged_shouldClearVerifiedAt() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
@@ -183,7 +197,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("blank fields -> set null (bio/avatar/cover)")
+        @DisplayName("blank fields → set null (bio/avatar/cover)")
         void blankFields_shouldBecomeNull() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
@@ -203,11 +217,11 @@ class UserServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("uploadAvatar/uploadCover")
+    @DisplayName("Nhóm: Tải avatar / ảnh bìa")
     class Uploads {
 
         @Test
-        @DisplayName("file null/empty -> INVALID_INPUT")
+        @DisplayName("[Lỗi] file null/empty → INVALID_INPUT")
         void invalidFile_shouldThrow() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> service.uploadAvatar(null)).getErrorCode());
@@ -216,7 +230,7 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("file too large -> INVALID_INPUT")
+        @DisplayName("[Lỗi] file too large → INVALID_INPUT")
         void tooLarge_shouldThrow() {
             byte[] big = new byte[5 * 1024 * 1024 + 1];
             MockMultipartFile f = new MockMultipartFile("f", "a.png", "image/png", big);
@@ -225,30 +239,65 @@ class UserServiceTest {
         }
 
         @Test
-        @DisplayName("happy path: uploadAvatar uses FileStorage + updates url")
-        void uploadAvatar_happyPath() throws Exception {
+        @DisplayName("uploadAvatar: lưu file dưới avatars/{userId}_*.{ext} và persist avatarUrl + updatedAt")
+        void uploadAvatar_happyPath() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
             when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-            doAnswer(inv -> null).when(fileStorage).createDirectories(any(Path.class));
-            doAnswer(inv -> null).when(fileStorage).copy(any(), any(Path.class));
+            when(userFileStorage.storeMultipart(any(), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
 
             MockMultipartFile f = new MockMultipartFile("f", "a.JPEG", "image/jpeg", new byte[]{1,2,3});
             User out = service.uploadAvatar(f);
             assertNotNull(out.getAvatarUrl());
-            assertTrue(out.getAvatarUrl().startsWith("/uploads/avatars/"));
-            verify(fileStorage).createDirectories(any(Path.class));
-            verify(fileStorage).copy(any(), any(Path.class));
+            assertEquals("/uploads/avatars/1_", out.getAvatarUrl().substring(0, "/uploads/avatars/1_".length()));
+            assertTrue(out.getAvatarUrl().endsWith(".jpeg"));
+            assertNotNull(out.getUpdatedAt());
+            verify(userFileStorage).storeMultipart(eq(f), argThat((String rel) ->
+                    rel != null && rel.startsWith("avatars/1_") && rel.endsWith(".jpeg")));
+            verify(userRepository).save(argThat(saved ->
+                    saved.getAvatarUrl() != null && saved.getAvatarUrl().equals(out.getAvatarUrl())));
         }
 
         @Test
-        @DisplayName("IO exception -> FILE_UPLOAD_FAILED")
-        void ioFailure_shouldThrow() throws Exception {
+        @DisplayName("uploadCover: lưu dưới covers/ và set coverImageUrl (không đụng avatarUrl)")
+        void uploadCover_happyPath() {
+            authAsEmail("a@ex.com");
+            User u = user(1L, "a@ex.com");
+            u.setAvatarUrl("https://old/avatar");
+            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(userFileStorage.storeMultipart(any(), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+
+            MockMultipartFile f = new MockMultipartFile("f", "c.png", "image/png", new byte[]{1,2,3});
+            User out = service.uploadCover(f);
+            assertEquals("https://old/avatar", out.getAvatarUrl());
+            assertNotNull(out.getCoverImageUrl());
+            assertTrue(out.getCoverImageUrl().startsWith("/uploads/covers/1_"));
+            assertTrue(out.getCoverImageUrl().endsWith(".png"));
+            verify(userFileStorage).storeMultipart(eq(f), argThat(rel ->
+                    rel != null && rel.startsWith("covers/1_") && rel.endsWith(".png")));
+        }
+
+        @Test
+        @DisplayName("[Lỗi] Chưa đăng nhập mà upload avatar → UNAUTHORIZED (không gọi storage)")
+        void uploadAvatar_unauthenticated_shouldThrow() {
+            MockMultipartFile f = new MockMultipartFile("f", "a.png", "image/png", new byte[]{1});
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.uploadAvatar(f));
+            assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
+            verifyNoInteractions(userFileStorage);
+        }
+
+        @Test
+        @DisplayName("[Lỗi] storeMultipart fails → FILE_UPLOAD_FAILED")
+        void ioFailure_shouldThrow() {
             authAsEmail("a@ex.com");
             User u = user(1L, "a@ex.com");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
-            doThrow(new IOException("disk")).when(fileStorage).createDirectories(any(Path.class));
+            when(userFileStorage.storeMultipart(any(), anyString()))
+                    .thenThrow(new SlifeException(ErrorCode.FILE_UPLOAD_FAILED));
 
             MockMultipartFile f = new MockMultipartFile("f", "a.png", "image/png", new byte[]{1,2,3});
             SlifeException ex = assertThrows(SlifeException.class, () -> service.uploadCover(f));

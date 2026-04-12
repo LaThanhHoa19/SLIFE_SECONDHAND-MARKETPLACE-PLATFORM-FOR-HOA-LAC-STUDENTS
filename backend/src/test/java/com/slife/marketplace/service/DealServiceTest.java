@@ -151,7 +151,7 @@ class DealServiceTest {
     class CreateDeal {
 
         @Test
-        @DisplayName("Listing không tồn tại -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Listing không tồn tại → LISTING_NOT_FOUND")
         void listingMissing() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.empty());
@@ -161,7 +161,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Không thể tạo deal cho chính tin của mình -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Không thể tạo deal cho chính tin của mình → INVALID_INPUT")
         void selfSeller() {
             User u = user(2L);
             Listing l = listing(10L, u, new BigDecimal("100"), false);
@@ -174,7 +174,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Block với seller -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] Block với seller → FOLLOW_BLOCKED")
         void blocked() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -189,7 +189,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Tin giveaway / giá 0 -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Tin giveaway / giá 0 → INVALID_INPUT")
         void giveawayListing() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -204,7 +204,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: tạo deal PENDING + offer + conversation có sẵn")
+        @DisplayName("[Thường] Luồng chính: tạo deal PENDING + offer + conversation có sẵn")
         void happyPath() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -250,7 +250,7 @@ class DealServiceTest {
     class SealDealBySeller {
 
         @Test
-        @DisplayName("Không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải chủ tin → FORBIDDEN")
         void notSeller() {
             User stranger = user(9L);
             User seller = user(2L);
@@ -265,7 +265,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Không có hội thoại active với buyer -> CHAT_SESSION_NOT_FOUND")
+        @DisplayName("[Lỗi] Không có hội thoại active với buyer → CHAT_SESSION_NOT_FOUND")
         void noConversation() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -283,7 +283,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("pickupTime không sau hiện tại -> INVALID_INPUT")
+        @DisplayName("[Lỗi] pickupTime không sau hiện tại → INVALID_INPUT")
         void pickupInPast() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -302,7 +302,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: tạo deal PENDING mới khi chưa có deal pending")
+        @DisplayName("[Thường] Luồng chính: tạo deal PENDING mới khi chưa có deal pending")
         void newPendingDeal() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -343,7 +343,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Đã có deal PENDING cùng buyer -> cập nhật giá và offer")
+        @DisplayName("Đã có deal PENDING cùng buyer → cập nhật giá và offer")
         void updateExistingPending() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -379,7 +379,7 @@ class DealServiceTest {
     class BuyerPendingActions {
 
         @Test
-        @DisplayName("buyerAccept: không có deal PENDING -> DEAL_NOT_FOUND")
+        @DisplayName("[Lỗi] buyerAccept: không có deal PENDING → DEAL_NOT_FOUND")
         void acceptMissing() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -393,7 +393,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("buyerAccept: block với seller -> DEAL_NOT_FOUND")
+        @DisplayName("[Lỗi] buyerAccept: block với seller → DEAL_NOT_FOUND")
         void acceptBlocked() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -410,7 +410,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("buyerAccept: luồng chính -> COMPLETED")
+        @DisplayName("buyerAccept: luồng chính → COMPLETED")
         void acceptHappy() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -431,7 +431,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("buyerReject: luồng chính -> REJECTED")
+        @DisplayName("buyerReject: luồng chính → REJECTED")
         void rejectHappy() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -456,7 +456,7 @@ class DealServiceTest {
     class SellerDealActions {
 
         @Test
-        @DisplayName("rejectDeal: không phải seller -> NOT_CHAT_PARTICIPANT")
+        @DisplayName("[Lỗi] rejectDeal: không phải seller → NOT_CHAT_PARTICIPANT")
         void rejectNotSeller() {
             User stranger = user(9L);
             User buyer = user(1L);
@@ -470,7 +470,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("rejectDeal: luồng chính -> CANCELLED")
+        @DisplayName("rejectDeal: luồng chính → CANCELLED")
         void rejectHappy() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -487,7 +487,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("confirmDeal: không còn PENDING -> INVALID_INPUT")
+        @DisplayName("[Lỗi] confirmDeal: không còn PENDING → INVALID_INPUT")
         void confirmWrongStatus() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -500,7 +500,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("confirmDeal: luồng chính -> CONFIRMED")
+        @DisplayName("confirmDeal: luồng chính → CONFIRMED")
         void confirmHappy() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -523,7 +523,7 @@ class DealServiceTest {
     class PickupAndReminder {
 
         @Test
-        @DisplayName("updatePickupTime: người thứ ba -> FORBIDDEN")
+        @DisplayName("[Lỗi] updatePickupTime: người thứ ba → FORBIDDEN")
         void pickupStranger() {
             User stranger = user(99L);
             User buyer = user(1L);
@@ -538,7 +538,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("sendReminder: trạng thái không phải CONFIRMED -> INVALID_INPUT")
+        @DisplayName("[Lỗi] sendReminder: trạng thái không phải CONFIRMED → INVALID_INPUT")
         void reminderNotConfirmed() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -552,7 +552,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("sendReminder: luồng chính -> reminderSent = true")
+        @DisplayName("sendReminder: luồng chính → reminderSent = true")
         void reminderHappy() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -576,7 +576,7 @@ class DealServiceTest {
     class CancelDeal {
 
         @Test
-        @DisplayName("Không phải buyer -> NOT_CHAT_PARTICIPANT")
+        @DisplayName("[Lỗi] Không phải buyer → NOT_CHAT_PARTICIPANT")
         void notBuyer() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -589,7 +589,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: CANCELLED + notify seller")
+        @DisplayName("[Thường] Luồng chính: CANCELLED + notify seller")
         void happy() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -614,7 +614,7 @@ class DealServiceTest {
     class FinalizeByBuyer {
 
         @Test
-        @DisplayName("Không phải buyer -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải buyer → FORBIDDEN")
         void notBuyer() {
             User seller = user(2L);
             User buyer = user(1L);
@@ -629,7 +629,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("completed=true, có rating -> SOLD + SUCCESS + review + notify rated")
+        @DisplayName("completed=true, có rating → SOLD + SUCCESS + review + notify rated")
         void completeWithRating() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -657,7 +657,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("completed=false -> CANCELLED + notify")
+        @DisplayName("completed=false → CANCELLED + notify")
         void cancelPath() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -684,7 +684,7 @@ class DealServiceTest {
     class QueryDeals {
 
         @Test
-        @DisplayName("getDealById: không phải buyer/seller -> FORBIDDEN")
+        @DisplayName("[Lỗi] getDealById: không phải buyer/seller → FORBIDDEN")
         void getByIdStranger() {
             User stranger = user(99L);
             User buyer = user(1L);
@@ -698,7 +698,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("getDealById: block -> DEAL_NOT_FOUND")
+        @DisplayName("[Lỗi] getDealById: block → DEAL_NOT_FOUND")
         void getByIdBlocked() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -755,7 +755,7 @@ class DealServiceTest {
     class AutoAndReview {
 
         @Test
-        @DisplayName("autoFinalizeDeals: deal COMPLETED quá hạn -> SUCCESS + SOLD + notify")
+        @DisplayName("autoFinalizeDeals: deal COMPLETED quá hạn → SUCCESS + SOLD + notify")
         void autoFinalize() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -775,7 +775,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("submitReview: chưa SUCCESS -> INVALID_INPUT")
+        @DisplayName("[Lỗi] submitReview: chưa SUCCESS → INVALID_INPUT")
         void submitNotSuccess() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -790,7 +790,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("submitReview: đã có review sau mốc deal -> INVALID_INPUT")
+        @DisplayName("[Lỗi] submitReview: đã có review sau mốc deal → INVALID_INPUT")
         void submitDuplicate() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -808,7 +808,7 @@ class DealServiceTest {
         }
 
         @Test
-        @DisplayName("submitReview: luồng chính -> lưu review + notifyNewReview")
+        @DisplayName("submitReview: luồng chính → lưu review + notifyNewReview")
         void submitHappy() {
             User buyer = user(1L);
             User seller = user(2L);

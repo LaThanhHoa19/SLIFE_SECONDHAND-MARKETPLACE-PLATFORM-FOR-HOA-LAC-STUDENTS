@@ -7,7 +7,6 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
-import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 
@@ -33,22 +29,16 @@ public class ListingImageService {
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
     private final ConfigService configService;
-    private final UserFileStorageService fileStorage;
-    private final FileStorage fileStorage;
-    private final Path uploadBasePath;
+    private final UserFileStorageService userFileStorage;
 
     public ListingImageService(ListingRepository listingRepository,
                                ListingImageRepository listingImageRepository,
                                ConfigService configService,
-                               FileStorage fileStorage,
-                               Path uploadBasePath) {
-                               UserFileStorageService fileStorage) {
+                               UserFileStorageService userFileStorage) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.configService = configService;
-        this.fileStorage = fileStorage;
-        this.fileStorage = fileStorage;
-        this.uploadBasePath = uploadBasePath;
+        this.userFileStorage = userFileStorage;
     }
 
     @Transactional
@@ -79,20 +69,7 @@ public class ListingImageService {
             }
             String ext = getImageExtension(file.getOriginalFilename());
             String filename = listingId + "_" + System.currentTimeMillis() + "_" + displayOrder + ext;
-            String url = fileStorage.storeMultipart(file, "listings/" + filename);
-            Path dir = uploadBasePath.resolve("listings");
-            try {
-                fileStorage.createDirectories(dir);
-                Path target = dir.resolve(filename).normalize();
-                try (InputStream in = file.getInputStream()) {
-                    fileStorage.copy(in, target);
-                }
-            } catch (IOException e) {
-                log.error("uploadListingImages failed listingId={}", listingId, e);
-                throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-            }
-
-            String url = "/uploads/listings/" + filename;
+            String url = userFileStorage.storeMultipart(file, "listings/" + filename);
 
             ListingImage image = new ListingImage();
             image.setListing(listing);
@@ -130,26 +107,8 @@ public class ListingImageService {
         if (!img.getListing().getId().equals(listingId)) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        fileStorage.deleteStoredIfExists(img.getImageUrl());
+        userFileStorage.deleteStoredIfExists(img.getImageUrl());
         listingImageRepository.delete(img);
-    }
-
-    private void deleteStoredFileIfSafe(String imageUrl) {
-        if (imageUrl == null || !imageUrl.startsWith("/uploads/")) {
-            return;
-        }
-        try {
-            String relative = imageUrl.substring("/uploads/".length());
-            Path base = uploadBasePath.toAbsolutePath().normalize();
-            Path target = base.resolve(relative).normalize();
-            if (!target.startsWith(base)) {
-                log.warn("Refusing to delete outside upload dir: {}", imageUrl);
-                return;
-            }
-            fileStorage.deleteIfExists(target);
-        } catch (IOException e) {
-            log.warn("Could not delete listing image file: {}", imageUrl, e);
-        }
     }
 }
 

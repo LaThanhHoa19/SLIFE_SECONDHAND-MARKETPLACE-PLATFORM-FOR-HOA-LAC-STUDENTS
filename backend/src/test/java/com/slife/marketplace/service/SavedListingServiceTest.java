@@ -63,10 +63,10 @@ class SavedListingServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("save")
+    @DisplayName("Nhóm: Lưu tin yêu thích")
     class Save {
         @Test
-        @DisplayName("listing not found -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] không tìm thấy tin đăng → LISTING_NOT_FOUND")
         void listingMissing_shouldThrow() {
             when(listingRepository.findById(10L)).thenReturn(Optional.empty());
             assertEquals(ErrorCode.LISTING_NOT_FOUND,
@@ -74,7 +74,7 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("listing status != ACTIVE -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] listing status != ACTIVE → LISTING_NOT_FOUND")
         void listingNotActive_shouldThrow() {
             when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L), "HIDDEN")));
             assertEquals(ErrorCode.LISTING_NOT_FOUND,
@@ -82,7 +82,15 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("blocked between user & seller -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] status 'active' chữ thường (không khớp ACTIVE) → LISTING_NOT_FOUND")
+        void listingStatusCaseSensitive_shouldThrow() {
+            when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L), "active")));
+            assertEquals(ErrorCode.LISTING_NOT_FOUND,
+                    assertThrows(SlifeException.class, () -> service.save(user(1L), 10L)).getErrorCode());
+        }
+
+        @Test
+        @DisplayName("[Lỗi] blocked between user & seller → FOLLOW_BLOCKED")
         void blocked_shouldThrow() {
             User me = user(1L);
             User seller = user(2L);
@@ -94,7 +102,7 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("already saved -> SAVED_LISTING_ALREADY")
+        @DisplayName("[Lỗi] already saved → SAVED_LISTING_ALREADY")
         void alreadySaved_shouldThrow() {
             User me = user(1L);
             when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L), "ACTIVE")));
@@ -105,7 +113,7 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("happy path -> save row")
+        @DisplayName("[Thường] luồng thành công → save row")
         void happyPath_shouldSave() {
             User me = user(1L);
             Listing l = listing(10L, user(2L), "ACTIVE");
@@ -122,10 +130,10 @@ class SavedListingServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("unsave")
+    @DisplayName("Nhóm: Bỏ lưu tin")
     class Unsave {
         @Test
-        @DisplayName("not saved -> SAVED_LISTING_NOT_SAVED")
+        @DisplayName("[Lỗi] not saved → SAVED_LISTING_NOT_SAVED")
         void notSaved_shouldThrow() {
             when(savedListingRepository.existsByUser_IdAndListing_Id(1L, 10L)).thenReturn(false);
             assertEquals(ErrorCode.SAVED_LISTING_NOT_SAVED,
@@ -133,7 +141,7 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("happy path -> deleteByUserAndListing")
+        @DisplayName("[Thường] luồng thành công → deleteByUserAndListing")
         void happyPath_shouldDelete() {
             when(savedListingRepository.existsByUser_IdAndListing_Id(1L, 10L)).thenReturn(true);
             service.unsave(user(1L), 10L);
@@ -143,7 +151,7 @@ class SavedListingServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getSavedListings/isSaved")
+    @DisplayName("Nhóm: Danh sách đã lưu / kiểm tra đã lưu")
     class GetSaved {
         @Test
         @DisplayName("clamp page/size + filter null listing + filter blocked sellers")
@@ -174,7 +182,7 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("seller==currentUser -> không check block")
+        @DisplayName("seller==currentUser → không check block")
         void sellerIsUser_shouldBypassBlockFilter() {
             User me = user(1L);
             Listing own = listing(10L, me, "ACTIVE");

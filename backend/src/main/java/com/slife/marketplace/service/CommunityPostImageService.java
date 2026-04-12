@@ -7,7 +7,6 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommunityPostImageRepository;
 import com.slife.marketplace.repository.CommunityPostRepository;
-import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +18,6 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -42,22 +40,16 @@ public class CommunityPostImageService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostImageRepository communityPostImageRepository;
     private final ConfigService configService;
-    private final FileStorage fileStorage;
-    private final Path uploadBasePath;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
 
     public CommunityPostImageService(CommunityPostRepository communityPostRepository,
                                      CommunityPostImageRepository communityPostImageRepository,
                                      ConfigService configService,
-                                     FileStorage fileStorage,
-                                     Path uploadBasePath) {
-                                     UserFileStorageService fileStorage) {
+                                     UserFileStorageService userFileStorage) {
         this.communityPostRepository = communityPostRepository;
         this.communityPostImageRepository = communityPostImageRepository;
         this.configService = configService;
-        this.fileStorage = fileStorage;
-        this.uploadBasePath = uploadBasePath;
-        this.fileStorage = fileStorage;
+        this.userFileStorage = userFileStorage;
     }
 
     @Transactional
@@ -94,32 +86,23 @@ public class CommunityPostImageService {
             String baseName = postId + "_" + System.currentTimeMillis() + "_" + displayOrder;
             String storedFilename;
             String url;
-            try {
-                fileStorage.createDirectories(dir);
-                try (InputStream raw = file.getInputStream();
-                     PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(raw), 16)) {
-                    byte[] head = new byte[12];
-                    int n = in.read(head);
-                    if (n < 2) {
-                        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "File ảnh không hợp lệ hoặc trống");
-                    }
-                    in.unread(head, 0, n);
-                    boolean jpeg = isJpegMagic(head, n);
-                    boolean png = isPngMagic(head, n);
-                    if (!jpeg && !png) {
-                        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Nội dung không phải JPG hoặc PNG");
-                    }
-                    String ext = jpeg ? ".jpg" : ".png";
-                    storedFilename = baseName + ext;
-                    String ct = rawCt != null ? rawCt.trim().toLowerCase(Locale.ROOT) : "image/jpeg";
-                    url = fileStorage.storeStream(in, file.getSize(), ct, "community-posts/" + storedFilename);
-                    Path target = dir.resolve(storedFilename).normalize();
-                    Path base = dir.toAbsolutePath().normalize();
-                    if (!target.startsWith(base)) {
-                        throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-                    }
-                    fileStorage.copy(in, target);
+            try (InputStream raw = file.getInputStream();
+                 PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(raw), 16)) {
+                byte[] head = new byte[12];
+                int n = in.read(head);
+                if (n < 2) {
+                    throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "File ảnh không hợp lệ hoặc trống");
                 }
+                in.unread(head, 0, n);
+                boolean jpeg = isJpegMagic(head, n);
+                boolean png = isPngMagic(head, n);
+                if (!jpeg && !png) {
+                    throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Nội dung không phải JPG hoặc PNG");
+                }
+                String ext = jpeg ? ".jpg" : ".png";
+                storedFilename = baseName + ext;
+                String ct = rawCt != null ? rawCt.trim().toLowerCase(Locale.ROOT) : "image/jpeg";
+                url = userFileStorage.storeStream(in, file.getSize(), ct, "community-posts/" + storedFilename);
             } catch (IOException e) {
                 log.error("uploadPostImages failed postId={}", postId, e);
                 throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
@@ -175,25 +158,7 @@ public class CommunityPostImageService {
         if (!img.getPost().getId().equals(postId)) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        fileStorage.deleteStoredIfExists(img.getImageUrl());
+        userFileStorage.deleteStoredIfExists(img.getImageUrl());
         communityPostImageRepository.delete(img);
-    }
-
-    private void deleteStoredFileIfSafe(String imageUrl) {
-        if (imageUrl == null || !imageUrl.startsWith("/uploads/")) {
-            return;
-        }
-        try {
-            String relative = imageUrl.substring("/uploads/".length());
-            Path base = uploadBasePath.toAbsolutePath().normalize();
-            Path target = base.resolve(relative).normalize();
-            if (!target.startsWith(base)) {
-                log.warn("Refusing to delete outside upload dir: {}", imageUrl);
-                return;
-            }
-            fileStorage.deleteIfExists(target);
-        } catch (IOException e) {
-            log.warn("Could not delete community post image file: {}", imageUrl, e);
-        }
     }
 }

@@ -65,18 +65,18 @@ class ListingLikeServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("toggle")
+    @DisplayName("Nhóm: Bật/tắt (toggle)")
     class Toggle {
 
         @Test
-        @DisplayName("user null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] user null → UNAUTHORIZED")
         void userNull_shouldThrow() {
             assertEquals(ErrorCode.UNAUTHORIZED,
                     assertThrows(SlifeException.class, () -> service.toggle(null, 1L)).getErrorCode());
         }
 
         @Test
-        @DisplayName("user BANNED/RESTRICTED -> USER_BANNED_OR_RESTRICTED")
+        @DisplayName("[Lỗi] user BANNED/RESTRICTED → USER_BANNED_OR_RESTRICTED")
         void bannedRestricted_shouldThrow() {
             assertEquals(ErrorCode.USER_BANNED_OR_RESTRICTED,
                     assertThrows(SlifeException.class, () -> service.toggle(user(1L, "BANNED"), 1L)).getErrorCode());
@@ -85,7 +85,7 @@ class ListingLikeServiceTest {
         }
 
         @Test
-        @DisplayName("listing not found -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] không tìm thấy tin đăng → LISTING_NOT_FOUND")
         void listingMissing_shouldThrow() {
             when(listingRepository.findById(1L)).thenReturn(Optional.empty());
             assertEquals(ErrorCode.LISTING_NOT_FOUND,
@@ -93,7 +93,7 @@ class ListingLikeServiceTest {
         }
 
         @Test
-        @DisplayName("đã like -> unlike: delete + count")
+        @DisplayName("đã like → unlike: delete + count")
         void alreadyLiked_shouldUnlike() {
             User me = user(1L, "ACTIVE");
             when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L, "ACTIVE"))));
@@ -109,7 +109,7 @@ class ListingLikeServiceTest {
         }
 
         @Test
-        @DisplayName("block either direction giữa user và seller -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] block either direction giữa user và seller → FOLLOW_BLOCKED")
         void blocked_shouldThrow() {
             User me = user(1L, "ACTIVE");
             Listing l = listing(10L, user(2L, "ACTIVE"));
@@ -123,7 +123,7 @@ class ListingLikeServiceTest {
         }
 
         @Test
-        @DisplayName("happy path: like -> save + notify (if not own) + count")
+        @DisplayName("[Thường] luồng thành công: like → save + notify (if not own) + count")
         void like_shouldSaveNotifyAndCount() {
             User me = user(1L, "ACTIVE");
             User seller = user(2L, "ACTIVE");
@@ -142,7 +142,7 @@ class ListingLikeServiceTest {
         }
 
         @Test
-        @DisplayName("like own listing -> không notify")
+        @DisplayName("like own listing → không notify")
         void likeOwnListing_shouldNotNotify() {
             User me = user(1L, "ACTIVE");
             Listing l = listing(10L, me);
@@ -158,7 +158,7 @@ class ListingLikeServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getLikedListings")
+    @DisplayName("Nhóm: Tin đăng đã thích")
     class LikedListings {
 
         @Test
@@ -178,6 +178,36 @@ class ListingLikeServiceTest {
             assertEquals(1, out.getContent().size());
             verify(likeRepository).findByUser_IdOrderByCreatedAtDesc(eq(1L), argThat(pr ->
                     pr.getPageNumber() == 0 && pr.getPageSize() == 1));
+        }
+
+        @Test
+        @DisplayName("page âm → clamp 0")
+        void negativePage_clampsToZero() {
+            User me = user(1L, "ACTIVE");
+            Page<ListingLike> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
+            when(likeRepository.findByUser_IdOrderByCreatedAtDesc(eq(1L), any())).thenReturn(p);
+            service.getLikedListings(me, -5, 10);
+            verify(likeRepository).findByUser_IdOrderByCreatedAtDesc(eq(1L), argThat(pr -> pr.getPageNumber() == 0));
+        }
+
+        @Test
+        @DisplayName("size 0 → clamp tối thiểu 1")
+        void sizeZero_clampsToOne() {
+            User me = user(1L, "ACTIVE");
+            Page<ListingLike> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
+            when(likeRepository.findByUser_IdOrderByCreatedAtDesc(eq(1L), any())).thenReturn(p);
+            service.getLikedListings(me, 0, 0);
+            verify(likeRepository).findByUser_IdOrderByCreatedAtDesc(eq(1L), argThat(pr -> pr.getPageSize() == 1));
+        }
+
+        @Test
+        @DisplayName("size > 20 → clamp 20")
+        void sizeOverCap_clampsToTwenty() {
+            User me = user(1L, "ACTIVE");
+            Page<ListingLike> p = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+            when(likeRepository.findByUser_IdOrderByCreatedAtDesc(eq(1L), any())).thenReturn(p);
+            service.getLikedListings(me, 0, 100);
+            verify(likeRepository).findByUser_IdOrderByCreatedAtDesc(eq(1L), argThat(pr -> pr.getPageSize() == 20));
         }
     }
 }

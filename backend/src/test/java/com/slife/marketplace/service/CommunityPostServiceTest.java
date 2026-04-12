@@ -100,7 +100,7 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getMaxImagesPerPost")
+    @DisplayName("Nhóm: Giới hạn số ảnh / bài")
     class MaxImages {
 
         @Test
@@ -112,7 +112,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("config <=0 -> clamp >=1")
+        @DisplayName("config <=0 → clamp >=1")
         void clamp_negative_shouldBecomeAtLeast1() {
             when(configService.getIntConfigValue("MAX_IMAGES_PER_POST", 10)).thenReturn(-1);
             when(configService.getIntConfigValue("MAX_IMAGES", 1)).thenReturn(0);
@@ -122,11 +122,11 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("createPostWithImages")
+    @DisplayName("Nhóm: Tạo bài kèm ảnh")
     class Create {
 
         @Test
-        @DisplayName("author null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] author null → UNAUTHORIZED")
         void authorNull_shouldThrow() {
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
             SlifeException ex = assertThrows(SlifeException.class,
@@ -135,7 +135,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("vượt quá max ảnh (lọc empty) -> INVALID_INPUT MSG18")
+        @DisplayName("[Lỗi] vượt quá max ảnh (lọc empty) → INVALID_INPUT MSG18")
         void exceedMax_shouldThrow() {
             when(configService.getIntConfigValue("MAX_IMAGES_PER_POST", 10)).thenReturn(1);
             when(configService.getIntConfigValue("MAX_IMAGES", 1)).thenReturn(1);
@@ -151,7 +151,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("happy path: trim description + sync hashtag từ description+payload + upload images + trả detail")
+        @DisplayName("[Thường] luồng thành công: trim description + sync hashtag từ description+payload + upload images + trả detail")
         void happyPath_shouldSaveSyncUploadAndBuildDetail() {
             User author = user(1L, "USER");
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
@@ -205,11 +205,11 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("updatePost")
+    @DisplayName("Nhóm: Cập nhật bài viết")
     class Update {
 
         @Test
-        @DisplayName("author null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] author null → UNAUTHORIZED")
         void authorNull_shouldThrow() {
             UpdateCommunityPostRequest req = new UpdateCommunityPostRequest();
             SlifeException ex = assertThrows(SlifeException.class, () -> service.updatePost(1L, null, req));
@@ -217,7 +217,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("không phải owner -> FORBIDDEN")
+        @DisplayName("[Lỗi] không phải owner → FORBIDDEN")
         void notOwner_shouldThrow() {
             CommunityPost p = post(1L, user(2L, "USER"));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -227,7 +227,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("description null -> không đổi; hashtags null -> không sync")
+        @DisplayName("description null → không đổi; hashtags null → không sync")
         void blanks_shouldNotOverwrite() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
@@ -250,7 +250,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("update description + hashtags -> sync (normalize + create missing)")
+        @DisplayName("update description + hashtags → sync (normalize + create missing)")
         void update_shouldSyncHashtags() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
@@ -282,11 +282,11 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("softDeletePost")
+    @DisplayName("Nhóm: Xóa mềm bài viết")
     class Delete {
 
         @Test
-        @DisplayName("owner -> mark deletedAt + status=DELETED")
+        @DisplayName("owner → mark deletedAt + status=DELETED")
         void softDelete_shouldMark() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
@@ -303,7 +303,7 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getFeed")
+    @DisplayName("Nhóm: Feed bài viết")
     class Feed {
 
         @Test
@@ -352,11 +352,11 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getFeedCursor")
+    @DisplayName("Nhóm: Feed bài (cursor)")
     class FeedCursor {
 
         @Test
-        @DisplayName("latest cursor: hasMore -> nextCursor encodes last createdAt/id")
+        @DisplayName("latest cursor: hasMore → nextCursor encodes last createdAt/id")
         void latest_shouldBuildNextCursor() {
             User viewer = user(9L, "USER");
             CommunityPost p1 = post(2L, user(2L, "USER"));
@@ -384,7 +384,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("top cursor: hasMore -> nextCursor encodes score + last createdAt/id")
+        @DisplayName("top cursor: hasMore → nextCursor encodes score + last createdAt/id")
         void top_shouldBuildNextCursorWithScore() {
             CommunityPost p1 = post(2L, user(2L, "USER"));
             CommunityPost p2 = post(1L, user(3L, "USER"));
@@ -411,11 +411,11 @@ class CommunityPostServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getById")
+    @DisplayName("Nhóm: Chi tiết bài theo id")
     class GetById {
 
         @Test
-        @DisplayName("deleted -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] deleted → COMMUNITY_POST_NOT_FOUND")
         void deleted_shouldThrow() {
             CommunityPost p = post(1L, user(2L, "USER"));
             p.setDeletedAt(Instant.now());
@@ -426,7 +426,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("hidden và viewer không phải owner/admin -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] hidden và viewer không phải owner/admin → COMMUNITY_POST_NOT_FOUND")
         void hidden_notOwnerNotAdmin_shouldThrow() {
             CommunityPost p = post(1L, user(2L, "USER"));
             p.setHiddenAt(Instant.now());
@@ -437,7 +437,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("blocked -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] blocked → COMMUNITY_POST_NOT_FOUND")
         void blocked_shouldThrow() {
             User viewer = user(9L, "USER");
             CommunityPost p = post(1L, user(2L, "USER"));
@@ -449,7 +449,7 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("owner hoặc admin hoặc visible -> incrementViewCount")
+        @DisplayName("owner hoặc admin hoặc visible → incrementViewCount")
         void allowed_shouldIncrement() {
             User owner = user(2L, "USER");
             CommunityPost p = post(1L, owner);

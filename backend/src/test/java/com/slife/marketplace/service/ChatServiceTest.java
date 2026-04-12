@@ -10,14 +10,13 @@ import com.slife.marketplace.repository.ConversationRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.MessageRepository;
 import com.slife.marketplace.repository.OfferRepository;
-import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -28,7 +27,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.math.BigDecimal;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -49,10 +47,7 @@ class ChatServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private SystemEmailService systemEmailService;
     @Mock private SimpMessagingTemplate messagingTemplate;
-    @Mock private FileStorage fileStorage;
-
-    @TempDir
-    Path tempUploadDir;
+    @Mock private UserFileStorageService userFileStorage;
 
     private ChatService chatService;
 
@@ -68,8 +63,7 @@ class ChatServiceTest {
                 notificationService,
                 systemEmailService,
                 messagingTemplate,
-                fileStorage,
-                tempUploadDir
+                userFileStorage
         );
     }
 
@@ -123,7 +117,7 @@ class ChatServiceTest {
     class GetOrCreateSession {
 
         @Test
-        @DisplayName("Người dùng hiện tại khác buyer -> FORBIDDEN")
+        @DisplayName("[Lỗi] Người dùng hiện tại khác buyer → FORBIDDEN")
         void getOrCreateSession_currentNotBuyer_shouldThrow() {
             User buyer = user(1L, "b@ex.com");
             when(userService.getCurrentUser()).thenReturn(user(2L, "x@ex.com"));
@@ -132,7 +126,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Không tìm thấy tin đăng -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy tin đăng → LISTING_NOT_FOUND")
         void getOrCreateSession_listingNotFound_shouldThrow() {
             User buyer = user(1L, "b@ex.com");
             when(userService.getCurrentUser()).thenReturn(buyer);
@@ -142,7 +136,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Buyer chính là seller -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Buyer chính là seller → INVALID_INPUT")
         void getOrCreateSession_sellerSelf_shouldThrow() {
             User buyer = user(1L, "b@ex.com");
             Listing l = listing(10L, buyer);
@@ -153,7 +147,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Bị block -> FORBIDDEN")
+        @DisplayName("[Lỗi] Bị block → FORBIDDEN")
         void getOrCreateSession_blocked_shouldThrowForbidden() {
             User buyer = user(1L, "b@ex.com");
             User seller = user(2L, "s@ex.com");
@@ -166,7 +160,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Đã có session active -> trả về session đó")
+        @DisplayName("Đã có session active → trả về session đó")
         void getOrCreateSession_existing_shouldReturn() {
             User buyer = user(1L, "b@ex.com");
             User seller = user(2L, "s@ex.com");
@@ -182,7 +176,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Chưa có session -> tạo mới và save")
+        @DisplayName("Chưa có session → tạo mới và save")
         void getOrCreateSession_createNew_shouldSave() {
             User buyer = user(1L, "b@ex.com");
             User seller = user(2L, "s@ex.com");
@@ -213,7 +207,7 @@ class ChatServiceTest {
     class ListSessionsFiltered {
 
         @Test
-        @DisplayName("Không lọc -> trả page và giới hạn size tối thiểu 1")
+        @DisplayName("Không lọc → trả page và giới hạn size tối thiểu 1")
         void listSessionsFiltered_basicPagination_shouldReturnPage() {
             User me = user(1L, "me@ex.com");
             User other = user(2L, "o@ex.com");
@@ -232,7 +226,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Lọc theo q (khớp listingId dạng chuỗi) -> có kết quả")
+        @DisplayName("Lọc theo q (khớp listingId dạng chuỗi) → có kết quả")
         void listSessionsFiltered_qMatchesListingId_shouldFilter() {
             User me = user(1L, "me@ex.com");
             User other = user(2L, "o@ex.com");
@@ -268,7 +262,7 @@ class ChatServiceTest {
     class GetHistory {
 
         @Test
-        @DisplayName("Không tìm thấy phiên chat -> CHAT_SESSION_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy phiên chat → CHAT_SESSION_NOT_FOUND")
         void getHistory_sessionNotFound_shouldThrow() {
             when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getHistory("s", 0, 10));
@@ -276,7 +270,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Không thuộc phiên chat -> NOT_CHAT_PARTICIPANT")
+        @DisplayName("[Lỗi] Không thuộc phiên chat → NOT_CHAT_PARTICIPANT")
         void getHistory_notParticipant_shouldThrow() {
             User u1 = user(1L, "a@ex.com");
             User u2 = user(2L, "b@ex.com");
@@ -289,7 +283,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Bị block với peer -> FORBIDDEN")
+        @DisplayName("[Lỗi] Bị block với peer → FORBIDDEN")
         void getHistory_blocked_shouldThrowForbidden() {
             User me = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -303,7 +297,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> trả Page<ChatMessageResponse>")
+        @DisplayName("[Thường] Luồng chính → trả Page<ChatMessageResponse>")
         void getHistory_happyPath_shouldReturnPage() {
             User me = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -331,7 +325,7 @@ class ChatServiceTest {
     class SearchMessagesInSession {
 
         @Test
-        @DisplayName("q rỗng -> INVALID_INPUT")
+        @DisplayName("[Lỗi] q rỗng → INVALID_INPUT")
         void search_blank_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> chatService.searchMessagesInSession("s", " ", 0, 10));
@@ -339,7 +333,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("q < 2 ký tự -> INVALID_INPUT")
+        @DisplayName("[Lỗi] q < 2 ký tự → INVALID_INPUT")
         void search_tooShort_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> chatService.searchMessagesInSession("s", "a", 0, 10));
@@ -347,7 +341,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> gọi repository và map response")
+        @DisplayName("[Thường] Luồng chính → gọi repository và map response")
         void search_happyPath_shouldReturnPage() {
             User me = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -376,7 +370,7 @@ class ChatServiceTest {
     class SendMessage {
 
         @Test
-        @DisplayName("User bị BANNED/RESTRICTED -> USER_BANNED_OR_RESTRICTED")
+        @DisplayName("[Lỗi] User bị BANNED/RESTRICTED → USER_BANNED_OR_RESTRICTED")
         void sendMessage_banned_shouldThrow() {
             User sender = user(1L, "a@ex.com");
             sender.setStatus("BANNED");
@@ -386,7 +380,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Giới hạn tốc độ: gửi 2 tin liên tiếp -> RATE_LIMIT_EXCEEDED")
+        @DisplayName("[Lỗi] Giới hạn tốc độ: gửi 2 tin liên tiếp → RATE_LIMIT_EXCEEDED")
         void sendMessage_rateLimit_shouldThrow() {
             User sender = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -404,7 +398,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("sessionId null và listingId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] sessionId null và listingId null → INVALID_INPUT")
         void sendMessage_missingSessionAndListing_shouldThrow() {
             User sender = user(1L, "a@ex.com");
             SlifeException ex = assertThrows(SlifeException.class,
@@ -413,7 +407,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Tin nhắn TEXT nhưng content rỗng -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Tin nhắn TEXT nhưng content rỗng → INVALID_INPUT")
         void sendMessage_blankText_shouldThrow() {
             User sender = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -427,7 +421,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: lưu message + gửi thông báo + broadcast (WS)")
+        @DisplayName("[Thường] Luồng chính: lưu message + gửi thông báo + broadcast (WS)")
         void sendMessage_happyPath_shouldNotifyAndBroadcast() {
             User sender = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -459,7 +453,7 @@ class ChatServiceTest {
     class UploadChatImage {
 
         @Test
-        @DisplayName("sessionId null và listingId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] sessionId null và listingId null → INVALID_INPUT")
         void uploadChatImage_missingSessionAndListing_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> chatService.uploadChatImage(null, null, new MockMultipartFile("f", new byte[1])));
@@ -467,7 +461,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("File quá lớn -> FILE_TOO_LARGE")
+        @DisplayName("[Lỗi] File quá lớn → FILE_TOO_LARGE")
         void uploadChatImage_tooLarge_shouldThrow() {
             User current = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -482,7 +476,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Sai content-type -> INVALID_FILE_TYPE")
+        @DisplayName("[Lỗi] Sai content-type → INVALID_FILE_TYPE")
         void uploadChatImage_invalidType_shouldThrow() {
             User current = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -497,8 +491,8 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> trả về URL upload ảnh")
-        void uploadChatImage_happyPath_shouldReturnUrl() {
+        @DisplayName("[Lỗi] content-type null → INVALID_FILE_TYPE (không gọi lưu file)")
+        void uploadChatImage_nullContentType_shouldThrow() {
             User current = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
             Listing l = listing(10L, other);
@@ -506,10 +500,110 @@ class ChatServiceTest {
             when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
             when(userService.getCurrentUser()).thenReturn(current);
 
+            MockMultipartFile f = new MockMultipartFile("file", "a.png", null, new byte[10]);
+            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.uploadChatImage("s", null, f));
+            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
+            verifyNoInteractions(userFileStorage);
+        }
+
+        @Test
+        @DisplayName("[Lỗi] session không tồn tại → CHAT_SESSION_NOT_FOUND")
+        void uploadChatImage_unknownSession_shouldThrow() {
+            when(conversationRepository.findBySessionUuid("missing")).thenReturn(Optional.empty());
             MockMultipartFile f = new MockMultipartFile("file", "a.png", "image/png", new byte[10]);
-            String url = chatService.uploadChatImage("s", null, f);
-            assertNotNull(url);
-            assertTrue(url.contains("/uploads/" + Constants.CHAT_UPLOAD_DIR + "/s/"));
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> chatService.uploadChatImage("missing", null, f));
+            assertEquals(ErrorCode.CHAT_SESSION_NOT_FOUND, ex.getErrorCode());
+            verifyNoInteractions(userFileStorage);
+        }
+
+        @Test
+        @DisplayName("[Lỗi] user không tham gia hội thoại → NOT_CHAT_PARTICIPANT")
+        void uploadChatImage_stranger_shouldThrow() {
+            User buyer = user(1L, "a@ex.com");
+            User seller = user(2L, "b@ex.com");
+            User stranger = user(99L, "x@ex.com");
+            Listing l = listing(10L, seller);
+            Conversation c = conv(1L, "s", l, buyer, seller);
+            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
+            when(userService.getCurrentUser()).thenReturn(stranger);
+
+            MockMultipartFile f = new MockMultipartFile("file", "a.png", "image/png", new byte[10]);
+            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.uploadChatImage("s", null, f));
+            assertEquals(ErrorCode.NOT_CHAT_PARTICIPANT, ex.getErrorCode());
+            verifyNoInteractions(userFileStorage);
+        }
+
+        @Test
+        @DisplayName("[Thường] Luồng chính (sessionId có sẵn): URL và đường dẫn lưu khớp content-type (.png / .webp / .jpg)")
+        void uploadChatImage_happyPath_storesWithCorrectExtension() {
+            User current = user(1L, "a@ex.com");
+            User other = user(2L, "b@ex.com");
+            Listing l = listing(10L, other);
+            Conversation c = conv(1L, "s", l, current, other);
+            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
+            when(userService.getCurrentUser()).thenReturn(current);
+
+            ArgumentCaptor<String> relCaptor = ArgumentCaptor.forClass(String.class);
+
+            MockMultipartFile png = new MockMultipartFile("file", "a.png", "image/png", new byte[10]);
+            when(userFileStorage.storeMultipart(eq(png), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+            assertTrue(chatService.uploadChatImage("s", null, png).endsWith(".png"));
+            verify(userFileStorage).storeMultipart(eq(png), relCaptor.capture());
+            assertTrue(relCaptor.getValue().endsWith(".png"));
+
+            MockMultipartFile webp = new MockMultipartFile("file", "a.webp", "image/webp", new byte[10]);
+            when(userFileStorage.storeMultipart(eq(webp), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+            assertTrue(chatService.uploadChatImage("s", null, webp).endsWith(".webp"));
+
+            MockMultipartFile jpeg = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[10]);
+            when(userFileStorage.storeMultipart(eq(jpeg), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+            assertTrue(chatService.uploadChatImage("s", null, jpeg).endsWith(".jpg"));
+        }
+
+        @Test
+        @DisplayName("Chỉ có listingId: getOrCreateSession rồi lưu file dưới sessionUuid mới")
+        void uploadChatImage_onlyListingId_createsSessionThenStores() {
+            User buyer = user(1L, "buyer@ex.com");
+            User seller = user(2L, "seller@ex.com");
+            Listing l = listing(10L, seller);
+
+            when(userService.getCurrentUser()).thenReturn(buyer);
+            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+            when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
+                    .thenReturn(Optional.empty());
+
+            final Conversation[] saved = new Conversation[1];
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> {
+                saved[0] = inv.getArgument(0);
+                return saved[0];
+            });
+            when(conversationRepository.findBySessionUuid(anyString())).thenAnswer(inv -> {
+                String uuid = inv.getArgument(0, String.class);
+                if (saved[0] != null && uuid.equals(saved[0].getSessionUuid())) {
+                    return Optional.of(saved[0]);
+                }
+                return Optional.empty();
+            });
+
+            MockMultipartFile f = new MockMultipartFile("file", "p.webp", "image/webp", new byte[10]);
+            when(userFileStorage.storeMultipart(eq(f), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+
+            String url = chatService.uploadChatImage(null, 10L, f);
+
+            assertNotNull(saved[0]);
+            assertNotNull(saved[0].getSessionUuid());
+            assertTrue(url.contains(Constants.CHAT_UPLOAD_DIR + "/" + saved[0].getSessionUuid() + "/"));
+            assertTrue(url.endsWith(".webp"));
+            verify(conversationRepository).save(any(Conversation.class));
+            verify(userFileStorage).storeMultipart(eq(f), argThat(rel ->
+                    rel != null
+                            && rel.startsWith(Constants.CHAT_UPLOAD_DIR + "/" + saved[0].getSessionUuid() + "/")
+                            && rel.endsWith(".webp")));
         }
     }
 
@@ -521,7 +615,7 @@ class ChatServiceTest {
     class MakeOfferInChat {
 
         @Test
-        @DisplayName("Giá trả không hợp lệ -> OFFER_PRICE_INVALID")
+        @DisplayName("[Lỗi] Giá trả không hợp lệ → OFFER_PRICE_INVALID")
         void makeOffer_invalidPrice_shouldThrow() {
             User buyer = user(1L, "a@ex.com");
             User seller = user(2L, "b@ex.com");
@@ -536,7 +630,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Đã có offer PENDING -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Đã có offer PENDING → INVALID_INPUT")
         void makeOffer_pendingExists_shouldThrow() {
             User buyer = user(1L, "a@ex.com");
             User seller = user(2L, "b@ex.com");
@@ -552,7 +646,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> tạo Offer + message OFFER_PROPOSAL + gửi thông báo/email + broadcast (WS)")
+        @DisplayName("[Lỗi] Luồng chính → tạo Offer + message OFFER_PROPOSAL + gửi thông báo/email + broadcast (WS)")
         void makeOffer_happyPath_shouldSaveOfferAndMessage() {
             User buyer = user(1L, "a@ex.com");
             User seller = user(2L, "b@ex.com");
@@ -607,7 +701,7 @@ class ChatServiceTest {
     class RespondToOffer {
 
         @Test
-        @DisplayName("Không tìm thấy offer -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy offer → OFFER_NOT_FOUND")
         void respond_offerNotFound_shouldThrow() {
             when(offerRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -616,7 +710,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Offer không PENDING -> OFFER_NOT_PENDING")
+        @DisplayName("[Lỗi] Offer không PENDING → OFFER_NOT_PENDING")
         void respond_notPending_shouldThrow() {
             Offer o = new Offer();
             o.setId(1L);
@@ -628,7 +722,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("Seller trùng buyer -> FORBIDDEN")
+        @DisplayName("[Lỗi] Seller trùng buyer → FORBIDDEN")
         void respond_sellerIsBuyer_shouldThrow() {
             User buyer = user(1L, "b@ex.com");
             User seller = buyer;
@@ -724,7 +818,7 @@ class ChatServiceTest {
     class MarkSessionAsRead {
 
         @Test
-        @DisplayName("updated=0 -> không phát (broadcast) sự kiện READ")
+        @DisplayName("updated=0 → không phát (broadcast) sự kiện READ")
         void markRead_noUpdates_shouldNotBroadcast() {
             User me = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -738,7 +832,7 @@ class ChatServiceTest {
         }
 
         @Test
-        @DisplayName("updated>0 -> phát (broadcast) sự kiện READ")
+        @DisplayName("updated>0 → phát (broadcast) sự kiện READ")
         void markRead_updates_shouldBroadcast() {
             User me = user(1L, "a@ex.com");
             User other = user(2L, "b@ex.com");
@@ -753,14 +847,14 @@ class ChatServiceTest {
     }
 
     @Test
-    @DisplayName("Gõ đang nhập (broadcastTyping) -> broadcast sự kiện")
+    @DisplayName("Gõ đang nhập (broadcastTyping) → broadcast sự kiện")
     void broadcastTyping_shouldBroadcast() {
         chatService.broadcastTyping("s", "a@ex.com", true);
         verify(messagingTemplate).convertAndSend(eq("/topic/chat.s"), any(Object.class));
     }
 
     @Test
-    @DisplayName("getQuickReplies -> trả về danh sách không null")
+    @DisplayName("getQuickReplies → trả về danh sách không null")
     void getQuickReplies_shouldReturnList() {
         assertNotNull(chatService.getQuickReplies());
     }

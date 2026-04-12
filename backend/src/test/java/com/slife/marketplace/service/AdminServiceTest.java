@@ -87,7 +87,7 @@ class AdminServiceTest {
     class Dashboard {
 
         @Test
-        @DisplayName("getDashboardStats: map đủ count + avg reputation null -> 0.0 + top categories")
+        @DisplayName("getDashboardStats: map đủ count + avg reputation null → 0.0 + top categories")
         void getDashboardStats_shouldMapCountsAndAvgRep() {
             when(listingRepository.count()).thenReturn(100L);
             when(categoryRepository.count()).thenReturn(5L);
@@ -128,7 +128,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("getDashboardCharts: map native rows {day,cnt} -> DailyStatDto, null count -> 0")
+        @DisplayName("getDashboardCharts: map native rows {day,cnt} → DailyStatDto, null count → 0")
         void getDashboardCharts_shouldMapToDailyStats() {
             List<Object[]> u = List.<Object[]>of(new Object[]{"2026-01-01", 2L});
             List<Object[]> l = List.<Object[]>of(new Object[]{"2026-01-01", 3L});
@@ -154,7 +154,7 @@ class AdminServiceTest {
     class GetUsers {
 
         @Test
-        @DisplayName("statusFilter=all/blank -> query theo role USER")
+        @DisplayName("statusFilter=all/blank → query theo role USER")
         void getUsers_all_shouldQueryByRoleOnly() {
             Page<User> page = new PageImpl<>(List.of(user(1L, "USER", "ACTIVE")));
             when(userRepository.findByRole(eq("USER"), any(Pageable.class))).thenReturn(page);
@@ -167,7 +167,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("statusFilter sai -> INVALID_INPUT")
+        @DisplayName("[Lỗi] statusFilter sai → INVALID_INPUT")
         void getUsers_invalidStatus_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> adminService.getUsers(0, 20, "createdAt", "desc", "PENDING"));
@@ -175,7 +175,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("sortBy=id, sortDir=desc -> pageable sort desc id; size clamp 100")
+        @DisplayName("sortBy=id, sortDir=desc → pageable sort desc id; size clamp 100")
         void getUsers_sortAndPaging_shouldNormalize() {
             when(userRepository.findByRole(eq("USER"), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
@@ -193,7 +193,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("statusFilter=ACTIVE -> query theo role+status")
+        @DisplayName("statusFilter=ACTIVE → query theo role+status")
         void getUsers_active_shouldQueryByRoleAndStatus() {
             Page<User> page = new PageImpl<>(List.of(user(1L, "USER", "ACTIVE")));
             when(userRepository.findByRoleAndStatus(eq("USER"), eq("ACTIVE"), any(Pageable.class))).thenReturn(page);
@@ -211,7 +211,7 @@ class AdminServiceTest {
     class UpdateUserStatus {
 
         @Test
-        @DisplayName("status null/blank -> INVALID_INPUT")
+        @DisplayName("[Lỗi] status null/blank → INVALID_INPUT")
         void blankStatus_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> adminService.updateUserStatus(1L, "   ", user(9L, "ADMIN", "ACTIVE")));
@@ -219,7 +219,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("status không hợp lệ -> INVALID_INPUT")
+        @DisplayName("[Lỗi] status không hợp lệ → INVALID_INPUT")
         void invalidStatus_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> adminService.updateUserStatus(1L, "RESTRICTED", user(9L, "ADMIN", "ACTIVE")));
@@ -227,7 +227,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("user không tồn tại -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] user không tồn tại → USER_NOT_FOUND")
         void userMissing_shouldThrow() {
             when(userRepository.findByIdAndRole(1L, "USER")).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -236,7 +236,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("BANNED lần đầu -> tăng tokenRevision + audit log ban")
+        @DisplayName("[Lỗi] BANNED lần đầu → tăng tokenRevision + audit log ban")
         void banFirstTime_shouldRevokeSessionsAndAudit() {
             User u = user(1L, "USER", "ACTIVE");
             u.setTokenRevision(5L);
@@ -252,7 +252,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("BANNED khi đã BANNED -> không tăng tokenRevision nhưng vẫn logUserBan")
+        @DisplayName("[Lỗi] BANNED khi đã BANNED → không tăng tokenRevision nhưng vẫn logUserBan")
         void banAlreadyBanned_shouldNotIncrement() {
             User u = user(1L, "USER", "BANNED");
             u.setTokenRevision(5L);
@@ -265,7 +265,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("ACTIVE (unban) -> audit log unban")
+        @DisplayName("ACTIVE (unban) → audit log unban")
         void unban_shouldAuditUnban() {
             User u = user(1L, "USER", "BANNED");
             when(userRepository.findByIdAndRole(1L, "USER")).thenReturn(Optional.of(u));
@@ -282,7 +282,7 @@ class AdminServiceTest {
     class AdminHideListing {
 
         @Test
-        @DisplayName("listing không tồn tại -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] listing không tồn tại → LISTING_NOT_FOUND")
         void missingListing_shouldThrow() {
             when(listingRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -291,7 +291,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("Đã MOD_HIDDEN -> return message, không save")
+        @DisplayName("Đã MOD_HIDDEN → return message, không save")
         void alreadyModHidden_shouldReturn() {
             Listing l = listing(1L, "MOD_HIDDEN");
             when(listingRepository.findById(1L)).thenReturn(Optional.of(l));
@@ -303,7 +303,7 @@ class AdminServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: set status MOD_HIDDEN + save")
+        @DisplayName("[Thường] Luồng chính: set status MOD_HIDDEN + save")
         void hide_shouldSave() {
             Listing l = listing(1L, "ACTIVE");
             when(listingRepository.findById(1L)).thenReturn(Optional.of(l));

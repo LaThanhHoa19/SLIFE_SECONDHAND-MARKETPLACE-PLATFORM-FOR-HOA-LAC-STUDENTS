@@ -34,7 +34,7 @@ class DealPickupReminderServiceTest {
     }
 
     @Test
-    @DisplayName("processDueReminders: không có deal -> no-op")
+    @DisplayName("processDueReminders: không có deal → không thực hiện")
     void noDeals_noop() {
         when(dealRepository.findDealsForPickupReminder(any(LocalDateTime.class), any(LocalDateTime.class),
                 any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
@@ -44,7 +44,7 @@ class DealPickupReminderServiceTest {
     }
 
     @Test
-    @DisplayName("processDueReminders: happy path -> send email + set reminderSent + save")
+    @DisplayName("[Thường] processDueReminders: luồng thành công → send email + set reminderSent + save")
     void happyPath_shouldSendAndSave() {
         Deal d = new Deal();
         d.setId(1L);

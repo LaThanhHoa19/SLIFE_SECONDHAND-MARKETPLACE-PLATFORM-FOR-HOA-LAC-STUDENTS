@@ -62,11 +62,11 @@ class AuditLogServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("list")
+    @DisplayName("Nhóm: Danh sách (list)")
     class ListLogs {
 
         @Test
-        @DisplayName("action null/blank -> gọi findAllByOrderByOccurredAtDesc; page/size normalize")
+        @DisplayName("action null/blank → gọi findAllByOrderByOccurredAtDesc; page/size normalize")
         void list_withoutAction_shouldListAll() {
             when(auditLogRepository.findAllByOrderByOccurredAtDesc(any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(row(1L, user(9L), "X", "USER", 1L, "{}"))));
@@ -81,7 +81,7 @@ class AuditLogServiceTest {
         }
 
         @Test
-        @DisplayName("action có giá trị -> gọi findAllByActionOrderByOccurredAtDesc")
+        @DisplayName("action có giá trị → gọi findAllByActionOrderByOccurredAtDesc")
         void list_withAction_shouldFilter() {
             when(auditLogRepository.findAllByActionOrderByOccurredAtDesc(eq("USER_BAN"), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of()));
@@ -95,11 +95,11 @@ class AuditLogServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("log methods")
+    @DisplayName("Ghi nhật ký (log)")
     class LogMethods {
 
         @Test
-        @DisplayName("logReportProcessed: report null -> return, không save")
+        @DisplayName("logReportProcessed: report null → return, không save")
         void logReportProcessed_nullReport_shouldNoop() {
             auditLogService.logReportProcessed(user(9L), null, true);
             verify(auditLogRepository, never()).save(any());
@@ -125,7 +125,7 @@ class AuditLogServiceTest {
         }
 
         @Test
-        @DisplayName("logAdminCommentDelete: listingId null -> payload listingId=0")
+        @DisplayName("logAdminCommentDelete: listingId null → payload listingId=0")
         void logAdminCommentDelete_nullListingId_shouldDefault() throws Exception {
             when(objectMapper.writeValueAsString(any())).thenReturn("{\"listingId\":0}");
 
@@ -140,7 +140,7 @@ class AuditLogServiceTest {
         }
 
         @Test
-        @DisplayName("logReportProcessed: approved=true/false -> action APPROVE/REJECT")
+        @DisplayName("logReportProcessed: approved=true/false → action APPROVE/REJECT")
         void logReportProcessed_shouldChooseAction() throws Exception {
             when(objectMapper.writeValueAsString(any())).thenReturn("{\"reportId\":1}");
             Report report = new Report();
@@ -159,7 +159,7 @@ class AuditLogServiceTest {
         }
 
         @Test
-        @DisplayName("objectMapper serialize lỗi -> payloadJson='{}'")
+        @DisplayName("objectMapper serialize lỗi → payloadJson='{}'")
         void log_payloadSerializeFails_shouldFallbackToEmptyJson() throws Exception {
             when(objectMapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("boom") {});
 

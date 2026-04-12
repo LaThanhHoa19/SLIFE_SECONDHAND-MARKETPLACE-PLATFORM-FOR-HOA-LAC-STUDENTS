@@ -60,7 +60,7 @@ class ListingExpiryBatchServiceTest {
     }
 
     @Test
-    @DisplayName("hideNextBatch: no ids -> return 0, không gọi hide")
+    @DisplayName("hideNextBatch: no ids → return 0, không gọi hide")
     void noIds_returns0() {
         Instant now = Instant.now();
         when(listingRepository.findIdsOfActiveExpiredListings(eq(now), any(PageRequest.class))).thenReturn(List.of());
@@ -71,7 +71,7 @@ class ListingExpiryBatchServiceTest {
     }
 
     @Test
-    @DisplayName("hideNextBatch: có ids -> gọi hide và return updated")
+    @DisplayName("hideNextBatch: có ids → gọi hide và return updated")
     void hasIds_shouldHideAndReturnUpdated() {
         Instant now = Instant.now();
         List<Long> ids = List.of(1L, 2L, 3L);

@@ -17,14 +17,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class NotificationCursorCodecTest {
 
     @Test
-    @DisplayName("encode: null createdAt/id -> null")
+    @DisplayName("encode: null createdAt/id → null")
     void encode_null_shouldReturnNull() {
         assertNull(NotificationCursorCodec.encode(null, 1L));
         assertNull(NotificationCursorCodec.encode(Instant.now(), null));
     }
 
     @Test
-    @DisplayName("decode: null/blank/invalid -> null")
+    @DisplayName("decode: null/blank/invalid → null")
     void decode_invalid_shouldReturnNull() {
         assertNull(NotificationCursorCodec.decode(null));
         assertNull(NotificationCursorCodec.decode("   "));

@@ -31,14 +31,14 @@ class CommunityPostStatsBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("broadcastStats: postId null -> no-op")
+    @DisplayName("broadcastStats: postId null → không thực hiện")
     void broadcast_nullPostId_noop() {
         service.broadcastStats(null);
         verifyNoInteractions(messagingTemplate, likeRepository, commentRepository);
     }
 
     @Test
-    @DisplayName("broadcastStats: happy path -> convertAndSend payload chuẩn")
+    @DisplayName("[Thường] broadcastStats: luồng thành công → convertAndSend payload đúng chuẩn")
     void broadcast_happyPath() {
         when(likeRepository.countByPost_Id(10L)).thenReturn(7L);
         when(commentRepository.countByPost_IdAndDeletedAtIsNull(10L)).thenReturn(3L);
@@ -56,7 +56,7 @@ class CommunityPostStatsBroadcastServiceTest {
     }
 
     @Test
-    @DisplayName("broadcastStats: exception khi query/send -> swallow")
+    @DisplayName("broadcastStats: exception khi query/send → bỏ qua lỗi (không ném ra)")
     void broadcast_exception_swallow() {
         when(likeRepository.countByPost_Id(10L)).thenThrow(new RuntimeException("db"));
 

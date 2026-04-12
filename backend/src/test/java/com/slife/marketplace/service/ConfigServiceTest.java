@@ -69,7 +69,7 @@ class ConfigServiceTest {
     class Getters {
 
         @Test
-        @DisplayName("getAllConfigurations: map list -> DTO")
+        @DisplayName("getAllConfigurations: map list → DTO")
         void getAllConfigurations_maps() {
             Configuration c1 = new Configuration();
             c1.setId(1L);
@@ -86,7 +86,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getConfigurationById: tìm thấy -> map DTO")
+        @DisplayName("getConfigurationById: tìm thấy → map DTO")
         void getConfigurationById_found() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             ConfigResponseDTO dto = configService.getConfigurationById(10L);
@@ -96,7 +96,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getConfigurationById: không tồn tại -> CONFIGURATION_NOT_FOUND")
+        @DisplayName("[Lỗi] getConfigurationById: không tồn tại → CONFIGURATION_NOT_FOUND")
         void getConfigurationById_notFound_throws() {
             when(configRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.getConfigurationById(99L));
@@ -104,14 +104,14 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getConfigValueByKey: normalize key (trim+uppercase) + not found -> null")
+        @DisplayName("getConfigValueByKey: normalize key (trim+uppercase) + not found → null")
         void getConfigValueByKey_normalizes_andNotFound() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES")).thenReturn(Optional.empty());
             assertNull(configService.getConfigValueByKey("  max_images "));
         }
 
         @Test
-        @DisplayName("getConfigValueByKey: blank key -> INVALID_INPUT")
+        @DisplayName("[Lỗi] getConfigValueByKey: blank key → INVALID_INPUT")
         void getConfigValueByKey_blankKey_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.getConfigValueByKey("   "));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
@@ -119,7 +119,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getIntConfigValue: value null/blank -> trả default")
+        @DisplayName("getIntConfigValue: value null/blank → trả default")
         void getIntConfigValue_blank_returnsDefault() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES"))
                     .thenReturn(Optional.of(cfg("MAX_IMAGES", "   ")));
@@ -128,7 +128,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getIntConfigValue: value không phải số -> trả default")
+        @DisplayName("getIntConfigValue: value không phải số → trả default")
         void getIntConfigValue_nonNumeric_returnsDefault() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES"))
                     .thenReturn(Optional.of(cfg("MAX_IMAGES", "abc")));
@@ -137,7 +137,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getIntConfigValue: value hợp lệ -> parse int")
+        @DisplayName("getIntConfigValue: value hợp lệ → parse int")
         void getIntConfigValue_ok_parses() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES"))
                     .thenReturn(Optional.of(cfg("MAX_IMAGES", " 12 ")));
@@ -151,7 +151,7 @@ class ConfigServiceTest {
     class DeleteById {
 
         @Test
-        @DisplayName("Luồng chính: soft-delete -> set deletedAt + updatedBy")
+        @DisplayName("[Thường] Luồng chính: soft-delete → set deletedAt + updatedBy")
         void deleteConfigurationById_softDeletes() {
             when(configRepository.findById(10L)).thenReturn(Optional.of(existing));
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -166,7 +166,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Đã xóa trước đó -> CONFIGURATION_NOT_FOUND")
+        @DisplayName("[Lỗi] Đã xóa trước đó → CONFIGURATION_NOT_FOUND")
         void deleteConfigurationById_alreadyDeleted_throws() {
             existing.setDeletedAt(Instant.now());
             when(configRepository.findById(10L)).thenReturn(Optional.of(existing));
@@ -176,7 +176,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Không tồn tại -> CONFIGURATION_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tồn tại → CONFIGURATION_NOT_FOUND")
         void deleteConfigurationById_notFound_throws() {
             when(configRepository.findById(99L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.deleteConfigurationById(99L, admin));
@@ -189,7 +189,7 @@ class ConfigServiceTest {
     class UpdateSingle {
 
         @Test
-        @DisplayName("Luồng chính: update value + description")
+        @DisplayName("[Thường] Luồng chính: update value + description")
         void updateConfigurationById_success() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -202,7 +202,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Bỏ description (null) -> giữ nguyên")
+        @DisplayName("Bỏ description (null) → giữ nguyên")
         void updateConfigurationById_omitsDescription_preserves() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -215,7 +215,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Không tồn tại -> CONFIGURATION_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tồn tại → CONFIGURATION_NOT_FOUND")
         void updateConfigurationById_notFound_throws() {
             when(configRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -224,7 +224,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Key numeric nhưng value không phải số -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Key numeric nhưng value không phải số → INVALID_INPUT")
         void updateConfigurationById_invalidNumeric_throws() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             SlifeException ex = assertThrows(SlifeException.class,
@@ -233,7 +233,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Key numeric nhưng value vượt range -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Key numeric nhưng value vượt range → INVALID_INPUT")
         void updateConfigurationById_outOfRange_throws() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             // REPORT_THRESHOLD valid range 1..100
@@ -248,7 +248,7 @@ class ConfigServiceTest {
     class UpdateBulk {
 
         @Test
-        @DisplayName("Danh sách null/empty -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Danh sách null/empty → INVALID_INPUT")
         void updateConfigurations_empty_shouldThrow() {
             SlifeException ex1 = assertThrows(SlifeException.class, () -> configService.updateConfigurations(null, admin));
             assertEquals(ErrorCode.INVALID_INPUT, ex1.getErrorCode());
@@ -258,7 +258,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Key trùng (case-insensitive) -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Key trùng (case-insensitive) → INVALID_INPUT")
         void updateConfigurations_duplicateKeys_shouldThrow() {
             List<ConfigUpdateRequest> reqs = new ArrayList<>();
             reqs.add(new ConfigUpdateRequest("max_images", "10", null));
@@ -268,7 +268,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Key blank hoặc value blank -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Key blank hoặc value blank → INVALID_INPUT")
         void updateConfigurations_invalidKeyOrValue_shouldThrow() {
             SlifeException ex1 = assertThrows(SlifeException.class,
                     () -> configService.updateConfigurations(List.of(new ConfigUpdateRequest("   ", "1", null)), admin));
@@ -299,7 +299,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Khôi phục soft-deleted -> deletedAt=null")
+        @DisplayName("Khôi phục soft-deleted → deletedAt=null")
         void updateConfigurations_bulk_restoresSoftDeleted() {
             Configuration dead = new Configuration();
             dead.setId(3L);
@@ -321,7 +321,7 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Description blank -> trimToNull -> null")
+        @DisplayName("Description blank → trimToNull → null")
         void updateConfigurations_blankDescription_shouldBecomeNull() {
             when(configRepository.findByConfigNameInAndDeletedAtIsNull(List.of("NEW_KEY"))).thenReturn(List.of());
             when(configRepository.findByConfigName("NEW_KEY")).thenReturn(Optional.empty());

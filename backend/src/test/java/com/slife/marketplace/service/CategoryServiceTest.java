@@ -55,11 +55,11 @@ class CategoryServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getAllCategories")
+    @DisplayName("Nhóm: Tất cả danh mục")
     class GetAll {
 
         @Test
-        @DisplayName("Luồng chính: map list entity -> response")
+        @DisplayName("[Thường] Luồng chính: map list entity → response")
         void shouldMapAll() {
             Category c1 = category(1L, "A", false);
             c1.setDescription("d1");
@@ -79,11 +79,11 @@ class CategoryServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("createCategory")
+    @DisplayName("Nhóm: Tạo danh mục")
     class Create {
 
         @Test
-        @DisplayName("name null/blank -> INVALID_INPUT")
+        @DisplayName("[Lỗi] name null/blank → INVALID_INPUT")
         void nameMissing_shouldThrow() {
             SlifeException ex1 = assertThrows(SlifeException.class,
                     () -> categoryService.createCategory(req(null, "d", null)));
@@ -94,7 +94,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Trùng tên (ignore case) -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Trùng tên (ignore case) → INVALID_INPUT")
         void duplicateName_shouldThrow() {
             when(categoryRepository.findByNameIgnoreCase("Phones")).thenReturn(Optional.of(category(1L, "Phones", false)));
             SlifeException ex = assertThrows(SlifeException.class,
@@ -103,7 +103,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("parentId không hợp lệ -> INVALID_INPUT")
+        @DisplayName("[Lỗi] parentId không hợp lệ → INVALID_INPUT")
         void invalidParent_shouldThrow() {
             when(categoryRepository.findByNameIgnoreCase("A")).thenReturn(Optional.empty());
             when(categoryRepository.findById(9L)).thenReturn(Optional.empty());
@@ -113,7 +113,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: trim name + blank description -> null; set createdAt/updatedAt; save")
+        @DisplayName("[Thường] Luồng chính: trim name + blank description → null; set createdAt/updatedAt; save")
         void happyPath_shouldSave() {
             when(categoryRepository.findByNameIgnoreCase("A")).thenReturn(Optional.empty());
             when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> {
@@ -136,11 +136,11 @@ class CategoryServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("updateCategory")
+    @DisplayName("Nhóm: Sửa danh mục")
     class Update {
 
         @Test
-        @DisplayName("id null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] id null → INVALID_INPUT")
         void nullId_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> categoryService.updateCategory(null, req("A", "d", null)));
@@ -148,7 +148,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Không tìm thấy category -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Không tìm thấy category → INVALID_INPUT")
         void notFound_shouldThrow() {
             when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -157,7 +157,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Category systemLocked -> FORBIDDEN")
+        @DisplayName("[Lỗi] Category systemLocked → FORBIDDEN")
         void locked_shouldThrow() {
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(category(1L, "A", true)));
             SlifeException ex = assertThrows(SlifeException.class,
@@ -166,7 +166,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Tên trùng với category khác -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Tên trùng với category khác → INVALID_INPUT")
         void duplicateOther_shouldThrow() {
             Category current = category(1L, "A", false);
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(current));
@@ -177,7 +177,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: update name/desc/parent + updatedAt + save")
+        @DisplayName("[Thường] Luồng chính: update name/desc/parent + updatedAt + save")
         void happyPath_shouldUpdate() {
             Category current = category(1L, "A", false);
             Category parent = category(9L, "P", false);
@@ -198,18 +198,18 @@ class CategoryServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("deleteCategory")
+    @DisplayName("Nhóm: Xóa danh mục")
     class Delete {
 
         @Test
-        @DisplayName("id null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] id null → INVALID_INPUT")
         void nullId_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class, () -> categoryService.deleteCategory(null));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("Không tìm thấy -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Không tìm thấy → INVALID_INPUT")
         void notFound_shouldThrow() {
             when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class, () -> categoryService.deleteCategory(1L));
@@ -217,7 +217,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("systemLocked -> FORBIDDEN")
+        @DisplayName("[Lỗi] systemLocked → FORBIDDEN")
         void locked_shouldThrow() {
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(category(1L, "A", true)));
             SlifeException ex = assertThrows(SlifeException.class, () -> categoryService.deleteCategory(1L));
@@ -226,7 +226,7 @@ class CategoryServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> deleteById")
+        @DisplayName("[Thường] Luồng chính → deleteById")
         void happyPath_shouldDelete() {
             when(categoryRepository.findById(1L)).thenReturn(Optional.of(category(1L, "A", false)));
             categoryService.deleteCategory(1L);

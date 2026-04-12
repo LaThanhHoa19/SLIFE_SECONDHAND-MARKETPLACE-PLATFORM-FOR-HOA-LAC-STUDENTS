@@ -131,7 +131,7 @@ class ListingServiceTest {
     class RepostCloneToDraft {
 
     @Test
-        @DisplayName("Luồng chính: Tin hết hạn -> tạo listing ACTIVE mới, soft-delete tin nguồn, clone ảnh")
+        @DisplayName("[Thường] Luồng chính: Tin hết hạn → tạo listing ACTIVE mới, soft-delete tin nguồn, clone ảnh")
         void repostListing_whenExpired_shouldCreateNewActiveAndCloneImages() {
             // Arrange: seller + listing nguồn đã hết hạn (expirationDate < now) và status EXPIRED/HIDDEN đều ok
         User seller = new User();
@@ -215,7 +215,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng phụ: Không tìm thấy tin nguồn -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Luồng phụ: Không tìm thấy tin nguồn → LISTING_NOT_FOUND")
         void repostListing_whenSourceNotFound_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -226,7 +226,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng phụ: User không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] Luồng phụ: User không phải chủ tin → FORBIDDEN")
         void repostListing_whenNotOwner_shouldThrowForbidden() {
             User seller = new User();
             seller.setId(10L);
@@ -248,11 +248,11 @@ class ListingServiceTest {
     // FEATURE: PUBLISH DRAFT (UPDATE LISTING) — LUỒNG CHÍNH + LUỒNG PHỤ
     // =========================================================================
     @Nested
-    @DisplayName("Tính năng: Publish bản nháp (DRAFT -> ACTIVE)")
+    @DisplayName("Tính năng: Publish bản nháp (DRAFT → ACTIVE)")
     class PublishDraftFlow {
 
         @Test
-        @DisplayName("Luồng chính: updateListing publish draft -> ACTIVE, reset viewCount, bump createdAt/updatedAt, set expirationDate")
+        @DisplayName("[Thường] Luồng chính: updateListing publish draft → ACTIVE, reset viewCount, bump createdAt/updatedAt, set expirationDate")
         void updateListing_whenPublishingDraft_shouldResetTimestampsAndSetExpiration() {
             // Arrange
             User seller = new User();
@@ -314,7 +314,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng phụ: publish nhưng thiếu title -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Luồng phụ: publish nhưng thiếu title → INVALID_INPUT")
         void updateListing_whenPublishMissingTitle_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -344,7 +344,7 @@ class ListingServiceTest {
     class RepostEdgeCases {
 
         @Test
-        @DisplayName("MOD_HIDDEN -> không cho đăng lại")
+        @DisplayName("MOD_HIDDEN → không cho đăng lại")
         void repostListing_whenModHidden_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -360,7 +360,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Không hết hạn (ACTIVE + chưa qua expiration) -> LISTING_NOT_EXPIRED")
+        @DisplayName("[Lỗi] Không hết hạn (ACTIVE + chưa qua expiration) → LISTING_NOT_EXPIRED")
         void repostListing_whenNotExpired_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -376,7 +376,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Trạng thái bị chặn (SOLD/BANNED/DELETED/DRAFT/...) -> LISTING_NOT_EXPIRED")
+        @DisplayName("[Lỗi] Trạng thái bị chặn (SOLD/BANNED/DELETED/DRAFT/...) → LISTING_NOT_EXPIRED")
         void repostListing_whenBlockedStatus_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -423,14 +423,14 @@ class ListingServiceTest {
     class CreateListingFlow {
 
         @Test
-        @DisplayName("Chưa đăng nhập: seller null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] Chưa đăng nhập: seller null → UNAUTHORIZED")
         void createListing_whenSellerNull_shouldThrowUnauthorized() {
             SlifeException ex = assertThrows(SlifeException.class, () -> listingService.createListing(null, new CreateListingRequest()));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("Luồng chính: tạo tin ACTIVE hợp lệ -> lưu + thông báo cho người theo dõi (nếu có)")
+        @DisplayName("[Thường] Luồng chính: tạo tin ACTIVE hợp lệ → lưu + thông báo cho người theo dõi (nếu có)")
         void createListing_whenActiveValid_shouldSaveAndNotifyFollowers() {
             User seller = new User();
             seller.setId(10L);
@@ -520,7 +520,7 @@ class ListingServiceTest {
     class MyListingsFlow {
 
         @Test
-        @DisplayName("getMyListings: status=REPORTED -> gọi findReportedListingsBySeller")
+        @DisplayName("getMyListings: status=REPORTED → gọi findReportedListingsBySeller")
         void getMyListings_whenReported_shouldUseReportedQuery() {
             User u = new User();
             u.setId(10L);
@@ -538,7 +538,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("getMyListings: status=EXPIRED -> gọi findExpiredListingsBySeller")
+        @DisplayName("getMyListings: status=EXPIRED → gọi findExpiredListingsBySeller")
         void getMyListings_whenExpired_shouldUseExpiredQuery() {
             User u = new User();
             u.setId(10L);
@@ -549,7 +549,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("getMyListings: status=HIDDEN -> gọi findHiddenNotExpiredBySeller")
+        @DisplayName("getMyListings: status=HIDDEN → gọi findHiddenNotExpiredBySeller")
         void getMyListings_whenHidden_shouldUseHiddenNotExpiredQuery() {
             User u = new User();
             u.setId(10L);
@@ -560,7 +560,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("getMyListings: status=ACTIVE -> gọi findBySellerAndStatus")
+        @DisplayName("getMyListings: status=ACTIVE → gọi findBySellerAndStatus")
         void getMyListings_whenSpecificStatus_shouldUseStatusQuery() {
             User u = new User();
             u.setId(10L);
@@ -571,7 +571,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("getMyListings: status null/blank -> gọi findBySellerOrderByCreatedAtDesc")
+        @DisplayName("getMyListings: status null/blank → gọi findBySellerOrderByCreatedAtDesc")
         void getMyListings_whenNoStatus_shouldUseDefaultQuery() {
             User u = new User();
             u.setId(10L);
@@ -590,7 +590,7 @@ class ListingServiceTest {
     class HideUnhideSoldFlow {
 
         @Test
-        @DisplayName("hideListing: ACTIVE -> HIDDEN và save")
+        @DisplayName("hideListing: ACTIVE → HIDDEN và save")
         void hideListing_whenActive_shouldHide() {
             User u = new User();
             u.setId(10L);
@@ -606,7 +606,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("hideListing: không ACTIVE -> INVALID_INPUT")
+        @DisplayName("[Lỗi] hideListing: không ACTIVE → INVALID_INPUT")
         void hideListing_whenNotActive_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -620,7 +620,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("hideListing: không tìm thấy -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] hideListing: không tìm thấy → LISTING_NOT_FOUND")
         void hideListing_whenNotFound_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -630,7 +630,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("hideListing: không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] hideListing: không phải chủ tin → FORBIDDEN")
         void hideListing_whenNotOwner_shouldThrowForbidden() {
             User owner = new User();
             owner.setId(10L);
@@ -646,7 +646,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("unhideListing: HIDDEN -> ACTIVE")
+        @DisplayName("unhideListing: HIDDEN → ACTIVE")
         void unhideListing_whenHidden_shouldUnhide() {
             User u = new User();
             u.setId(10L);
@@ -662,7 +662,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("unhideListing: không tìm thấy -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] unhideListing: không tìm thấy → LISTING_NOT_FOUND")
         void unhideListing_whenNotFound_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -672,7 +672,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("unhideListing: không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] unhideListing: không phải chủ tin → FORBIDDEN")
         void unhideListing_whenNotOwner_shouldThrowForbidden() {
             User owner = new User();
             owner.setId(10L);
@@ -688,7 +688,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("unhideListing: không phải HIDDEN -> INVALID_INPUT")
+        @DisplayName("[Lỗi] unhideListing: không phải HIDDEN → INVALID_INPUT")
         void unhideListing_whenNotHidden_shouldThrowInvalid() {
             User u = new User();
             u.setId(10L);
@@ -702,7 +702,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("markSold: ACTIVE/HIDDEN và chưa hết hạn -> SOLD")
+        @DisplayName("markSold: ACTIVE/HIDDEN và chưa hết hạn → SOLD")
         void markSold_whenValid_shouldMarkSold() {
             User u = new User();
             u.setId(10L);
@@ -719,7 +719,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("markSold: hết hạn -> INVALID_INPUT")
+        @DisplayName("[Lỗi] markSold: hết hạn → INVALID_INPUT")
         void markSold_whenExpired_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -734,7 +734,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("markSold: không tìm thấy -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] markSold: không tìm thấy → LISTING_NOT_FOUND")
         void markSold_whenNotFound_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -744,7 +744,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("markSold: không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] markSold: không phải chủ tin → FORBIDDEN")
         void markSold_whenNotOwner_shouldThrowForbidden() {
             User owner = new User();
             owner.setId(10L);
@@ -761,7 +761,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("markSold: trạng thái không hợp lệ -> INVALID_INPUT")
+        @DisplayName("[Lỗi] markSold: trạng thái không hợp lệ → INVALID_INPUT")
         void markSold_whenInvalidStatus_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -783,7 +783,7 @@ class ListingServiceTest {
     class RenewListingFlow {
 
         @Test
-        @DisplayName("renewListing: còn <=7 ngày -> gia hạn expirationDate")
+        @DisplayName("renewListing: còn <=7 ngày → gia hạn expirationDate")
         void renewListing_whenWithin7Days_shouldRenew() {
             User u = new User();
             u.setId(10L);
@@ -802,7 +802,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("renewListing: còn >7 ngày -> LISTING_NOT_RENEWABLE")
+        @DisplayName("[Lỗi] renewListing: còn >7 ngày → LISTING_NOT_RENEWABLE")
         void renewListing_whenTooEarly_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -818,7 +818,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("renewListing: không tìm thấy -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] renewListing: không tìm thấy → LISTING_NOT_FOUND")
         void renewListing_whenNotFound_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -828,7 +828,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("renewListing: không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] renewListing: không phải chủ tin → FORBIDDEN")
         void renewListing_whenNotOwner_shouldThrowForbidden() {
             User owner = new User();
             owner.setId(10L);
@@ -845,7 +845,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("renewListing: status không ACTIVE -> LISTING_NOT_RENEWABLE")
+        @DisplayName("[Lỗi] renewListing: status không ACTIVE → LISTING_NOT_RENEWABLE")
         void renewListing_whenNotActive_shouldThrowNotRenewable() {
             User u = new User();
             u.setId(10L);
@@ -860,7 +860,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("renewListing: expiry null -> LISTING_NOT_RENEWABLE")
+        @DisplayName("[Lỗi] renewListing: expiry null → LISTING_NOT_RENEWABLE")
         void renewListing_whenExpiryNull_shouldThrowNotRenewable() {
             User u = new User();
             u.setId(10L);
@@ -883,7 +883,7 @@ class ListingServiceTest {
     class DeleteDraftFlow {
 
         @Test
-        @DisplayName("deleteDraft: DRAFT + owner -> delete images then delete listing")
+        @DisplayName("deleteDraft: DRAFT + owner → delete images then delete listing")
         void deleteDraft_whenValid_shouldDelete() {
             User u = new User();
             u.setId(10L);
@@ -900,7 +900,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("deleteDraft: không phải DRAFT -> LISTING_NOT_DRAFT")
+        @DisplayName("[Lỗi] deleteDraft: không phải DRAFT → LISTING_NOT_DRAFT")
         void deleteDraft_whenNotDraft_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -916,7 +916,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("deleteDraft: không tìm thấy -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] deleteDraft: không tìm thấy → LISTING_NOT_FOUND")
         void deleteDraft_whenNotFound_shouldThrow() {
             User u = new User();
             u.setId(10L);
@@ -926,7 +926,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("deleteDraft: không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] deleteDraft: không phải chủ tin → FORBIDDEN")
         void deleteDraft_whenNotOwner_shouldThrowForbidden() {
             User owner = new User();
             owner.setId(10L);
@@ -950,7 +950,7 @@ class ListingServiceTest {
     class ListingCardsFollowingAndImages {
 
         @Test
-        @DisplayName("FOLLOWING feed: user có followedIds rỗng -> empty")
+        @DisplayName("Bảng tin đang theo dõi: followedIds rỗng → kết quả rỗng")
         void getActiveListingCards_followingNoFollowed_shouldReturnEmpty() {
             User viewer = new User();
             viewer.setId(20L);
@@ -961,7 +961,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("FOLLOWING feed: user có followedIds -> repo called + attach images + block filter")
+        @DisplayName("Bảng tin đang theo dõi: user có followedIds → gọi repository + đính ảnh + lọc chặn")
         void getActiveListingCards_followingWithFollowed_shouldAttachImagesAndFilterBlocked() {
             User viewer = new User();
             viewer.setId(20L);
@@ -1010,7 +1010,7 @@ class ListingServiceTest {
     class ListingCardsFeedFlow {
 
         @Test
-        @DisplayName("FOLLOWING feed: currentUser null -> empty")
+        @DisplayName("Bảng tin đang theo dõi: currentUser null → kết quả rỗng")
         void getActiveListingCards_followingFeedNoUser_shouldReturnEmpty() {
             PagedResponse<com.slife.marketplace.dto.response.ListingCardResponse> res =
                     listingService.getActiveListingCards(0, 10, null, null, true, "FOLLOWING", null);
@@ -1018,7 +1018,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("GIVEAWAY feed: gọi findGiveawayActiveListingCards")
+        @DisplayName("Bảng tin cho tặng: gọi findGiveawayActiveListingCards")
         void getActiveListingCards_giveaway_shouldUseRepo() {
             Page<com.slife.marketplace.dto.response.ListingCardResponse> page = new PageImpl<>(List.of());
             when(listingRepository.findGiveawayActiveListingCards(any(), any(Instant.class), any(Pageable.class))).thenReturn(page);
@@ -1033,11 +1033,11 @@ class ListingServiceTest {
     // FEATURE: ENRICH LIKE METADATA (PUBLIC WRAPPER)
     // =========================================================================
     @Nested
-    @DisplayName("Tính năng: Enrich like metadata (enrichWithLikeMetadata)")
+    @DisplayName("Tính năng: Bổ sung metadata lượt thích (enrichWithLikeMetadata)")
     class EnrichLikeMetadataFlow {
 
         @Test
-        @DisplayName("Luồng chính: gắn likeCount/isLiked theo batch counts + likedIds; item id null -> 0/false")
+        @DisplayName("[Thường] Luồng chính: gắn likeCount/isLiked theo batch counts + likedIds; id mục null → 0/false")
         void enrichWithLikeMetadata_shouldAttachCountsAndLikedFlags() {
             // Arrange
             User viewer = new User();
@@ -1076,7 +1076,7 @@ class ListingServiceTest {
     class CreateListingWithImagesFlow {
 
         @Test
-        @DisplayName("Chưa đăng nhập: seller null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] Chưa đăng nhập: seller null → UNAUTHORIZED")
         void createListingWithImages_whenSellerNull_shouldThrowUnauthorized() {
             SlifeException ex = assertThrows(
                     SlifeException.class,
@@ -1086,7 +1086,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng phụ: tạo ACTIVE nhưng không có ảnh -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Luồng phụ: tạo ACTIVE nhưng không có ảnh → INVALID_INPUT")
         void createListingWithImages_whenActiveAndNoImages_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -1101,7 +1101,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng phụ: ảnh vượt quá maxPerPost -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Luồng phụ: ảnh vượt quá maxPerPost → INVALID_INPUT")
         void createListingWithImages_whenTooManyImages_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -1126,7 +1126,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: draft + ảnh -> save listing + upload images; draft không notify followers")
+        @DisplayName("[Thường] Luồng chính: draft + ảnh → save listing + upload images; draft không notify followers")
         void createListingWithImages_whenDraftWithImages_shouldUploadButNotNotify() {
             User seller = new User();
             seller.setId(10L);
@@ -1160,7 +1160,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: ACTIVE + ảnh -> save listing + upload images + notify followers (nếu có)")
+        @DisplayName("[Thường] Luồng chính: ACTIVE + ảnh → save listing + upload images + notify followers (nếu có)")
         void createListingWithImages_whenActiveWithImages_shouldUploadAndNotify() {
             User seller = new User();
             seller.setId(10L);
@@ -1208,7 +1208,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng phụ: active nhưng file ảnh đều empty -> xem như không có ảnh -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Luồng phụ: active nhưng file ảnh đều empty → xem như không có ảnh → INVALID_INPUT")
         void createListingWithImages_whenAllImagesEmpty_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -1234,7 +1234,7 @@ class ListingServiceTest {
     class UpdateListingEdgeCases {
 
         @Test
-        @DisplayName("Chưa đăng nhập: seller null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] Chưa đăng nhập: seller null → UNAUTHORIZED")
         void updateListing_whenSellerNull_shouldThrowUnauthorized() {
             SlifeException ex = assertThrows(
                     SlifeException.class,
@@ -1244,7 +1244,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Không tìm thấy: listingId không tồn tại -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy: listingId không tồn tại → LISTING_NOT_FOUND")
         void updateListing_whenNotFound_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -1257,7 +1257,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Forbidden: không phải chủ tin -> FORBIDDEN")
+        @DisplayName("[Lỗi] Forbidden: không phải chủ tin → FORBIDDEN")
         void updateListing_whenNotOwner_shouldThrowForbidden() {
             User owner = new User();
             owner.setId(10L);
@@ -1276,7 +1276,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Draft mode: isDraft=true -> status DRAFT và expirationDate=null")
+        @DisplayName("Draft mode: isDraft=true → status DRAFT và expirationDate=null")
         void updateListing_whenDraftMode_shouldStayDraftAndNullExpiry() {
             User seller = new User();
             seller.setId(10L);
@@ -1299,7 +1299,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Backfill legacy ACTIVE: status ACTIVE nhưng expirationDate null -> set expirationDate")
+        @DisplayName("Backfill legacy ACTIVE: status ACTIVE nhưng expirationDate null → set expirationDate")
         void updateListing_whenActiveLegacyMissingExpiry_shouldBackfill() {
             User seller = new User();
             seller.setId(10L);
@@ -1331,7 +1331,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Publish: categoryId không tồn tại -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Publish: categoryId không tồn tại → INVALID_INPUT")
         void updateListing_whenCategoryNotFound_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -1354,7 +1354,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Publish: thiếu pickupLocationName và pickupAddressId -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Publish: thiếu pickupLocationName và pickupAddressId → INVALID_INPUT")
         void updateListing_whenMissingPickup_shouldThrow() {
             User seller = new User();
             seller.setId(10L);
@@ -1383,11 +1383,11 @@ class ListingServiceTest {
     // FEATURE: LIKE ENRICHMENT — DATAACCESS EXCEPTION PATHS
     // =========================================================================
     @Nested
-    @DisplayName("Tính năng: Like enrichment — khi DB like unavailable")
+    @DisplayName("Tính năng: Bổ sung lượt thích — khi DB like unavailable")
     class LikeEnrichmentDataAccessFailures {
 
         @Test
-        @DisplayName("enrichWithLikeMetadata: repository throw DataAccessException -> fallback likeCount=0, isLiked=false")
+        @DisplayName("enrichWithLikeMetadata: repository ném DataAccessException → dự phòng likeCount=0, isLiked=false")
         void enrichWithLikeMetadata_whenRepoThrows_shouldFallback() {
             User viewer = new User();
             viewer.setId(20L);
@@ -1406,7 +1406,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("buildListingResponse: single-like enrichment throw DataAccessException -> likeCount=0, isLiked=false")
+        @DisplayName("buildListingResponse: bổ sung like đơn ném DataAccessException → likeCount=0, isLiked=false")
         void buildListingResponse_whenSingleLikeRepoThrows_shouldFallback() {
             User seller = new User();
             seller.setId(10L);
@@ -1435,7 +1435,7 @@ class ListingServiceTest {
     class ListingCardsAdditionalBranches {
 
         @Test
-        @DisplayName("POPULAR feed: gọi findPopularActiveListingCards")
+        @DisplayName("Bảng tin phổ biến: gọi findPopularActiveListingCards")
         void getActiveListingCards_popular_shouldUseRepo() {
             Page<com.slife.marketplace.dto.response.ListingCardResponse> page = new PageImpl<>(List.of());
             when(listingRepository.findPopularActiveListingCards(any(), any(Instant.class), any(Pageable.class))).thenReturn(page);
@@ -1446,7 +1446,7 @@ class ListingServiceTest {
         }
 
         @Test
-        @DisplayName("Default feed: gọi findAllActiveListingCards")
+        @DisplayName("Bảng tin mặc định: gọi findAllActiveListingCards")
         void getActiveListingCards_default_shouldUseRepo() {
             Page<com.slife.marketplace.dto.response.ListingCardResponse> page = new PageImpl<>(List.of());
             when(listingRepository.findAllActiveListingCards(any(), any(Instant.class), any(Pageable.class))).thenReturn(page);

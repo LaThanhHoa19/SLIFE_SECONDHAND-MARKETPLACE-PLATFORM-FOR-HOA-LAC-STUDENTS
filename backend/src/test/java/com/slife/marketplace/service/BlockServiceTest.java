@@ -51,11 +51,11 @@ class BlockServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("block")
+    @DisplayName("Nhóm: Chặn (block)")
     class BlockUser {
 
         @Test
-        @DisplayName("blocker null hoặc blockedUserId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] blocker null hoặc blockedUserId null → INVALID_INPUT")
         void nullInputs_shouldThrow() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> blockService.block(null, 1L)).getErrorCode());
@@ -64,7 +64,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Tự block chính mình -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Tự block chính mình → INVALID_INPUT")
         void selfBlock_shouldThrow() {
             User me = user(1L);
             SlifeException ex = assertThrows(SlifeException.class, () -> blockService.block(me, 1L));
@@ -72,7 +72,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("User bị block không tồn tại -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] User bị block không tồn tại → USER_NOT_FOUND")
         void blockedMissing_shouldThrow() {
             when(userRepository.findById(2L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class, () -> blockService.block(user(1L), 2L));
@@ -80,7 +80,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Chưa tồn tại block -> tạo Block row + cắt follow 2 chiều")
+        @DisplayName("Chưa tồn tại block → tạo Block row + cắt follow 2 chiều")
         void newBlock_shouldSaveAndSeverFollows() {
             User blocker = user(1L);
             User blocked = user(2L);
@@ -99,7 +99,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Đã tồn tại block -> không save lại, vẫn cắt follow 2 chiều")
+        @DisplayName("Đã tồn tại block → không save lại, vẫn cắt follow 2 chiều")
         void existedBlock_shouldNotSaveButStillSeverFollows() {
             User blocker = user(1L);
             User blocked = user(2L);
@@ -116,11 +116,11 @@ class BlockServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("unblock")
+    @DisplayName("Nhóm: Bỏ chặn (unblock)")
     class UnblockUser {
 
         @Test
-        @DisplayName("blocker null hoặc blockedUserId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] blocker null hoặc blockedUserId null → INVALID_INPUT")
         void nullInputs_shouldThrow() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> blockService.unblock(null, 1L)).getErrorCode());
@@ -129,7 +129,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Tự unblock chính mình -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Tự unblock chính mình → INVALID_INPUT")
         void selfUnblock_shouldThrow() {
             User me = user(1L);
             SlifeException ex = assertThrows(SlifeException.class, () -> blockService.unblock(me, 1L));
@@ -137,7 +137,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("User không tồn tại -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] User không tồn tại → USER_NOT_FOUND")
         void blockedMissing_shouldThrow() {
             when(userRepository.existsById(2L)).thenReturn(false);
             SlifeException ex = assertThrows(SlifeException.class, () -> blockService.unblock(user(1L), 2L));
@@ -145,7 +145,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> gọi deleteByBlocker_IdAndBlocked_Id")
+        @DisplayName("[Thường] Luồng chính → gọi deleteByBlocker_IdAndBlocked_Id")
         void happyPath_shouldDelete() {
             when(userRepository.existsById(2L)).thenReturn(true);
             blockService.unblock(user(1L), 2L);
@@ -155,18 +155,18 @@ class BlockServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("isBlocked*")
+    @DisplayName("Nhóm: Kiểm tra trạng thái chặn")
     class BlockQueries {
 
         @Test
-        @DisplayName("isBlockedByCurrentUser: id null -> false")
+        @DisplayName("isBlockedByCurrentUser: id null → false")
         void isBlockedByCurrentUser_null_shouldFalse() {
             assertFalse(blockService.isBlockedByCurrentUser(null, 2L));
             assertFalse(blockService.isBlockedByCurrentUser(1L, null));
         }
 
         @Test
-        @DisplayName("isBlockedEitherDirection: id null -> false")
+        @DisplayName("isBlockedEitherDirection: id null → false")
         void isBlockedEitherDirection_null_shouldFalse() {
             assertFalse(blockService.isBlockedEitherDirection(null, 2L));
             assertFalse(blockService.isBlockedEitherDirection(1L, null));
@@ -183,11 +183,11 @@ class BlockServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getBlockedUsers")
+    @DisplayName("Nhóm: Danh sách người bị chặn")
     class GetBlockedUsers {
 
         @Test
-        @DisplayName("blockerId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] blockerId null → INVALID_INPUT")
         void nullBlocker_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> blockService.getBlockedUsers(null, 0, 20, null, null));
@@ -195,7 +195,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("blockerId không tồn tại -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] blockerId không tồn tại → USER_NOT_FOUND")
         void blockerMissing_shouldThrow() {
             when(userRepository.existsById(1L)).thenReturn(false);
             SlifeException ex = assertThrows(SlifeException.class,
@@ -204,7 +204,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Clamp page/size: page<0 -> 0; size<=0 -> 1; size>50 -> 50")
+        @DisplayName("Clamp page/size: page<0 → 0; size<=0 → 1; size>50 → 50")
         void paging_shouldClamp() {
             when(userRepository.existsById(1L)).thenReturn(true);
             when(blockRepository.findBlockedUserSummariesByBlockerId(eq(1L), eq(""), eq(true), any(Pageable.class)))
@@ -222,7 +222,7 @@ class BlockServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính -> trả page từ repository")
+        @DisplayName("[Thường] Luồng chính → trả page từ repository")
         void happyPath_shouldReturnPage() {
             when(userRepository.existsById(1L)).thenReturn(true);
             Page<FollowUserSummaryResponse> page = new PageImpl<>(List.of());

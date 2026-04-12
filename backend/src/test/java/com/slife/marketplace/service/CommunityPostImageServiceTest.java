@@ -7,23 +7,19 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommunityPostImageRepository;
 import com.slife.marketplace.repository.CommunityPostRepository;
-import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,10 +33,7 @@ class CommunityPostImageServiceTest {
     @Mock private CommunityPostRepository postRepository;
     @Mock private CommunityPostImageRepository imageRepository;
     @Mock private ConfigService configService;
-    @Mock private FileStorage fileStorage;
-
-    @TempDir
-    Path tempUploadDir;
+    @Mock private UserFileStorageService userFileStorage;
 
     private CommunityPostImageService service;
 
@@ -50,8 +43,7 @@ class CommunityPostImageServiceTest {
                 postRepository,
                 imageRepository,
                 configService,
-                fileStorage,
-                tempUploadDir.toAbsolutePath().normalize()
+                userFileStorage
         );
     }
 
@@ -85,11 +77,11 @@ class CommunityPostImageServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("uploadPostImages")
+    @DisplayName("Nhóm: Tải ảnh bài viết")
     class Upload {
 
         @Test
-        @DisplayName("files null/empty -> INVALID_INPUT")
+        @DisplayName("[Lỗi] files null/empty → INVALID_INPUT")
         void emptyFiles_shouldThrow() {
             SlifeException ex1 = assertThrows(SlifeException.class,
                     () -> service.uploadPostImages(1L, null, user(1L)));
@@ -100,7 +92,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("post không tồn tại -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] post không tồn tại → COMMUNITY_POST_NOT_FOUND")
         void postMissing_shouldThrow() {
             when(postRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -109,7 +101,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("không phải chủ post hoặc currentUser null -> FORBIDDEN")
+        @DisplayName("[Lỗi] không phải chủ post hoặc currentUser null → FORBIDDEN")
         void notOwner_shouldThrow() {
             CommunityPost p = post(1L, user(2L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -120,7 +112,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("vượt giới hạn ảnh -> INVALID_INPUT (MSG18)")
+        @DisplayName("[Lỗi] vượt giới hạn ảnh → INVALID_INPUT (MSG18)")
         void exceedMax_shouldThrow() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -134,7 +126,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("file quá lớn -> FILE_TOO_LARGE")
+        @DisplayName("[Lỗi] file quá lớn → FILE_TOO_LARGE")
         void tooLarge_shouldThrow() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -149,7 +141,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("sai filename extension -> INVALID_FILE_TYPE")
+        @DisplayName("[Lỗi] sai filename extension → INVALID_FILE_TYPE")
         void invalidExt_shouldThrow() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -163,7 +155,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("sai content-type -> INVALID_FILE_TYPE")
+        @DisplayName("[Lỗi] sai content-type → INVALID_FILE_TYPE")
         void invalidContentType_shouldThrow() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -177,7 +169,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("magic bytes không phải JPG/PNG -> INVALID_FILE_TYPE")
+        @DisplayName("[Lỗi] magic bytes không phải JPG/PNG → INVALID_FILE_TYPE")
         void invalidMagic_shouldThrow() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -191,14 +183,15 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("IO exception -> FILE_UPLOAD_FAILED")
-        void ioFailure_shouldThrow() throws Exception {
+        @DisplayName("[Lỗi] UserFileStorageService.storeStream lỗi → FILE_UPLOAD_FAILED")
+        void storeStreamFails_shouldThrow() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             when(imageRepository.countByPost_Id(1L)).thenReturn(0);
             when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
             when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            doThrow(new IOException("disk")).when(fileStorage).createDirectories(any(Path.class));
+            when(userFileStorage.storeStream(any(), anyLong(), anyString(), anyString()))
+                    .thenThrow(new SlifeException(ErrorCode.FILE_UPLOAD_FAILED));
 
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.uploadPostImages(1L, List.of(png("a.png")), user(1L)));
@@ -206,37 +199,60 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: save image + gọi FileStorage.copy + url chuẩn")
-        void happyPath_shouldSave() throws Exception {
+        @DisplayName("[Thường] Luồng chính: magic PNG/JPG → đuôi file .png / .jpg và displayOrder tăng")
+        void happyPath_magicMatchesExtensionAndOrder() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             when(imageRepository.countByPost_Id(1L)).thenReturn(0);
             when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
             when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            // service checks target.startsWith(dir.toAbsolutePath().normalize()).
-            // If uploadBasePath is relative in tests, ensure it behaves as expected.
-            doAnswer(inv -> null).when(fileStorage).createDirectories(any(Path.class));
-            doAnswer(inv -> null).when(fileStorage).copy(any(InputStream.class), any(Path.class));
+            when(userFileStorage.storeStream(any(), anyLong(), anyString(), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(3, String.class));
 
             service.uploadPostImages(1L, List.of(png("a.png"), jpg("b.jpg")), user(1L));
 
-            verify(fileStorage, atLeastOnce()).createDirectories(any(Path.class));
-            verify(fileStorage, times(2)).copy(any(InputStream.class), any(Path.class));
+            ArgumentCaptor<String> relCaptor = ArgumentCaptor.forClass(String.class);
+            verify(userFileStorage, times(2)).storeStream(any(), anyLong(), anyString(), relCaptor.capture());
+            assertTrue(relCaptor.getAllValues().get(0).startsWith("community-posts/"));
+            assertTrue(relCaptor.getAllValues().get(0).endsWith(".png"));
+            assertTrue(relCaptor.getAllValues().get(1).endsWith(".jpg"));
+
             ArgumentCaptor<CommunityPostImage> cap = ArgumentCaptor.forClass(CommunityPostImage.class);
             verify(imageRepository, times(2)).save(cap.capture());
             assertTrue(cap.getAllValues().get(0).getImageUrl().startsWith("/uploads/community-posts/"));
+            assertTrue(cap.getAllValues().get(0).getImageUrl().endsWith(".png"));
+            assertTrue(cap.getAllValues().get(1).getImageUrl().endsWith(".jpg"));
             assertEquals(1, cap.getAllValues().get(0).getDisplayOrder());
             assertEquals(2, cap.getAllValues().get(1).getDisplayOrder());
+        }
+
+        @Test
+        @DisplayName("Bỏ qua file rỗng/null trong list, chỉ lưu file hợp lệ")
+        void skipsEmptyMultipartParts() {
+            CommunityPost p = post(1L, user(1L));
+            when(postRepository.findById(1L)).thenReturn(Optional.of(p));
+            when(imageRepository.countByPost_Id(1L)).thenReturn(0);
+            when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
+            when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
+            MockMultipartFile empty = new MockMultipartFile("images", "e.png", "image/png", new byte[0]);
+            MockMultipartFile ok = png("a.png");
+            when(userFileStorage.storeStream(any(), anyLong(), anyString(), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(3, String.class));
+
+            service.uploadPostImages(1L, Arrays.asList(empty, null, ok), user(1L));
+
+            verify(userFileStorage, times(1)).storeStream(any(), anyLong(), anyString(), anyString());
+            verify(imageRepository, times(1)).save(any(CommunityPostImage.class));
         }
     }
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("deletePostImage")
+    @DisplayName("Nhóm: Xóa ảnh bài viết")
     class Delete {
 
         @Test
-        @DisplayName("currentUser null -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] currentUser null → UNAUTHORIZED")
         void userNull_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.deletePostImage(1L, 2L, null));
@@ -244,7 +260,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("post không tồn tại -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] post không tồn tại → COMMUNITY_POST_NOT_FOUND")
         void postMissing_shouldThrow() {
             when(postRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
@@ -253,7 +269,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("không phải chủ post -> FORBIDDEN")
+        @DisplayName("[Lỗi] không phải chủ post → FORBIDDEN")
         void notOwner_shouldThrow() {
             when(postRepository.findById(1L)).thenReturn(Optional.of(post(1L, user(2L))));
             SlifeException ex = assertThrows(SlifeException.class,
@@ -262,7 +278,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("image không tồn tại -> INVALID_INPUT")
+        @DisplayName("[Lỗi] image không tồn tại → INVALID_INPUT")
         void imageMissing_shouldThrow() {
             when(postRepository.findById(1L)).thenReturn(Optional.of(post(1L, user(1L))));
             when(imageRepository.findById(2L)).thenReturn(Optional.empty());
@@ -272,7 +288,7 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("image không thuộc post -> FORBIDDEN")
+        @DisplayName("[Lỗi] image không thuộc post → FORBIDDEN")
         void wrongPost_shouldThrow() {
             CommunityPost p1 = post(1L, user(1L));
             CommunityPost p2 = post(9L, user(1L));
@@ -289,8 +305,8 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("url không bắt đầu /uploads/ -> không gọi deleteIfExists nhưng vẫn delete row")
-        void nonUploadUrl_shouldSkipDeleteFile() throws Exception {
+        @DisplayName("url HTTPS → gọi deleteStoredIfExists + delete row")
+        void httpsUrl_shouldCallDeleteStored() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             CommunityPostImage img = new CommunityPostImage();
@@ -301,7 +317,7 @@ class CommunityPostImageServiceTest {
 
             service.deletePostImage(1L, 2L, user(1L));
 
-            verify(fileStorage, never()).deleteIfExists(any(Path.class));
+            verify(userFileStorage).deleteStoredIfExists("https://cdn/x.jpg");
             verify(imageRepository).delete(img);
         }
     }

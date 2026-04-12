@@ -5,7 +5,6 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.UserRepository;
-import com.slife.marketplace.storage.FileStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -14,9 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,17 +24,11 @@ public class UserService {
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final UserRepository userRepository;
-    private final FileStorage fileStorage;
-    private final Path uploadBasePath;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
 
-    public UserService(UserRepository userRepository, FileStorage fileStorage, Path uploadBasePath) {
-    public UserService(UserRepository userRepository, UserFileStorageService fileStorage) {
+    public UserService(UserRepository userRepository, UserFileStorageService userFileStorage) {
         this.userRepository = userRepository;
-        this.fileStorage = fileStorage;
-        this.uploadBasePath = uploadBasePath;
-        log.info("UserService upload base path: {}", this.uploadBasePath);
-        this.fileStorage = fileStorage;
+        this.userFileStorage = userFileStorage;
     }
 
     public User getCurrentUser() {
@@ -200,13 +190,7 @@ public class UserService {
         String subDir = "avatars";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
         try {
-            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
-            fileStorage.createDirectories(dir);
-            Path target = dir.resolve(filename).normalize();
-            try (InputStream in = file.getInputStream()) {
-                fileStorage.copy(in, target);
-            }
-            String url = "/uploads/" + subDir + "/" + filename;
+            String url = userFileStorage.storeMultipart(file, subDir + "/" + filename);
             user.setAvatarUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
@@ -231,13 +215,7 @@ public class UserService {
         String subDir = "covers";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
         try {
-            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
-            fileStorage.createDirectories(dir);
-            Path target = dir.resolve(filename).normalize();
-            try (InputStream in = file.getInputStream()) {
-                fileStorage.copy(in, target);
-            }
-            String url = "/uploads/" + subDir + "/" + filename;
+            String url = userFileStorage.storeMultipart(file, subDir + "/" + filename);
             user.setCoverImageUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);

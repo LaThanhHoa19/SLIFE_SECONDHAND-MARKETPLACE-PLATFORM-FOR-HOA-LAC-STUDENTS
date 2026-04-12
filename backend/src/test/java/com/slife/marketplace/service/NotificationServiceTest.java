@@ -86,7 +86,7 @@ class NotificationServiceTest {
     class NotifyNewMessage {
 
         @Test
-        @DisplayName("Luồng chính: lưu notification + đẩy (WS) message + đẩy (WS) số lượng chưa đọc")
+        @DisplayName("[Thường] Luồng chính: lưu notification + đẩy (WS) message + đẩy (WS) số lượng chưa đọc")
         void notifyNewMessage_happyPath_shouldSaveAndPush() {
             User recipient = user(1L, "r@ex.com");
             ChatMessageResponse msg = new ChatMessageResponse();
@@ -257,7 +257,7 @@ class NotificationServiceTest {
         }
 
         @Test
-        @DisplayName("Tin bị báo cáo: no-op (chỉ log, không lưu / không đẩy WS)")
+        @DisplayName("Tin bị báo cáo: không thực hiện (chỉ log, không lưu / không đẩy WS)")
         void notifyListingReported_shouldNoOp() {
             User owner = user(1L, "o@ex.com");
             User reporter = user(2L, "r@ex.com");
@@ -342,7 +342,7 @@ class NotificationServiceTest {
         }
 
         @Test
-        @DisplayName("getNotificationResponses: map entity -> DTO")
+        @DisplayName("getNotificationResponses: map entity → DTO")
         void getNotificationResponses_shouldMap() {
             User u = user(1L, "a@ex.com");
             Notification n1 = n(1L, u, "SYSTEM", "LISTING", 10L, "c", false, Instant.now());

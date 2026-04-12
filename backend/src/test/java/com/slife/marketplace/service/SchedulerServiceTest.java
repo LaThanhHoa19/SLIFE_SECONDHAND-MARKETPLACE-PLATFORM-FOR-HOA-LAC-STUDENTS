@@ -34,7 +34,7 @@ class SchedulerServiceTest {
     }
 
     @Test
-    @DisplayName("autoCompleteConfirmedDeals: no overdue -> no saveAll")
+    @DisplayName("autoCompleteConfirmedDeals: không quá hạn → không gọi saveAll")
     void noOverdue_noSaveAll() {
         when(configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 3)).thenReturn(3);
         when(dealRepository.findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull(eq("CONFIRMED"), any()))
@@ -65,7 +65,7 @@ class SchedulerServiceTest {
     }
 
     @Test
-    @DisplayName("autoCompleteConfirmedDeals: overdue deals -> set status COMPLETED + saveAll")
+    @DisplayName("autoCompleteConfirmedDeals: overdue deals → set status COMPLETED + saveAll")
     void overdue_shouldCompleteAndSaveAll() {
         when(configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 3)).thenReturn(3);
         Deal d1 = new Deal();

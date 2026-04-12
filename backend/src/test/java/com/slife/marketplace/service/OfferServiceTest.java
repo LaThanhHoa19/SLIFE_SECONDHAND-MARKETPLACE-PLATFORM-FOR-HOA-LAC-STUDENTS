@@ -112,7 +112,7 @@ class OfferServiceTest {
     class CreateOfferForListing {
 
         @Test
-        @DisplayName("Luồng chính: listing ACTIVE + đề xuất hợp lệ -> tạo offer PENDING + notify + email")
+        @DisplayName("[Thường] Luồng chính: listing ACTIVE + đề xuất hợp lệ → tạo offer PENDING + notify + email")
         void createOfferForListing_happyPath_shouldCreatePendingOfferAndNotify() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -150,7 +150,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không tìm thấy tin đăng -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy tin đăng → LISTING_NOT_FOUND")
         void createOfferForListing_listingNotFound_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(listingRepository.findById(404L)).thenReturn(Optional.empty());
@@ -160,7 +160,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Listing không ACTIVE -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Listing không ACTIVE → INVALID_INPUT")
         void createOfferForListing_notActive_shouldThrow() {
             User buyer = user(1L);
             when(userService.getCurrentUser()).thenReturn(buyer);
@@ -172,7 +172,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Buyer là seller -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Buyer là seller → INVALID_INPUT")
         void createOfferForListing_selfOffer_shouldThrow() {
             User buyer = user(1L);
             when(userService.getCurrentUser()).thenReturn(buyer);
@@ -186,7 +186,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Bị block -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] Bị block → FOLLOW_BLOCKED")
         void createOfferForListing_blocked_shouldThrow() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -202,7 +202,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Giá đề xuất null/<=0 -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Giá đề xuất null/<=0 → INVALID_INPUT")
         void createOfferForListing_invalidProposed_shouldThrow() {
             User buyer = user(1L);
             when(userService.getCurrentUser()).thenReturn(buyer);
@@ -218,7 +218,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Giá đề xuất >= giá listing -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Giá đề xuất >= giá listing → INVALID_INPUT")
         void createOfferForListing_proposedTooHigh_shouldThrow() {
             User buyer = user(1L);
             when(userService.getCurrentUser()).thenReturn(buyer);
@@ -234,7 +234,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Đã có offer PENDING -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Đã có offer PENDING → INVALID_INPUT")
         void createOfferForListing_pendingExists_shouldThrow() {
             User buyer = user(1L);
             when(userService.getCurrentUser()).thenReturn(buyer);
@@ -269,7 +269,7 @@ class OfferServiceTest {
     class GetOfferHistory {
 
         @Test
-        @DisplayName("listingId null và sessionId blank -> INVALID_INPUT")
+        @DisplayName("[Lỗi] listingId null và sessionId blank → INVALID_INPUT")
         void getOfferHistory_missingListingAndSession_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             SlifeException ex = assertThrows(SlifeException.class,
@@ -278,7 +278,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải seller, buyerId != currentUser -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải seller, buyerId != currentUser → FORBIDDEN")
         void getOfferHistory_notSeller_otherBuyerId_shouldThrowForbidden() {
             User current = user(1L);
             User seller = user(2L);
@@ -293,7 +293,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Người bán xem lịch sử: buyerId null -> truy vấn theo listingId")
+        @DisplayName("Người bán xem lịch sử: buyerId null → truy vấn theo listingId")
         void getOfferHistory_sellerWithoutBuyerId_shouldQueryListingOnly() {
             User seller = user(2L);
             when(userService.getCurrentUser()).thenReturn(seller);
@@ -309,7 +309,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Có sessionId nhưng listingId đã có -> vẫn query theo listingId (không đụng conversationRepository)")
+        @DisplayName("Có sessionId nhưng listingId đã có → vẫn query theo listingId (không đụng conversationRepository)")
         void getOfferHistory_sessionProvided_listingProvided_shouldNotTouchConversationRepository() {
             User seller = user(2L);
             when(userService.getCurrentUser()).thenReturn(seller);
@@ -323,7 +323,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Chế độ sessionId: không thuộc hội thoại và cũng không phải người bán -> NOT_CHAT_PARTICIPANT")
+        @DisplayName("[Lỗi] Chế độ sessionId: không thuộc hội thoại và cũng không phải người bán → NOT_CHAT_PARTICIPANT")
         void getOfferHistory_sessionMode_notParticipant_shouldThrowNotChatParticipant() {
             User current = user(1L);
             when(userService.getCurrentUser()).thenReturn(current);
@@ -337,7 +337,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Chế độ sessionId: buyerId truyền vào không khớp buyer của session -> FORBIDDEN")
+        @DisplayName("[Lỗi] Chế độ sessionId: buyerId truyền vào không khớp buyer của session → FORBIDDEN")
         void getOfferHistory_sessionMode_buyerMismatch_shouldThrowForbidden() {
             User seller = user(99L);
             User buyer = user(2L);
@@ -352,7 +352,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Chế độ sessionId: không dùng được / lỗi dữ liệu -> INVALID_INPUT (yêu cầu query theo listingId)")
+        @DisplayName("[Lỗi] Chế độ sessionId: không dùng được / lỗi dữ liệu → INVALID_INPUT (yêu cầu query theo listingId)")
         void getOfferHistory_sessionMode_chatSessionNotFound_shouldMapToInvalidInput() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(conversationRepository.findBySessionUuid("sess")).thenReturn(Optional.empty());
@@ -370,7 +370,7 @@ class OfferServiceTest {
     class MakeOfferBySession {
 
         @Test
-        @DisplayName("Không thuộc hội thoại -> NOT_CHAT_PARTICIPANT")
+        @DisplayName("[Lỗi] Không thuộc hội thoại → NOT_CHAT_PARTICIPANT")
         void makeOffer_notParticipant_shouldThrow() {
             User current = user(1L);
             when(userService.getCurrentUser()).thenReturn(current);
@@ -387,7 +387,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Giá không hợp lệ -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Giá không hợp lệ → INVALID_INPUT")
         void makeOffer_invalidAmount_shouldThrow() {
             User current = user(1L);
             when(userService.getCurrentUser()).thenReturn(current);
@@ -405,7 +405,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không tìm thấy session -> CHAT_SESSION_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy session → CHAT_SESSION_NOT_FOUND")
         void makeOffer_sessionNotFound_shouldThrowChatSessionNotFound() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.empty());
@@ -415,7 +415,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Session có participant nhưng thiếu listing -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Session có participant nhưng thiếu listing → LISTING_NOT_FOUND")
         void makeOffer_sessionMissingListing_shouldThrowListingNotFound() {
             User current = user(1L);
             when(userService.getCurrentUser()).thenReturn(current);
@@ -430,7 +430,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Giá đề xuất >= giá listing -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Giá đề xuất >= giá listing → INVALID_INPUT")
         void makeOffer_amountTooHigh_shouldThrow() {
             User current = user(1L);
             User seller = user(2L);
@@ -447,7 +447,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Buyer là seller -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Buyer là seller → INVALID_INPUT")
         void makeOffer_selfOffer_shouldThrow() {
             User current = user(1L);
             when(userService.getCurrentUser()).thenReturn(current);
@@ -463,7 +463,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Bị block -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] Bị block → FOLLOW_BLOCKED")
         void makeOffer_blocked_shouldThrow() {
             User current = user(1L);
             User seller = user(2L);
@@ -481,7 +481,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Đã có offer PENDING -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Đã có offer PENDING → INVALID_INPUT")
         void makeOffer_pendingExists_shouldThrow() {
             User current = user(1L);
             User seller = user(2L);
@@ -500,7 +500,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: lưu Offer PENDING với conversation")
+        @DisplayName("[Thường] Luồng chính: lưu Offer PENDING với conversation")
         void makeOffer_happyPath_shouldSavePendingOffer() {
             User current = user(1L);
             User seller = user(2L);
@@ -538,7 +538,7 @@ class OfferServiceTest {
     class GetOffersForListing {
 
         @Test
-        @DisplayName("listingId null -> INVALID_INPUT")
+        @DisplayName("[Lỗi] listingId null → INVALID_INPUT")
         void getOffersForListing_nullListingId_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             SlifeException ex = assertThrows(SlifeException.class,
@@ -547,7 +547,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không tìm thấy tin đăng -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy tin đăng → LISTING_NOT_FOUND")
         void getOffersForListing_listingNotFound_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(listingRepository.findById(10L)).thenReturn(Optional.empty());
@@ -557,7 +557,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải seller -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải seller → FORBIDDEN")
         void getOffersForListing_notSeller_shouldThrowForbidden() {
             User current = user(1L);
             User seller = user(2L);
@@ -602,7 +602,7 @@ class OfferServiceTest {
     class AcceptOfferLegacy {
 
         @Test
-        @DisplayName("Không tìm thấy offer -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy offer → OFFER_NOT_FOUND")
         void acceptOfferLegacy_offerNotFound_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(offerRepository.findById(9L)).thenReturn(Optional.empty());
@@ -612,7 +612,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải seller -> NOT_CHAT_PARTICIPANT")
+        @DisplayName("[Lỗi] Không phải seller → NOT_CHAT_PARTICIPANT")
         void acceptOfferLegacy_notSeller_shouldThrow() {
             User current = user(1L);
             when(userService.getCurrentUser()).thenReturn(current);
@@ -626,7 +626,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Offer không PENDING -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Offer không PENDING → INVALID_INPUT")
         void acceptOfferLegacy_notPending_shouldThrow() {
             User seller = user(2L);
             when(userService.getCurrentUser()).thenReturn(seller);
@@ -640,7 +640,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Buyer bị block -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Buyer bị block → OFFER_NOT_FOUND")
         void acceptOfferLegacy_blockedBuyer_shouldThrowOfferNotFound() {
             User seller = user(2L);
             User buyer = user(3L);
@@ -656,7 +656,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: chấp nhận (legacy) -> cập nhật offer + tạo deal + gửi thông báo/email")
+        @DisplayName("[Thường] Luồng chính: chấp nhận (legacy) → cập nhật offer + tạo deal + gửi thông báo/email")
         void acceptOfferLegacy_happyPath_shouldCreateDealAndNotify() {
             User seller = user(2L);
             User buyer = user(3L);
@@ -696,7 +696,7 @@ class OfferServiceTest {
     class AcceptOffer {
 
         @Test
-        @DisplayName("Không tìm thấy offer -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy offer → OFFER_NOT_FOUND")
         void acceptOffer_offerNotFound_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(offerRepository.findById(9L)).thenReturn(Optional.empty());
@@ -706,7 +706,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Offer thiếu listing -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Offer thiếu listing → LISTING_NOT_FOUND")
         void acceptOffer_missingListing_shouldThrowListingNotFound() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             Offer o = new Offer();
@@ -719,7 +719,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải seller -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải seller → FORBIDDEN")
         void acceptOffer_notSeller_shouldThrowForbidden() {
             User current = user(1L);
             User seller = user(2L);
@@ -734,7 +734,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Offer không PENDING -> OFFER_NOT_PENDING")
+        @DisplayName("[Lỗi] Offer không PENDING → OFFER_NOT_PENDING")
         void acceptOffer_notPending_shouldThrowOfferNotPending() {
             User seller = user(2L);
             when(userService.getCurrentUser()).thenReturn(seller);
@@ -748,7 +748,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Buyer bị block -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Buyer bị block → OFFER_NOT_FOUND")
         void acceptOffer_blockedBuyer_shouldThrowOfferNotFound() {
             User seller = user(2L);
             User buyer = user(3L);
@@ -764,7 +764,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: chấp nhận -> từ chối các pending khác + tạo deal + gửi thông báo/email")
+        @DisplayName("[Thường] Luồng chính: chấp nhận → từ chối các pending khác + tạo deal + gửi thông báo/email")
         void acceptOffer_happyPath_shouldAcceptAndRejectOthersAndNotify() {
             User seller = user(2L);
             User buyer = user(3L);
@@ -813,7 +813,7 @@ class OfferServiceTest {
     class RejectOffer {
 
         @Test
-        @DisplayName("Không tìm thấy offer -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy offer → OFFER_NOT_FOUND")
         void rejectOffer_offerNotFound_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(offerRepository.findById(9L)).thenReturn(Optional.empty());
@@ -823,7 +823,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Offer thiếu listing -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Offer thiếu listing → LISTING_NOT_FOUND")
         void rejectOffer_missingListing_shouldThrowListingNotFound() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             Offer o = new Offer();
@@ -836,7 +836,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải seller -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải seller → FORBIDDEN")
         void rejectOffer_notSeller_shouldThrowForbidden() {
             User current = user(1L);
             User seller = user(2L);
@@ -851,7 +851,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Offer không PENDING -> OFFER_NOT_PENDING")
+        @DisplayName("[Lỗi] Offer không PENDING → OFFER_NOT_PENDING")
         void rejectOffer_notPending_shouldThrowOfferNotPending() {
             User seller = user(2L);
             when(userService.getCurrentUser()).thenReturn(seller);
@@ -865,7 +865,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Buyer bị block -> OFFER_NOT_FOUND")
+        @DisplayName("[Lỗi] Buyer bị block → OFFER_NOT_FOUND")
         void rejectOffer_blockedBuyer_shouldThrowOfferNotFound() {
             User seller = user(2L);
             User buyer = user(3L);
@@ -881,7 +881,7 @@ class OfferServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: từ chối -> cập nhật offer + gửi thông báo/email")
+        @DisplayName("[Thường] Luồng chính: từ chối → cập nhật offer + gửi thông báo/email")
         void rejectOffer_happyPath_shouldRejectAndNotify() {
             User seller = user(2L);
             User buyer = user(3L);

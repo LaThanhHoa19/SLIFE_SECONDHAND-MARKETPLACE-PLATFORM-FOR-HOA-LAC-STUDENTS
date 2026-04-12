@@ -7,22 +7,18 @@ import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingRepository;
-import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,13 +41,7 @@ class ListingImageServiceTest {
     private ConfigService configService;
 
     @Mock
-    private UserFileStorageService fileStorage;
-
-    @Mock
-    private FileStorage fileStorage;
-
-    @TempDir
-    Path tempUploadDir;
+    private UserFileStorageService userFileStorage;
 
     private ListingImageService listingImageService;
 
@@ -61,9 +51,7 @@ class ListingImageServiceTest {
                 listingRepository,
                 listingImageRepository,
                 configService,
-                fileStorage
-                fileStorage,
-                tempUploadDir
+                userFileStorage
         );
     }
 
@@ -84,7 +72,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: currentUser không phải chủ tin -> FORBIDDEN")
+    @DisplayName("[Lỗi] uploadListingImages: currentUser không phải chủ tin → FORBIDDEN")
     void uploadListingImages_whenCurrentUserIsNotOwner_shouldThrowForbidden() {
         Listing listing = listing(100L, 1L);
         User attacker = user(2L);
@@ -108,7 +96,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: files null/empty -> INVALID_INPUT")
+    @DisplayName("[Lỗi] uploadListingImages: files null/empty → INVALID_INPUT")
     void uploadListingImages_filesEmpty_shouldThrow() {
         SlifeException ex1 = assertThrows(SlifeException.class,
                 () -> listingImageService.uploadListingImages(100L, null, user(1L)));
@@ -120,7 +108,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: listing không tồn tại -> LISTING_NOT_FOUND")
+    @DisplayName("[Lỗi] uploadListingImages: listing không tồn tại → LISTING_NOT_FOUND")
     void uploadListingImages_listingMissing_shouldThrow() {
         when(listingRepository.findById(100L)).thenReturn(Optional.empty());
         MockMultipartFile image = new MockMultipartFile("images", "a.jpg", "image/jpeg", "x".getBytes());
@@ -130,7 +118,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: currentUser null -> FORBIDDEN")
+    @DisplayName("[Lỗi] uploadListingImages: currentUser null → FORBIDDEN")
     void uploadListingImages_currentUserNull_shouldThrow() {
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing(100L, 1L)));
         MockMultipartFile image = new MockMultipartFile("images", "a.jpg", "image/jpeg", "x".getBytes());
@@ -140,7 +128,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: vượt quá giới hạn ảnh -> INVALID_INPUT (MSG18)")
+    @DisplayName("[Lỗi] uploadListingImages: vượt quá giới hạn ảnh → INVALID_INPUT (MSG18)")
     void uploadListingImages_exceedMax_shouldThrow() {
         Listing listing = listing(100L, 1L);
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
@@ -157,7 +145,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: ảnh quá lớn -> FILE_TOO_LARGE")
+    @DisplayName("[Lỗi] uploadListingImages: ảnh quá lớn → FILE_TOO_LARGE")
     void uploadListingImages_tooLarge_shouldThrow() {
         Listing listing = listing(100L, 1L);
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
@@ -173,14 +161,15 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: lỗi IO khi tạo thư mục/copy -> FILE_UPLOAD_FAILED")
-    void uploadListingImages_ioFailure_shouldThrow() throws Exception {
+    @DisplayName("[Lỗi] uploadListingImages: storeMultipart lỗi → FILE_UPLOAD_FAILED")
+    void uploadListingImages_ioFailure_shouldThrow() {
         Listing listing = listing(100L, 1L);
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
         when(listingImageRepository.countByListing_Id(100L)).thenReturn(0);
         when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
         when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-        doThrow(new IOException("disk full")).when(fileStorage).createDirectories(any(Path.class));
+        when(userFileStorage.storeMultipart(any(), anyString()))
+                .thenThrow(new SlifeException(ErrorCode.FILE_UPLOAD_FAILED));
 
         MockMultipartFile image = new MockMultipartFile("images", "a.jpg", "image/jpeg", "x".getBytes());
         SlifeException ex = assertThrows(SlifeException.class,
@@ -190,8 +179,8 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("uploadListingImages: luồng chính -> tạo ListingImage + save + gọi FileStorage")
-    void uploadListingImages_happyPath_shouldSave() throws Exception {
+    @DisplayName("uploadListingImages: luồng chính → tạo ListingImage + save + gọi UserFileStorageService")
+    void uploadListingImages_happyPath_shouldSave() {
         Listing listing = listing(100L, 1L);
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
         when(listingImageRepository.countByListing_Id(100L)).thenReturn(0);
@@ -199,10 +188,13 @@ class ListingImageServiceTest {
         when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
 
         MockMultipartFile image = new MockMultipartFile("images", "a.png", "image/png", "x".getBytes());
+        when(userFileStorage.storeMultipart(eq(image), anyString()))
+                .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+
         listingImageService.uploadListingImages(100L, List.of(image), user(1L));
 
-        verify(fileStorage).createDirectories(any(Path.class));
-        verify(fileStorage).copy(any(InputStream.class), any(Path.class));
+        verify(userFileStorage).storeMultipart(eq(image), argThat((String rel) ->
+                rel != null && rel.startsWith("listings/")));
         ArgumentCaptor<ListingImage> cap = ArgumentCaptor.forClass(ListingImage.class);
         verify(listingImageRepository).save(cap.capture());
         assertEquals(listing, cap.getValue().getListing());
@@ -213,7 +205,52 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("deleteListingImage: currentUser null -> UNAUTHORIZED")
+    @DisplayName("uploadListingImages: nhiều file hợp lệ → displayOrder tăng dần, mỗi file một storeMultipart")
+    void uploadListingImages_multipleFiles_incrementsDisplayOrder() {
+        Listing listing = listing(100L, 1L);
+        when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
+        when(listingImageRepository.countByListing_Id(100L)).thenReturn(0);
+        when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
+        when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
+
+        MockMultipartFile a = new MockMultipartFile("images", "a.jpg", "image/jpeg", "a".getBytes());
+        MockMultipartFile b = new MockMultipartFile("images", "b.png", "image/png", "b".getBytes());
+        when(userFileStorage.storeMultipart(any(), anyString()))
+                .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+
+        listingImageService.uploadListingImages(100L, List.of(a, b), user(1L));
+
+        verify(userFileStorage).storeMultipart(eq(a), argThat(rel -> rel != null && rel.contains("_1.jpg")));
+        verify(userFileStorage).storeMultipart(eq(b), argThat(rel -> rel != null && rel.contains("_2.png")));
+        ArgumentCaptor<ListingImage> cap = ArgumentCaptor.forClass(ListingImage.class);
+        verify(listingImageRepository, times(2)).save(cap.capture());
+        assertEquals(1, cap.getAllValues().get(0).getDisplayOrder());
+        assertEquals(2, cap.getAllValues().get(1).getDisplayOrder());
+    }
+
+    @Test
+    @DisplayName("uploadListingImages: bỏ qua file null/rỗng, chỉ lưu file còn lại")
+    void uploadListingImages_skipsEmptyParts() {
+        Listing listing = listing(100L, 1L);
+        when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
+        when(listingImageRepository.countByListing_Id(100L)).thenReturn(0);
+        when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
+        when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
+
+        MockMultipartFile empty = new MockMultipartFile("images", "e.jpg", "image/jpeg", new byte[0]);
+        MockMultipartFile ok = new MockMultipartFile("images", "a.webp", "image/webp", "x".getBytes());
+        when(userFileStorage.storeMultipart(eq(ok), anyString()))
+                .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+
+        listingImageService.uploadListingImages(100L, Arrays.asList(empty, null, ok), user(1L));
+
+        verify(userFileStorage, times(1)).storeMultipart(eq(ok), argThat(rel ->
+                rel != null && rel.startsWith("listings/100_") && rel.endsWith(".webp")));
+        verify(listingImageRepository, times(1)).save(any(ListingImage.class));
+    }
+
+    @Test
+    @DisplayName("[Lỗi] deleteListingImage: currentUser null → UNAUTHORIZED")
     void deleteListingImage_userNull_shouldThrow() {
         SlifeException ex = assertThrows(SlifeException.class,
                 () -> listingImageService.deleteListingImage(100L, 1L, null));
@@ -221,7 +258,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("deleteListingImage: listing không tồn tại -> LISTING_NOT_FOUND")
+    @DisplayName("[Lỗi] deleteListingImage: listing không tồn tại → LISTING_NOT_FOUND")
     void deleteListingImage_listingMissing_shouldThrow() {
         when(listingRepository.findById(100L)).thenReturn(Optional.empty());
         SlifeException ex = assertThrows(SlifeException.class,
@@ -230,7 +267,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("deleteListingImage: không phải chủ tin -> FORBIDDEN")
+    @DisplayName("[Lỗi] deleteListingImage: không phải chủ tin → FORBIDDEN")
     void deleteListingImage_notOwner_shouldThrow() {
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing(100L, 1L)));
         SlifeException ex = assertThrows(SlifeException.class,
@@ -239,7 +276,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("deleteListingImage: không tìm thấy image -> INVALID_INPUT")
+    @DisplayName("[Lỗi] deleteListingImage: không tìm thấy image → INVALID_INPUT")
     void deleteListingImage_imageMissing_shouldThrow() {
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing(100L, 1L)));
         when(listingImageRepository.findById(5L)).thenReturn(Optional.empty());
@@ -249,7 +286,7 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("deleteListingImage: ảnh không thuộc listing -> FORBIDDEN")
+    @DisplayName("[Lỗi] deleteListingImage: ảnh không thuộc listing → FORBIDDEN")
     void deleteListingImage_wrongListing_shouldThrow() {
         Listing listing = listing(100L, 1L);
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
@@ -266,8 +303,8 @@ class ListingImageServiceTest {
     }
 
     @Test
-    @DisplayName("deleteListingImage: URL không bắt đầu /uploads/ -> không gọi deleteIfExists, vẫn delete DB row")
-    void deleteListingImage_nonUploadUrl_shouldSkipDeleteFile() throws Exception {
+    @DisplayName("deleteListingImage: URL HTTPS → gọi deleteStoredIfExists + delete DB row")
+    void deleteListingImage_httpsUrl_shouldCallDeleteStored() {
         Listing listing = listing(100L, 1L);
         when(listingRepository.findById(100L)).thenReturn(Optional.of(listing));
         ListingImage img = new ListingImage();
@@ -278,7 +315,7 @@ class ListingImageServiceTest {
 
         listingImageService.deleteListingImage(100L, 5L, user(1L));
 
-        verify(fileStorage, never()).deleteIfExists(any(Path.class));
+        verify(userFileStorage).deleteStoredIfExists("https://cdn/x.jpg");
         verify(listingImageRepository, times(1)).delete(img);
     }
 }

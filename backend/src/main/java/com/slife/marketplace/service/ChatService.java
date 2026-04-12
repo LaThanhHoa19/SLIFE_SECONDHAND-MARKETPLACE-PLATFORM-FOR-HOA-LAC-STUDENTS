@@ -8,7 +8,6 @@ import com.slife.marketplace.entity.*;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.*;
-import com.slife.marketplace.storage.FileStorage;
 import com.slife.marketplace.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +23,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.Locale;
@@ -48,9 +46,7 @@ public class ChatService {
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final FileStorage fileStorage;
-    private final Path uploadBasePath;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
 
     /** Rate limit: last message timestamp per user id (BR-38: max 1 message per second). */
     private final Map<Long, Instant> lastMessageByUser = new ConcurrentHashMap<>();
@@ -64,9 +60,7 @@ public class ChatService {
                        NotificationService notificationService,
                        SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
-                       FileStorage fileStorage,
-                       Path uploadBasePath) {
-                       UserFileStorageService fileStorage) {
+                       UserFileStorageService userFileStorage) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
@@ -76,9 +70,7 @@ public class ChatService {
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
-        this.fileStorage = fileStorage;
-        this.uploadBasePath = uploadBasePath;
-        this.fileStorage = fileStorage;
+        this.userFileStorage = userFileStorage;
     }
 
     // ── Session management ────────────────────────────────────────────────────
@@ -494,20 +486,8 @@ public class ChatService {
             default -> ".jpg";
         };
         String fileName = UUID.randomUUID() + ext;
-        Path dir = uploadBasePath.resolve(Constants.CHAT_UPLOAD_DIR).resolve(resolvedSessionId);
-        try {
-            fileStorage.createDirectories(dir);
-            Path dest = dir.resolve(fileName);
-            try (InputStream in = file.getInputStream()) {
-                fileStorage.copy(in, dest);
-            }
-        } catch (IOException e) {
-            log.error("Chat image upload failed session={}", resolvedSessionId, e);
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-        return "/uploads/" + Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
         String relative = Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
-        return fileStorage.storeMultipart(file, relative);
+        return userFileStorage.storeMultipart(file, relative);
     }
 
     // ── Offer negotiation (UC-30) ─────────────────────────────────────────────

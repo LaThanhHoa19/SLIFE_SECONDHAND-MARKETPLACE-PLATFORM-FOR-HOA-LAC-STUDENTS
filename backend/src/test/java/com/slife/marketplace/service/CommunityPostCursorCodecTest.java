@@ -10,14 +10,14 @@ import static org.junit.jupiter.api.Assertions.*;
 class CommunityPostCursorCodecTest {
 
     @Test
-    @DisplayName("encodeLatest: null input -> null")
+    @DisplayName("encodeLatest: null input → null")
     void encodeLatest_null_shouldReturnNull() {
         assertNull(CommunityPostCursorCodec.encodeLatest(null, 1L));
         assertNull(CommunityPostCursorCodec.encodeLatest(Instant.now(), null));
     }
 
     @Test
-    @DisplayName("decodeLatest: null/blank/invalid -> null")
+    @DisplayName("decodeLatest: null/blank/invalid → null")
     void decodeLatest_invalid_shouldReturnNull() {
         assertNull(CommunityPostCursorCodec.decodeLatest(null));
         assertNull(CommunityPostCursorCodec.decodeLatest("   "));
@@ -41,14 +41,14 @@ class CommunityPostCursorCodecTest {
     }
 
     @Test
-    @DisplayName("encodeTop: null input -> null")
+    @DisplayName("encodeTop: null input → null")
     void encodeTop_null_shouldReturnNull() {
         assertNull(CommunityPostCursorCodec.encodeTop(1L, null, 1L));
         assertNull(CommunityPostCursorCodec.encodeTop(1L, Instant.now(), null));
     }
 
     @Test
-    @DisplayName("decodeTop: null/blank/invalid -> null")
+    @DisplayName("decodeTop: null/blank/invalid → null")
     void decodeTop_invalid_shouldReturnNull() {
         assertNull(CommunityPostCursorCodec.decodeTop(null));
         assertNull(CommunityPostCursorCodec.decodeTop(" "));

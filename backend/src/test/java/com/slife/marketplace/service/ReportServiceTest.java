@@ -21,7 +21,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -29,7 +28,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -66,9 +64,7 @@ class ReportServiceTest {
     @Mock private ConfigService configService;
     @Mock private AuditLogService auditLogService;
     @Mock private SystemEmailService systemEmailService;
-
-    @TempDir
-    Path tempUploadDir;
+    @Mock private UserFileStorageService userFileStorage;
 
     private ReportService service;
 
@@ -87,7 +83,7 @@ class ReportServiceTest {
                 configService,
                 auditLogService,
                 systemEmailService,
-                tempUploadDir
+                userFileStorage
         );
     }
 
@@ -121,11 +117,11 @@ class ReportServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("createReport")
+    @DisplayName("Nhóm: Tạo báo cáo")
     class Create {
 
         @Test
-        @DisplayName("invalid targetType -> REPORT_INVALID_TARGET")
+        @DisplayName("[Lỗi] targetType không hợp lệ → REPORT_INVALID_TARGET")
         void invalidTarget_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.createReport(user(1L, "USER"), req("NOPE", 1)));
@@ -133,7 +129,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("duplicate report -> REPORT_DUPLICATE")
+        @DisplayName("[Lỗi] báo cáo trùng → REPORT_DUPLICATE")
         void duplicate_shouldThrow() {
             when(reportRepository.existsByReporter_IdAndTargetTypeAndTargetId(1L, "LISTING", 10L)).thenReturn(true);
             SlifeException ex = assertThrows(SlifeException.class,
@@ -142,7 +138,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("alias POST -> LISTING, và self-report listing -> REPORT_SELF")
+        @DisplayName("[Lỗi] alias POST → LISTING, và self-report listing → REPORT_SELF")
         void postAlias_selfReport_shouldThrow() {
             User reporter = user(1L, "USER");
             Listing l = new Listing();
@@ -157,7 +153,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("listing happy path + evidence image -> save report + save image + notify + maybe auto-hide")
+        @DisplayName("[Thường] listing luồng thành công + evidence image → save report + save image + notify + có thể tự ẩn")
         void listing_happyPath_evidence_shouldPersistAndNotifyAndAutoHide() {
             stubReportSaveAssignId();
             User reporter = user(1L, "USER");
@@ -189,7 +185,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("comment self-report -> REPORT_SELF")
+        @DisplayName("[Lỗi] comment self-report → REPORT_SELF")
         void comment_self_shouldThrow() {
             User reporter = user(1L, "USER");
             Comment c = new Comment();
@@ -203,7 +199,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("message: loại MESSAGE không còn trong VALID_TARGET_TYPES -> REPORT_INVALID_TARGET")
+        @DisplayName("[Lỗi] message: loại MESSAGE không còn trong VALID_TARGET_TYPES → REPORT_INVALID_TARGET")
         void message_targetTypeUnsupported_shouldThrow() {
             User reporter = user(9L, "USER");
             SlifeException ex = assertThrows(SlifeException.class, () -> service.createReport(reporter, req("MESSAGE", 7)));
@@ -214,10 +210,10 @@ class ReportServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getReports/getAdminReports")
+    @DisplayName("Nhóm: Danh sách báo cáo admin")
     class Queries {
         @Test
-        @DisplayName("getReports: normalize type/status + clamp size(1..50)")
+        @DisplayName("getReports: chuẩn hoá type/status + giới hạn size(1..50)")
         void getReports_normalizeAndClamp() {
             Page<Report> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
             // Note: service uppercases but does not trim status/type.
@@ -228,7 +224,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("getAdminReports: targetType OTHER -> findAdminReportsOther")
+        @DisplayName("getAdminReports: targetType OTHER → findAdminReportsOther")
         void getAdminReports_other() {
             Page<Report> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
             when(reportRepository.findAdminReportsOther(eq("PENDING"), any())).thenReturn(p);
@@ -241,7 +237,7 @@ class ReportServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("processReport")
+    @DisplayName("Nhóm: Xử lý báo cáo")
     class Process {
 
         private Report pendingReport(String type, long targetId) {
@@ -257,7 +253,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("action blank/invalid -> INVALID_INPUT")
+        @DisplayName("[Lỗi] action trống hoặc không hợp lệ → INVALID_INPUT")
         void invalidAction_shouldThrow() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> service.processReport(1L, " ", null, user(1L, "ADMIN"))).getErrorCode());
@@ -266,7 +262,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("report not found -> REPORT_NOT_FOUND")
+        @DisplayName("[Lỗi] không tìm thấy báo cáo → REPORT_NOT_FOUND")
         void notFound_shouldThrow() {
             when(reportRepository.findById(1L)).thenReturn(Optional.empty());
             assertEquals(ErrorCode.REPORT_NOT_FOUND,
@@ -274,7 +270,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("report status != PENDING -> INVALID_INPUT")
+        @DisplayName("[Lỗi] report status != PENDING → INVALID_INPUT")
         void notPending_shouldThrow() {
             Report r = pendingReport("LISTING", 10L);
             r.setStatus("RESOLVED");
@@ -284,7 +280,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVE listing -> close + applyApproveSideEffects (listing status=MOD_HIDDEN) + strike + notify + email + auditLog")
+        @DisplayName("APPROVE listing → close + áp dụng hiệu ứng duyệt (listing status=MOD_HIDDEN) + strike + notify + email + auditLog")
         void approve_listing_shouldHideListingAndAudit() {
             Report r = pendingReport("LISTING", 10L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -315,7 +311,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("REJECT -> close as rejected + audit log (no approve side effects)")
+        @DisplayName("REJECT → đóng dạng từ chối + ghi audit (không áp hiệu ứng duyệt)")
         void reject_shouldNotApplyApproveSideEffects() {
             Report r = pendingReport("LISTING", 10L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -328,7 +324,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("HIDE_LISTING_APPROVE: only supports LISTING type")
+        @DisplayName("HIDE_LISTING_APPROVE: chỉ hỗ trợ LISTING type")
         void hideListingApprove_wrongType_shouldThrow() {
             Report r = pendingReport("USER", 2L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -338,7 +334,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("BAN_USER_APPROVE: only supports USER type")
+        @DisplayName("BAN_USER_APPROVE: chỉ hỗ trợ USER type")
         void banUserApprove_wrongType_shouldThrow() {
             Report r = pendingReport("LISTING", 10L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -348,7 +344,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("BAN_USER_APPROVE happy path -> set user BANNED + bump tokenRevision + notify + audit")
+        @DisplayName("[Lỗi] BAN_USER_APPROVE luồng thành công → set user BANNED + bump tokenRevision + notify + audit")
         void banUserApprove_shouldBanAndNotify() {
             Report r = pendingReport("USER", 2L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -367,7 +363,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVE user dưới ngưỡng ban -> tăng violation + warning notify + email, không ban")
+        @DisplayName("APPROVE user dưới ngưỡng ban → tăng violation + warning notify + email, không ban")
         void approve_user_belowThreshold_shouldWarnNotBan() {
             Report r = pendingReport("USER", 2L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -392,10 +388,10 @@ class ReportServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("admin DTO mapping")
+    @DisplayName("Ánh xạ DTO admin")
     class AdminDto {
         @Test
-        @DisplayName("getAdminReportById: not found -> REPORT_NOT_FOUND")
+        @DisplayName("[Lỗi] getAdminReportById: không tìm thấy → REPORT_NOT_FOUND")
         void getAdminReportById_notFound() {
             when(reportRepository.findById(1L)).thenReturn(Optional.empty());
             assertEquals(ErrorCode.REPORT_NOT_FOUND,
@@ -403,7 +399,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("getAdminReportById: resolve target context for COMMENT image-only")
+        @DisplayName("getAdminReportById: ngữ cảnh đích COMMENT (chỉ ảnh)")
         void getAdminReportById_commentPreview_imageOnly() {
             Report r = new Report();
             r.setId(1L);
@@ -431,11 +427,11 @@ class ReportServiceTest {
     }
 
     @Nested
-    @DisplayName("uploadReportEvidenceImage")
+    @DisplayName("Nhóm: Tải ảnh bằng chứng")
     class UploadEvidence {
 
         @Test
-        @DisplayName("file null/empty -> INVALID_INPUT")
+        @DisplayName("[Lỗi] file null/empty → INVALID_INPUT")
         void upload_empty_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.uploadReportEvidenceImage(null));
@@ -443,7 +439,7 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("invalid extension -> INVALID_FILE_TYPE")
+        @DisplayName("[Lỗi] phần mở rộng không hợp lệ → INVALID_FILE_TYPE")
         void upload_invalidExt_shouldThrow() {
             MockMultipartFile file = new MockMultipartFile(
                     "file", "evidence.gif", "image/gif", new byte[] {1, 2, 3}

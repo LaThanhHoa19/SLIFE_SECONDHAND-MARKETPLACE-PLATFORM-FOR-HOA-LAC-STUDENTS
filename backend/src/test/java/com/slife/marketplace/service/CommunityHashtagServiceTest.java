@@ -40,11 +40,11 @@ class CommunityHashtagServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("suggest")
+    @DisplayName("Nhóm: Gợi ý hashtag")
     class Suggest {
 
         @Test
-        @DisplayName("q null/blank -> trả trending tags (limit clamp 1..30)")
+        @DisplayName("q null/blank → trả trending tags (limit clamp 1..30)")
         void blankQuery_shouldUseTrending() {
             when(hashtagRepository.findTrendingTagsRaw(any(Instant.class), eq(2)))
                     .thenReturn(List.of(new Object[]{"a", 3L}, new Object[]{"b", 1L}));
@@ -55,7 +55,7 @@ class CommunityHashtagServiceTest {
         }
 
         @Test
-        @DisplayName("q dài >100 -> truncate; ký tự không hợp lệ -> list rỗng")
+        @DisplayName("q dài >100 → truncate; ký tự không hợp lệ → list rỗng")
         void invalidChars_shouldReturnEmpty() {
             assertTrue(service.suggest("#bad", 10).isEmpty());
 
@@ -64,7 +64,7 @@ class CommunityHashtagServiceTest {
         }
 
         @Test
-        @DisplayName("q hợp lệ -> query prefix + pageable size clamp")
+        @DisplayName("q hợp lệ → query prefix + pageable size clamp")
         void validPrefix_shouldQueryRepo() {
             when(hashtagRepository.findByTagStartingWithOrderByTagAsc(eq("ab"), any(Pageable.class)))
                     .thenReturn(List.of(tag("ab"), tag("abc")));
@@ -80,11 +80,11 @@ class CommunityHashtagServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("trending")
+    @DisplayName("Nhóm: Hashtag xu hướng")
     class Trending {
 
         @Test
-        @DisplayName("days/limit clamp 1..30; map rows null/thiếu -> skip; count non-number -> 0")
+        @DisplayName("days/limit clamp 1..30; map rows null/thiếu → skip; count non-number → 0")
         void trending_shouldMapSafely() {
             when(hashtagRepository.findTrendingTagsRaw(any(Instant.class), eq(30)))
                     .thenReturn(java.util.Arrays.asList(

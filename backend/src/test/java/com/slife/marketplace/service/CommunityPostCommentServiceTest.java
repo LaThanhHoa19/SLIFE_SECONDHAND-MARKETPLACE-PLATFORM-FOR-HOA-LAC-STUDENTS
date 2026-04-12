@@ -98,11 +98,11 @@ class CommunityPostCommentServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("createComment")
+    @DisplayName("Nhóm: Tạo bình luận")
     class CreateComment {
 
         @Test
-        @DisplayName("User BANNED/RESTRICTED -> USER_BANNED_OR_RESTRICTED")
+        @DisplayName("[Lỗi] User BANNED/RESTRICTED → USER_BANNED_OR_RESTRICTED")
         void bannedRestricted_shouldThrow() {
             User u = user(1L);
             u.setStatus("BANNED");
@@ -115,7 +115,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Rate limit -> RATE_LIMIT_EXCEEDED")
+        @DisplayName("[Lỗi] Rate limit → RATE_LIMIT_EXCEEDED")
         void rateLimit_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             doThrow(new SlifeException(ErrorCode.RATE_LIMIT_EXCEEDED, "slow"))
@@ -127,7 +127,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không text và không ảnh -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Không text và không ảnh → INVALID_INPUT")
         void empty_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             CreateCommunityPostCommentRequest req = new CreateCommunityPostCommentRequest();
@@ -138,7 +138,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Post không tồn tại -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] Post không tồn tại → COMMUNITY_POST_NOT_FOUND")
         void postMissing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(postRepository.findById(10L)).thenReturn(Optional.empty());
@@ -149,7 +149,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Post bị hidden/deleted hoặc status != ACTIVE -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] Post bị hidden/deleted hoặc status != ACTIVE → COMMUNITY_POST_NOT_FOUND")
         void postNotActive_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             CommunityPost p = post(10L, user(2L), "HIDDEN");
@@ -161,7 +161,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: save comment + notify postAuthor (nếu khác) + recordSuccess + broadcast")
+        @DisplayName("[Thường] Luồng chính: save comment + notify postAuthor (nếu khác) + recordSuccess + broadcast")
         void happyPath_shouldNotifyAndBroadcast() {
             User author = user(2L);
             CommunityPost p = post(10L, author, CommunityPost.STATUS_ACTIVE);
@@ -185,7 +185,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("PostAuthor tự comment -> không notifyCommunityPostCommented")
+        @DisplayName("PostAuthor tự comment → không notifyCommunityPostCommented")
         void authorSelfComment_shouldNotNotify() {
             User author = user(2L);
             CommunityPost p = post(10L, author, CommunityPost.STATUS_ACTIVE);
@@ -205,11 +205,11 @@ class CommunityPostCommentServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("replyToComment")
+    @DisplayName("Nhóm: Trả lời bình luận")
     class ReplyToComment {
 
         @Test
-        @DisplayName("Parent không tồn tại -> COMMUNITY_POST_COMMENT_NOT_FOUND")
+        @DisplayName("[Lỗi] Parent không tồn tại → COMMUNITY_POST_COMMENT_NOT_FOUND")
         void parentMissing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(commentRepository.findById(5L)).thenReturn(Optional.empty());
@@ -220,7 +220,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Post null hoặc deleted -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] Post null hoặc deleted → COMMUNITY_POST_NOT_FOUND")
         void postNullOrDeleted_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             CommunityPostComment parent = new CommunityPostComment();
@@ -234,7 +234,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải chủ post và cũng không phải tác giả parent -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải chủ post và cũng không phải tác giả parent → FORBIDDEN")
         void stranger_shouldThrow() {
             User postAuthor = user(2L);
             CommunityPost p = post(10L, postAuthor, CommunityPost.STATUS_ACTIVE);
@@ -249,7 +249,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: postAuthor reply -> notify parentAuthor; không notify discussionJoined cho chính mình")
+        @DisplayName("[Thường] Luồng chính: postAuthor reply → notify parentAuthor; không notify discussionJoined cho chính mình")
         void postAuthorReply_shouldNotify() {
             User postAuthor = user(2L);
             CommunityPost p = post(10L, postAuthor, CommunityPost.STATUS_ACTIVE);
@@ -271,7 +271,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("ParentAuthor reply chính mình -> không notify reply cho chính mình")
+        @DisplayName("ParentAuthor reply chính mình → không notify reply cho chính mình")
         void parentAuthorSelfReply_shouldNotNotifySelf() {
             User postAuthor = user(2L);
             CommunityPost p = post(10L, postAuthor, CommunityPost.STATUS_ACTIVE);
@@ -291,7 +291,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("PostAuthor = parentAuthor -> không notify reply/self và không notify discussionJoined")
+        @DisplayName("PostAuthor = parentAuthor → không notify reply/self và không notify discussionJoined")
         void postAuthorEqualsParentAuthor_shouldNotDuplicateDiscussion() {
             User author = user(2L);
             CommunityPost p = post(10L, author, CommunityPost.STATUS_ACTIVE);
@@ -314,11 +314,11 @@ class CommunityPostCommentServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("deleteComment")
+    @DisplayName("Nhóm: Xóa bình luận")
     class DeleteComment {
 
         @Test
-        @DisplayName("Không tồn tại -> COMMUNITY_POST_COMMENT_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tồn tại → COMMUNITY_POST_COMMENT_NOT_FOUND")
         void missing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(commentRepository.findById(9L)).thenReturn(Optional.empty());
@@ -327,7 +327,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải owner/admin/postAuthor -> COMMENT_DELETE_FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải owner/admin/postAuthor → COMMENT_DELETE_FORBIDDEN")
         void forbidden_shouldThrow() {
             User postAuthor = user(2L);
             CommunityPost p = post(10L, postAuthor, CommunityPost.STATUS_ACTIVE);
@@ -339,7 +339,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("ADMIN xóa -> audit log + delete images + delete comment + broadcast")
+        @DisplayName("ADMIN xóa → audit log + delete images + delete comment + broadcast")
         void adminDelete_shouldAuditAndBroadcast() {
             User admin = user(99L, "ADMIN", "ACTIVE");
             CommunityPost p = post(10L, user(2L), CommunityPost.STATUS_ACTIVE);
@@ -358,11 +358,11 @@ class CommunityPostCommentServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("updateComment")
+    @DisplayName("Nhóm: Sửa bình luận")
     class UpdateComment {
 
         @Test
-        @DisplayName("Không tồn tại -> COMMUNITY_POST_COMMENT_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tồn tại → COMMUNITY_POST_COMMENT_NOT_FOUND")
         void missing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(commentRepository.findById(9L)).thenReturn(Optional.empty());
@@ -373,7 +373,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải owner -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải owner → FORBIDDEN")
         void notOwner_shouldThrow() {
             User owner = user(2L);
             CommunityPost p = post(10L, user(1L), CommunityPost.STATUS_ACTIVE);
@@ -387,7 +387,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: imageUrls != null -> xóa ảnh cũ, lưu ảnh mới")
+        @DisplayName("[Thường] Luồng chính: imageUrls != null → xóa ảnh cũ, lưu ảnh mới")
         void updateWithImages_shouldReplace() {
             User owner = user(2L);
             CommunityPost p = post(10L, user(1L), CommunityPost.STATUS_ACTIVE);
@@ -410,11 +410,11 @@ class CommunityPostCommentServiceTest {
 
     // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("getCommentsForPost")
+    @DisplayName("Nhóm: Bình luận theo bài")
     class GetCommentsForPost {
 
         @Test
-        @DisplayName("Post không tồn tại -> COMMUNITY_POST_NOT_FOUND")
+        @DisplayName("[Lỗi] Post không tồn tại → COMMUNITY_POST_NOT_FOUND")
         void postMissing_shouldThrow() {
             when(postRepository.findById(10L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class, () -> service.getCommentsForPost(10L));
@@ -422,7 +422,7 @@ class CommunityPostCommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không có comment -> list rỗng")
+        @DisplayName("Không có comment → list rỗng")
         void noComments_shouldReturnEmpty() {
             when(postRepository.findById(10L)).thenReturn(Optional.of(post(10L, user(1L), CommunityPost.STATUS_ACTIVE)));
             when(commentRepository.findByPost_IdOrderByCreatedAtAsc(10L)).thenReturn(List.of());

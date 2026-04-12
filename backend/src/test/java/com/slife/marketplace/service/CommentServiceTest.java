@@ -102,7 +102,7 @@ class CommentServiceTest {
     class CreateComment {
 
         @Test
-        @DisplayName("User RESTRICTED -> USER_BANNED_OR_RESTRICTED")
+        @DisplayName("[Lỗi] User RESTRICTED → USER_BANNED_OR_RESTRICTED")
         void restricted_shouldThrow() {
             User u = user(1L);
             u.setStatus("RESTRICTED");
@@ -115,7 +115,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("User BANNED -> USER_BANNED_OR_RESTRICTED")
+        @DisplayName("[Lỗi] User BANNED → USER_BANNED_OR_RESTRICTED")
         void banned_shouldThrow() {
             User u = user(1L);
             u.setStatus("BANNED");
@@ -129,7 +129,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Vượt rate limit -> RATE_LIMIT_EXCEEDED")
+        @DisplayName("[Lỗi] Vượt rate limit → RATE_LIMIT_EXCEEDED")
         void rateLimit_shouldThrow() {
             User u = user(1L);
             when(userService.getCurrentUser()).thenReturn(u);
@@ -143,7 +143,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không text và không ảnh -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Không text và không ảnh → INVALID_INPUT")
         void noContentNoImage_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             CreateCommentRequest req = new CreateCommentRequest();
@@ -155,7 +155,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Listing không tồn tại -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Listing không tồn tại → LISTING_NOT_FOUND")
         void listingMissing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(listingRepository.findById(99L)).thenReturn(Optional.empty());
@@ -167,7 +167,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Người mua bị chặn với seller -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Người mua bị chặn với seller → LISTING_NOT_FOUND")
         void blockedWithSeller_shouldThrow() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -183,7 +183,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: người khác seller -> lưu comment + notify seller + recordSuccess")
+        @DisplayName("[Thường] Luồng chính: người khác seller → lưu comment + notify seller + recordSuccess")
         void happyPath_shouldNotifySeller() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -211,7 +211,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Seller tự bình luận -> không gửi notify listing commented")
+        @DisplayName("Seller tự bình luận → không gửi notify listing commented")
         void sellerSelfComment_shouldNotNotifyListingCommented() {
             User seller = user(2L);
             Listing l = listing(10L, seller);
@@ -234,7 +234,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Chỉ có ảnh (không text) -> lưu CommentImage")
+        @DisplayName("Chỉ có ảnh (không text) → lưu CommentImage")
         void imageOnly_shouldSaveImages() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -268,7 +268,7 @@ class CommentServiceTest {
     class ReplyToComment {
 
         @Test
-        @DisplayName("Parent không tồn tại -> COMMENT_NOT_FOUND")
+        @DisplayName("[Lỗi] Parent không tồn tại → COMMENT_NOT_FOUND")
         void parentMissing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(commentRepository.findById(5L)).thenReturn(Optional.empty());
@@ -280,7 +280,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Parent không gắn listing -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Parent không gắn listing → LISTING_NOT_FOUND")
         void parentNoListing_shouldThrow() {
             Comment parent = new Comment();
             parent.setId(5L);
@@ -296,7 +296,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Chặn với seller của listing -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Chặn với seller của listing → LISTING_NOT_FOUND")
         void blockedSeller_shouldThrow() {
             User buyer = user(1L);
             User seller = user(2L);
@@ -311,7 +311,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Chặn với tác giả comment gốc -> FOLLOW_BLOCKED")
+        @DisplayName("[Lỗi] Chặn với tác giả comment gốc → FOLLOW_BLOCKED")
         void blockedParentAuthor_shouldThrow() {
             User replier = user(1L);
             User parentAuthor = user(3L);
@@ -330,7 +330,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: notify tác giả parent và seller (khác nhau)")
+        @DisplayName("[Thường] Luồng chính: notify tác giả parent và seller (khác nhau)")
         void happyPath_shouldNotifyParentAuthorAndSeller() {
             User replier = user(1L);
             User parentAuthor = user(3L);
@@ -357,7 +357,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Trả lời chính comment của mình -> không gửi notifyListingCommentReply")
+        @DisplayName("Trả lời chính comment của mình → không gửi notifyListingCommentReply")
         void replyToOwnComment_shouldNotNotifySelfAsParentAuthor() {
             User me = user(1L);
             User seller = user(2L);
@@ -379,7 +379,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Seller là tác giả parent -> chỉ notify reply, không notify discussion joined trùng")
+        @DisplayName("Seller là tác giả parent → chỉ notify reply, không notify discussion joined trùng")
         void sellerIsParentAuthor_shouldNotDuplicateSellerNotify() {
             User replier = user(1L);
             User seller = user(2L);
@@ -412,7 +412,7 @@ class CommentServiceTest {
     class DeleteComment {
 
         @Test
-        @DisplayName("Không tồn tại -> COMMENT_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tồn tại → COMMENT_NOT_FOUND")
         void missing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(commentRepository.findById(9L)).thenReturn(Optional.empty());
@@ -420,7 +420,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải chủ / admin / chủ tin -> COMMENT_DELETE_FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải chủ / admin / chủ tin → COMMENT_DELETE_FORBIDDEN")
         void stranger_shouldThrow() {
             User owner = user(2L);
             User stranger = user(9L);
@@ -434,7 +434,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Chủ comment xóa -> xóa ảnh rồi xóa comment")
+        @DisplayName("Chủ comment xóa → xóa ảnh rồi xóa comment")
         void owner_shouldDelete() {
             User owner = user(2L);
             Listing l = listing(10L, user(3L));
@@ -451,7 +451,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Chủ tin xóa comment của người khác -> được phép")
+        @DisplayName("Chủ tin xóa comment của người khác → được phép")
         void listingOwner_shouldDelete() {
             User seller = user(3L);
             User author = user(2L);
@@ -467,7 +467,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("ADMIN xóa -> ghi audit log")
+        @DisplayName("ADMIN xóa → ghi audit log")
         void admin_shouldAudit() {
             User admin = user(99L, "ADMIN", "ACTIVE");
             User author = user(2L);
@@ -491,7 +491,7 @@ class CommentServiceTest {
     class UpdateComment {
 
         @Test
-        @DisplayName("Comment không tồn tại -> COMMENT_NOT_FOUND")
+        @DisplayName("[Lỗi] Comment không tồn tại → COMMENT_NOT_FOUND")
         void commentMissing_shouldThrow() {
             when(userService.getCurrentUser()).thenReturn(user(2L));
             when(commentRepository.findById(999L)).thenReturn(Optional.empty());
@@ -502,7 +502,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không text và không ảnh -> INVALID_INPUT")
+        @DisplayName("[Lỗi] Không text và không ảnh → INVALID_INPUT")
         void emptyContentNoImages_shouldThrow() {
             User owner = user(2L);
             Comment c = comment(7L, owner, listing(1L, user(3L)), null);
@@ -516,7 +516,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không phải chủ -> FORBIDDEN")
+        @DisplayName("[Lỗi] Không phải chủ → FORBIDDEN")
         void notOwner_shouldThrow() {
             User owner = user(2L);
             User other = user(9L);
@@ -530,7 +530,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: đổi nội dung; imageUrls != null (mặc định rỗng) -> xóa ảnh cũ")
+        @DisplayName("[Thường] Luồng chính: đổi nội dung; imageUrls != null (mặc định rỗng) → xóa ảnh cũ")
         void updateTextWithDefaultImageList_shouldClearImages() {
             User owner = user(2L);
             Comment c = comment(7L, owner, listing(1L, user(3L)), null);
@@ -549,7 +549,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Cập nhật kèm ảnh mới -> lưu CommentImage")
+        @DisplayName("Cập nhật kèm ảnh mới → lưu CommentImage")
         void updateWithImages_shouldSave() {
             User owner = user(2L);
             Comment c = comment(7L, owner, listing(1L, user(3L)), null);
@@ -576,14 +576,14 @@ class CommentServiceTest {
     class GetCommentsForListing {
 
         @Test
-        @DisplayName("Listing không tồn tại -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Listing không tồn tại → LISTING_NOT_FOUND")
         void listingMissing_shouldThrow() {
             when(listingRepository.findById(1L)).thenReturn(Optional.empty());
             assertThrows(SlifeException.class, () -> commentService.getCommentsForListing(1L));
         }
 
         @Test
-        @DisplayName("Viewer (không phải seller/admin) bị chặn với seller -> LISTING_NOT_FOUND")
+        @DisplayName("[Lỗi] Viewer (không phải seller/admin) bị chặn với seller → LISTING_NOT_FOUND")
         void viewerBlockedSeller_shouldThrow() {
             User viewer = user(1L);
             User seller = user(2L);
@@ -597,7 +597,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Không có comment -> danh sách rỗng")
+        @DisplayName("Không có comment → danh sách rỗng")
         void noComments_shouldReturnEmpty() {
             Listing l = listing(10L, user(2L));
             when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
@@ -678,7 +678,7 @@ class CommentServiceTest {
         }
 
         @Test
-        @DisplayName("Comment bị ẩn nội dung (hiddenAt) -> placeholder và không trả images")
+        @DisplayName("Comment bị ẩn nội dung (hiddenAt) → placeholder và không trả images")
         void hiddenContent_shouldMask() {
             Listing l = listing(10L, user(2L));
             Comment root = comment(100L, user(3L), l, null);

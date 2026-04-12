@@ -81,7 +81,7 @@ class AuthServiceTest {
     class Login {
 
         @Test
-        @DisplayName("Không tìm thấy user -> USER_NOT_FOUND")
+        @DisplayName("[Lỗi] Không tìm thấy user → USER_NOT_FOUND")
         void userMissing_shouldThrow() {
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.empty());
             AuthRequest req = new AuthRequest();
@@ -92,7 +92,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Sai mật khẩu (bcrypt) -> INVALID_CREDENTIALS")
+        @DisplayName("[Lỗi] Sai mật khẩu (bcrypt) → INVALID_CREDENTIALS")
         void wrongPassword_bcrypt_shouldThrow() {
             User u = user(1L, "a@ex.com", "ACTIVE", "$2a$10$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
@@ -105,7 +105,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Email không thuộc sinh viên hợp lệ -> INVALID_STUDENT_EMAIL")
+        @DisplayName("[Lỗi] Email không thuộc sinh viên hợp lệ → INVALID_STUDENT_EMAIL")
         void invalidStudentEmail_shouldThrow() {
             User u = user(1L, "a@ex.com", "ACTIVE", "plain");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
@@ -120,7 +120,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("User BANNED -> USER_BANNED")
+        @DisplayName("[Lỗi] User BANNED → USER_BANNED")
         void banned_shouldThrow() {
             User u = user(1L, "a@ex.com", "BANNED", "plain");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
@@ -133,7 +133,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính (plain password) -> trả access+refresh token")
+        @DisplayName("[Thường] Luồng chính (plain password) → trả access+refresh token")
         void happyPath_plainPassword_shouldReturnTokens() {
             User u = user(1L, "a@ex.com", "ACTIVE", "plain");
             when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
@@ -159,14 +159,14 @@ class AuthServiceTest {
     class Refresh {
 
         @Test
-        @DisplayName("refreshToken blank -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] refreshToken blank → UNAUTHORIZED")
         void blank_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class, () -> authService.refresh("   "));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("Token blacklisted hoặc invalid -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] Token bị chặn hoặc không hợp lệ → UNAUTHORIZED")
         void blacklistedOrInvalid_shouldThrow() {
             when(tokenBlacklistService.isBlacklisted("rt")).thenReturn(true);
             SlifeException ex = assertThrows(SlifeException.class, () -> authService.refresh("rt"));
@@ -174,7 +174,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Token typ != refresh -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] Token typ khác refresh → UNAUTHORIZED")
         void wrongType_shouldThrow() {
             when(tokenBlacklistService.isBlacklisted("rt")).thenReturn(false);
             when(jwtTokenProvider.isTokenValid("rt")).thenReturn(true);
@@ -187,7 +187,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Session revoked -> UNAUTHORIZED")
+        @DisplayName("[Lỗi] Phiên đã thu hồi → UNAUTHORIZED")
         void revoked_shouldThrow() {
             when(tokenBlacklistService.isBlacklisted("rt")).thenReturn(false);
             when(jwtTokenProvider.isTokenValid("rt")).thenReturn(true);
@@ -204,7 +204,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("Luồng chính: blacklist refresh cũ + phát token mới")
+        @DisplayName("[Thường] Luồng chính: blacklist refresh cũ + phát token mới")
         void happyPath_shouldBlacklistAndReturnTokens() {
             when(tokenBlacklistService.isBlacklisted("rt")).thenReturn(false);
             when(jwtTokenProvider.isTokenValid("rt")).thenReturn(true);
@@ -232,7 +232,7 @@ class AuthServiceTest {
     class DevLogin {
 
         @Test
-        @DisplayName("email blank -> INVALID_INPUT")
+        @DisplayName("[Lỗi] email blank → INVALID_INPUT")
         void blank_shouldThrow() {
             SlifeException ex = assertThrows(SlifeException.class, () -> authService.devLogin(" "));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
@@ -245,7 +245,7 @@ class AuthServiceTest {
     class GoogleAuth {
 
         @Test
-        @DisplayName("googleLogin: credential blank -> INVALID_GOOGLE_TOKEN")
+        @DisplayName("[Lỗi] googleLogin: credential blank → INVALID_GOOGLE_TOKEN")
         void googleLogin_blank_shouldThrow() {
             GoogleLoginRequest req = new GoogleLoginRequest();
             req.setCredential(" ");
@@ -254,7 +254,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("googleLogin: domain không cho phép -> GOOGLE_DOMAIN_NOT_ALLOWED")
+        @DisplayName("[Lỗi] googleLogin: domain không cho phép → GOOGLE_DOMAIN_NOT_ALLOWED")
         void googleLogin_domainNotAllowed_shouldThrow() {
             when(googleOAuthClient.verifyIdToken("id")).thenReturn(Map.of(
                     "email", "a@ex.com",
@@ -271,7 +271,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("googleLogin: user mới -> tạo user + gửi welcome + trả token")
+        @DisplayName("googleLogin: user mới → tạo user + gửi welcome + trả token")
         void googleLogin_newUser_shouldCreateAndWelcome() {
             when(googleOAuthClient.verifyIdToken("id")).thenReturn(Map.of(
                     "email", "a@ex.com",
@@ -300,7 +300,7 @@ class AuthServiceTest {
         }
 
         @Test
-        @DisplayName("googleCallback: tokenData không có id_token -> INVALID_GOOGLE_TOKEN")
+        @DisplayName("[Lỗi] googleCallback: tokenData không có id_token → INVALID_GOOGLE_TOKEN")
         void googleCallback_missingIdToken_shouldThrow() {
             when(googleOAuthClient.exchangeCodeForTokens(anyString(), anyString(), anyString(), anyString()))
                     .thenReturn(Map.of());

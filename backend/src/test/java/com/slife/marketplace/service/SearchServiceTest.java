@@ -85,7 +85,7 @@ class SearchServiceTest {
     }
 
     @Test
-    @DisplayName("size clamp: <10 -> 10; >20 -> 20")
+    @DisplayName("giới hạn size: <10 → 10; >20 → 20")
     void sizeClamp_shouldWork() {
         SearchRequest req = new SearchRequest();
         req.setSize(1);
@@ -101,7 +101,7 @@ class SearchServiceTest {
     }
 
     @Test
-    @DisplayName("sort parse: invalid field -> fallback createdAt (direction vẫn theo input)")
+    @DisplayName("phân tích sort: trường không hợp lệ → dự phòng createdAt (direction vẫn theo input)")
     void sortParse_invalidField_fallbackCreatedAt() {
         when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -115,7 +115,7 @@ class SearchServiceTest {
     }
 
     @Test
-    @DisplayName("sort parse: allowed field + asc")
+    @DisplayName("phân tích sort: allowed field + asc")
     void sortParse_allowedField_asc() {
         when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -129,7 +129,7 @@ class SearchServiceTest {
     }
 
     @Test
-    @DisplayName("purpose/condition invalid -> null (no filter)")
+    @DisplayName("purpose/condition không hợp lệ → null (no filter)")
     void invalidPurposeCondition_shouldBecomeNull() {
         when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -140,6 +140,25 @@ class SearchServiceTest {
         service.search(req);
 
         verify(listingRepository).findByFilters(any(), any(), any(), isNull(), isNull(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("[Lỗi] request null → NullPointerException (hợp đồng API: không chấp nhận null)")
+    void search_nullRequest_throwsNpe() {
+        assertThrows(NullPointerException.class, () -> service.search(null));
+        verifyNoInteractions(listingRepository);
+    }
+
+    @Test
+    @DisplayName("q/location chỉ khoảng trắng → truyền null vào repository")
+    void blankQAndLocation_normalizedToNull() {
+        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+        SearchRequest req = new SearchRequest();
+        req.setQ("   \t");
+        req.setLocation("");
+        service.search(req);
+        verify(listingRepository).findByFilters(isNull(), any(), isNull(), any(), any(), any(), any(), any(), any());
     }
 }
 
