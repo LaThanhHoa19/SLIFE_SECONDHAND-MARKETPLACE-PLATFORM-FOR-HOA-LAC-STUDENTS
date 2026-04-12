@@ -14,8 +14,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,16 +35,18 @@ class ListingImageServiceTest {
     @Mock
     private ConfigService configService;
 
+    @Mock
+    private UserFileStorageService fileStorage;
+
     private ListingImageService listingImageService;
 
     @BeforeEach
-    void setUp() throws Exception {
-        Path uploadBasePath = Files.createTempDirectory("listing-image-test");
+    void setUp() {
         listingImageService = new ListingImageService(
                 listingRepository,
                 listingImageRepository,
                 configService,
-                uploadBasePath
+                fileStorage
         );
     }
 
