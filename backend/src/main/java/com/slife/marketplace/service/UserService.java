@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class UserService {
@@ -88,6 +89,7 @@ public class UserService {
     @Transactional
     public User markPhoneVerifiedWithFirebase(String phoneNumberE164) {
         User user = getCurrentUser();
+        assertPhoneNotUsedByAnotherAccount(user.getId(), phoneNumberE164);
         user.setPhoneNumber(phoneNumberE164);
         user.setPhoneVerifiedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
@@ -97,6 +99,34 @@ public class UserService {
         log.info("markPhoneVerifiedWithFirebase: userId={}, phoneNumber={}, phoneVerifiedAt={}",
                 reloaded.getId(), reloaded.getPhoneNumber(), reloaded.getPhoneVerifiedAt());
         return reloaded;
+    }
+
+    /**
+     * Gọi trước khi gửi OTP Firebase để tránh tốn SMS khi SĐT đã xác minh trên tài khoản khác.
+     */
+    public void assertPhoneAvailableForVerification(String phoneNumberRaw) {
+        User user = getCurrentUser();
+        if (phoneNumberRaw == null || phoneNumberRaw.isBlank()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "Số điện thoại là bắt buộc");
+        }
+        assertPhoneNotUsedByAnotherAccount(user.getId(), phoneNumberRaw.trim());
+        log.info("assertPhoneAvailableForVerification: ok userId={}, phone={}", user.getId(), phoneNumberRaw.trim());
+    }
+
+    /**
+     * Không cho hai tài khoản khác nhau cùng một SĐT (so khớp +84 / 0xx như {@link #sameVietnamMobileNumber}).
+     */
+    private void assertPhoneNotUsedByAnotherAccount(Long currentUserId, String phoneE164) {
+        if (phoneE164 == null || phoneE164.isBlank()) {
+            return;
+        }
+        List<User> others = userRepository.findByIdNotAndPhoneNumberIsNotNull(currentUserId);
+        for (User other : others) {
+            if (other.getPhoneNumber() != null && sameVietnamMobileNumber(other.getPhoneNumber(), phoneE164)) {
+                throw new SlifeException(ErrorCode.PHONE_ALREADY_IN_USE,
+                        "Số điện thoại này đã được xác minh trên tài khoản khác.");
+            }
+        }
     }
 
     @Transactional
