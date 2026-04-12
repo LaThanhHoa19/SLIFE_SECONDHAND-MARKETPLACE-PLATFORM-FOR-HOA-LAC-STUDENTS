@@ -76,9 +76,16 @@ export default function NotificationDropdown({ anchorEl, open, onClose, mode = '
         }
         onClose?.();
 
+        // Chat: có sessionId → mở đúng cuộc trò chuyện
         if (n?.sessionId) {
             const qp = n?.messageId ? `&messageId=${encodeURIComponent(n.messageId)}` : '';
             navigate(`/chat?sessionId=${encodeURIComponent(n.sessionId)}${qp}`);
+            return;
+        }
+
+        // Tin nhắn/offer đề xuất giá fallback (chưa có sessionId) → chat với listingId
+        if (n?.refType === 'OFFER_CHAT' && n?.refId) {
+            navigate(`/chat?listingId=${encodeURIComponent(n.refId)}`);
             return;
         }
 
@@ -87,16 +94,28 @@ export default function NotificationDropdown({ anchorEl, open, onClose, mode = '
             return;
         }
 
-        if (n?.refType === 'LISTING' && n?.refId) {
-            navigate(`/listings/${n.refId}`, { state: { fromNotification: true } });
+        // Deal hoàn thành / hủy → my-listings của seller (không lộ chat ID)
+        if (n?.refType === 'ORDER_HISTORY') {
+            navigate('/my-listings');
+            return;
+        }
+
+        // Review mới → profile của seller (người được đánh giá)
+        if (n?.refType === 'SELLER_PROFILE' && (n?.refCode || n?.refId)) {
+            navigate(`/profile/${n.refCode || n.refId}`);
+            return;
+        }
+
+        if (n?.refType === 'LISTING' && (n?.refCode || n?.refId)) {
+            navigate(`/listings/${n.refCode || n.refId}`, { state: { fromNotification: true } });
             return;
         }
         if (n?.refType === 'COMMUNITY_POST' && n?.refId) {
             navigate(`/community/posts/${n.refId}`, { state: { fromNotification: true } });
             return;
         }
-        if (n.refType === 'USER' && n.refId) {
-            navigate(`/profile/${n.refId}`);
+        if (n.refType === 'USER' && (n.refCode || n.refId)) {
+            navigate(`/profile/${n.refCode || n.refId}`);
         }
     };
 

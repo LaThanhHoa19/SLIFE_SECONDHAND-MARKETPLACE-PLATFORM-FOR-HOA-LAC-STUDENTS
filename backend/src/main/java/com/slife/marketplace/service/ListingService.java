@@ -247,6 +247,11 @@ public class ListingService {
             for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
                 Long sid = card.getSellerId();
                 Long lid = card.getId();
+                
+                // Gán code bảo mật cho listing và seller
+                card.setCode(com.slife.marketplace.util.IdHasher.encode(lid));
+                card.setSellerCode(com.slife.marketplace.util.IdHasher.encode(sid));
+                
                 boolean f = sid != null
                         && !sid.equals(currentUser.getId())
                         && followed.contains(sid);
@@ -279,6 +284,7 @@ public class ListingService {
             for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
                 if (card.getId() != null) {
                     card.setImageUrls(imagesByListing.getOrDefault(card.getId(), java.util.Collections.emptyList()));
+                    card.setCode(com.slife.marketplace.util.IdHasher.encode(card.getId()));
                 }
             }
         }
@@ -611,6 +617,7 @@ public class ListingService {
         ListingResponse response = new ListingResponse();
 
         response.setId(listing.getId());
+        response.setCode(com.slife.marketplace.util.IdHasher.encode(listing.getId()));
         response.setTitle(listing.getTitle());
         response.setDescription(listing.getDescription());
         response.setPrice(listing.getPrice());
@@ -860,6 +867,7 @@ public class ListingService {
 
         Map<String, Object> seller = new HashMap<>();
         seller.put("userId", listing.getSeller().getId());
+        seller.put("code", com.slife.marketplace.util.IdHasher.encode(listing.getSeller().getId()));
         seller.put("fullName", listing.getSeller().getFullName());
         seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
         seller.put("phoneNumber", listing.getSeller().getPhoneNumber());

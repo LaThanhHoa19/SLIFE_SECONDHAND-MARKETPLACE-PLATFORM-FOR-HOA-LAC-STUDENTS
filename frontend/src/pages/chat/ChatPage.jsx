@@ -86,8 +86,7 @@ function ChatPageInner() {
   const sessionIdFromUrl = searchParams.get('sessionId');
   const messageIdFromUrl = searchParams.get('messageId');
   const listingIdFromUrlRaw = searchParams.get('listingId');
-  const listingIdFromUrl =
-    listingIdFromUrlRaw && /^\d+$/.test(listingIdFromUrlRaw) ? Number(listingIdFromUrlRaw) : null;
+  const listingIdFromUrl = listingIdFromUrlRaw || null;
   const currentUserId = currentUser?.id ?? currentUser?.user_id;
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -508,8 +507,7 @@ function ChatPageInner() {
     if (sessionsLoading) return;
     if (!Array.isArray(sessions) || sessions.length === 0) return;
 
-    const lid = Number(listingIdFromUrl);
-    const candidates = sessions.filter((s) => s && Number(s.listingId) === lid);
+    const candidates = sessions.filter((s) => s && (String(s.listingId) === String(listingIdFromUrl) || String(s.listingCode) === String(listingIdFromUrl)));
     if (candidates.length === 0) return;
 
     const byLast = (a, b) => {

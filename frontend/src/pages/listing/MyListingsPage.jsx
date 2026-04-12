@@ -59,7 +59,6 @@ const TAB_CONTEXT_PHRASE = {
     DRAFT: 'bản nháp',
     EXPIRED: 'hết hạn',
     // SOLD:     'đã bán',
-    REPORTED: 'bị báo cáo',
 };
 
 const selectSx = {
@@ -230,20 +229,16 @@ export default function MyListingsPage() {
         });
     };
 
-    const handleRepost = async (id) => {
+    const handleRepost = (id) => {
         const sourceId = Number(id);
         if (!Number.isFinite(sourceId) || sourceId <= 0) {
             showSnackbar('Không xác định được tin cần đăng lại.', 'error');
             return;
         }
-        openActionConfirm({
-            action: 'repost',
-            listingId: sourceId,
-            title: 'Xác nhận đăng lại tin',
-            content: 'Hệ thống sẽ tạo bài đăng mới từ tin đã hết hạn và đăng ngay lập tức.',
-            confirmLabel: 'Đăng lại',
-            variant: 'warning',
-        });
+
+        // Chuyển sang màn đăng lại để user có thể chỉnh sửa nếu muốn,
+        // hoặc bấm "ĐĂNG TIN" ngay mà không cần chỉnh sửa.
+        navigate(`/listings/${sourceId}/repost`);
     };
 
     const handleConfirmListingAction = useCallback(async () => {

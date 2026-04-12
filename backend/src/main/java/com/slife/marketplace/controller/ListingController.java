@@ -179,7 +179,20 @@ public class ListingController {
      * Chi tiết listing.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ListingResponse>> getListing(@PathVariable("id") Long id) {
+    public ResponseEntity<ApiResponse<ListingResponse>> getListing(@PathVariable("id") String idOrCode) {
+        Long id;
+        try {
+            // Try to parse as numeric ID first (backward compatibility)
+            id = Long.parseLong(idOrCode);
+        } catch (NumberFormatException e) {
+            // If not numeric, try to decode as hash code
+            id = com.slife.marketplace.util.IdHasher.decode(idOrCode);
+        }
+
+        if (id == null) {
+            throw new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+        }
+
         Listing listing = listingRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
 

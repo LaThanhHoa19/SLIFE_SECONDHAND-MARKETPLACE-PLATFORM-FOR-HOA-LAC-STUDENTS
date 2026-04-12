@@ -69,6 +69,7 @@ public class DealService {
     private final BlockService blockService;
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
+    private final ConfigService configService;
 
     public DealService(DealRepository dealRepository,
                        ListingImageRepository listingImageRepository,
@@ -81,7 +82,8 @@ public class DealService {
                        UserService userService,
                        NotificationService notificationService,
                        BlockService blockService,
-                       SystemEmailService systemEmailService) {
+                       SystemEmailService systemEmailService,
+                       ConfigService configService) {
         this.dealRepository = dealRepository;
         this.listingImageRepository = listingImageRepository;
         this.listingRepository = listingRepository;
@@ -94,6 +96,7 @@ public class DealService {
         this.notificationService = notificationService;
         this.blockService = blockService;
         this.systemEmailService = systemEmailService;
+        this.configService = configService;
     }
 
     private void assertListingOpenForNegotiation(Listing listing) {
@@ -652,24 +655,31 @@ public class DealService {
                 .isReviewed(reviewed)
                 .createdAt(deal.getCreatedAt())
                 .updatedAt(deal.getUpdatedAt())
+                .reviewDeadline(resolveReviewDeadline(deal, reviewed))
                 .build();
     }
 
     /**
      * Tự động hoàn thành các deal ở trạng thái COMPLETED (đã chốt trong chat)
-     * mà người mua không bấm gì sau 7 ngày.
+     * mà người mua không bấm gì sau khoảng thời gian cấu hình (DEAL_TIMEOUT_DAYS + DEAL_TIMEOUT_UNIT).
+     * Đọc từ DB config — không cần restart Docker khi thay đổi giá trị.
      */
     @Scheduled(cron = "0 0 1 * * ?") // Runs daily at 1:00 AM
     @Transactional
     public void autoFinalizeDeals() {
-        // Auto-finalize deals that were confirmed (accepted) by buyer but not finalized after 7 days
-        LocalDateTime sevenDaysAgo = LocalDateTime.now(ZONE_VIETNAM).minusDays(7);
-        // We use confirmedAt if available, otherwise createdAt
-        List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, sevenDaysAgo);
+        int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 7));
+        String timeoutUnit = java.util.Objects.requireNonNullElse(
+                configService.getConfigValue("DEAL_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+
+        LocalDateTime now = LocalDateTime.now(ZONE_VIETNAM);
+        LocalDateTime cutoff = "MINUTES".equals(timeoutUnit)
+                ? now.minusMinutes(timeoutValue)
+                : now.minusDays(timeoutValue);
+
+        List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, cutoff);
 
         for (Deal deal : pendingDeals) {
             try {
-                // Tương đương hành động Buyer bấm "Hoàn thành"
                 Listing listing = deal.getListing();
                 if (listing != null) {
                     listing.setStatus("SOLD");
@@ -707,6 +717,23 @@ public class DealService {
 
         if (!STATUS_SUCCESS.equals(deal.getStatus())) {
             throw new SlifeException(ErrorCode.INVALID_INPUT, "Chỉ có thể đánh giá giao dịch đã hoàn thành");
+        }
+
+        // Kiểm tra hạn đánh giá: đọc từ config (REVIEW_TIMEOUT_VALUE + REVIEW_TIMEOUT_UNIT)
+        LocalDateTime soldAt = deal.getUpdatedAt();
+        if (soldAt != null) {
+            int reviewValue = Math.max(1, configService.getIntConfigValue("REVIEW_TIMEOUT_VALUE", 7));
+            String reviewUnit = java.util.Objects.requireNonNullElse(
+                    configService.getConfigValue("REVIEW_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+            LocalDateTime deadline = "MINUTES".equals(reviewUnit)
+                    ? soldAt.plusMinutes(reviewValue)
+                    : soldAt.plusDays(reviewValue);
+            if (LocalDateTime.now(ZONE_VIETNAM).isAfter(deadline)) {
+                throw new SlifeException(ErrorCode.INVALID_INPUT,
+                        "Thời hạn đánh giá đã kết thúc vào ngày "
+                        + deadline.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        + ". Bạn không thể đánh giá sau thời điểm này.");
+            }
         }
 
         // Kiểm tra đã đánh giá chưa (chỉ tính review được tạo SAU khi Deal được bắt đầu để tránh conflict với deal cũ)
@@ -763,6 +790,26 @@ public class DealService {
             user.setReputationScore(java.math.BigDecimal.valueOf(avg).setScale(2, java.math.RoundingMode.HALF_UP));
             userRepository.saveAndFlush(user);
         }
+    }
+
+    /**
+     * Tính thời hạn đánh giá dựa trên REVIEW_TIMEOUT_VALUE + REVIEW_TIMEOUT_UNIT từ config.
+     * Trả null nếu deal chưa SUCCESS, đã review, hoặc updatedAt bị null.
+     */
+    private LocalDateTime resolveReviewDeadline(Deal deal, boolean alreadyReviewed) {
+        if (!STATUS_SUCCESS.equals(deal.getStatus()) || alreadyReviewed) {
+            return null;
+        }
+        LocalDateTime soldAt = deal.getUpdatedAt();
+        if (soldAt == null) {
+            return null;
+        }
+        int reviewValue = Math.max(1, configService.getIntConfigValue("REVIEW_TIMEOUT_VALUE", 7));
+        String reviewUnit = java.util.Objects.requireNonNullElse(
+                configService.getConfigValue("REVIEW_TIMEOUT_UNIT"), "DAYS").trim().toUpperCase();
+        return "MINUTES".equals(reviewUnit)
+                ? soldAt.plusMinutes(reviewValue)
+                : soldAt.plusDays(reviewValue);
     }
 
     private void notifyDealStatusEmail(Deal deal, String buyerHeadline, String sellerHeadline, User actor) {
