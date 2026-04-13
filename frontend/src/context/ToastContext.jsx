@@ -31,6 +31,7 @@ export function ToastProvider({ children }) {
     const showToast = useCallback((message, variant = 'info', options = {}) => {
         const id = ++idCounter;
         const duration = options.duration ?? 4000;
+        const onClick = typeof options.onClick === 'function' ? options.onClick : null;
         const text = String(message || '').trim();
         const key = `${variant}:${text}`;
         const now = Date.now();
@@ -62,7 +63,7 @@ export function ToastProvider({ children }) {
             return latest.id;
         }
 
-        setToasts(prev => [...prev.slice(-4), { id, message: text, variant, exiting: false, duration }]);
+        setToasts(prev => [...prev.slice(-4), { id, message: text, variant, exiting: false, duration, onClick }]);
 
         if (duration > 0) {
             timersRef.current[id] = setTimeout(() => dismiss(id), duration);
