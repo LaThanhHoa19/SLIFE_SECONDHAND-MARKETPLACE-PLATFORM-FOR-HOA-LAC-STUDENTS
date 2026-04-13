@@ -83,9 +83,17 @@ function ToastItem({ toast, onDismiss }) {
     const { Icon } = v;
     const duration = toast.duration ?? 4000;
 
+    const handleClick = () => {
+        if (toast.onClick) {
+            toast.onClick();
+            onDismiss(toast.id);
+        }
+    };
+
     return (
         <Box
             role="alert"
+            onClick={toast.onClick ? handleClick : undefined}
             sx={{
                 position: 'relative',
                 display: 'flex',
@@ -109,6 +117,7 @@ function ToastItem({ toast, onDismiss }) {
                     to: { transform: 'translateX(0) scale(1)', opacity: 1 },
                 },
                 overflow: 'hidden',
+                cursor: toast.onClick ? 'pointer' : 'default',
             }}
         >
             <Box
@@ -145,7 +154,10 @@ function ToastItem({ toast, onDismiss }) {
             {/* Close */}
             <IconButton
                 size="small"
-                onClick={() => onDismiss(toast.id)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDismiss(toast.id);
+                }}
                 sx={{
                     alignSelf: 'flex-start',
                     mt: -0.3,
