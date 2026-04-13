@@ -28,18 +28,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <CssBaseline />
             <BrowserRouter>
                 <AdminAuthProvider>
-                <AuthProvider>
-                    <AuthErrorBoundary>
-                        <NotificationProvider>
+                    <AuthProvider>
+                        <AuthErrorBoundary>
                             <ToastProvider>
-                                <PhoneVerificationProvider>
-                                    <App />
-                                </PhoneVerificationProvider>
+                                <NotificationProvider>
+                                    <PhoneVerificationProvider>
+                                        <App />
+                                    </PhoneVerificationProvider>
+                                </NotificationProvider>
                             </ToastProvider>
-
-                        </NotificationProvider>
-                    </AuthErrorBoundary>
-                </AuthProvider>
+                        </AuthErrorBoundary>
+                    </AuthProvider>
                 </AdminAuthProvider>
             </BrowserRouter>
         </ThemeProvider>
