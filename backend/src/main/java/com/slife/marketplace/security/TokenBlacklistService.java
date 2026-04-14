@@ -1,28 +1,28 @@
 package com.slife.marketplace.security;
 
 import io.jsonwebtoken.Claims;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * In-memory token blacklist cho logout.
- * Token bi blacklist cho den khi het han (TTL).
- * Scheduled task tu dong don dep token da het han.
- * Luu y: reset khi restart app (chap nhan duoc voi student project).
+ * Redis-backed token blacklist cho logout.
+ * Token bị blacklist cho đến khi hết hạn (TTL tự động xóa bởi Redis).
+ * Hoạt động đúng khi scale nhiều instance.
  */
 @Component
 public class TokenBlacklistService {
 
-    /** Map<token, expiresAt> */
-    private final Map<String, Instant> blacklist = new ConcurrentHashMap<>();
+    private static final String KEY_PREFIX = "token:blacklist:";
 
+    private final StringRedisTemplate redisTemplate;
     private final JwtTokenProvider jwtTokenProvider;
 
-    public TokenBlacklistService(JwtTokenProvider jwtTokenProvider) {
+    public TokenBlacklistService(StringRedisTemplate redisTemplate,
+                                 JwtTokenProvider jwtTokenProvider) {
+        this.redisTemplate = redisTemplate;
         this.jwtTokenProvider = jwtTokenProvider;
     }
 
@@ -30,20 +30,17 @@ public class TokenBlacklistService {
         try {
             Claims claims = jwtTokenProvider.parseToken(token);
             Instant expiry = claims.getExpiration().toInstant();
-            blacklist.put(token, expiry);
+            Duration ttl = Duration.between(Instant.now(), expiry);
+            if (ttl.isNegative() || ttl.isZero()) {
+                return; // Token đã hết hạn, không cần blacklist
+            }
+            redisTemplate.opsForValue().set(KEY_PREFIX + token, "1", ttl);
         } catch (Exception ignored) {
-            // Token da het han hoac invalid -> khong can blacklist
+            // Token đã hết hạn hoặc invalid -> không cần blacklist
         }
     }
 
     public boolean isBlacklisted(String token) {
-        return blacklist.containsKey(token);
-    }
-
-    /** Chay moi 5 phut: xoa cac entry da het han */
-    @Scheduled(fixedDelay = 300_000)
-    public void evictExpired() {
-        Instant now = Instant.now();
-        blacklist.entrySet().removeIf(entry -> entry.getValue().isBefore(now));
+        return Boolean.TRUE.equals(redisTemplate.hasKey(KEY_PREFIX + token));
     }
 }

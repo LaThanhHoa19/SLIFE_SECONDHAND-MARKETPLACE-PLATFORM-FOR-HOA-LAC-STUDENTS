@@ -23,6 +23,7 @@ import com.slife.marketplace.repository.OfferRepository;
 import com.slife.marketplace.repository.ReviewRepository;
 import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.util.TimeZones;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -665,6 +666,7 @@ public class DealService {
      * Đọc từ DB config — không cần restart Docker khi thay đổi giá trị.
      */
     @Scheduled(cron = "0 0 1 * * ?") // Runs daily at 1:00 AM
+    @SchedulerLock(name = "autoFinalizeDeals", lockAtLeastFor = "PT10M", lockAtMostFor = "PT1H")
     @Transactional
     public void autoFinalizeDeals() {
         int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 7));

@@ -46,6 +46,7 @@ public class DealPickupReminderService {
         LocalDateTime lower = now.plusHours(hours).minusMinutes(7);
         LocalDateTime upper = now.plusHours(hours).plusMinutes(7);
         LocalDateTime nowPlusH = now.plusHours(hours);
+        log.info("PickupReminder: now={} hours={} range=[{} ~ {}] deals queried", now, hours, lower, upper);
         List<Deal> deals = dealRepository.findDealsForPickupReminder(now, lower, upper, nowPlusH);
         for (Deal d : deals) {
             try {

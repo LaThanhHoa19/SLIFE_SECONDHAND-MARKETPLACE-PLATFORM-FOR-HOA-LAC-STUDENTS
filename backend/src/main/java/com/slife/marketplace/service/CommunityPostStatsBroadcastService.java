@@ -22,13 +22,16 @@ public class CommunityPostStatsBroadcastService {
     private final SimpMessagingTemplate messagingTemplate;
     private final CommunityPostLikeRepository communityPostLikeRepository;
     private final CommunityPostCommentRepository communityPostCommentRepository;
+    private final RedisWebSocketRelayService wsRelay;
 
     public CommunityPostStatsBroadcastService(SimpMessagingTemplate messagingTemplate,
                                               CommunityPostLikeRepository communityPostLikeRepository,
-                                              CommunityPostCommentRepository communityPostCommentRepository) {
+                                              CommunityPostCommentRepository communityPostCommentRepository,
+                                              RedisWebSocketRelayService wsRelay) {
         this.messagingTemplate = messagingTemplate;
         this.communityPostLikeRepository = communityPostLikeRepository;
         this.communityPostCommentRepository = communityPostCommentRepository;
+        this.wsRelay = wsRelay;
     }
 
     public void broadcastStats(Long postId) {
@@ -44,6 +47,7 @@ public class CommunityPostStatsBroadcastService {
             payload.put("likeCount", likes);
             payload.put("commentCount", comments);
             messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+            wsRelay.publishToTopic(TOPIC_COMMUNITY_POST_STATS, payload);
         } catch (Exception ex) {
             log.warn("broadcast community post stats failed postId={}", postId, ex);
         }
@@ -60,6 +64,7 @@ public class CommunityPostStatsBroadcastService {
             payload.put("userId", userId);
             payload.put("saved", saved);
             messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+            wsRelay.publishToTopic(TOPIC_COMMUNITY_POST_STATS, payload);
         } catch (Exception ex) {
             log.warn("broadcast community post saved toggle failed postId={}, userId={}", postId, userId, ex);
         }
@@ -76,6 +81,7 @@ public class CommunityPostStatsBroadcastService {
             payload.put("userId", userId);
             payload.put("liked", liked);
             messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+            wsRelay.publishToTopic(TOPIC_COMMUNITY_POST_STATS, payload);
         } catch (Exception ex) {
             log.warn("broadcast community post liked toggle failed postId={}, userId={}", postId, userId, ex);
         }
@@ -90,6 +96,7 @@ public class CommunityPostStatsBroadcastService {
             payload.put("type", "POST_DELETED");
             payload.put("postId", postId);
             messagingTemplate.convertAndSend(TOPIC_COMMUNITY_POST_STATS, payload);
+            wsRelay.publishToTopic(TOPIC_COMMUNITY_POST_STATS, payload);
         } catch (Exception ex) {
             log.warn("broadcast community post deleted failed postId={}", postId, ex);
         }

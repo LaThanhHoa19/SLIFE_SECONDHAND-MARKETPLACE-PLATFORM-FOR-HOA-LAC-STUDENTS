@@ -3,6 +3,7 @@ package com.slife.marketplace.service;
 import com.slife.marketplace.entity.Deal;
 import com.slife.marketplace.repository.DealRepository;
 import com.slife.marketplace.util.TimeZones;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,6 +32,7 @@ public class SchedulerService {
      */
     @Transactional
     @Scheduled(cron = "${app.scheduler.auto-confirm-deal-cron:0 0 * * * *}")
+    @SchedulerLock(name = "autoCompleteConfirmedDeals", lockAtLeastFor = "PT5M", lockAtMostFor = "PT30M")
     public void autoCompleteConfirmedDeals() {
         int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", DEFAULT_DEAL_TIMEOUT_DAYS));
         String timeoutUnit = java.util.Objects.requireNonNullElse(
