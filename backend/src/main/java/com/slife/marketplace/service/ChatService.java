@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,10 +24,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,9 +48,10 @@ public class ChatService {
     private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserFileStorageService userFileStorage;
+    private final StringRedisTemplate redisTemplate;
+    private final RedisWebSocketRelayService wsRelay;
 
-    /** Rate limit: last message timestamp per user id (BR-38: max 1 message per second). */
-    private final Map<Long, Instant> lastMessageByUser = new ConcurrentHashMap<>();
+    private static final String CHAT_RATE_PREFIX = "chat:rate:";
 
     public ChatService(ConversationRepository conversationRepository,
                        MessageRepository messageRepository,
@@ -60,7 +62,10 @@ public class ChatService {
                        NotificationService notificationService,
                        SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
-                       UserFileStorageService userFileStorage) {
+                       UserFileStorageService userFileStorage,
+                       UserFileStorageService fileStorage,
+                       StringRedisTemplate redisTemplate,
+                       RedisWebSocketRelayService wsRelay) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
@@ -70,7 +75,9 @@ public class ChatService {
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
-        this.userFileStorage = userFileStorage;
+        this.userFileStorage = fileStorage != null ? fileStorage : userFileStorage;
+        this.redisTemplate = redisTemplate;
+        this.wsRelay = wsRelay;
     }
 
     // ── Session management ────────────────────────────────────────────────────
@@ -431,7 +438,10 @@ public class ChatService {
 
         conv.setLastMessageAt(msg.getSentAt());
         conversationRepository.save(conv);
-        lastMessageByUser.put(sender.getId(), msg.getSentAt());
+        // Update rate limit in Redis
+        redisTemplate.opsForValue().set(
+                CHAT_RATE_PREFIX + sender.getId(), "1",
+                Duration.ofSeconds(Constants.CHAT_RATE_LIMIT_SECONDS));
 
         Map<Long, Message> refs = mapReferencedMessages(List.of(msg));
         ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), sender, null, refs);
@@ -761,9 +771,7 @@ public class ChatService {
     }
 
     private void enforceRateLimit(User sender) {
-        Instant now = Instant.now();
-        Instant last = lastMessageByUser.get(sender.getId());
-        if (last != null && now.minusSeconds(Constants.CHAT_RATE_LIMIT_SECONDS).isBefore(last)) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(CHAT_RATE_PREFIX + sender.getId()))) {
             throw new SlifeException(ErrorCode.RATE_LIMIT_EXCEEDED);
         }
     }
@@ -820,7 +828,9 @@ public class ChatService {
 
     private void broadcastToSession(String sessionId, Object payload) {
         try {
-            messagingTemplate.convertAndSend("/topic/chat." + sessionId, payload);
+            String destination = "/topic/chat." + sessionId;
+            messagingTemplate.convertAndSend(destination, payload);
+            wsRelay.publishToTopic(destination, payload);
         } catch (Exception ex) {
             log.warn("broadcastToSession failed session={}: {}", sessionId, ex.getMessage());
         }

@@ -41,15 +41,18 @@ public class NotificationService {
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final RedisWebSocketRelayService wsRelay;
 
     public NotificationService(NotificationRepository notificationRepository,
                                ConversationRepository conversationRepository,
                                MessageRepository messageRepository,
-                               SimpMessagingTemplate messagingTemplate) {
+                               SimpMessagingTemplate messagingTemplate,
+                               RedisWebSocketRelayService wsRelay) {
         this.notificationRepository = notificationRepository;
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.messagingTemplate = messagingTemplate;
+        this.wsRelay = wsRelay;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -600,6 +603,7 @@ public class NotificationService {
     private void pushToUser(String email, String destination, Object payload) {
         try {
             messagingTemplate.convertAndSendToUser(email, destination, payload);
+            wsRelay.publishToUser(email, destination, payload);
         } catch (Exception ex) {
             log.warn("WS push failed email={} dest={}: {}", email, destination, ex.getMessage());
         }
@@ -609,6 +613,7 @@ public class NotificationService {
         try {
             long count = notificationRepository.countUnreadByScope(user.getId(), NotificationScope.ALL.name());
             messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notifications", count);
+            wsRelay.publishToUser(user.getEmail(), "/queue/notifications", count);
         } catch (Exception ex) {
             log.warn("WS notification count push failed userId={}", user.getId());
         }
