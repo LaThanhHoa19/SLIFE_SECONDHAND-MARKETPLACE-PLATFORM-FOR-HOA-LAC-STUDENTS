@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getListings, searchListings } from '../api/listingApi';
 import { formatPickupDisplayLine } from '../utils/addressDisplay';
+import { getSellerIdFromListingItem } from '../utils/listingFormatUtils';
 import useDebounce from './useDebounce';
 
 const toBoolean = (value) => value === true || value === 1 || value === '1';
@@ -305,9 +306,20 @@ export default function useListings(initialParams = {}) {
         setParams((p) => ({ ...p, page: p.page + 1 }));
     }, [isLoadingMore, isLoading, hasMore]);
 
-    /** Cập nhật một tin trong feed (vd. sau like); removeFromList — bỏ khỏi danh sách (sau chặn người bán). */
+    /** Cập nhật một tin trong feed (vd. sau like); removeFromList / removeSellerId — sau chặn người bán. */
     const patchListing = useCallback((listingId, patch) => {
-        if (listingId == null || !patch || typeof patch !== 'object') return;
+        if (!patch || typeof patch !== 'object') return;
+        if (patch.removeSellerId != null) {
+            const sid = String(patch.removeSellerId);
+            setData((prev) =>
+                prev.filter((item) => {
+                    const itemSid = getSellerIdFromListingItem(item);
+                    return itemSid == null || String(itemSid) !== sid;
+                }),
+            );
+            return;
+        }
+        if (listingId == null) return;
         if (patch.removeFromList === true) {
             setData((prev) =>
                 prev.filter((item) => {

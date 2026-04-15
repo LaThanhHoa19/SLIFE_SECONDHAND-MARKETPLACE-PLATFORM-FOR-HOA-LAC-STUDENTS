@@ -12,10 +12,11 @@ import java.util.List;
 @AllArgsConstructor
 public class CommunityPostCardResponse {
     private Long id;
-    private String title;
     /** Mô tả rút gọn trên feed (có thể null). */
     private String description;
     private String thumbUrl;
+    /** Danh sách ảnh của bài viết để feed có thể kéo ngang. */
+    private List<String> imageUrls;
     private Instant createdAt;
     private Long authorId;
     private String authorName;
@@ -25,4 +26,6 @@ public class CommunityPostCardResponse {
     private List<String> hashtags;
     /** null nếu khách chưa đăng nhập */
     private Boolean isLiked;
+    /** null nếu khách chưa đăng nhập */
+    private Boolean isSaved;
 }

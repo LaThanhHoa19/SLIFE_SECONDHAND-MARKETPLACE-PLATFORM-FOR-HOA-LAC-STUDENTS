@@ -36,18 +36,18 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
                 const list = Array.isArray(raw?.content)
                     ? raw.content
                     : Array.isArray(raw)
-                      ? raw
-                      : Array.isArray(body?.content)
-                        ? body.content
-                        : Array.isArray(body)
-                          ? body
-                          : [];
+                        ? raw
+                        : Array.isArray(body?.content)
+                            ? body.content
+                            : Array.isArray(body)
+                                ? body
+                                : [];
                 const total =
                     typeof raw?.totalElements === 'number'
                         ? raw.totalElements
                         : Array.isArray(list)
-                          ? list.length
-                          : 0;
+                            ? list.length
+                            : 0;
                 setSessionsTotalElements(total);
                 setSessions(list);
                 return list;
@@ -80,14 +80,15 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
 
     useEffect(() => {
         let alive = true;
-        setSessionsLoading(true);
+        // Chỉ bật spinner full-size khi chưa có dữ liệu lần đầu.
+        if (sessions.length === 0) setSessionsLoading(true);
         fetchSessions().finally(() => {
             if (alive) setSessionsLoading(false);
         });
         return () => {
             alive = false;
         };
-    }, [sessionsVersion, debouncedSearch, fetchSessions]);
+    }, [sessionsVersion, debouncedSearch, fetchSessions, sessions.length]);
 
     useEffect(() => {
         chatApi

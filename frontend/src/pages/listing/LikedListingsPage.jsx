@@ -9,6 +9,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import ListingsFeed from '../../components/listing/ListingsFeed';
 import { getLikedListings } from '../../api/listingApi';
 import { unwrapApiData } from '../../utils/apiPayload';
+import { getSellerIdFromListingItem } from '../../utils/listingFormatUtils';
 
 const UNAVAILABLE_STATUSES = new Set(['HIDDEN', 'MOD_HIDDEN', 'DELETED', 'BANNED', 'EXPIRED']);
 
@@ -74,25 +75,42 @@ export default function LikedListingsPage() {
     }, [isLoading, error, data.length]);
 
     const patchListing = useCallback((listingId, patch) => {
-        if (listingId == null || !patch || typeof patch !== 'object') return;
-        if (patch.removeFromList === true) {
-            setData((prev) =>
-                prev.filter((item) => {
-                    const lid = item?.id ?? item?.listingId ?? item?.listing_id;
-                    return lid == null || String(lid) !== String(listingId);
-                }),
-            );
+        if (!patch || typeof patch !== 'object') return;
+        if (patch.removeSellerId != null) {
+            const sid = String(patch.removeSellerId);
+            setData((prev) => {
+                const next = prev.filter((item) => {
+                    const itemSid = getSellerIdFromListingItem(item);
+                    return itemSid == null || String(itemSid) !== sid;
+                });
+                setMeta((m) => ({ ...m, totalElements: next.length }));
+                return next;
+            });
             return;
         }
-        setData((prev) =>
-            prev
+        if (listingId == null) return;
+        if (patch.removeFromList === true) {
+            setData((prev) => {
+                const next = prev.filter((item) => {
+                    const lid = item?.id ?? item?.listingId ?? item?.listing_id;
+                    return lid == null || String(lid) !== String(listingId);
+                });
+                setMeta((m) => ({ ...m, totalElements: next.length }));
+                return next;
+            });
+            return;
+        }
+        setData((prev) => {
+            const next = prev
                 .map((item) => {
                     const lid = item?.id ?? item?.listingId ?? item?.listing_id;
                     if (lid == null || String(lid) !== String(listingId)) return item;
                     return { ...item, ...patch };
                 })
-                .filter((item) => item?.isSaved !== false),
-        );
+                .filter((item) => item?.isLiked !== false);
+            setMeta((m) => ({ ...m, totalElements: next.length }));
+            return next;
+        });
     }, []);
 
     const toggleButtonSx = (active) => ({

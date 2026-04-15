@@ -14,6 +14,7 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql/conf.d:/etc/mysql/conf.d:ro
       - ../SLife_Database_MySQL:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u${MYSQL_USER:-root} -p${MYSQL_PASSWORD:-123456} --silent"]
@@ -25,6 +26,24 @@ services:
     networks:
       - slife
 
+  redis:
+    image: redis:7-alpine
+    container_name: slife-dev-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - slife
+
   backend:
     build:
       context: ../backend
@@ -32,9 +51,11 @@ services:
     container_name: slife-dev-backend
     environment:
       SPRING_PROFILES_ACTIVE: dev
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-slife_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-slife_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY:-AIzaSyDMQRxyUXZkj5_UF2s24hRQK6UJWnt031I}
       VIETMAP_SERVICES_KEY: "f611ec02555463b634e15ce9863f305bb81a68f088bed048"
       APP_UPLOAD_DIR: /app/uploads
@@ -42,13 +63,20 @@ services:
       APP_MAIL_HTTP_URL: ${APP_MAIL_HTTP_URL:-}
       APP_MAIL_HTTP_SECRET: ${APP_MAIL_HTTP_SECRET:-}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-noreply@slife.local}
-      # Dev: gửi mọi email thử nghiệm vào một hộp thư (users.email vẫn unique trong DB)
-      APP_MAIL_FORCE_TO: ${APP_MAIL_FORCE_TO:-}
       FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1}
+      APP_STORAGE_MODE: ${APP_STORAGE_MODE:-local}
+      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_S3_KEY_PREFIX: ${AWS_S3_KEY_PREFIX:-media}
+      AWS_S3_PUBLIC_BASE_URL: ${AWS_S3_PUBLIC_BASE_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q 'UP'"]
@@ -104,6 +132,7 @@ volumes:
   mysql_data:
   frontend_node_modules:
   uploads_data:
+  redis_data:
 
 networks:
   slife:

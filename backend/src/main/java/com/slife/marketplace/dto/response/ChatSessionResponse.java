@@ -15,6 +15,7 @@ public class ChatSessionResponse {
 
     private String sessionId;  // UUID
     private Long listingId;
+    private String listingCode; // Hashed listingId
     private String listingTitle;
     private Long buyerId;
     private Long sellerId;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { Box, Skeleton, Typography } from '@mui/material';
-import LocalFireDepartmentOutlinedIcon from '@mui/icons-material/LocalFireDepartmentOutlined';
+import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
 import { getCommunityHashtagTrending } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 
@@ -15,7 +15,7 @@ export default function CommunityTrendingSidebar() {
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        getCommunityHashtagTrending({ days: 7, limit: 10 })
+        getCommunityHashtagTrending({ days: 7, limit: 5 })
             .then((res) => {
                 if (cancelled) return;
                 const raw = unwrapApiData(res);
@@ -35,36 +35,36 @@ export default function CommunityTrendingSidebar() {
     return (
         <Box
             sx={{
-                bgcolor: 'rgba(42,39,51,0.4)',
-                backdropFilter: 'blur(10px)',
+                bgcolor: 'rgba(16,22,56,0.86)',
+                backdropFilter: 'blur(12px)',
                 borderRadius: '20px',
                 overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.06)',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.24)',
             }}
         >
             <Box
                 sx={{
                     px: 2,
-                    py: 2,
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    pt: 2,
+                    pb: 1.2,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1.25,
-                    background: 'linear-gradient(90deg, rgba(251,146,60,0.12) 0%, transparent 100%)',
+                    gap: 1,
                 }}
             >
-                <LocalFireDepartmentOutlinedIcon sx={{ fontSize: 22, color: '#fb923c' }} />
-                <Typography sx={{ fontSize: '15px', fontWeight: 800, color: 'rgba(255,255,255,0.95)' }}>
-                    Chủ đề nóng (7 ngày)
+                <TrendingUpOutlinedIcon sx={{ fontSize: 20, color: '#b6a0ff' }} />
+                <Typography sx={{ fontSize: '26px', fontWeight: 800, color: '#fff' }}>
+                    Chủ đề thịnh hành
                 </Typography>
             </Box>
-            <Box sx={{ px: 2, py: 1.5 }}>
+
+            <Box sx={{ px: 2, pb: 2 }}>
                 {loading ? (
                     <StackSkel />
                 ) : rows.length === 0 ? (
-                    <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>
-                        Chưa có dữ liệu hashtag — hãy đăng bài và gắn # trong nội dung.
+                    <Typography sx={{ fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>
+                        Chưa có dữ liệu hashtag.
                     </Typography>
                 ) : (
                     <Box component="ul" sx={{ m: 0, pl: 0, listStyle: 'none' }}>
@@ -77,7 +77,7 @@ export default function CommunityTrendingSidebar() {
                                     key={tag}
                                     component="li"
                                     sx={{
-                                        py: 0.85,
+                                        py: 0.75,
                                         borderBottom: '1px solid rgba(255,255,255,0.05)',
                                         '&:last-of-type': { borderBottom: 'none' },
                                     }}
@@ -86,17 +86,17 @@ export default function CommunityTrendingSidebar() {
                                         component={RouterLink}
                                         to={`/community?hashtag=${encodeURIComponent(tag)}`}
                                         sx={{
-                                            fontSize: 14,
-                                            fontWeight: 700,
-                                            color: '#c4b5fd',
+                                            fontSize: 18,
+                                            fontWeight: 800,
+                                            color: '#d4c7ff',
                                             textDecoration: 'none',
                                             '&:hover': { textDecoration: 'underline' },
                                         }}
                                     >
                                         #{tag}
                                     </Typography>
-                                    <Typography sx={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', mt: 0.25 }}>
-                                        {cnt} bài
+                                    <Typography sx={{ fontSize: 14, color: 'rgba(255,255,255,0.62)', mt: 0.15 }}>
+                                        {cnt} bài đăng hôm nay
                                     </Typography>
                                 </Box>
                             );
@@ -112,7 +112,7 @@ function StackSkel() {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {[1, 2, 3, 4, 5].map((k) => (
-                <Skeleton key={k} variant="rounded" height={36} sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 1 }} />
+                <Skeleton key={k} variant="rounded" height={44} sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 1.5 }} />
             ))}
         </Box>
     );

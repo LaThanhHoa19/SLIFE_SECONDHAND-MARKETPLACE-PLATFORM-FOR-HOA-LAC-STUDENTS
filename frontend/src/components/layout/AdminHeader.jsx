@@ -1,5 +1,4 @@
-import { Box, Button, IconButton, InputBase, Stack, Tooltip, Typography } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
+import { Box, Button, IconButton, Stack, Tooltip, Typography } from '@mui/material';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
@@ -43,36 +42,7 @@ export default function AdminHeader() {
         >
             <Box sx={{ width: { xs: 0, md: 40 }, flexShrink: 0 }} />
 
-            <Box
-                sx={{
-                    flex: 1,
-                    maxWidth: 560,
-                    mx: 'auto',
-                    display: { xs: 'none', sm: 'flex' },
-                    alignItems: 'center',
-                    bgcolor: 'rgba(255,255,255,0.05)',
-                    borderRadius: 999,
-                    px: 2,
-                    py: 0.85,
-                    border: `1px solid ${t.borderSubtle}`,
-                    transition: 'border-color 0.2s, background 0.2s',
-                    '&:focus-within': {
-                        borderColor: t.borderAccentStrong,
-                        bgcolor: 'rgba(139,92,246,0.06)',
-                    },
-                }}
-            >
-                <SearchIcon sx={{ fontSize: 20, color: t.textMuted, mr: 1 }} />
-                <InputBase
-                    placeholder="Tìm kiếm tài liệu, người dùng..."
-                    sx={{
-                        fontSize: 13,
-                        flex: 1,
-                        color: t.text,
-                        '& input::placeholder': { color: t.textMuted, opacity: 1 },
-                    }}
-                />
-            </Box>
+            <Box sx={{ flex: 1 }} />
 
             <Stack direction="row" spacing={0.5} alignItems="center">
                 <Tooltip title="Thông báo (sắp có)">

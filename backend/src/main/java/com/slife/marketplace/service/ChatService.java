@@ -16,22 +16,18 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.Normalizer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.Locale;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,10 +47,11 @@ public class ChatService {
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
+    private final StringRedisTemplate redisTemplate;
+    private final RedisWebSocketRelayService wsRelay;
 
-    /** Rate limit: last message timestamp per user id (BR-38: max 1 message per second). */
-    private final Map<Long, Instant> lastMessageByUser = new ConcurrentHashMap<>();
+    private static final String CHAT_RATE_PREFIX = "chat:rate:";
 
     public ChatService(ConversationRepository conversationRepository,
                        MessageRepository messageRepository,
@@ -65,7 +62,9 @@ public class ChatService {
                        NotificationService notificationService,
                        SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
-                       Path uploadBasePath) {
+                       UserFileStorageService fileStorage,
+                       StringRedisTemplate redisTemplate,
+                       RedisWebSocketRelayService wsRelay) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.listingRepository = listingRepository;
@@ -75,7 +74,9 @@ public class ChatService {
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
-        this.uploadBasePath = uploadBasePath;
+        this.fileStorage = fileStorage;
+        this.redisTemplate = redisTemplate;
+        this.wsRelay = wsRelay;
     }
 
     // ── Session management ────────────────────────────────────────────────────
@@ -436,7 +437,10 @@ public class ChatService {
 
         conv.setLastMessageAt(msg.getSentAt());
         conversationRepository.save(conv);
-        lastMessageByUser.put(sender.getId(), msg.getSentAt());
+        // Update rate limit in Redis
+        redisTemplate.opsForValue().set(
+                CHAT_RATE_PREFIX + sender.getId(), "1",
+                Duration.ofSeconds(Constants.CHAT_RATE_LIMIT_SECONDS));
 
         Map<Long, Message> refs = mapReferencedMessages(List.of(msg));
         ChatMessageResponse response = toMessageResponse(msg, conv.getSessionUuid(), sender, null, refs);
@@ -458,8 +462,9 @@ public class ChatService {
      * Upload a chat image. Validates size and type.
      * Stores to uploads/chats/{sessionId}/{uuid}.ext
      * Returns the public URL path.
+     * Phải ghi DB khi chỉ có listingId (getOrCreateSession) — không dùng readOnly.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public String uploadChatImage(String sessionId, Long listingId, MultipartFile file) {
         String resolvedSessionId = (sessionId != null && !sessionId.isBlank()) ? sessionId.trim() : null;
         if (resolvedSessionId == null) {
@@ -490,18 +495,8 @@ public class ChatService {
             default -> ".jpg";
         };
         String fileName = UUID.randomUUID() + ext;
-        Path dir = uploadBasePath.resolve(Constants.CHAT_UPLOAD_DIR).resolve(resolvedSessionId);
-        try {
-            Files.createDirectories(dir);
-            Path dest = dir.resolve(fileName);
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            log.error("Chat image upload failed session={}", resolvedSessionId, e);
-            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-        }
-        return "/uploads/" + Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
+        String relative = Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
+        return fileStorage.storeMultipart(file, relative);
     }
 
     // ── Offer negotiation (UC-30) ─────────────────────────────────────────────
@@ -775,9 +770,7 @@ public class ChatService {
     }
 
     private void enforceRateLimit(User sender) {
-        Instant now = Instant.now();
-        Instant last = lastMessageByUser.get(sender.getId());
-        if (last != null && now.minusSeconds(Constants.CHAT_RATE_LIMIT_SECONDS).isBefore(last)) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(CHAT_RATE_PREFIX + sender.getId()))) {
             throw new SlifeException(ErrorCode.RATE_LIMIT_EXCEEDED);
         }
     }
@@ -834,7 +827,9 @@ public class ChatService {
 
     private void broadcastToSession(String sessionId, Object payload) {
         try {
-            messagingTemplate.convertAndSend("/topic/chat." + sessionId, payload);
+            String destination = "/topic/chat." + sessionId;
+            messagingTemplate.convertAndSend(destination, payload);
+            wsRelay.publishToTopic(destination, payload);
         } catch (Exception ex) {
             log.warn("broadcastToSession failed session={}: {}", sessionId, ex.getMessage());
         }
@@ -865,6 +860,7 @@ public class ChatService {
         return ChatSessionResponse.builder()
                 .sessionId(c.getSessionUuid())
                 .listingId(c.getListing() != null ? c.getListing().getId() : null)
+                .listingCode(c.getListing() != null ? com.slife.marketplace.util.IdHasher.encode(c.getListing().getId()) : null)
                 .listingTitle(c.getListing() != null ? c.getListing().getTitle() : null)
                 .buyerId(buyerId)
                 .sellerId(sellerId)

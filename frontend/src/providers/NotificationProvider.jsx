@@ -1,5 +1,6 @@
 /** SCRUM-172: Provider gom logic thông báo để Header/NotificationsPage dùng thống nhất. */
 import { createContext } from 'react';
+import { useLocation } from 'react-router-dom';
 import useNotifications from '../hooks/useNotifications';
 
 export const NotificationContext = createContext({
@@ -11,6 +12,10 @@ export const NotificationContext = createContext({
 });
 
 export function NotificationProvider({ children }) {
-    const value = useNotifications();
+    const location = useLocation();
+    const scope = location.pathname === '/community' || location.pathname.startsWith('/community/')
+        ? 'community'
+        : 'market';
+    const value = useNotifications(scope);
     return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }

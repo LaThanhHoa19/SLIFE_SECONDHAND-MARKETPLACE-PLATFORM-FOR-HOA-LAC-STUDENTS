@@ -18,6 +18,7 @@ import ImageUploader from '../common/ImageUploader';
 import { getCategories } from '../../api/categoryApi';
 import { reverseGeocode, getGeoClientConfig } from '../../api/geoApi';
 import LocationPicker from './LocationPicker';
+import { buildVietmapStyleUrl, vietmapTransformRequest } from '../../utils/vietmapMapOptions';
 
 /** Đại học FPT Hà Nội — khuôn viên Hòa Lạc (mặc định bản đồ đăng tin) */
 const FPT_UNIVERSITY_HN_LAT = 21.0135;
@@ -897,9 +898,10 @@ export default function ListingForm({
 
             const map = new window.vietmapgl.Map({
                 container: 'vietmap-container',
-                style: `https://maps.vietmap.vn/maps/styles/tm/style.json?apikey=${vietmapTileKey}`,
+                style: buildVietmapStyleUrl(vietmapTileKey),
                 center: [FPT_UNIVERSITY_HN_LNG, FPT_UNIVERSITY_HN_LAT],
                 zoom: MAP_DEFAULT_ZOOM,
+                transformRequest: vietmapTransformRequest,
             });
 
             map.addControl(new window.vietmapgl.NavigationControl(), 'top-left');
@@ -1040,7 +1042,17 @@ export default function ListingForm({
             setPinStatus('missing_admin');
             return;
         }
-        if (!navigator.geolocation) { alert('Trình duyệt không hỗ trợ GPS.'); return; }
+        if (!navigator.geolocation) {
+            alert('Trình duyệt không hỗ trợ GPS.');
+            return;
+        }
+        // Geolocation chỉ chạy trên HTTPS hoặc localhost (secure context). S3 static website = HTTP → bị chặn.
+        if (typeof window !== 'undefined' && !window.isSecureContext) {
+            alert(
+                'GPS không dùng được trên trang HTTP (vd. S3 website). Hãy chọn vị trí trên bản đồ, hoặc bật HTTPS (CloudFront + chứng chỉ).'
+            );
+            return;
+        }
         if (!mapEnabled) setMapEnabled(true);
         setGpsLoading(true);
         navigator.geolocation.getCurrentPosition(
@@ -1127,7 +1139,17 @@ export default function ListingForm({
                 setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
                 setPinStatus(isValid ? 'valid' : 'invalid');
             },
-            (err) => { setGpsLoading(false); alert(`Không lấy được GPS: ${err.message}`); },
+            (err) => {
+                setGpsLoading(false);
+                const msg = err?.message || String(err);
+                if (/secure origin|Only secure origins/i.test(msg)) {
+                    alert(
+                        'GPS chỉ hoạt động trên HTTPS hoặc localhost. Hãy chọn vị trí trên bản đồ hoặc triển khai HTTPS (CloudFront).'
+                    );
+                    return;
+                }
+                alert(`Không lấy được GPS: ${msg}`);
+            },
             { enableHighAccuracy: true, timeout: 10000 }
         );
     }, [mapEnabled]);

@@ -133,6 +133,7 @@ export default function ListingCard({
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
     const { followLoading, toggleFollow } = useFollowActions({ user, updateAuthUser });
     const id = listing?.id ?? listing?.listingId ?? listing?.listing_id;
+    const code = listing?.code ?? id;
     const isSavedPage = location.pathname.startsWith('/saved');
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const seller = getSeller(listing);
@@ -142,6 +143,7 @@ export default function ListingCard({
         seller?.id ??
         listing?.seller?.id ??
         listing?.seller?.userId;
+    const sellerCode = listing?.sellerCode ?? seller?.code ?? sellerId;
     const isMe = isAuthenticated && user && sellerId && String(user.id) === String(sellerId);
     const [followed, setFollowed] = useState(!!listing?.isFollowed);
     const [commentOpen, setCommentOpen] = useState(false);
@@ -201,7 +203,7 @@ export default function ListingCard({
         }
 
         if (onClick) onClick(listing);
-        else if (id) navigate(`/listings/${id}`);
+        else if (code) navigate(`/listings/${code}`);
     };
 
     const handleFollowClick = async (e) => {
@@ -276,9 +278,9 @@ export default function ListingCard({
             showToast(listing?.unavailableMessage || 'Tin đăng này không còn khả dụng.', 'warning');
             return;
         }
-        if (!id || shareSubmitting) return;
+        if (!code || shareSubmitting) return;
         setShareSubmitting(true);
-        let shareUrl = `${window.location.origin}/listings/${id}`;
+        let shareUrl = `${window.location.origin}/listings/${code}`;
         let shareTitle = listing?.title || 'Tin đăng';
         try {
             // Prefer backend-generated canonical URL.
@@ -465,7 +467,7 @@ export default function ListingCard({
                         <Tooltip title="Xem hồ sơ">
                             <Avatar
                                 component={RouterLink}
-                                to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
+                                to={isMe ? '/profile' : (sellerCode ? `/profile/${sellerCode}` : '#')}
                                 src={fullImageUrl(seller?.avatarUrl)}
                                 alt={seller?.fullName || 'seller'}
                                 sx={{
@@ -528,7 +530,7 @@ export default function ListingCard({
                         <Stack direction="row" spacing={1} alignItems="center">
                             <Typography
                                 component={RouterLink}
-                                to={String(sellerId) === String(user?.id) ? '/profile' : (sellerId ? `/profile/${sellerId}` : '#')}
+                                to={isMe ? '/profile' : (sellerCode ? `/profile/${sellerCode}` : '#')}
                                 fontSize={14.5}
                                 fontWeight={600}
                                 color="#FFF"
@@ -936,7 +938,7 @@ export default function ListingCard({
                             displayName={seller?.fullName || 'Người bán'}
                             onConfirm={() =>
                                 blockUserById(sellerId).then(() => {
-                                    onPatchListing?.(id, { removeFromList: true });
+                                    onPatchListing?.(id, { removeSellerId: sellerId });
                                     const onListingDetail = /^\/listings\/[^/]+$/.test(location.pathname);
                                     if (onListingDetail) navigate('/feed');
                                 })

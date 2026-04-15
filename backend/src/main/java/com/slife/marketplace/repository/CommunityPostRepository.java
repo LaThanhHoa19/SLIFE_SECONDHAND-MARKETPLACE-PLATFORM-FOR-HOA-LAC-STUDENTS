@@ -244,6 +244,36 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
             """)
     Optional<CommunityPost> findByIdWithAuthor(@Param("id") Long id);
 
+    @EntityGraph(attributePaths = {"author", "hashtags"})
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.author.id = :authorId
+              AND p.deletedAt IS NULL
+            ORDER BY p.createdAt DESC
+            """)
+    Page<CommunityPost> findMineVisibleByAuthorId(
+            @Param("authorId") Long authorId,
+            Pageable pageable);
+
+    @EntityGraph(attributePaths = {"author", "hashtags"})
+    @Query("""
+            SELECT p FROM CommunityPost p
+            WHERE p.author.id = :authorId
+              AND p.status = :status
+              AND p.deletedAt IS NULL
+              AND p.hiddenAt IS NULL
+              AND (:viewerId IS NULL OR NOT EXISTS (
+                  SELECT 1 FROM Block blk
+                  WHERE blk.blocker.id = :viewerId AND blk.blocked.id = p.author.id
+              ))
+            ORDER BY p.createdAt DESC
+            """)
+    Page<CommunityPost> findVisibleByAuthorIdForViewer(
+            @Param("authorId") Long authorId,
+            @Param("status") String status,
+            @Param("viewerId") Long viewerId,
+            Pageable pageable);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE CommunityPost p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
     void incrementViewCount(@Param("id") Long id);

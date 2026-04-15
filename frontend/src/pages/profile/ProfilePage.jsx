@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   CircularProgress,
@@ -23,6 +23,7 @@ import { useFollowActions } from '../../hooks/useFollowActions';
 import * as userApi from '../../api/userApi';
 import * as followApi from '../../api/followApi';
 import { getListings } from '../../api/listingApi';
+import { getCommunityPostsByAuthor } from '../../api/communityApi';
 import Loading from '../../components/common/Loading';
 import { fullImageUrl } from '../../utils/constants';
 import { DETAIL_PAGE_MAX_WIDTH } from '../../utils/layoutConstants';
@@ -39,6 +40,7 @@ import ProfileHeader from '../../components/profile/ProfileHeader';
 import FollowListDialog from '../../components/profile/FollowListDialog';
 import ListingSection from '../../components/profile/ListingSection';
 import ReviewSection from '../../components/profile/ReviewSection';
+import CommunityPostCard from '../../components/community/CommunityPostCard';
 import ReportDialog from '../../components/report/ReportDialog';
 
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
@@ -97,16 +99,19 @@ function applyUserProfilePatch(prev, patch) {
 export default function ProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user: currentUser, updateUser: updateAuthUser } = useAuth();
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [listings, setListings] = useState([]);
   const [listingsLoading, setListingsLoading] = useState(false);
+  const [communityPosts, setCommunityPosts] = useState([]);
+  const [communityLoading, setCommunityLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ fullName: '', phoneNumber: '', bio: '' });
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(location.state?.profileTab === 'posts' ? 0 : 1);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
   const [, setSuccessMessage] = useState('');
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -148,7 +153,7 @@ export default function ProfilePage() {
     updateAuthUser,
   });
 
-  const isMe = !id || id === 'me' || (currentUser && String(currentUser.id) === String(id));
+  const isMe = !id || id === 'me' || (currentUser && (String(currentUser.id) === String(id) || String(currentUser.code) === String(id)));
 
   const loadUser = useCallback(async () => {
     // Nếu là trang "me" mà không có user -> không làm gì (hoặc AppRouter sẽ đá ra login)
@@ -200,6 +205,22 @@ export default function ProfilePage() {
     }
   }, [id, isMe, currentUser]);
 
+  const loadCommunityPosts = useCallback(async () => {
+    if (!profileUser?.id) return;
+    setCommunityLoading(true);
+    try {
+      const res = await getCommunityPostsByAuthor(profileUser.id, { page: 0, size: 30 });
+      const data = getPayload(res);
+      const items = Array.isArray(data?.content) ? data.content : [];
+      setCommunityPosts(items);
+    } catch (err) {
+      console.error('Failed to load community posts:', err);
+      setCommunityPosts([]);
+    } finally {
+      setCommunityLoading(false);
+    }
+  }, [profileUser?.id]);
+
   const loadListings = useCallback(async () => {
     if (!profileUser?.id) return;
     setListingsLoading(true);
@@ -239,7 +260,12 @@ export default function ProfilePage() {
   }, [profileUser?.id]);
 
   useEffect(() => { loadUser(); }, [loadUser]);
-  useEffect(() => { if (profileUser?.id) loadListings(); }, [profileUser?.id, loadListings]);
+  useEffect(() => {
+    if (profileUser?.id) {
+      loadListings();
+      loadCommunityPosts();
+    }
+  }, [profileUser?.id, loadListings, loadCommunityPosts]);
   useEffect(() => {
     if (profileUser) {
       const rawPhone = String(profileUser.phoneNumber ?? profileUser.phone_number ?? '').trim();
@@ -676,6 +702,7 @@ export default function ProfilePage() {
                     }
                   }}
               >
+                <Tab icon={<Tooltip title="Bài viết"><ChatBubbleOutlineIcon /></Tooltip>} />
                 <Tab icon={<Tooltip title="Tất cả bài đăng"><GridOnIcon /></Tooltip>} />
                 <Tab icon={<Tooltip title="Đã bán"><SellIcon /></Tooltip>} />
                 <Tab icon={<Tooltip title="Đánh giá"><StarIcon /></Tooltip>} />
@@ -707,9 +734,27 @@ export default function ProfilePage() {
             </Box>
 
             <Box sx={{ flex: 1, p: { xs: 0.1, sm: 0.5 } }}>
-              {tab === 0 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
-              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter((l) => String(l?.status || l?.itemStatus || '').toUpperCase() === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.id || l.listingId}`)} />}
-              {tab === 2 && (
+              {tab === 0 && (
+                  <Box sx={{ display: 'grid', gap: 1.2 }}>
+                    {communityLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={26} /></Box>
+                    ) : communityPosts.length === 0 ? (
+                        <Typography sx={{ color: 'rgba(255,255,255,0.72)', textAlign: 'center', py: 4 }}>Chưa có bài viết cộng đồng nào.</Typography>
+                    ) : (
+                        communityPosts.map((p) => (
+                            <CommunityPostCard
+                                key={p.id}
+                                post={p}
+                                onDeletePost={(postId) => setCommunityPosts((prev) => prev.filter((x) => Number(x.id) !== Number(postId)))}
+                                onPatchPost={(postId, patch) => setCommunityPosts((prev) => prev.map((x) => (Number(x.id) === Number(postId) ? { ...x, ...patch } : x)))}
+                            />
+                        ))
+                    )}
+                  </Box>
+              )}
+              {tab === 1 && <ListingSection isMe={isMe} viewMode={viewMode} listings={showAllListings ? listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED') : listings.filter(l => l.status !== 'SOLD' && l.status !== 'HIDDEN' && l.status !== 'MOD_HIDDEN' && l.status !== 'DELETED').slice(0, 12)} showAll={showAllListings} setShowAll={setShowAllListings} onNavigateDetail={(l) => navigate(`/listings/${l.code || l.id || l.listingId}`)} emptyMessage="Chưa có tin đăng nào." />}
+              {tab === 2 && <ListingSection isMe={isMe} viewMode={viewMode} listings={listings.filter((l) => String(l?.status || l?.itemStatus || '').toUpperCase() === 'SOLD')} isSold showAll={true} emptyMessage="Chưa có tin nào đã bán." onNavigateDetail={(l) => navigate(`/listings/${l.code || l.id || l.listingId}`)} />}
+              {tab === 3 && (
                   <ReviewSection userId={profileUser?.id} />
               )}
             </Box>

@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class UserProfileResponse {
 
     private Long id;
+    private String code; // Hash code for URL
     private String email;
     private String fullName;
     private String phoneNumber;
@@ -59,6 +60,7 @@ public class UserProfileResponse {
             return r;
         }
         r.setId(user.getId());
+        r.setCode(com.slife.marketplace.util.IdHasher.encode(user.getId()));
         r.setEmail(user.getEmail());
         r.setFullName(user.getFullName());
         r.setPhoneNumber(user.getPhoneNumber());

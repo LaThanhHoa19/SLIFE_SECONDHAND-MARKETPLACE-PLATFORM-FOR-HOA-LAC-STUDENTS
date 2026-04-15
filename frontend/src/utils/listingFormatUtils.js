@@ -93,3 +93,16 @@ export const getStatusInfo = (status) => {
     const raw = String(status || 'ACTIVE').toUpperCase();
     return LISTING_STATUS_MAP[raw] || { label: status, color: BRAND_COLORS.TEXT_SEC };
 };
+
+/** ID người bán trên payload listing (feed/search) — khớp logic ListingCard. */
+export function getSellerIdFromListingItem(item) {
+    if (!item || typeof item !== 'object') return undefined;
+    const s = item.sellerSummary ?? item.seller;
+    return (
+        item.sellerId ??
+        item.seller_id ??
+        (s && typeof s === 'object' ? s.userId ?? s.id : undefined) ??
+        item.seller?.id ??
+        item.seller?.userId
+    );
+}

@@ -2,6 +2,7 @@ package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.UpdateUserRequest;
 import com.slife.marketplace.dto.request.FirebasePhoneVerifyRequest;
+import com.slife.marketplace.dto.request.PhoneVerificationCheckRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.UserProfileResponse;
 import com.slife.marketplace.entity.User;
@@ -53,7 +54,18 @@ public class UserController {
     }
 
     @GetMapping("/api/users/{id}")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(@PathVariable("id") String idOrCode) {
+        Long id;
+        try {
+            id = Long.parseLong(idOrCode);
+        } catch (NumberFormatException e) {
+            id = com.slife.marketplace.util.IdHasher.decode(idOrCode);
+        }
+
+        if (id == null) {
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
         Long viewerId = userService.getCurrentUserOptional().map(User::getId).orElse(null);
@@ -97,6 +109,13 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/api/users/me/phone-verification/check")
+    public ResponseEntity<ApiResponse<Void>> checkPhoneBeforeVerification(
+            @Valid @RequestBody PhoneVerificationCheckRequest request) {
+        userService.assertPhoneAvailableForVerification(request.getPhoneNumber());
+        return ResponseEntity.ok(ApiResponse.success("OK", null));
+    }
+
     @PostMapping("/api/users/me/phone-verification/firebase")
     public ResponseEntity<ApiResponse<UserProfileResponse>> verifyPhoneWithFirebase(
             @Valid @RequestBody FirebasePhoneVerifyRequest request) {
@@ -106,7 +125,17 @@ public class UserController {
     }
 
     @GetMapping("/api/users/{id}/reviews")
-    public ResponseEntity<?> getUserReviews(@PathVariable Long id) {
+    public ResponseEntity<?> getUserReviews(@PathVariable("id") String idOrCode) {
+        Long id;
+        try {
+            id = Long.parseLong(idOrCode);
+        } catch (NumberFormatException e) {
+            id = com.slife.marketplace.util.IdHasher.decode(idOrCode);
+        }
+
+        if (id == null) {
+            throw new SlifeException(ErrorCode.USER_NOT_FOUND);
+        }
         return ResponseEntity.ok(ApiResponse.success("Success", reviewService.getUserReviews(id)));
     }
 }

@@ -1,5 +1,7 @@
 package com.slife.marketplace.service;
 
+import com.slife.marketplace.dto.response.PagedResponse;
+import com.slife.marketplace.dto.response.CommunityPostCardResponse;
 import com.slife.marketplace.dto.response.ToggleLikeResponse;
 import com.slife.marketplace.entity.CommunityPost;
 import com.slife.marketplace.entity.CommunityPostLike;
@@ -10,6 +12,9 @@ import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.CommunityPostLikeRepository;
 import com.slife.marketplace.repository.CommunityPostRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +26,7 @@ public class CommunityPostLikeService {
     private final CommunityPostRepository communityPostRepository;
     private final NotificationService notificationService;
     private final CommunityPostStatsBroadcastService communityPostStatsBroadcastService;
+    private final CommunityPostService communityPostService;
 
     @Transactional
     public ToggleLikeResponse toggle(User user, Long postId) {
@@ -42,6 +48,7 @@ public class CommunityPostLikeService {
             communityPostLikeRepository.deleteByUser_IdAndPost_Id(user.getId(), postId);
             long count = communityPostLikeRepository.countByPost_Id(postId);
             communityPostStatsBroadcastService.broadcastStats(postId);
+            communityPostStatsBroadcastService.broadcastLikedToggled(postId, user.getId(), false);
             return new ToggleLikeResponse(false, count);
         }
 
@@ -62,6 +69,7 @@ public class CommunityPostLikeService {
 
         long count = communityPostLikeRepository.countByPost_Id(postId);
         communityPostStatsBroadcastService.broadcastStats(postId);
+        communityPostStatsBroadcastService.broadcastLikedToggled(postId, user.getId(), true);
         return new ToggleLikeResponse(true, count);
     }
 
@@ -73,5 +81,21 @@ public class CommunityPostLikeService {
     @Transactional(readOnly = true)
     public boolean isLikedBy(Long userId, Long postId) {
         return communityPostLikeRepository.existsByUser_IdAndPost_Id(userId, postId);
+    }
+
+    @Transactional(readOnly = true)
+    public PagedResponse<CommunityPostCardResponse> getLikedFeed(User user, int page, int size) {
+        if (user == null) {
+            throw new SlifeException(ErrorCode.UNAUTHORIZED);
+        }
+
+        int pageIdx = Math.max(page, 0);
+        int s = size > 0 ? Math.min(size, 50) : 20;
+        Pageable pageable = PageRequest.of(pageIdx, s);
+
+        Page<CommunityPost> liked = communityPostLikeRepository.findLikedPostsVisibleByUserId(
+                user.getId(), CommunityPost.STATUS_ACTIVE, pageable);
+
+        return communityPostService.toCardPage(liked, user.getId(), false);
     }
 }

@@ -36,6 +36,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -47,12 +48,14 @@ public class ReportService {
 
     private static final Logger log = LoggerFactory.getLogger(ReportService.class);
     private static final Set<String> VALID_TARGET_TYPES = Set.of(
-            "LISTING", "POST", "USER", "COMMENT", "MESSAGE",
+            "LISTING", "POST", "USER", "COMMENT",
             "COMMUNITY_POST", "COMMUNITY_POST_COMMENT");
     private static final Set<String> VALID_MODERATION_ACTIONS = Set.of("HIDE_LISTING_APPROVE", "BAN_USER_APPROVE");
     private static final String LISTING_STATUS_MOD_HIDDEN = "MOD_HIDDEN";
     private static final int DEFAULT_REPORT_THRESHOLD = 3;
     private static final int DEFAULT_AUTO_HIDE_THRESHOLD = 3;
+    private static final long MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".webp" };
 
     private final ReportRepository reportRepository;
     private final ReportImageRepository reportImageRepository;
@@ -65,6 +68,8 @@ public class ReportService {
     private final NotificationService notificationService;
     private final ConfigService configService;
     private final AuditLogService auditLogService;
+    private final SystemEmailService systemEmailService;
+    private final UserFileStorageService fileStorage;
 
     public ReportService(ReportRepository reportRepository,
                          ReportImageRepository reportImageRepository,
@@ -76,7 +81,9 @@ public class ReportService {
                          MessageRepository messageRepository,
                          NotificationService notificationService,
                          ConfigService configService,
-                         AuditLogService auditLogService) {
+                         AuditLogService auditLogService,
+                         SystemEmailService systemEmailService,
+                         UserFileStorageService fileStorage) {
         this.reportRepository = reportRepository;
         this.reportImageRepository = reportImageRepository;
         this.listingRepository = listingRepository;
@@ -88,6 +95,8 @@ public class ReportService {
         this.notificationService = notificationService;
         this.configService = configService;
         this.auditLogService = auditLogService;
+        this.systemEmailService = systemEmailService;
+        this.fileStorage = fileStorage;
     }
 
     @Transactional
@@ -108,7 +117,6 @@ public class ReportService {
             case "LISTING" -> createListingReport(reporter, request, targetType);
             case "USER" -> createUserReport(reporter, request, targetType);
             case "COMMENT" -> createCommentReport(reporter, request, targetType);
-            case "MESSAGE" -> createMessageReport(reporter, request, targetType);
             case "COMMUNITY_POST" -> createCommunityPostReport(reporter, request, targetType);
             case "COMMUNITY_POST_COMMENT" -> createCommunityPostCommentReport(reporter, request, targetType);
             default -> throw new SlifeException(ErrorCode.REPORT_INVALID_TARGET);
@@ -184,23 +192,21 @@ public class ReportService {
             if (!"LISTING".equalsIgnoreCase(String.valueOf(report.getTargetType()))) {
                 throw new SlifeException(ErrorCode.INVALID_INPUT, "HIDE_LISTING_APPROVE only supports LISTING reports");
             }
-            hideListingByAdmin(report);
-            return closeReportAfterModeration(report, admin, note, true);
+            return closeReportAfterModeration(report, admin, note, true, normalizedAction);
         }
 
         if ("BAN_USER_APPROVE".equals(normalizedAction)) {
             if (!"USER".equalsIgnoreCase(String.valueOf(report.getTargetType()))) {
                 throw new SlifeException(ErrorCode.INVALID_INPUT, "BAN_USER_APPROVE only supports USER reports");
             }
-            banUserByAdmin(report);
-            return closeReportAfterModeration(report, admin, note, true);
+            return closeReportAfterModeration(report, admin, note, true, normalizedAction);
         }
 
         if ("APPROVE".equals(normalizedAction)) {
-            return closeReportAfterModeration(report, admin, note, true);
+            return closeReportAfterModeration(report, admin, note, true, normalizedAction);
         }
 
-        return closeReportAfterModeration(report, admin, note, false);
+        return closeReportAfterModeration(report, admin, note, false, normalizedAction);
     }
 
     private ReportResponse createListingReport(User reporter, ReportRequest request, String targetType) {
@@ -368,7 +374,7 @@ public class ReportService {
         }
     }
 
-    private String closeReportAfterModeration(Report report, User admin, String note, boolean approved) {
+    private String closeReportAfterModeration(Report report, User admin, String note, boolean approved, String action) {
         report.setAdminNote(note);
         report.setHandledBy(admin);
         report.setUpdatedAt(Instant.now());
@@ -376,49 +382,47 @@ public class ReportService {
 
         Report savedReport = reportRepository.save(report);
         if (approved) {
-            applyApproveSideEffects(savedReport);
+            applyApproveSideEffects(savedReport, action);
         }
         auditLogService.logReportProcessed(admin, savedReport, approved);
         return "Report processed successfully";
     }
 
-    private void hideListingByAdmin(Report report) {
-        Long listingId = report.getTargetId();
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-        listing.setStatus(LISTING_STATUS_MOD_HIDDEN);
-        listing.setUpdatedAt(Instant.now());
-        listingRepository.save(listing);
+    private void applyApproveSideEffects(Report report, String action) {
+        String normalizedAction = String.valueOf(action).toUpperCase(Locale.ROOT);
+        String targetType = String.valueOf(report.getTargetType()).toUpperCase(Locale.ROOT);
 
-        User owner = listing.getSeller();
-        if (owner != null) {
-            notificationService.notifyAdminHiddenListing(owner, listing.getId(), listing.getTitle(), report.getId(), report.getReason());
-        }
-    }
-
-    private void banUserByAdmin(Report report) {
-        Long userId = report.getTargetId();
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
-        user.setStatus("BANNED");
-        bumpTokenRevision(user);
-        user.setUpdatedAt(java.time.LocalDateTime.now());
-        userRepository.save(user);
-
-        notificationService.notifyAdminBannedUser(user, report.getId(), report.getReason());
-    }
-
-    private void applyApproveSideEffects(Report report) {
-        if ("LISTING".equals(report.getTargetType())) {
+        if ("LISTING".equals(targetType)) {
             Listing listing = listingRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
-            listing.setStatus("HIDDEN");
+            listing.setStatus(LISTING_STATUS_MOD_HIDDEN);
             listing.setUpdatedAt(Instant.now());
             listingRepository.save(listing);
+
+            User owner = listing.getSeller();
+            if (owner != null) {
+                int before = owner.getViolationCount() == null ? 0 : owner.getViolationCount();
+                int threshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
+                applyViolationStrike(owner, listing.getId());
+                int after = owner.getViolationCount() == null ? 0 : owner.getViolationCount();
+                boolean bannedNow = before < threshold && after >= threshold;
+
+                notificationService.notifyAdminHiddenListing(owner, listing.getId(), listing.getTitle(), report.getId(), report.getReason());
+                systemEmailService.sendReportApprovedListingModerationEmail(
+                        owner,
+                        report.getId(),
+                        listing.getTitle(),
+                        listing.getId(),
+                        after,
+                        threshold,
+                        bannedNow,
+                        report.getReason()
+                );
+            }
             return;
         }
 
-        if ("COMMENT".equals(report.getTargetType())) {
+        if ("COMMENT".equals(targetType)) {
             Comment comment = commentRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new SlifeException(ErrorCode.COMMENT_NOT_FOUND));
             if (comment.getHiddenAt() == null) {
@@ -429,19 +433,41 @@ public class ReportService {
             return;
         }
 
-        if ("USER".equals(report.getTargetType())) {
+        if ("USER".equals(targetType)) {
             User user = userRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
-            long approvedCount = reportRepository.countByTargetTypeAndTargetIdAndStatus("USER", user.getId(), "RESOLVED");
-            int reportThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
-            if (approvedCount >= reportThreshold) {
+
+            int before = user.getViolationCount() == null ? 0 : user.getViolationCount();
+            int next = before + 1;
+            user.setViolationCount(next);
+
+            int threshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
+            boolean bannedNow = false;
+            if (next >= threshold) {
+                if (!"BANNED".equalsIgnoreCase(String.valueOf(user.getStatus()))) {
+                    bannedNow = true;
+                }
                 user.setStatus("BANNED");
                 bumpTokenRevision(user);
-                user.setUpdatedAt(java.time.LocalDateTime.now());
-                userRepository.save(user);
-                log.warn("User auto-banned due to approved reports. userId={}, approvedReports={}, threshold={}",
-                        user.getId(), approvedCount, reportThreshold);
             }
+
+            user.setUpdatedAt(java.time.LocalDateTime.now());
+            userRepository.save(user);
+
+            if (bannedNow || "BAN_USER_APPROVE".equals(normalizedAction)) {
+                notificationService.notifyAdminBannedUser(user, report.getId(), report.getReason());
+            } else {
+                notificationService.notifyReportApprovedUserWarning(user, report.getId(), report.getReason(), next, threshold);
+            }
+
+            systemEmailService.sendReportApprovedUserModerationEmail(
+                    user,
+                    report.getId(),
+                    next,
+                    threshold,
+                    bannedNow,
+                    report.getReason()
+            );
         }
     }
 
@@ -449,6 +475,22 @@ public class ReportService {
         String reporterName = report.getReporter() != null ? report.getReporter().getFullName() : null;
         String reporterAvatarUrl = report.getReporter() != null ? report.getReporter().getAvatarUrl() : null;
         TargetContext ctx = resolveTargetContext(report);
+        String evidenceImageUrl = reportImageRepository
+                .findTopByReport_IdOrderByCreatedAtDesc(report.getId())
+                .map(ReportImage::getImageUrl)
+                .orElse(null);
+
+        Integer targetViolationCount = null;
+        Integer violationThreshold = null;
+        String reportType = String.valueOf(report.getTargetType()).toUpperCase(Locale.ROOT);
+        if ("LISTING".equals(reportType) || "POST".equals(reportType)) {
+            Listing listing = listingRepository.findById(report.getTargetId()).orElse(null);
+            if (listing != null && listing.getSeller() != null) {
+                targetViolationCount = listing.getSeller().getViolationCount() == null ? 0 : listing.getSeller().getViolationCount();
+                violationThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
+            }
+        }
+
         return new ReportResponseDTO(
                 report.getId(),
                 reporterName,
@@ -460,6 +502,9 @@ public class ReportService {
                 ctx.listingId(),
                 ctx.conversationId(),
                 report.getReason(),
+                evidenceImageUrl,
+                targetViolationCount,
+                violationThreshold,
                 report.getStatus(),
                 report.getAdminNote(),
                 report.getCreatedAt());
@@ -472,7 +517,10 @@ public class ReportService {
         try {
             if ("LISTING".equals(targetType)) {
                 return listingRepository.findById(targetId)
-                        .map(l -> new TargetContext(truncate(l.getTitle(), 120), l.getId(), null, null))
+                        .map(l -> {
+                            String sellerAvatar = (l.getSeller() != null) ? l.getSeller().getAvatarUrl() : null;
+                            return new TargetContext(truncate(l.getTitle(), 120), l.getId(), null, sellerAvatar);
+                        })
                         .orElse(new TargetContext("[Listing not found]", null, null, null));
             }
             if ("COMMENT".equals(targetType)) {
@@ -510,7 +558,7 @@ public class ReportService {
             }
             if ("COMMUNITY_POST".equals(targetType)) {
                 return communityPostRepository.findById(targetId)
-                        .map(p -> new TargetContext(truncate(p.getTitle(), 120), p.getId(), null, null))
+                        .map(p -> new TargetContext(truncate(p.getDescription(), 120), p.getId(), null, null))
                         .orElse(new TargetContext("[Community post not found]", null, null, null));
             }
             if ("COMMUNITY_POST_COMMENT".equals(targetType)) {
@@ -529,6 +577,30 @@ public class ReportService {
                     report.getId(), targetType, targetId, ex.getMessage());
         }
         return new TargetContext(null, null, null, null);
+    }
+
+    public String uploadReportEvidenceImage(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new SlifeException(ErrorCode.INVALID_INPUT, "No image uploaded");
+        }
+        if (file.getSize() > MAX_IMAGE_SIZE) {
+            throw new SlifeException(ErrorCode.FILE_TOO_LARGE);
+        }
+
+        String ext = getImageExtension(file.getOriginalFilename());
+        String filename = "report_" + System.currentTimeMillis() + "_" + Math.abs(file.getOriginalFilename() == null ? 0 : file.getOriginalFilename().hashCode()) + ext;
+        return fileStorage.storeMultipart(file, "reports/" + filename);
+    }
+
+    private String getImageExtension(String filename) {
+        if (filename == null) {
+            throw new SlifeException(ErrorCode.INVALID_FILE_TYPE);
+        }
+        String lower = filename.toLowerCase(Locale.ROOT);
+        for (String ext : ALLOWED_EXT) {
+            if (lower.endsWith(ext)) return ext;
+        }
+        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE);
     }
 
     private String truncate(String s, int max) {
@@ -612,6 +684,25 @@ public class ReportService {
                         targetId, pending, threshold);
             });
         }
+    }
+
+    private void applyViolationStrike(User owner, Long listingId) {
+        int currentViolation = owner.getViolationCount() == null ? 0 : owner.getViolationCount();
+        int nextViolation = currentViolation + 1;
+        owner.setViolationCount(nextViolation);
+
+        int banThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
+        if (nextViolation >= banThreshold) {
+            owner.setStatus("BANNED");
+            bumpTokenRevision(owner);
+            log.warn("User auto-banned by listing moderation strike. userId={}, listingId={}, violationCount={}, threshold={}",
+                    owner.getId(), listingId, nextViolation, banThreshold);
+        }
+
+        owner.setUpdatedAt(java.time.LocalDateTime.now());
+        userRepository.save(owner);
+        log.info("Violation strike applied to listing owner. userId={}, listingId={}, violationCount={}, threshold={}",
+                owner.getId(), listingId, nextViolation, banThreshold);
     }
 
     /** Vô hiệu hóa mọi JWT đã cấp trước đó (claim tv). */

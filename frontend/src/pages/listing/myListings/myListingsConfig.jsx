@@ -7,7 +7,6 @@ export const TABS = [
     { value: 'DRAFT',    label: 'Bản nháp' },
     { value: 'EXPIRED',  label: 'Hết hạn' },
     { value: 'SOLD',     label: 'Đã bán' },
-    { value: 'REPORTED', label: 'Bị báo cáo' },
 ];
 
 export const ALL_TAB_STATUSES = TABS.map((t) => t.value);

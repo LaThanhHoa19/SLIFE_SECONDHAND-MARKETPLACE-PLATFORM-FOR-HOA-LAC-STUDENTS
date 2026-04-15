@@ -16,6 +16,7 @@ import * as userApi from '../api/userApi';
 import { setAdminAccessToken } from '../api/adminAxiosClient';
 import { clearAccessToken, getAccessToken, setAccessToken } from '../api/axiosClient';
 import { setAdminUserSnapshot } from '../adminSessionStore';
+import { clearPersistedRefreshToken, setPersistedRefreshToken } from '../api/authSessionStore';
 
 // Constants
 const TOKEN_KEY = 'slife_access_token';
@@ -93,6 +94,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(USER_KEY);
     localStorage.removeItem(SESSION_STARTED_AT_KEY);
     localStorage.removeItem(LAST_ACTIVITY_AT_KEY);
+    clearPersistedRefreshToken();
     clearAccessToken();
     setToken(null);
     setRefreshToken(null);
@@ -115,6 +117,7 @@ export function AuthProvider({ children }) {
 
   const promoteStaffToAdminSession = useCallback((userData, accessToken) => {
     setAdminAccessToken(accessToken);
+    clearPersistedRefreshToken();
     clearAccessToken();
     setToken(null);
     setUser(null);
@@ -167,6 +170,7 @@ export function AuthProvider({ children }) {
 
       if (payload?.refreshToken) {
         setRefreshToken(payload.refreshToken);
+        setPersistedRefreshToken(payload.refreshToken);
       }
       touchSessionActivity();
 
@@ -244,6 +248,7 @@ export function AuthProvider({ children }) {
 
       setToken(accessToken);
       setRefreshToken(payload.refreshToken ?? null);
+      setPersistedRefreshToken(payload.refreshToken ?? null);
       setUser(payload.user);
 
       // Setup auto refresh
@@ -299,6 +304,7 @@ export function AuthProvider({ children }) {
 
       setToken(accessToken);
       setRefreshToken(payload.refreshToken ?? null);
+      setPersistedRefreshToken(payload.refreshToken ?? null);
       setUser(payload.user);
       setupTokenRefresh(accessToken);
 
@@ -400,9 +406,8 @@ export function AuthProvider({ children }) {
     const initializeAuth = async () => {
       try {
         setAuthLoading(true);
-        // Legacy cleanup: refresh token không còn lưu ở localStorage.
+        // Legacy: access token từng lưu localStorage — xóa; refresh dùng slife_refresh_token (localStorage) qua authSessionStore.
         localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
 
         // Session policy check before token validation/refresh
         if (!ensureSessionLifecycle()) {

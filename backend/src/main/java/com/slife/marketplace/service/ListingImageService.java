@@ -14,11 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 
@@ -34,16 +29,16 @@ public class ListingImageService {
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
     private final ConfigService configService;
-    private final Path uploadBasePath;
+    private final UserFileStorageService fileStorage;
 
     public ListingImageService(ListingRepository listingRepository,
                                ListingImageRepository listingImageRepository,
                                ConfigService configService,
-                               Path uploadBasePath) {
+                               UserFileStorageService fileStorage) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.configService = configService;
-        this.uploadBasePath = uploadBasePath;
+        this.fileStorage = fileStorage;
     }
 
     @Transactional
@@ -74,19 +69,7 @@ public class ListingImageService {
             }
             String ext = getImageExtension(file.getOriginalFilename());
             String filename = listingId + "_" + System.currentTimeMillis() + "_" + displayOrder + ext;
-            Path dir = uploadBasePath.resolve("listings");
-            try {
-                Files.createDirectories(dir);
-                Path target = dir.resolve(filename).normalize();
-                try (InputStream in = file.getInputStream()) {
-                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-                }
-            } catch (IOException e) {
-                log.error("uploadListingImages failed listingId={}", listingId, e);
-                throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
-            }
-
-            String url = "/uploads/listings/" + filename;
+            String url = fileStorage.storeMultipart(file, "listings/" + filename);
 
             ListingImage image = new ListingImage();
             image.setListing(listing);
@@ -124,26 +107,8 @@ public class ListingImageService {
         if (!img.getListing().getId().equals(listingId)) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        deleteStoredFileIfSafe(img.getImageUrl());
+        fileStorage.deleteStoredIfExists(img.getImageUrl());
         listingImageRepository.delete(img);
-    }
-
-    private void deleteStoredFileIfSafe(String imageUrl) {
-        if (imageUrl == null || !imageUrl.startsWith("/uploads/")) {
-            return;
-        }
-        try {
-            String relative = imageUrl.substring("/uploads/".length());
-            Path base = uploadBasePath.toAbsolutePath().normalize();
-            Path target = base.resolve(relative).normalize();
-            if (!target.startsWith(base)) {
-                log.warn("Refusing to delete outside upload dir: {}", imageUrl);
-                return;
-            }
-            Files.deleteIfExists(target);
-        } catch (IOException e) {
-            log.warn("Could not delete listing image file: {}", imageUrl, e);
-        }
     }
 }
 
