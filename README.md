@@ -137,7 +137,7 @@ User → Route 53 → CloudFront (SSL/CDN) → ALB
                                           ├── AZ1: EC2 (Docker) ──┐
                                           └── AZ2: EC2 (Docker) ──┤
                                                                    ├── ElastiCache Redis
-                                                                   ├── Aurora MySQL (Primary + Replica)
+                                                                   ├── RDS MySQL (Primary + Read Replica)
                                                                    └── S3 (via VPC Endpoint)
 ```
 
@@ -182,7 +182,7 @@ User → Route 53 → CloudFront (SSL/CDN) → ALB
 | **Docker & Docker Compose** | Containerization |
 | **Nginx** | Reverse proxy, SSL termination |
 | **AWS EC2 + ALB** | Compute & load balancing |
-| **AWS Aurora/RDS** | Managed MySQL |
+| **AWS RDS MySQL** | Managed MySQL |
 | **AWS ElastiCache** | Managed Redis |
 | **AWS S3 + CloudFront** | Media storage & CDN |
 | **AWS Route 53** | DNS management |
@@ -450,7 +450,7 @@ Hệ thống sử dụng **Flyway** để quản lý database migration tự đ�
          └─────────────────────────────────┘
                         │
          ┌──────────────▼──────────────────┐
-         │  Aurora MySQL (Primary+Replica) │
+         │  RDS MySQL (Primary+Read Replica)│
          └─────────────────────────────────┘
                         │
          ┌──────────────▼──────────────────┐
@@ -464,7 +464,7 @@ Hệ thống sử dụng **Flyway** để quản lý database migration tự đ�
 |---|---|
 | **EC2 + Auto Scaling** | Application servers |
 | **ALB** | Load balancing & health check |
-| **Aurora MySQL** | Database (primary + read replica) |
+| **RDS MySQL** | Database (primary + read replica) |
 | **ElastiCache Redis** | Caching & distributed lock |
 | **S3** | Media storage (ảnh listing, avatar, chat) |
 | **CloudFront** | CDN & SSL termination |
