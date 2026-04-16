@@ -85,7 +85,7 @@ export default function App() {
   }, []);
 
   return (
-      <ErrorBoundary key={`${location.pathname}${location.search}`}>
+      <ErrorBoundary>
         <ScrollToTop />
         <AppRouter />
       </ErrorBoundary>
