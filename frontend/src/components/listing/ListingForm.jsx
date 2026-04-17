@@ -289,8 +289,7 @@ function computePinValidity({
     );
 
     const bboxInside = !!(adminBbox && isPointInBbox(lat, lng, adminBbox));
-    const adminMatchProvinceDistrict = provinceMatch && districtMatch;
-    const isValid = bboxInside || adminMatchProvinceDistrict;
+    const isValid = bboxInside;
 
     return { isValid, provinceMatch, districtMatch, wardMatch, bboxInside };
 }
@@ -1667,6 +1666,7 @@ export default function ListingForm({
                                 district: adminLocation.district,
                                 ward: adminLocation.ward,
                             } : undefined}
+                            defaultToHoaLac
                         />
 
                         {locationChangedNeedRepin && (
@@ -1782,9 +1782,9 @@ export default function ListingForm({
                                             sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
                                 }
                             >
-                                Vị trí không thuộc khu vực đã chọn
-                                {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}.
-                                Vui lòng gim lại trong đúng khu vực.
+                                Vị trí phải nằm trong khu vực Hòa Lạc.
+                                {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}
+                                Vui lòng chọn lại điểm khác.
                             </Alert>
                         )}
                         {pendingPin && pinStatus === 'missing_admin' && (
