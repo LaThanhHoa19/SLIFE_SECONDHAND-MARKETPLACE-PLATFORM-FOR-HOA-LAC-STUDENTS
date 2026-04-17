@@ -1,0 +1,512 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SLIFE Marketplace - ASG(min2,max3), ALB, ElastiCache Redis, S3, SGs, IAM. FE on S3+CloudFront.
+
+Parameters:
+  ExistingVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Current VPC ID
+
+  PublicSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet AZ1
+
+  PublicSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet AZ2
+
+  PublicSubnet3Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet AZ3
+
+  ExistingRDSEndpoint:
+    Type: String
+    Description: RDS endpoint address
+
+  ExistingRDSPort:
+    Type: String
+    Default: '3306'
+
+  DomainName:
+    Type: String
+    Default: slife.click
+
+  EC2KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH key pair
+
+  EC2InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t2.micro, t2.small]
+
+  BackendAmiId:
+    Type: String
+    Description: AMI ID with Docker + backend image pre-built
+
+  S3BucketName:
+    Type: String
+    Default: slife-media-prod
+
+  S3MediaBucketExisting:
+    Type: String
+    Default: slife-media-storage-2026
+    Description: Existing S3 media bucket name (for IAM policy)
+
+  RedisNodeType:
+    Type: String
+    Default: cache.t3.micro
+    AllowedValues: [cache.t3.micro, cache.t2.micro]
+
+  ACMCertificateArn:
+    Type: String
+    Default: ''
+    Description: ACM cert ARN for ALB HTTPS (leave empty for HTTP only)
+
+  ASGMinSize:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 4
+
+  ASGMaxSize:
+    Type: Number
+    Default: 3
+    MinValue: 1
+    MaxValue: 6
+
+  ASGDesiredSize:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 6
+
+  ScaleUpCPUThreshold:
+    Type: Number
+    Default: 70
+    Description: CPU % to trigger scale out
+
+  ScaleDownCPUThreshold:
+    Type: Number
+    Default: 30
+    Description: CPU % to trigger scale in
+
+Conditions:
+  HasACMCert: !Not [!Equals [!Ref ACMCertificateArn, '']]
+
+Resources:
+
+  # ===================== SECURITY GROUPS =====================
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SLIFE ALB - HTTP HTTPS from anywhere
+      VpcId: !Ref ExistingVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: slife-alb-sg
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SLIFE EC2 - from ALB and SSH
+      VpcId: !Ref ExistingVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: Backend from ALB
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: SSH access
+      Tags:
+        - Key: Name
+          Value: slife-ec2-sg
+
+  RDSFromEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SLIFE RDS - allow MySQL from EC2
+      VpcId: !Ref ExistingVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ExistingRDSPort
+          ToPort: !Ref ExistingRDSPort
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+          Description: MySQL from EC2
+      Tags:
+        - Key: Name
+          Value: slife-rds-from-ec2-sg
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SLIFE ElastiCache Redis - allow from EC2 only
+      VpcId: !Ref ExistingVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+          Description: Redis from EC2
+      Tags:
+        - Key: Name
+          Value: slife-redis-sg
+
+  # ===================== ELASTICACHE REDIS =====================
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for SLIFE Redis
+      CacheSubnetGroupName: slife-redis-subnet
+      SubnetIds:
+        - !Ref PublicSubnet1Id
+        - !Ref PublicSubnet2Id
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: slife-redis
+      Engine: redis
+      EngineVersion: '7.1'
+      CacheNodeType: !Ref RedisNodeType
+      NumCacheNodes: 1
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroup
+      Tags:
+        - Key: Project
+          Value: slife
+
+  # ===================== IAM =====================
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: slife-ec2-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+      Policies:
+        - PolicyName: slife-s3-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${S3BucketName}'
+                  - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+                  - !Sub 'arn:aws:s3:::${S3MediaBucketExisting}'
+                  - !Sub 'arn:aws:s3:::${S3MediaBucketExisting}/*'
+      Tags:
+        - Key: Project
+          Value: slife
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: slife-ec2-profile
+      Roles:
+        - !Ref EC2Role
+
+  # ===================== LAUNCH TEMPLATE =====================
+
+  BackendLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: slife-backend-lt
+      LaunchTemplateData:
+        ImageId: !Ref BackendAmiId
+        InstanceType: !Ref EC2InstanceType
+        KeyName: !Ref EC2KeyPairName
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        SecurityGroupIds:
+          - !Ref EC2SecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 20
+              VolumeType: gp3
+              DeleteOnTermination: true
+        UserData:
+          Fn::Base64:
+            !Sub
+              - |
+                #!/bin/bash
+                set -ex
+
+                # Enable swap (t3.micro only has 1GB RAM)
+                if [ ! -f /swapfile ]; then
+                  dd if=/dev/zero of=/swapfile bs=128M count=16
+                  chmod 600 /swapfile
+                  mkswap /swapfile
+                  swapon /swapfile
+                  echo '/swapfile swap swap defaults 0 0' >> /etc/fstab
+                fi
+
+                # Start Docker
+                systemctl enable docker
+                systemctl start docker
+
+                # Write .env
+                cat > /home/ec2-user/slife/deploy/.env << 'ENVEOF'
+                SPRING_PROFILES_ACTIVE=prod
+                SPRING_DATASOURCE_URL=jdbc:mysql://${RDSEndpoint}:${RDSPort}/slife_db?useSSL=true&useUnicode=true&characterEncoding=UTF-8
+                SPRING_DATASOURCE_USERNAME=admin
+                SPRING_DATASOURCE_PASSWORD=Andeptraivailon1
+                REDIS_HOST=${RedisHost}
+                REDIS_PORT=6379
+                JWT_SECRET=sL1f3-m4rk3tPl4c3-S3cur3-JWT-K3y-2026-x9Qw7zR5
+                JWT_EXPIRATION=3600000
+                APP_STORAGE_MODE=s3
+                AWS_S3_BUCKET=slife-media-storage-2026
+                AWS_REGION=ap-southeast-1
+                AWS_S3_KEY_PREFIX=media
+                AWS_S3_PUBLIC_BASE_URL=https://slife-media-storage-2026.s3.ap-southeast-1.amazonaws.com
+                FRONTEND_URL=https://${Domain}
+                APP_CORS_ALLOWED_ORIGINS=https://${Domain},https://www.${Domain}
+                APP_MAIL_TRANSPORT=http
+                APP_MAIL_HTTP_URL=https://asia-southeast1-android-c164b.cloudfunctions.net/sendSlifeMail
+                APP_MAIL_HTTP_SECRET=XsEQmUB3ejdKS0Lg9ifGPtCaIOAbND2ZqFxHWyu64pVTlRYwrczvM87koh51Jn
+                APP_MAIL_FROM=slife.hola@gmail.com
+                APP_MAIL_ENABLED=true
+                MANAGEMENT_HEALTH_MAIL_ENABLED=false
+                GOOGLE_CLIENT_ID=318344558779-vee2ail43gcadoi97fo2q9122jm9qe7k.apps.googleusercontent.com
+                GOOGLE_CLIENT_SECRET=
+                VIETMAP_TILE_KEY=b0168f754f2278ab2cdd5d100bdd678afa53b5eaae079649
+                VIETMAP_SERVICES_KEY=f611ec02555463b634e15ce9863f305bb81a68f088bed048
+                ENVEOF
+                chown ec2-user:ec2-user /home/ec2-user/slife/deploy/.env
+
+                # Stop old container if any, start fresh
+                docker stop slife-be 2>/dev/null || true
+                docker rm slife-be 2>/dev/null || true
+                docker run -d --name slife-be \
+                  --restart unless-stopped \
+                  --env-file /home/ec2-user/slife/deploy/.env \
+                  -p 8080:8080 \
+                  slife/backend:latest
+
+                echo "=== SLIFE ASG instance ready ==="
+              - RDSEndpoint: !Ref ExistingRDSEndpoint
+                RDSPort: !Ref ExistingRDSPort
+                RedisHost: !GetAtt RedisCluster.RedisEndpoint.Address
+                Domain: !Ref DomainName
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: slife-backend-asg
+              - Key: Project
+                Value: slife
+
+  # ===================== AUTO SCALING GROUP =====================
+
+  BackendASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: slife-backend-asg
+      LaunchTemplate:
+        LaunchTemplateId: !Ref BackendLaunchTemplate
+        Version: !GetAtt BackendLaunchTemplate.LatestVersionNumber
+      MinSize: !Ref ASGMinSize
+      MaxSize: !Ref ASGMaxSize
+      DesiredCapacity: !Ref ASGDesiredSize
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet1Id
+        - !Ref PublicSubnet2Id
+        - !Ref PublicSubnet3Id
+      TargetGroupARNs:
+        - !Ref BackendTargetGroup
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      Tags:
+        - Key: Name
+          Value: slife-backend-asg
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: slife
+          PropagateAtLaunch: true
+
+  # Scale Up Policy - CPU > 70%
+  ScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref BackendASG
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: !Ref ScaleUpCPUThreshold
+
+  # ===================== S3 MEDIA BUCKET =====================
+
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST]
+            AllowedOrigins:
+              - !Sub 'https://${DomainName}'
+              - !Sub 'https://www.${DomainName}'
+              - 'http://localhost:5173'
+            MaxAge: 3600
+      Tags:
+        - Key: Project
+          Value: slife
+
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadMedia
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${MediaBucket.Arn}/media/*'
+
+  # ===================== ALB =====================
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: slife-alb
+      Scheme: internet-facing
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1Id
+        - !Ref PublicSubnet2Id
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Project
+          Value: slife
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: slife-backend-tg
+      Protocol: HTTP
+      Port: 8080
+      VpcId: !Ref ExistingVpcId
+      TargetType: instance
+      HealthCheckPath: /actuator/health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      TargetGroupAttributes:
+        - Key: stickiness.enabled
+          Value: 'true'
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: '86400'
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+      Tags:
+        - Key: Project
+          Value: slife
+
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: HasACMCert
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref ACMCertificateArn
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref BackendTargetGroup
+
+# ===================== OUTPUTS =====================
+
+Outputs:
+  ALBDnsName:
+    Description: ALB DNS - point CloudFront origin here
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: slife-alb-dns
+
+  ASGName:
+    Description: Auto Scaling Group name
+    Value: !Ref BackendASG
+
+  LaunchTemplateId:
+    Description: Launch Template ID - update AMI here for new deployments
+    Value: !Ref BackendLaunchTemplate
+
+  S3BucketNameOutput:
+    Description: S3 media bucket
+    Value: !Ref MediaBucket
+
+  EC2SecurityGroupId:
+    Description: EC2 SG
+    Value: !Ref EC2SecurityGroup
+
+  RDSSecurityGroupId:
+    Description: RDS SG - attach to existing RDS
+    Value: !Ref RDSFromEC2SecurityGroup
+
+  EC2InstanceProfileArn:
+    Description: Instance Profile ARN
+    Value: !GetAtt EC2InstanceProfile.Arn
+
+  RedisEndpoint:
+    Description: ElastiCache Redis endpoint
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+
+  RedisPort:
+    Description: ElastiCache Redis port
+    Value: !GetAtt RedisCluster.RedisEndpoint.Port
