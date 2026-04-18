@@ -7,19 +7,22 @@ import axiosClient from './axiosClient';
 export const getCommunityPostFormConfig = () => axiosClient.get('/api/community/posts/form-config');
 
 /** Tạo bài + ảnh (multipart) — payload JSON part + images[] */
-export const createCommunityPostWithImages = (payload, imageFiles = []) => {
-    const formData = new FormData();
-    formData.append(
-        'payload',
-        new Blob([JSON.stringify(payload)], { type: 'application/json' }),
-        'payload.json',
-    );
-    (imageFiles || []).forEach((f, i) => {
-        console.log(`[CommunityAPI] appending image[${i}]: name=${f?.name}, size=${f?.size}, type=${f?.type}`);
-        formData.append('images', f);
+export const createCommunityPostWithImages = async (payload, imageFiles = []) => {
+    // Step 1: Create post (JSON only - works through CloudFront)
+    const createRes = await axiosClient.post('/api/community/posts', payload, {
+        headers: { 'Content-Type': 'application/json' },
     });
-    console.log('[CommunityAPI] FormData entries:', [...formData.entries()].map(([k,v]) => `${k}=${v instanceof Blob ? `Blob(${v.size})` : v}`));
-    return axiosClient.post('/api/community/posts', formData, { timeout: 120000 });
+
+    // Step 2: Upload images separately if any
+    const postId = createRes?.data?.data?.id;
+    if (postId && imageFiles && imageFiles.length > 0) {
+        console.log(`[CommunityAPI] uploading ${imageFiles.length} images to post ${postId}`);
+        await uploadCommunityPostImages(postId, imageFiles);
+        // Re-fetch to get updated post with images
+        const updated = await axiosClient.get(`/api/community/posts/${postId}`);
+        return updated;
+    }
+    return createRes;
 };
 
 export const getCommunityPosts = (params = {}, config = {}) =>
