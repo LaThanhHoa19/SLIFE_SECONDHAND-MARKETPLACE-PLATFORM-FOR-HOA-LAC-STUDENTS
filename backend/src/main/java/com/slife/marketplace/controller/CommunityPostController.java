@@ -16,6 +16,7 @@ import com.slife.marketplace.service.CommunityPostService;
 import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.service.SavedCommunityPostService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/community/posts")
 public class CommunityPostController {
@@ -82,6 +84,7 @@ public class CommunityPostController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<CommunityPostResponse>> createJson(
             @Valid @RequestBody CreateCommunityPostRequest request) {
+        log.info("createJson (no images) called");
         User author = userService.getCurrentUser();
         CommunityPostResponse res = communityPostService.createPostWithImages(author, request, List.of());
         return ResponseEntity.ok(ApiResponse.success("OK", res));
@@ -91,6 +94,7 @@ public class CommunityPostController {
     public ResponseEntity<ApiResponse<CommunityPostResponse>> createMultipart(
             @RequestPart("payload") @Valid CreateCommunityPostRequest request,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
+        log.info("createMultipart called, images={}", images == null ? "null" : images.size());
         User author = userService.getCurrentUser();
         CommunityPostResponse res = communityPostService.createPostWithImages(author, request, images);
         return ResponseEntity.ok(ApiResponse.success("OK", res));
