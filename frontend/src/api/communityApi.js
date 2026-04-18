@@ -14,7 +14,11 @@ export const createCommunityPostWithImages = (payload, imageFiles = []) => {
         new Blob([JSON.stringify(payload)], { type: 'application/json' }),
         'payload.json',
     );
-    (imageFiles || []).forEach((f) => formData.append('images', f));
+    (imageFiles || []).forEach((f, i) => {
+        console.log(`[CommunityAPI] appending image[${i}]: name=${f?.name}, size=${f?.size}, type=${f?.type}`);
+        formData.append('images', f);
+    });
+    console.log('[CommunityAPI] FormData entries:', [...formData.entries()].map(([k,v]) => `${k}=${v instanceof Blob ? `Blob(${v.size})` : v}`));
     return axiosClient.post('/api/community/posts', formData, { timeout: 120000 });
 };
 

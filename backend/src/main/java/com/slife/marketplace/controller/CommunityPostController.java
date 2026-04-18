@@ -81,22 +81,13 @@ public class CommunityPostController {
         return ResponseEntity.ok(ApiResponse.success("OK", communityPostService.getById(id, viewer)));
     }
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<ApiResponse<CommunityPostResponse>> createJson(
-            @Valid @RequestBody CreateCommunityPostRequest request) {
-        log.info("createJson (no images) called");
-        User author = userService.getCurrentUser();
-        CommunityPostResponse res = communityPostService.createPostWithImages(author, request, List.of());
-        return ResponseEntity.ok(ApiResponse.success("OK", res));
-    }
-
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CommunityPostResponse>> createMultipart(
             @RequestPart("payload") @Valid CreateCommunityPostRequest request,
             @RequestPart(value = "images", required = false) List<MultipartFile> images) {
         log.info("createMultipart called, images={}", images == null ? "null" : images.size());
         User author = userService.getCurrentUser();
-        CommunityPostResponse res = communityPostService.createPostWithImages(author, request, images);
+        CommunityPostResponse res = communityPostService.createPostWithImages(author, request, images != null ? images : List.of());
         return ResponseEntity.ok(ApiResponse.success("OK", res));
     }
 
