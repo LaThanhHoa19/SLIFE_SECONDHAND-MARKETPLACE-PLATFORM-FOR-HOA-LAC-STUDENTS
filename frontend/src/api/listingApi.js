@@ -5,6 +5,7 @@
  * Response list mẫu: { content:[{listingId,title,price,isGiveaway,seller,images}], page,size,totalElements,totalPages }.
  */
 import axiosClient from './axiosClient';
+import uploadClient from './uploadClient';
 import adminAxiosClient from './adminAxiosClient';
 
 const sanitizeQueryParams = (params = {}) => Object.fromEntries(
@@ -40,7 +41,7 @@ export const createListingWithImages = (payload, imageFiles = []) => {
         'payload.json',
     );
     (imageFiles || []).forEach((f) => formData.append('images', f));
-    return axiosClient.post('/api/listings', formData);
+    return uploadClient.post('/api/listings', formData);
 };
 export const updateListing = (id, payload) => axiosClient.put(`/api/listings/${id}`, payload);
 export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`);
@@ -48,7 +49,7 @@ export const hideListing = (id) => axiosClient.patch(`/api/listings/${id}/hide`)
 export const adminHideListing = (id) => adminAxiosClient.patch(`/api/admin/listings/${id}/hide`);
 export const markSold = (id) => axiosClient.patch(`/api/listings/${id}/sold`);
 export const uploadImages = (id, formData, onUploadProgress) =>
-    axiosClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
+    uploadClient.post(`/api/listings/${id}/images`, formData, onUploadProgress ? { onUploadProgress } : {});
 
 /** Xóa một ảnh đã lưu (chỉ chủ tin). */
 export const deleteListingImage = (listingId, imageId) =>

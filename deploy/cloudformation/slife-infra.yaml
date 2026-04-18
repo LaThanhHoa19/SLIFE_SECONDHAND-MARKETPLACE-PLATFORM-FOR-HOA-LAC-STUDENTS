@@ -26,6 +26,17 @@ Parameters:
     Type: String
     Default: '3306'
 
+  ExistingRDSIdentifier:
+    Type: String
+    Default: database-1
+    Description: Existing RDS DB instance identifier (for read replica source)
+
+  CreateRDSReadReplica:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Create RDS read replica
+
   DomainName:
     Type: String
     Default: slife.click
@@ -92,6 +103,7 @@ Parameters:
 
 Conditions:
   HasACMCert: !Not [!Equals [!Ref ACMCertificateArn, '']]
+  ShouldCreateReplica: !Equals [!Ref CreateRDSReadReplica, 'true']
 
 Resources:
 
@@ -364,6 +376,24 @@ Resources:
           PredefinedMetricType: ASGAverageCPUUtilization
         TargetValue: !Ref ScaleUpCPUThreshold
 
+  # ===================== RDS READ REPLICA =====================
+
+  RDSReadReplica:
+    Type: AWS::RDS::DBInstance
+    Condition: ShouldCreateReplica
+    Properties:
+      DBInstanceIdentifier: slife-db-replica
+      SourceDBInstanceIdentifier: !Ref ExistingRDSIdentifier
+      DBInstanceClass: db.t4g.micro
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSFromEC2SecurityGroup
+      Tags:
+        - Key: Name
+          Value: slife-db-replica
+        - Key: Project
+          Value: slife
+
   # ===================== S3 MEDIA BUCKET =====================
 
   MediaBucket:
@@ -510,3 +540,8 @@ Outputs:
   RedisPort:
     Description: ElastiCache Redis port
     Value: !GetAtt RedisCluster.RedisEndpoint.Port
+
+  RDSReadReplicaEndpoint:
+    Condition: ShouldCreateReplica
+    Description: RDS Read Replica endpoint
+    Value: !GetAtt RDSReadReplica.Endpoint.Address
