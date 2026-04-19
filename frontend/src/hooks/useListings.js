@@ -5,7 +5,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getListings, searchListings } from '../api/listingApi';
+import { getCategories } from '../api/categoryApi';
 import { formatPickupDisplayLine } from '../utils/addressDisplay';
+import { buildCategoryTree } from '../utils/categoryTree';
 import { getSellerIdFromListingItem } from '../utils/listingFormatUtils';
 import useDebounce from './useDebounce';
 
@@ -130,6 +132,26 @@ const applyFeedTypeClientFilter = (items, feedType) => {
 
 const MIN_LOADING_MS = 320;
 
+const collectCategoryIds = (categories, rootId, childId = null) => {
+    const tree = buildCategoryTree(categories);
+    const root = tree.find((cat) => String(cat.id ?? cat.categoryId) === String(rootId));
+    if (!root) return { category: rootId, subcategory: childId, descendantIds: [] };
+
+    const descendantIds = [];
+    const walk = (node) => {
+        const nodeId = node.id ?? node.categoryId ?? node.name;
+        if (nodeId != null) descendantIds.push(String(nodeId));
+        (node.children || []).forEach(walk);
+    };
+    walk(root);
+
+    return {
+        category: rootId,
+        subcategory: childId,
+        descendantIds,
+    };
+};
+
 export default function useListings(initialParams = {}) {
     const [params, setParams] = useState({ page: 0, size: 10, ...initialParams });
     const [data, setData] = useState([]);
@@ -137,10 +159,20 @@ export default function useListings(initialParams = {}) {
     const [isLoading, setLoading] = useState(false);
     const [isLoadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
+    const [categoryMap, setCategoryMap] = useState([]);
     const debouncedQuery = useDebounce(params.q);
     const abortRef = useRef(null);
     // Track which page last fetched to avoid duplicate appends
     const lastFetchedPageRef = useRef(-1);
+
+    useEffect(() => {
+        getCategories()
+            .then(({ data: res }) => {
+                const list = res?.data ?? res ?? [];
+                setCategoryMap(Array.isArray(list) ? list : []);
+            })
+            .catch(() => setCategoryMap([]));
+    }, []);
 
     // Đồng bộ params từ URL khi user đổi category/location/search — reset về page 0
     useEffect(() => {
@@ -203,31 +235,39 @@ export default function useListings(initialParams = {}) {
                     p[k] != null
                 ) || (p.sort && p.sort !== 'createdAt,desc');
 
+            const selectedCategory = p.category != null ? String(p.category) : '';
+            const selectedSubcategory = p.subcategory != null ? String(p.subcategory) : '';
+            const categoryIds = selectedCategory
+                ? collectCategoryIds(categoryMap, selectedCategory, selectedSubcategory).descendantIds
+                : [];
+
+            const requestParams = {
+                ...(hasFilters
+                        ? {
+                            q: p.q,
+                            categoryId: p.category,
+                            subcategoryId: p.subcategory,
+                            location: p.location,
+                            itemCondition: normalizeConditionParam(p.condition),
+                            priceMin: p.minPrice,
+                            priceMax: p.maxPrice,
+                            sort: p.sort,
+                            page: p.page,
+                            size: p.size,
+                            feedType: p.feedType,
+                        }
+                        : {
+                            ...p,
+                            prioritizeFollowing: p.prioritizeFollowing,
+                            feedType: p.feedType,
+                        }
+                ),
+                categoryIds: categoryIds.length > 0 ? categoryIds.join(',') : undefined,
+            };
+
             const requestPromise = hasFilters
-                ? searchListings(
-                    {
-                        q: p.q,
-                        categoryId: p.category,
-                        subcategoryId: p.subcategory,
-                        location: p.location,
-                        itemCondition: normalizeConditionParam(p.condition),
-                        priceMin: p.minPrice,
-                        priceMax: p.maxPrice,
-                        sort: p.sort,
-                        page: p.page,
-                        size: p.size,
-                        feedType: p.feedType,
-                    },
-                    { signal: controller.signal }
-                )
-                : getListings(
-                    {
-                        ...p,
-                        prioritizeFollowing: p.prioritizeFollowing,
-                        feedType: p.feedType,
-                    },
-                    { signal: controller.signal }
-                );
+                ? searchListings(requestParams, { signal: controller.signal })
+                : getListings(requestParams, { signal: controller.signal });
 
             const { data: res } = await requestPromise;
             if (controller.signal.aborted) return;
@@ -282,6 +322,8 @@ export default function useListings(initialParams = {}) {
         params.condition,
         params.minPrice,
         params.maxPrice,
+        params.feedType,
+        params.prioritizeFollowing,
         debouncedQuery,
         fetchData,
     ]);
