@@ -53,9 +53,11 @@ export default function LoginPage() {
 
     const displayError = urlError || googleError || authError || '';
 
+    // Chỉ clear error khi user navigate đến login page lần đầu (không phải sau Google callback)
+    const locationKey = location.key;
     useEffect(() => {
         clearAuthError();
-    }, [clearAuthError]);
+    }, [locationKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         let cancelled = false;
