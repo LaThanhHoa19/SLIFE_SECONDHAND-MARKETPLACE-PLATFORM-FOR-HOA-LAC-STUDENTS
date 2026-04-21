@@ -31,7 +31,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import ListingsFeed from '../../components/listing/ListingsFeed';
 import useListings from '../../hooks/useListings';
-import { getLocations } from '../../api/locationApi';
 import { getCategories } from '../../api/categoryApi';
 import { useAuth } from '../../hooks/useAuth';
 import { buildCategoryTree } from '../../utils/categoryTree';
@@ -39,6 +38,16 @@ import CommunityCtaCard from '../../components/common/CommunityCtaCard';
 import CategoryTree from '../../components/common/CategoryTree';
 import { uiTokens } from '../../theme/uiTokens';
 import { usePhoneVerification } from '../../context/PhoneVerificationContext';
+
+const HOA_LAC_LOCATIONS = [
+    'Thạch Hòa, Thạch Thất, Hà Nội',
+    'Tân Xã, Thạch Thất, Hà Nội',
+    'Bình Yên, Thạch Thất, Hà Nội',
+    'Hạ Bằng, Thạch Thất, Hà Nội',
+    'Phú Cát, Quốc Oai, Hà Nội',
+    'Đông Xuân, Quốc Oai, Hà Nội',
+];
+
 
 export default function SearchPage() {
     const [searchParams] = useSearchParams();
@@ -133,12 +142,7 @@ export default function SearchPage() {
     }, [hasMore, isLoading, isLoadingMore, loadMore]);
 
     useEffect(() => {
-        getLocations()
-            .then(({ data: res }) => {
-                const list = res?.data ?? res ?? [];
-                setLocations(Array.isArray(list) ? list : []);
-            })
-            .catch(() => setLocations([]));
+        setLocations(HOA_LAC_LOCATIONS);
 
         getCategories()
             .then(({ data: res }) => {
@@ -701,14 +705,31 @@ export default function SearchPage() {
                     paper: {
                         sx: {
                             mt: 1,
-                            px: 2,
-                            py: 1.75,
-                            borderRadius: 2,
-                            bgcolor: 'rgba(15,23,42,0.98)',
-                            border: '1px solid rgba(148,163,184,0.7)',
-                            minWidth: 260,
-                            maxHeight: 320,
+                            px: 1.5,
+                            py: 1.25,
+                            borderRadius: 2.5,
+                            bgcolor: 'rgba(10,18,38,0.98)',
+                            border: '1px solid rgba(99,102,241,0.35)',
+                            minWidth: 300,
+                            maxHeight: 340,
                             overflowY: 'auto',
+                            boxShadow: '0 16px 36px rgba(2,6,23,0.72)',
+                            '&::-webkit-scrollbar': { width: 8 },
+                            '&::-webkit-scrollbar-track': {
+                                bgcolor: 'rgba(15,23,42,0.55)',
+                                borderRadius: 999,
+                                my: 0.5,
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                                bgcolor: 'rgba(129,140,248,0.72)',
+                                borderRadius: 999,
+                                border: '2px solid rgba(15,23,42,0.45)',
+                            },
+                            '&::-webkit-scrollbar-thumb:hover': {
+                                bgcolor: 'rgba(165,180,252,0.92)',
+                            },
+                            scrollbarColor: 'rgba(129,140,248,0.72) rgba(15,23,42,0.55)',
+                            scrollbarWidth: 'thin',
                         },
                     },
                 }}
@@ -716,16 +737,6 @@ export default function SearchPage() {
                 <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#E5E7EB', mb: 1 }}>
                     Chọn khu vực
                 </Typography>
-                <MenuItem
-                    selected={!draft.location}
-                    onClick={() => {
-                        setDraft((prev) => ({ ...prev, location: '' }));
-                        setLocationAnchorEl(null);
-                    }}
-                    sx={{ fontSize: 13, color: '#E5E7EB' }}
-                >
-                    Tất cả khu vực
-                </MenuItem>
                 {locations.map((loc) => (
                     <MenuItem
                         key={loc}
@@ -734,7 +745,26 @@ export default function SearchPage() {
                             setDraft((prev) => ({ ...prev, location: loc }));
                             setLocationAnchorEl(null);
                         }}
-                        sx={{ fontSize: 13, color: '#E5E7EB' }}
+                        sx={{
+                            fontSize: 13,
+                            color: '#E5E7EB',
+                            borderRadius: 1.5,
+                            px: 1.25,
+                            py: 0.85,
+                            mx: 0.25,
+                            my: 0.2,
+                            transition: 'all 0.18s ease',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(129,140,248,0.28)',
+                                color: '#EEF2FF',
+                            },
+                            '&.Mui-selected:hover': {
+                                bgcolor: 'rgba(129,140,248,0.38)',
+                            },
+                            '&:hover': {
+                                bgcolor: 'rgba(30,41,59,0.72)',
+                            },
+                        }}
                     >
                         {loc}
                     </MenuItem>

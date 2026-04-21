@@ -2,12 +2,10 @@ package com.slife.marketplace.security;
 
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class LoginRateLimitService {
@@ -16,42 +14,36 @@ public class LoginRateLimitService {
     private static final Duration WINDOW = Duration.ofMinutes(10);
     private static final Duration LOCK_TIME = Duration.ofMinutes(15);
 
-    private final Map<String, AttemptState> states = new ConcurrentHashMap<>();
+    private static final String ATTEMPTS_PREFIX = "login:attempts:";
+    private static final String LOCK_PREFIX = "login:lock:";
+
+    private final StringRedisTemplate redisTemplate;
+
+    public LoginRateLimitService(StringRedisTemplate redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     public void assertAllowed(String key) {
-        AttemptState state = states.get(key);
-        if (state == null) return;
-        Instant now = Instant.now();
-        if (state.blockedUntil != null && now.isBefore(state.blockedUntil)) {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(LOCK_PREFIX + key))) {
             throw new SlifeException(ErrorCode.RATE_LIMIT_EXCEEDED,
                     "Too many login attempts. Please try again later.");
         }
     }
 
     public void recordFailure(String key) {
-        Instant now = Instant.now();
-        states.compute(key, (k, s) -> {
-            if (s == null || s.windowStart == null || now.isAfter(s.windowStart.plus(WINDOW))) {
-                AttemptState fresh = new AttemptState();
-                fresh.windowStart = now;
-                fresh.attempts = 1;
-                return fresh;
-            }
-            s.attempts++;
-            if (s.attempts >= MAX_ATTEMPTS) {
-                s.blockedUntil = now.plus(LOCK_TIME);
-            }
-            return s;
-        });
+        String attemptsKey = ATTEMPTS_PREFIX + key;
+        Long count = redisTemplate.opsForValue().increment(attemptsKey);
+        if (count != null && count == 1) {
+            redisTemplate.expire(attemptsKey, WINDOW);
+        }
+        if (count != null && count >= MAX_ATTEMPTS) {
+            redisTemplate.opsForValue().set(LOCK_PREFIX + key, "1", LOCK_TIME);
+            redisTemplate.delete(attemptsKey);
+        }
     }
 
     public void recordSuccess(String key) {
-        states.remove(key);
-    }
-
-    private static final class AttemptState {
-        private int attempts;
-        private Instant windowStart;
-        private Instant blockedUntil;
+        redisTemplate.delete(ATTEMPTS_PREFIX + key);
+        redisTemplate.delete(LOCK_PREFIX + key);
     }
 }

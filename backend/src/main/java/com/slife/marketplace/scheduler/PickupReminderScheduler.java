@@ -1,6 +1,7 @@
 package com.slife.marketplace.scheduler;
 
 import com.slife.marketplace.service.DealPickupReminderService;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,6 +22,7 @@ public class PickupReminderScheduler {
     }
 
     @Scheduled(cron = "${app.scheduler.pickup-reminder-cron:0 */5 * * * *}")
+    @SchedulerLock(name = "pickupReminder", lockAtLeastFor = "PT2M", lockAtMostFor = "PT10M")
     public void run() {
         try {
             dealPickupReminderService.processDueReminders();

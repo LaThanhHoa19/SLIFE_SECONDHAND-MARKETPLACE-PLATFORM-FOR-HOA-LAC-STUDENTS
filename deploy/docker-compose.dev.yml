@@ -26,6 +26,24 @@ services:
     networks:
       - slife
 
+  redis:
+    image: redis:7-alpine
+    container_name: slife-dev-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - slife
+
   backend:
     build:
       context: ../backend
@@ -36,6 +54,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-slife_db}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       FIREBASE_WEB_API_KEY: ${FIREBASE_WEB_API_KEY:-AIzaSyDMQRxyUXZkj5_UF2s24hRQK6UJWnt031I}
       VIETMAP_SERVICES_KEY: "f611ec02555463b634e15ce9863f305bb81a68f088bed048"
       APP_UPLOAD_DIR: /app/uploads
@@ -55,6 +75,8 @@ services:
       - uploads_data:/app/uploads
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q 'UP'"]
@@ -110,6 +132,7 @@ volumes:
   mysql_data:
   frontend_node_modules:
   uploads_data:
+  redis_data:
 
 networks:
   slife:

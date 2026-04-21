@@ -147,7 +147,24 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
  *   onConfirm({ province, district, ward, searchText }) — gọi khi user xác nhận khu vực
  *   value — giá trị hiện tại { province, district, ward }
  */
-export default function LocationPicker({ onConfirm, value }) {
+const HANOI_HINTS = ['ha noi', 'hanoi'];
+const THACH_THAT_HINTS = ['thach that'];
+const HOA_LAC_HINTS = ['hoa lac', 'hoalac'];
+
+function matchesAny(name, hints) {
+    const normalized = normalize(name);
+    return hints.some((hint) => normalized.includes(hint));
+}
+
+function findDefaultHoaLacSelection(provinces, districts, wards) {
+    const province = provinces.find((item) => matchesAny(item?.name, HANOI_HINTS));
+    const district = districts.find((item) => matchesAny(item?.name, THACH_THAT_HINTS))
+        || districts.find((item) => matchesAny(item?.name, HOA_LAC_HINTS));
+    const ward = wards.find((item) => matchesAny(item?.name, HOA_LAC_HINTS));
+    return { province: province || null, district: district || null, ward: ward || null };
+}
+
+export default function LocationPicker({ onConfirm, value, defaultToHoaLac = true }) {
     // VN admin data
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
@@ -160,6 +177,7 @@ export default function LocationPicker({ onConfirm, value }) {
     const [province, setProvince] = useState(value?.province || null);
     const [district, setDistrict] = useState(value?.district || null);
     const [ward, setWard] = useState(value?.ward || null);
+    const provinceLocked = true;
 
     // Load provinces on mount
     useEffect(() => {
@@ -169,6 +187,24 @@ export default function LocationPicker({ onConfirm, value }) {
             .catch(() => setProvinces([]))
             .finally(() => setLoadingProvinces(false));
     }, []);
+
+    useEffect(() => {
+        if (!defaultToHoaLac || value) return;
+        if (!provinces.length) return;
+
+        const hint = findDefaultHoaLacSelection(provinces, districts, wards);
+        if (hint.province && !province) setProvince(hint.province);
+        if (hint.district && !district) setDistrict(hint.district);
+        if (hint.ward && !ward) setWard(hint.ward);
+    }, [defaultToHoaLac, value, provinces, districts, wards, province, district, ward]);
+
+    useEffect(() => {
+        if (!provinceLocked || !province) return;
+        if (!matchesAny(province.name, HANOI_HINTS) && provinces.length) {
+            const hint = findDefaultHoaLacSelection(provinces, districts, wards);
+            if (hint.province) setProvince(hint.province);
+        }
+    }, [provinceLocked, province, provinces, districts, wards]);
 
     // Load districts when province changes
     useEffect(() => {
@@ -183,6 +219,19 @@ export default function LocationPicker({ onConfirm, value }) {
             .finally(() => setLoadingDistricts(false));
     }, [province]);
 
+    useEffect(() => {
+        if (!provinceLocked || !province || !districts.length) return;
+        const foundDistrict = districts.find((item) => matchesAny(item?.name, THACH_THAT_HINTS) || matchesAny(item?.name, HOA_LAC_HINTS));
+        if (foundDistrict && (!district || district.code !== foundDistrict.code)) setDistrict(foundDistrict);
+    }, [provinceLocked, province, districts, district]);
+
+    useEffect(() => {
+        if (!defaultToHoaLac) return;
+        if (!province || !districts.length || district) return;
+        const hint = findDefaultHoaLacSelection([province], districts, wards);
+        if (hint.district) setDistrict(hint.district);
+    }, [defaultToHoaLac, province, districts, wards, district]);
+
     // Load wards when district changes
     useEffect(() => {
         if (!district) { setWards([]); setWard(null); return; }
@@ -193,6 +242,19 @@ export default function LocationPicker({ onConfirm, value }) {
             .catch(() => setWards([]))
             .finally(() => setLoadingWards(false));
     }, [district]);
+
+    useEffect(() => {
+        if (!provinceLocked || !district || !wards.length) return;
+        const foundWard = wards.find((item) => matchesAny(item?.name, HOA_LAC_HINTS));
+        if (foundWard && (!ward || ward.code !== foundWard.code)) setWard(foundWard);
+    }, [provinceLocked, district, wards, ward]);
+
+    useEffect(() => {
+        if (!defaultToHoaLac) return;
+        if (!district || ward || !wards.length) return;
+        const hint = findDefaultHoaLacSelection([province].filter(Boolean), [district], wards);
+        if (hint.ward) setWard(hint.ward);
+    }, [defaultToHoaLac, district, wards, ward, province]);
 
     // Notify parent when all 3 levels are selected
     useEffect(() => {
@@ -252,7 +314,17 @@ export default function LocationPicker({ onConfirm, value }) {
                     </Box>
                     <Box
                         onClick={handleReset}
-                        sx={{ cursor: 'pointer', color: '#9D6EED', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', ml: 2, mt: 0.5, '&:hover': { color: '#B794F6' } }}
+                        sx={{
+                            cursor: 'pointer',
+                            color: '#9D6EED',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            whiteSpace: 'nowrap',
+                            ml: 2,
+                            mt: 0.5,
+                            visibility: 'hidden',
+                            pointerEvents: 'none',
+                        }}
                     >
                         Thiết lập lại
                     </Box>
