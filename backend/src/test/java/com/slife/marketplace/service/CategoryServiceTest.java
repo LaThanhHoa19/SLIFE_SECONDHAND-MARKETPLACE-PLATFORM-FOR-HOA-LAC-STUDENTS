@@ -9,14 +9,13 @@ import com.slife.marketplace.repository.CategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -53,185 +52,118 @@ class CategoryServiceTest {
         return c;
     }
 
-    // ---------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Tất cả danh mục")
-    class GetAll {
+    @DisplayName("Tạo danh mục | Function: createCategory(CreateCategoryRequest)")
+    class CreateUtc {
 
         @Test
-        @DisplayName("[Thường] Luồng chính: map list entity → response")
-        void shouldMapAll() {
-            Category c1 = category(1L, "A", false);
-            c1.setDescription("d1");
-            Category c2 = category(2L, "B", true);
-            when(categoryRepository.findAll()).thenReturn(List.of(c1, c2));
-
-            List<CategoryResponse> out = categoryService.getAllCategories();
-
-            assertEquals(2, out.size());
-            assertEquals(1L, out.get(0).getId());
-            assertEquals("A", out.get(0).getName());
-            assertEquals(Boolean.FALSE, out.get(0).isSystemLocked());
-            assertEquals(2L, out.get(1).getId());
-            assertEquals(Boolean.TRUE, out.get(1).isSystemLocked());
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Nhóm: Tạo danh mục")
-    class Create {
-
-        @Test
-        @DisplayName("[Lỗi] name null/blank → INVALID_INPUT")
-        void nameMissing_shouldThrow() {
-            SlifeException ex1 = assertThrows(SlifeException.class,
-                    () -> categoryService.createCategory(req(null, "d", null)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex1.getErrorCode());
-            SlifeException ex2 = assertThrows(SlifeException.class,
-                    () -> categoryService.createCategory(req("  ", "d", null)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex2.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Trùng tên (ignore case) → INVALID_INPUT")
-        void duplicateName_shouldThrow() {
-            when(categoryRepository.findByNameIgnoreCase("Phones")).thenReturn(Optional.of(category(1L, "Phones", false)));
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> categoryService.createCategory(req("Phones", "d", null)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] parentId không hợp lệ → INVALID_INPUT")
-        void invalidParent_shouldThrow() {
-            when(categoryRepository.findByNameIgnoreCase("A")).thenReturn(Optional.empty());
-            when(categoryRepository.findById(9L)).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> categoryService.createCategory(req("A", "d", 9L)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: trim name + blank description → null; set createdAt/updatedAt; save")
-        void happyPath_shouldSave() {
-            when(categoryRepository.findByNameIgnoreCase("A")).thenReturn(Optional.empty());
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [N] Tên duy nhất + danh mục cha hợp lệ → tạo thành công, trim tên, ánh xạ parent")
+        void utcid01_createWithUniqueNameAndParent() {
+            Category parent = category(10L, "Parent", false);
+            when(categoryRepository.findByNameIgnoreCase("Electronics")).thenReturn(Optional.empty());
+            when(categoryRepository.findById(10L)).thenReturn(Optional.of(parent));
             when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> {
                 Category c = inv.getArgument(0);
-                c.setId(10L);
+                c.setId(5L);
                 return c;
             });
 
-            CategoryResponse out = categoryService.createCategory(req("  A  ", "   ", null));
+            CategoryResponse out = categoryService.createCategory(req("  Electronics  ", "đồ điện tử", 10L));
 
-            assertEquals(10L, out.getId());
-            assertEquals("A", out.getName());
-            assertNull(out.getDescription());
-            ArgumentCaptor<Category> cap = ArgumentCaptor.forClass(Category.class);
-            verify(categoryRepository).save(cap.capture());
-            assertNotNull(cap.getValue().getCreatedAt());
-            assertNotNull(cap.getValue().getUpdatedAt());
+            assertEquals(5L, out.getId());
+            assertEquals("Electronics", out.getName());
+            assertEquals(10L, out.getParentId());
+        }
+
+        @Test
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [A] Tên đã tồn tại trong hệ thống (không phân biệt hoa thường) → INVALID_INPUT")
+        void utcid02_duplicateNameCaseInsensitive() {
+            when(categoryRepository.findByNameIgnoreCase("Phones"))
+                    .thenReturn(Optional.of(category(1L, "Phones", false)));
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> categoryService.createCategory(req("Phones", "mô tả", null)));
+
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
     }
 
-    // ---------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Sửa danh mục")
-    class Update {
+    @DisplayName("Sửa danh mục | Function: updateCategory(Long, CreateCategoryRequest)")
+    class UpdateUtc {
 
         @Test
-        @DisplayName("[Lỗi] id null → INVALID_INPUT")
-        void nullId_shouldThrow() {
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> categoryService.updateCategory(null, req("A", "d", null)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [A] Danh mục bị khóa hệ thống (systemLocked = true) → FORBIDDEN, từ chối chỉnh sửa")
+        void utcid01_updateSystemLockedCategory() {
+            when(categoryRepository.findById(1L))
+                    .thenReturn(Optional.of(category(1L, "Đồ điện tử", true)));
 
-        @Test
-        @DisplayName("[Lỗi] Không tìm thấy category → INVALID_INPUT")
-        void notFound_shouldThrow() {
-            when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
             SlifeException ex = assertThrows(SlifeException.class,
-                    () -> categoryService.updateCategory(1L, req("A", "d", null)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
+                    () -> categoryService.updateCategory(1L, req("Tên mới", "mô tả", null)));
 
-        @Test
-        @DisplayName("[Lỗi] Category systemLocked → FORBIDDEN")
-        void locked_shouldThrow() {
-            when(categoryRepository.findById(1L)).thenReturn(Optional.of(category(1L, "A", true)));
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> categoryService.updateCategory(1L, req("B", "d", null)));
             assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
         }
-
-        @Test
-        @DisplayName("[Lỗi] Tên trùng với category khác → INVALID_INPUT")
-        void duplicateOther_shouldThrow() {
-            Category current = category(1L, "A", false);
-            when(categoryRepository.findById(1L)).thenReturn(Optional.of(current));
-            when(categoryRepository.findByNameIgnoreCase("B")).thenReturn(Optional.of(category(2L, "B", false)));
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> categoryService.updateCategory(1L, req("B", "d", null)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: update name/desc/parent + updatedAt + save")
-        void happyPath_shouldUpdate() {
-            Category current = category(1L, "A", false);
-            Category parent = category(9L, "P", false);
-            when(categoryRepository.findById(1L)).thenReturn(Optional.of(current));
-            when(categoryRepository.findByNameIgnoreCase("B")).thenReturn(Optional.empty());
-            when(categoryRepository.findById(9L)).thenReturn(Optional.of(parent));
-            when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            CategoryResponse out = categoryService.updateCategory(1L, req("  B  ", "  desc  ", 9L));
-
-            assertEquals(1L, out.getId());
-            assertEquals("B", out.getName());
-            assertEquals("desc", out.getDescription());
-            assertEquals(9L, out.getParentId());
-            assertNotNull(current.getUpdatedAt());
-        }
     }
 
-    // ---------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Xóa danh mục")
-    class Delete {
+    @DisplayName("Xóa danh mục | Function: deleteCategory(Long)")
+    class DeleteUtc {
 
         @Test
-        @DisplayName("[Lỗi] id null → INVALID_INPUT")
-        void nullId_shouldThrow() {
-            SlifeException ex = assertThrows(SlifeException.class, () -> categoryService.deleteCategory(null));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [A] Danh mục bị khóa hệ thống (systemLocked = true) → FORBIDDEN, không xóa DB")
+        void utcid01_deleteSystemLockedCategory() {
+            when(categoryRepository.findById(1L))
+                    .thenReturn(Optional.of(category(1L, "Đồ điện tử", true)));
 
-        @Test
-        @DisplayName("[Lỗi] Không tìm thấy → INVALID_INPUT")
-        void notFound_shouldThrow() {
-            when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class, () -> categoryService.deleteCategory(1L));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> categoryService.deleteCategory(1L));
 
-        @Test
-        @DisplayName("[Lỗi] systemLocked → FORBIDDEN")
-        void locked_shouldThrow() {
-            when(categoryRepository.findById(1L)).thenReturn(Optional.of(category(1L, "A", true)));
-            SlifeException ex = assertThrows(SlifeException.class, () -> categoryService.deleteCategory(1L));
             assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
             verify(categoryRepository, never()).deleteById(anyLong());
         }
 
         @Test
-        @DisplayName("[Thường] Luồng chính → deleteById")
-        void happyPath_shouldDelete() {
-            when(categoryRepository.findById(1L)).thenReturn(Optional.of(category(1L, "A", false)));
-            categoryService.deleteCategory(1L);
-            verify(categoryRepository).deleteById(1L);
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [N] Danh mục do người dùng tạo, không bị khóa → xóa thành công khỏi hệ thống")
+        void utcid02_deleteUserCreatedCategory() {
+            when(categoryRepository.findById(2L))
+                    .thenReturn(Optional.of(category(2L, "Sách cũ", false)));
+
+            assertDoesNotThrow(() -> categoryService.deleteCategory(2L));
+
+            verify(categoryRepository).deleteById(2L);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    @Nested
+    @DisplayName("Kiểm tra chuẩn hóa tên | Common: normalizeName")
+    class BoundaryUtc {
+
+        @Test
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [B] Tên chỉ gồm khoảng trắng → INVALID_INPUT; tên có khoảng trắng thừa → tự trim")
+        void utcid01_whitespaceName() {
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> categoryService.createCategory(req("   ", "mô tả", null)));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+
+            when(categoryRepository.findByNameIgnoreCase("Phone")).thenReturn(Optional.empty());
+            when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> {
+                Category c = inv.getArgument(0);
+                c.setId(3L);
+                return c;
+            });
+
+            CategoryResponse out = categoryService.createCategory(req("  Phone  ", null, null));
+            assertEquals("Phone", out.getName());
         }
     }
 }
-

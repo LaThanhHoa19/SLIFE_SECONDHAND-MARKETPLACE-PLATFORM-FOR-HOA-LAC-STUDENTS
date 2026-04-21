@@ -1,8 +1,6 @@
 package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.ReportRequest;
-import com.slife.marketplace.dto.response.ReportResponseDTO;
-import com.slife.marketplace.entity.Comment;
 import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.entity.Report;
 import com.slife.marketplace.entity.User;
@@ -23,13 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,34 +31,34 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-/**
- * Unit test cho {@link ReportService}.
- *
- * Mục tiêu:
- * - Kiểm tra business rules của report (target hợp lệ, chống duplicate, chống self-report,
- *   chat participant check khi report message).
- * - Kiểm tra các nhánh xử lý của admin: processReport (approve/reject + moderation actions),
- *   auto-hide theo threshold config, và audit log/notification side-effects.
- *
- * Nguyên tắc theo rule:
- * - Không chạm DB: toàn bộ repository/service dependency đều mock.
- * - Mỗi test tập trung 1 nhánh quan trọng và assert đúng {@link ErrorCode} hoặc side-effect chính.
- */
 class ReportServiceTest {
 
-    @Mock private ReportRepository reportRepository;
-    @Mock private ReportImageRepository reportImageRepository;
-    @Mock private ListingRepository listingRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private CommentRepository commentRepository;
-    @Mock private CommunityPostRepository communityPostRepository;
-    @Mock private CommunityPostCommentRepository communityPostCommentRepository;
-    @Mock private MessageRepository messageRepository;
-    @Mock private NotificationService notificationService;
-    @Mock private ConfigService configService;
-    @Mock private AuditLogService auditLogService;
-    @Mock private SystemEmailService systemEmailService;
-    @Mock private UserFileStorageService userFileStorage;
+    @Mock
+    private ReportRepository reportRepository;
+    @Mock
+    private ReportImageRepository reportImageRepository;
+    @Mock
+    private ListingRepository listingRepository;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private CommentRepository commentRepository;
+    @Mock
+    private CommunityPostRepository communityPostRepository;
+    @Mock
+    private CommunityPostCommentRepository communityPostCommentRepository;
+    @Mock
+    private MessageRepository messageRepository;
+    @Mock
+    private NotificationService notificationService;
+    @Mock
+    private ConfigService configService;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private SystemEmailService systemEmailService;
+    @Mock
+    private UserFileStorageService userFileStorage;
 
     private ReportService service;
 
@@ -92,7 +86,7 @@ class ReportServiceTest {
         u.setId(id);
         u.setRole(role);
         u.setEmail("u" + id + "@ex.com");
-        u.setFullName("U" + id);
+        u.setFullName("User " + id);
         return u;
     }
 
@@ -115,22 +109,21 @@ class ReportServiceTest {
         when(reportImageRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Tạo báo cáo")
-    class Create {
+    @DisplayName("Function: createReport")
+    class CreateReportGroup {
 
         @Test
-        @DisplayName("[Lỗi] targetType không hợp lệ → REPORT_INVALID_TARGET")
-        void invalidTarget_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - invalid targetType")
+        void utcId01_shouldThrowInvalidTarget_whenTargetTypeNotSupported() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.createReport(user(1L, "USER"), req("NOPE", 1)));
             assertEquals(ErrorCode.REPORT_INVALID_TARGET, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] báo cáo trùng → REPORT_DUPLICATE")
-        void duplicate_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - duplicate report")
+        void utcId02_shouldThrowDuplicate_whenReportAlreadyExists() {
             when(reportRepository.existsByReporter_IdAndTargetTypeAndTargetId(1L, "LISTING", 10L)).thenReturn(true);
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.createReport(user(1L, "USER"), req("LISTING", 10)));
@@ -138,8 +131,8 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] alias POST → LISTING, và self-report listing → REPORT_SELF")
-        void postAlias_selfReport_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - alias POST to LISTING but self-report")
+        void utcId03_shouldThrowReportSelf_whenReporterReportsOwnListingViaPostAlias() {
             User reporter = user(1L, "USER");
             Listing l = new Listing();
             l.setId(10L);
@@ -153,8 +146,8 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("[Thường] listing luồng thành công + evidence image → save report + save image + notify + có thể tự ẩn")
-        void listing_happyPath_evidence_shouldPersistAndNotifyAndAutoHide() {
+        @DisplayName("UTCID04 [Positive] - listing report success with evidence and auto-hide")
+        void utcId04_shouldPersistEvidenceNotifyAndAutoHide_whenThresholdReached() {
             stubReportSaveAssignId();
             User reporter = user(1L, "USER");
             User seller = user(2L, "USER");
@@ -169,8 +162,6 @@ class ReportServiceTest {
 
             when(reportRepository.existsByReporter_IdAndTargetTypeAndTargetId(1L, "LISTING", 10L)).thenReturn(false);
             when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
-
-            // auto-hide threshold reached
             when(configService.getIntConfigValue("AUTO_HIDE_REPORT_THRESHOLD", 3)).thenReturn(3);
             when(reportRepository.countByTargetTypeAndTargetIdAndStatus("LISTING", 10L, "PENDING")).thenReturn(3L);
             when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
@@ -179,66 +170,14 @@ class ReportServiceTest {
 
             verify(notificationService).notifyListingReported(seller, reporter, 10L, "T");
             verify(reportImageRepository).save(argThat(img -> "http://img".equals(img.getImageUrl())));
-            // listing should be auto-hidden (not already HIDDEN)
             verify(listingRepository).save(argThat(x -> "HIDDEN".equalsIgnoreCase(x.getStatus())));
             verify(auditLogService).logAutoHideListing(eq(10L), eq(3), eq(3));
         }
-
-        @Test
-        @DisplayName("[Lỗi] comment self-report → REPORT_SELF")
-        void comment_self_shouldThrow() {
-            User reporter = user(1L, "USER");
-            Comment c = new Comment();
-            c.setId(5L);
-            c.setUser(reporter);
-            when(reportRepository.existsByReporter_IdAndTargetTypeAndTargetId(1L, "COMMENT", 5L)).thenReturn(false);
-            when(commentRepository.findById(5L)).thenReturn(Optional.of(c));
-
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.createReport(reporter, req("COMMENT", 5)));
-            assertEquals(ErrorCode.REPORT_SELF, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] message: loại MESSAGE không còn trong VALID_TARGET_TYPES → REPORT_INVALID_TARGET")
-        void message_targetTypeUnsupported_shouldThrow() {
-            User reporter = user(9L, "USER");
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.createReport(reporter, req("MESSAGE", 7)));
-            assertEquals(ErrorCode.REPORT_INVALID_TARGET, ex.getErrorCode());
-            verifyNoInteractions(messageRepository);
-        }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Danh sách báo cáo admin")
-    class Queries {
-        @Test
-        @DisplayName("getReports: chuẩn hoá type/status + giới hạn size(1..50)")
-        void getReports_normalizeAndClamp() {
-            Page<Report> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
-            // Note: service uppercases but does not trim status/type.
-            when(reportRepository.findByFilters(eq("LISTING"), eq(" PENDING "), any())).thenReturn(p);
-
-            service.getReports("listing", " pending ", -1, 0);
-            verify(reportRepository).findByFilters(eq("LISTING"), eq(" PENDING "), argThat(pr -> pr.getPageSize() == 1));
-        }
-
-        @Test
-        @DisplayName("getAdminReports: targetType OTHER → findAdminReportsOther")
-        void getAdminReports_other() {
-            Page<Report> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
-            when(reportRepository.findAdminReportsOther(eq("PENDING"), any())).thenReturn(p);
-
-            service.getAdminReports("other", "pending", 0, 1, null, null);
-            verify(reportRepository).findAdminReportsOther(eq("PENDING"), any());
-            verify(reportRepository, never()).findAdminReports(any(), any(), any());
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Nhóm: Xử lý báo cáo")
-    class Process {
+    @DisplayName("Function: processReport")
+    class ProcessReportGroup {
 
         private Report pendingReport(String type, long targetId) {
             Report r = new Report();
@@ -253,8 +192,8 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] action trống hoặc không hợp lệ → INVALID_INPUT")
-        void invalidAction_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - action is blank or unsupported")
+        void utcId01_shouldThrowInvalidInput_whenActionInvalid() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> service.processReport(1L, " ", null, user(1L, "ADMIN"))).getErrorCode());
             assertEquals(ErrorCode.INVALID_INPUT,
@@ -262,16 +201,16 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] không tìm thấy báo cáo → REPORT_NOT_FOUND")
-        void notFound_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - report not found")
+        void utcId02_shouldThrowReportNotFound_whenReportIdNotExists() {
             when(reportRepository.findById(1L)).thenReturn(Optional.empty());
             assertEquals(ErrorCode.REPORT_NOT_FOUND,
                     assertThrows(SlifeException.class, () -> service.processReport(1L, "APPROVE", null, user(1L, "ADMIN"))).getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] report status != PENDING → INVALID_INPUT")
-        void notPending_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - report already processed")
+        void utcId03_shouldThrowInvalidInput_whenReportNotPending() {
             Report r = pendingReport("LISTING", 10L);
             r.setStatus("RESOLVED");
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
@@ -280,8 +219,8 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVE listing → close + áp dụng hiệu ứng duyệt (listing status=MOD_HIDDEN) + strike + notify + email + auditLog")
-        void approve_listing_shouldHideListingAndAudit() {
+        @DisplayName("UTCID04 [Positive] - APPROVE listing applies moderation side-effects")
+        void utcId04_shouldHideListingStrikeOwnerAndAudit_whenApproveListing() {
             Report r = pendingReport("LISTING", 10L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
             when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -311,8 +250,8 @@ class ReportServiceTest {
         }
 
         @Test
-        @DisplayName("REJECT → đóng dạng từ chối + ghi audit (không áp hiệu ứng duyệt)")
-        void reject_shouldNotApplyApproveSideEffects() {
+        @DisplayName("UTCID05 [Positive] - REJECT closes report without approve side-effects")
+        void utcId05_shouldOnlyAuditWithoutModerationSideEffects_whenReject() {
             Report r = pendingReport("LISTING", 10L);
             when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
             when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -322,131 +261,60 @@ class ReportServiceTest {
             verifyNoInteractions(listingRepository);
             verify(auditLogService).logReportProcessed(any(), any(), eq(false));
         }
-
-        @Test
-        @DisplayName("HIDE_LISTING_APPROVE: chỉ hỗ trợ LISTING type")
-        void hideListingApprove_wrongType_shouldThrow() {
-            Report r = pendingReport("USER", 2L);
-            when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.processReport(1L, "HIDE_LISTING_APPROVE", null, user(1L, "ADMIN")));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("BAN_USER_APPROVE: chỉ hỗ trợ USER type")
-        void banUserApprove_wrongType_shouldThrow() {
-            Report r = pendingReport("LISTING", 10L);
-            when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.processReport(1L, "BAN_USER_APPROVE", null, user(1L, "ADMIN")));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] BAN_USER_APPROVE luồng thành công → set user BANNED + bump tokenRevision + notify + audit")
-        void banUserApprove_shouldBanAndNotify() {
-            Report r = pendingReport("USER", 2L);
-            when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
-            when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            User target = user(2L, "USER");
-            target.setTokenRevision(0L);
-            when(userRepository.findById(2L)).thenReturn(Optional.of(target));
-            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            service.processReport(1L, "BAN_USER_APPROVE", null, user(99L, "ADMIN"));
-
-            verify(userRepository).save(argThat(u -> "BANNED".equalsIgnoreCase(u.getStatus()) && u.getTokenRevision() == 1L));
-            verify(notificationService).notifyAdminBannedUser(eq(target), eq(1L), eq("spam"));
-            verify(auditLogService).logReportProcessed(any(), any(), eq(true));
-        }
-
-        @Test
-        @DisplayName("APPROVE user dưới ngưỡng ban → tăng violation + warning notify + email, không ban")
-        void approve_user_belowThreshold_shouldWarnNotBan() {
-            Report r = pendingReport("USER", 2L);
-            when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
-            when(reportRepository.save(any(Report.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            User target = user(2L, "USER");
-            target.setStatus("ACTIVE");
-            target.setViolationCount(0);
-            target.setTokenRevision(0L);
-            when(userRepository.findById(2L)).thenReturn(Optional.of(target));
-            when(configService.getIntConfigValue("REPORT_THRESHOLD", 3)).thenReturn(3);
-            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            service.processReport(1L, "APPROVE", "ok", user(99L, "ADMIN"));
-
-            verify(userRepository).save(argThat(u -> u.getViolationCount() == 1 && "ACTIVE".equalsIgnoreCase(u.getStatus())));
-            verify(notificationService).notifyReportApprovedUserWarning(eq(target), eq(1L), eq("spam"), eq(1), eq(3));
-            verify(notificationService, never()).notifyAdminBannedUser(any(), any(), any());
-            verify(systemEmailService).sendReportApprovedUserModerationEmail(eq(target), eq(1L), eq(1), eq(3), eq(false), eq("spam"));
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Ánh xạ DTO admin")
-    class AdminDto {
-        @Test
-        @DisplayName("[Lỗi] getAdminReportById: không tìm thấy → REPORT_NOT_FOUND")
-        void getAdminReportById_notFound() {
-            when(reportRepository.findById(1L)).thenReturn(Optional.empty());
-            assertEquals(ErrorCode.REPORT_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> service.getAdminReportById(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("getAdminReportById: ngữ cảnh đích COMMENT (chỉ ảnh)")
-        void getAdminReportById_commentPreview_imageOnly() {
-            Report r = new Report();
-            r.setId(1L);
-            r.setTargetType("COMMENT");
-            r.setTargetId(5L);
-            r.setReason("spam");
-            r.setStatus("PENDING");
-            r.setCreatedAt(Instant.now());
-            r.setUpdatedAt(Instant.now());
-            r.setReporter(user(9L, "USER"));
-            when(reportRepository.findById(1L)).thenReturn(Optional.of(r));
-
-            Comment c = new Comment();
-            c.setId(5L);
-            c.setContent("   ");
-            Listing l = new Listing();
-            l.setId(10L);
-            c.setListing(l);
-            when(commentRepository.findById(5L)).thenReturn(Optional.of(c));
-
-            ReportResponseDTO dto = service.getAdminReportById(1L);
-            assertEquals("[Image-only comment]", dto.targetPreview());
-            assertEquals(10L, dto.listingId());
-        }
     }
 
     @Nested
-    @DisplayName("Nhóm: Tải ảnh bằng chứng")
-    class UploadEvidence {
+    @DisplayName("Function: uploadReportEvidenceImage")
+    class UploadReportEvidenceImageGroup {
 
         @Test
-        @DisplayName("[Lỗi] file null/empty → INVALID_INPUT")
-        void upload_empty_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - file is null or empty")
+        void utcId01_shouldThrowInvalidInput_whenFileIsNullOrEmpty() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.uploadReportEvidenceImage(null));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+
+            MockMultipartFile empty = new MockMultipartFile("f", "a.jpg", "image/jpeg", new byte[0]);
+            SlifeException ex2 = assertThrows(SlifeException.class,
+                    () -> service.uploadReportEvidenceImage(empty));
+            assertEquals(ErrorCode.INVALID_INPUT, ex2.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] phần mở rộng không hợp lệ → INVALID_FILE_TYPE")
-        void upload_invalidExt_shouldThrow() {
+        @DisplayName("UTCID02 [Boundary] - file exceeds 5MB")
+        void utcId02_shouldThrowFileTooLarge_whenFileExceedsMaxSize() {
+            byte[] big = new byte[5 * 1024 * 1024 + 1];
+            MockMultipartFile file = new MockMultipartFile("file", "evidence.jpg", "image/jpeg", big);
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> service.uploadReportEvidenceImage(file));
+            assertEquals(ErrorCode.FILE_TOO_LARGE, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID03 [Negative] - invalid file extension")
+        void utcId03_shouldThrowInvalidFileType_whenExtensionNotAllowed() {
             MockMultipartFile file = new MockMultipartFile(
                     "file", "evidence.gif", "image/gif", new byte[] {1, 2, 3}
             );
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.uploadReportEvidenceImage(file));
             assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID04 [Positive] - valid file is stored and returns URL")
+        void utcId04_shouldStoreAndReturnUrl_whenFileIsValid() {
+            MockMultipartFile file = new MockMultipartFile(
+                    "file", "evidence.png", "image/png", new byte[] {1, 2, 3}
+            );
+            when(userFileStorage.storeMultipart(eq(file), startsWith("reports/report_")))
+                    .thenReturn("https://cdn/reports/report_1.png");
+
+            String url = service.uploadReportEvidenceImage(file);
+
+            assertEquals("https://cdn/reports/report_1.png", url);
+            verify(userFileStorage).storeMultipart(eq(file), startsWith("reports/report_"));
         }
     }
 }

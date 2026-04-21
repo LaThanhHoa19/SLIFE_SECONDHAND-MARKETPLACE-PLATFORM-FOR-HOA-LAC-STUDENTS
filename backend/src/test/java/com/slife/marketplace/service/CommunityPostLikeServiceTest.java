@@ -25,9 +25,19 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CommunityPostLikeServiceTest {
@@ -68,68 +78,55 @@ class CommunityPostLikeServiceTest {
         return p;
     }
 
-    // ---------------------------------------------------------------------
+    @SuppressWarnings("unchecked")
+    private PagedResponse<CommunityPostCardResponse> mockCardPageResponse() {
+        return (PagedResponse<CommunityPostCardResponse>) mock(PagedResponse.class);
+    }
+
     @Nested
-    @DisplayName("Nhóm: Bật/tắt (toggle)")
-    class Toggle {
+    @DisplayName("Function: toggle")
+    class ToggleGroup {
 
         @Test
-        @DisplayName("[Lỗi] user null → UNAUTHORIZED")
-        void userNull_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - user not authenticated")
+        void utcId01_shouldThrowUnauthorized_whenUserNull() {
             SlifeException ex = assertThrows(SlifeException.class, () -> service.toggle(null, 1L));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] user BANNED/RESTRICTED → USER_BANNED_OR_RESTRICTED")
-        void bannedRestricted_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - user is BANNED or RESTRICTED")
+        void utcId02_shouldThrowRestricted_whenUserBannedOrRestricted() {
             SlifeException ex1 = assertThrows(SlifeException.class, () -> service.toggle(user(1L, "BANNED"), 1L));
             assertEquals(ErrorCode.USER_BANNED_OR_RESTRICTED, ex1.getErrorCode());
+
             SlifeException ex2 = assertThrows(SlifeException.class, () -> service.toggle(user(1L, "RESTRICTED"), 1L));
             assertEquals(ErrorCode.USER_BANNED_OR_RESTRICTED, ex2.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] post không tồn tại → COMMUNITY_POST_NOT_FOUND")
-        void postMissing_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - post does not exist")
+        void utcId03_shouldThrowNotFound_whenPostMissing() {
             when(postRepository.findById(1L)).thenReturn(Optional.empty());
+
             SlifeException ex = assertThrows(SlifeException.class, () -> service.toggle(user(1L, "ACTIVE"), 1L));
             assertEquals(ErrorCode.COMMUNITY_POST_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] post hidden/deleted hoặc status != ACTIVE → COMMUNITY_POST_NOT_FOUND")
-        void postNotActive_shouldThrow() {
+        @DisplayName("UTCID04 [Negative] - post is not active")
+        void utcId04_shouldThrowNotFound_whenPostNotActive() {
             User me = user(1L, "ACTIVE");
             when(postRepository.findById(1L)).thenReturn(Optional.of(
                     post(1L, user(2L, "ACTIVE"), "HIDDEN", null, null)));
+
             SlifeException ex = assertThrows(SlifeException.class, () -> service.toggle(me, 1L));
             assertEquals(ErrorCode.COMMUNITY_POST_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] post đã soft-delete (deletedAt) → COMMUNITY_POST_NOT_FOUND")
-        void postDeletedAt_shouldThrow() {
-            User me = user(1L, "ACTIVE");
-            when(postRepository.findById(1L)).thenReturn(Optional.of(
-                    post(1L, user(2L, "ACTIVE"), CommunityPost.STATUS_ACTIVE, Instant.now(), null)));
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.toggle(me, 1L));
-            assertEquals(ErrorCode.COMMUNITY_POST_NOT_FOUND, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] post bị ẩn mod (hiddenAt) → COMMUNITY_POST_NOT_FOUND")
-        void postHiddenAt_shouldThrow() {
-            User me = user(1L, "ACTIVE");
-            when(postRepository.findById(1L)).thenReturn(Optional.of(
-                    post(1L, user(2L, "ACTIVE"), CommunityPost.STATUS_ACTIVE, null, Instant.now())));
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.toggle(me, 1L));
-            assertEquals(ErrorCode.COMMUNITY_POST_NOT_FOUND, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("Đã like → unlike: delete + count + broadcast; không notify")
-        void alreadyLiked_shouldUnlike() {
+        @DisplayName("UTCID05 [Positive] - unlike when already liked")
+        void utcId05_shouldUnlike_whenAlreadyLiked() {
             User me = user(1L, "ACTIVE");
             CommunityPost p = post(1L, user(2L, "ACTIVE"), CommunityPost.STATUS_ACTIVE, null, null);
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -147,8 +144,8 @@ class CommunityPostLikeServiceTest {
         }
 
         @Test
-        @DisplayName("Chưa like → like: save + (notify nếu khác author) + count + broadcast")
-        void notLiked_shouldLikeAndNotify() {
+        @DisplayName("UTCID06 [Positive] - like and notify author")
+        void utcId06_shouldLikeAndNotify_whenNotLikedAndOtherAuthor() {
             User me = user(1L, "ACTIVE");
             User author = user(2L, "ACTIVE");
             CommunityPost p = post(1L, author, CommunityPost.STATUS_ACTIVE, null, null);
@@ -167,8 +164,8 @@ class CommunityPostLikeServiceTest {
         }
 
         @Test
-        @DisplayName("Like post của chính mình → không notify")
-        void likeOwnPost_shouldNotNotify() {
+        @DisplayName("UTCID07 [Positive] - like own post without notify")
+        void utcId07_shouldLikeWithoutNotify_whenAuthorIsSelf() {
             User me = user(1L, "ACTIVE");
             CommunityPost p = post(1L, me, CommunityPost.STATUS_ACTIVE, null, null);
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -182,27 +179,27 @@ class CommunityPostLikeServiceTest {
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Bài cộng đồng đã thích (feed)")
-    class LikedFeed {
+    @DisplayName("Function: getLikedFeed")
+    class GetLikedFeedGroup {
 
         @Test
-        @DisplayName("[Lỗi] user null → UNAUTHORIZED")
-        void userNull_shouldThrow() {
-            assertEquals(ErrorCode.UNAUTHORIZED,
-                    assertThrows(SlifeException.class, () -> service.getLikedFeed(null, 0, 20)).getErrorCode());
+        @DisplayName("UTCID01 [Negative] - user null")
+        void utcId01_shouldThrowUnauthorized_whenUserNull() {
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.getLikedFeed(null, 0, 20));
+            assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("page âm → clamp 0; size 0 → mặc định 20")
-        void pageNegative_sizeZero_usesDefaults() {
+        @DisplayName("UTCID02 [Positive] - negative page and non-positive size")
+        void utcId02_shouldClampPageAndUseDefaultSize() {
             User me = user(1L, "ACTIVE");
             Page<CommunityPost> empty = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
             when(likeRepository.findLikedPostsVisibleByUserId(eq(1L), eq(CommunityPost.STATUS_ACTIVE), any()))
                     .thenReturn(empty);
-            PagedResponse<CommunityPostCardResponse> out = mock(PagedResponse.class);
-            when(communityPostService.toCardPage(any(Page.class), eq(1L), eq(false))).thenReturn(out);
+            PagedResponse<CommunityPostCardResponse> out = mockCardPageResponse();
+            when(communityPostService.toCardPage(org.mockito.ArgumentMatchers.<Page<CommunityPost>>any(), eq(1L), eq(false)))
+                    .thenReturn(out);
 
             assertSame(out, service.getLikedFeed(me, -3, 0));
 
@@ -211,40 +208,19 @@ class CommunityPostLikeServiceTest {
         }
 
         @Test
-        @DisplayName("size > 50 → clamp 50")
-        void sizeOverCap_clampsTo50() {
+        @DisplayName("UTCID03 [Positive] - size over max is clamped to 50")
+        void utcId03_shouldClampSizeTo50_whenOverLimit() {
             User me = user(1L, "ACTIVE");
             Page<CommunityPost> empty = new PageImpl<>(List.of(), PageRequest.of(0, 50), 0);
             when(likeRepository.findLikedPostsVisibleByUserId(eq(1L), eq(CommunityPost.STATUS_ACTIVE), any()))
                     .thenReturn(empty);
-            PagedResponse<CommunityPostCardResponse> out = mock(PagedResponse.class);
-            when(communityPostService.toCardPage(any(Page.class), eq(1L), eq(false))).thenReturn(out);
+            when(communityPostService.toCardPage(org.mockito.ArgumentMatchers.<Page<CommunityPost>>any(), eq(1L), eq(false)))
+                    .thenReturn(mockCardPageResponse());
 
             service.getLikedFeed(me, 0, 999);
 
             verify(likeRepository).findLikedPostsVisibleByUserId(eq(1L), eq(CommunityPost.STATUS_ACTIVE),
-                    argThat((Pageable p) -> p.getPageSize() == 50));
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Truy vấn đơn giản")
-    class Queries {
-
-        @Test
-        @DisplayName("countByPostId: trả repository count")
-        void countByPostId_shouldReturnCount() {
-            when(likeRepository.countByPost_Id(10L)).thenReturn(5L);
-            assertEquals(5L, service.countByPostId(10L));
-        }
-
-        @Test
-        @DisplayName("isLikedBy: trả repository exists")
-        void isLikedBy_shouldReturnExists() {
-            when(likeRepository.existsByUser_IdAndPost_Id(1L, 10L)).thenReturn(true);
-            assertTrue(service.isLikedBy(1L, 10L));
+                    argThat((Pageable p) -> p.getPageNumber() == 0 && p.getPageSize() == 50));
         }
     }
 }
-

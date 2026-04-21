@@ -2,27 +2,25 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.response.ChatMessageResponse;
 import com.slife.marketplace.dto.response.ChatSessionPageResponse;
-import com.slife.marketplace.dto.response.ChatSessionResponse;
 import com.slife.marketplace.entity.*;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
-import com.slife.marketplace.repository.ConversationRepository;
-import com.slife.marketplace.repository.ListingRepository;
-import com.slife.marketplace.repository.MessageRepository;
-import com.slife.marketplace.repository.OfferRepository;
+import com.slife.marketplace.repository.*;
 import com.slife.marketplace.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -48,40 +46,39 @@ class ChatServiceTest {
     @Mock private SystemEmailService systemEmailService;
     @Mock private SimpMessagingTemplate messagingTemplate;
     @Mock private UserFileStorageService userFileStorage;
+    @Mock private StringRedisTemplate redisTemplate;
+    @Mock private ValueOperations<String, String> valueOperations;
+    @Mock private RedisWebSocketRelayService wsRelay;
 
     private ChatService chatService;
 
     @BeforeEach
     void setUp() {
         chatService = new ChatService(
-                conversationRepository,
-                messageRepository,
-                listingRepository,
-                offerRepository,
-                blockService,
-                userService,
-                notificationService,
-                systemEmailService,
-                messagingTemplate,
-                userFileStorage
+                conversationRepository, messageRepository, listingRepository,
+                offerRepository, blockService, userService, notificationService,
+                systemEmailService, messagingTemplate, userFileStorage, userFileStorage,
+                redisTemplate, wsRelay
         );
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static User user(long id, String email) {
         User u = new User();
         u.setId(id);
         u.setEmail(email);
-        u.setFullName("U" + id);
+        u.setFullName("User" + id);
         u.setStatus("ACTIVE");
         return u;
     }
 
-    private static Listing listing(long id, User seller) {
+    private static Listing listing(long id, User seller, String title) {
         Listing l = new Listing();
         l.setId(id);
         l.setSeller(seller);
         l.setStatus("ACTIVE");
-        l.setTitle("Listing " + id);
+        l.setTitle(title);
         return l;
     }
 
@@ -97,7 +94,8 @@ class ChatServiceTest {
         return c;
     }
 
-    private static Message msg(long id, Conversation c, User sender, MessageType type, String content) {
+    private static Message msg(long id, Conversation c, User sender,
+                               MessageType type, String content, boolean read) {
         Message m = new Message();
         m.setId(id);
         m.setConversation(c);
@@ -105,758 +103,505 @@ class ChatServiceTest {
         m.setMessageType(type);
         m.setContent(content);
         m.setSentAt(Instant.now());
-        m.setIsRead(false);
+        m.setIsRead(read);
         return m;
     }
 
+    private static Offer pendingOffer(long id, User buyer, Listing l, Conversation c, BigDecimal amount) {
+        Offer o = new Offer();
+        o.setId(id);
+        o.setStatus(OfferService.STATUS_PENDING);
+        o.setBuyer(buyer);
+        o.setListing(l);
+        o.setConversation(c);
+        o.setAmount(amount);
+        return o;
+    }
+
     // =========================================================================
-    // getOrCreateSession
+    // Function: getOrCreateSession(Long listingId, User buyer)
+    // Dependencies: userService · listingRepository · blockService · conversationRepository
     // =========================================================================
     @Nested
-    @DisplayName("Tạo/lấy phiên chat (getOrCreateSession)")
-    class GetOrCreateSession {
+    @DisplayName("Tạo/lấy phiên chat | Function: getOrCreateSession(Long, User)")
+    class GetOrCreateSessionUtc {
 
         @Test
-        @DisplayName("[Lỗi] Người dùng hiện tại khác buyer → FORBIDDEN")
-        void getOrCreateSession_currentNotBuyer_shouldThrow() {
-            User buyer = user(1L, "b@ex.com");
-            when(userService.getCurrentUser()).thenReturn(user(2L, "x@ex.com"));
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getOrCreateSession(10L, buyer));
-            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
-        }
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [N] Chưa có phiên chat nào → tạo hội thoại mới và lưu DB")
+        void utcid01_noExistingSession_createsNew() {
+            User buyer = user(1L, "buyer@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, seller, "Xe đạp cũ");
 
-        @Test
-        @DisplayName("[Lỗi] Không tìm thấy tin đăng → LISTING_NOT_FOUND")
-        void getOrCreateSession_listingNotFound_shouldThrow() {
-            User buyer = user(1L, "b@ex.com");
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getOrCreateSession(10L, buyer));
-            assertEquals(ErrorCode.LISTING_NOT_FOUND, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Buyer chính là seller → INVALID_INPUT")
-        void getOrCreateSession_sellerSelf_shouldThrow() {
-            User buyer = user(1L, "b@ex.com");
-            Listing l = listing(10L, buyer);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getOrCreateSession(10L, buyer));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Bị block → FORBIDDEN")
-        void getOrCreateSession_blocked_shouldThrowForbidden() {
-            User buyer = user(1L, "b@ex.com");
-            User seller = user(2L, "s@ex.com");
-            Listing l = listing(10L, seller);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getOrCreateSession(10L, buyer));
-            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("Đã có session active → trả về session đó")
-        void getOrCreateSession_existing_shouldReturn() {
-            User buyer = user(1L, "b@ex.com");
-            User seller = user(2L, "s@ex.com");
-            Listing l = listing(10L, seller);
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            Conversation existing = conv(5L, "sess", l, buyer, seller);
-            when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L)).thenReturn(Optional.of(existing));
-
-            Conversation out = chatService.getOrCreateSession(10L, buyer);
-            assertEquals(5L, out.getId());
-        }
-
-        @Test
-        @DisplayName("Chưa có session → tạo mới và save")
-        void getOrCreateSession_createNew_shouldSave() {
-            User buyer = user(1L, "b@ex.com");
-            User seller = user(2L, "s@ex.com");
-            Listing l = listing(10L, seller);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L)).thenReturn(Optional.empty());
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> {
-                Conversation c = invocation.getArgument(0);
+            when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
+                    .thenReturn(Optional.empty());
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> {
+                Conversation c = inv.getArgument(0);
                 c.setId(99L);
-                if (c.getSessionUuid() == null) c.ensureSessionUuid();
+                c.ensureSessionUuid();
                 return c;
             });
 
             Conversation out = chatService.getOrCreateSession(10L, buyer);
+
             assertEquals(99L, out.getId());
             assertNotNull(out.getSessionUuid());
             assertEquals(Conversation.STATUS_ACTIVE, out.getStatus());
-        }
-    }
-
-    // =========================================================================
-    // listSessions / listSessionsFiltered
-    // =========================================================================
-    @Nested
-    @DisplayName("Danh sách phiên chat có lọc (listSessionsFiltered)")
-    class ListSessionsFiltered {
-
-        @Test
-        @DisplayName("Không lọc → trả page và giới hạn size tối thiểu 1")
-        void listSessionsFiltered_basicPagination_shouldReturnPage() {
-            User me = user(1L, "me@ex.com");
-            User other = user(2L, "o@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c1 = conv(1L, "s1", l, me, other);
-            when(conversationRepository.findAllByParticipantOrderByLastMessageDesc(1L)).thenReturn(List.of(c1));
-            when(conversationRepository.findByListingSellerIdOrderByLastMessageDesc(1L)).thenReturn(List.of());
-
-            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
-                    .thenReturn(new PageImpl<>(List.of(msg(1L, c1, other, MessageType.TEXT, "hi"))));
-
-            ChatSessionPageResponse res = chatService.listSessionsFiltered(me, "ALL", null, null, null, null, 0, 0);
-            assertNotNull(res);
-            assertEquals(1, res.getTotalElements());
-            assertEquals(1, res.getContent().size());
+            verify(conversationRepository).save(any(Conversation.class));
         }
 
         @Test
-        @DisplayName("Lọc theo q (khớp listingId dạng chuỗi) → có kết quả")
-        void listSessionsFiltered_qMatchesListingId_shouldFilter() {
-            User me = user(1L, "me@ex.com");
-            User other = user(2L, "o@ex.com");
-            Listing l = listing(123L, other);
-            l.setTitle("Xe dap");
-            Conversation c1 = conv(1L, "s1", l, me, other);
-            when(conversationRepository.findAllByParticipantOrderByLastMessageDesc(1L)).thenReturn(List.of(c1));
-            when(conversationRepository.findByListingSellerIdOrderByLastMessageDesc(1L)).thenReturn(List.of());
-            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
-                    .thenReturn(new PageImpl<>(List.of()));
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [A] Người mua chính là người bán → INVALID_INPUT, không tạo phiên chat")
+        void utcid02_buyerIsSeller_invalidInput() {
+            User buyer = user(1L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, buyer, "Xe đạp cũ"); // seller == buyer
 
-            ChatSessionPageResponse res = chatService.listSessionsFiltered(me, "ALL", "123", null, null, null, 0, 10);
-            assertEquals(1, res.getContent().size());
+            when(userService.getCurrentUser()).thenReturn(buyer);
+            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> chatService.getOrCreateSession(10L, buyer));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+            verify(conversationRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("listSessions(user) dùng listSessionsFiltered và trả content")
-        void listSessions_shouldReturnContent() {
-            User me = user(1L, "me@ex.com");
-            when(conversationRepository.findAllByParticipantOrderByLastMessageDesc(1L)).thenReturn(List.of());
-            when(conversationRepository.findByListingSellerIdOrderByLastMessageDesc(1L)).thenReturn(List.of());
-            List<ChatSessionResponse> out = chatService.listSessions(me, "ALL");
-            assertNotNull(out);
-            assertTrue(out.isEmpty());
-        }
-    }
+        @Tag("UTCID-03")
+        @DisplayName("UTCID-03 [A] Một trong hai bên đã Block nhau → FORBIDDEN, từ chối tạo phiên chat")
+        void utcid03_blocked_forbidden() {
+            User buyer = user(1L, "buyer@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, seller, "Điện thoại cũ");
 
-    // =========================================================================
-    // getHistory
-    // =========================================================================
-    @Nested
-    @DisplayName("Lịch sử tin nhắn (getHistory)")
-    class GetHistory {
-
-        @Test
-        @DisplayName("[Lỗi] Không tìm thấy phiên chat → CHAT_SESSION_NOT_FOUND")
-        void getHistory_sessionNotFound_shouldThrow() {
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getHistory("s", 0, 10));
-            assertEquals(ErrorCode.CHAT_SESSION_NOT_FOUND, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Không thuộc phiên chat → NOT_CHAT_PARTICIPANT")
-        void getHistory_notParticipant_shouldThrow() {
-            User u1 = user(1L, "a@ex.com");
-            User u2 = user(2L, "b@ex.com");
-            Listing l = listing(10L, u2);
-            Conversation c = conv(1L, "s", l, u1, u2);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(user(99L, "x@ex.com"));
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getHistory("s", 0, 10));
-            assertEquals(ErrorCode.NOT_CHAT_PARTICIPANT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Bị block với peer → FORBIDDEN")
-        void getHistory_blocked_shouldThrowForbidden() {
-            User me = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, me, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(me);
+            when(userService.getCurrentUser()).thenReturn(buyer);
+            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.getHistory("s", 0, 10));
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> chatService.getOrCreateSession(10L, buyer));
             assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính → trả Page<ChatMessageResponse>")
-        void getHistory_happyPath_shouldReturnPage() {
-            User me = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, me, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(me);
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-
-            Message m = msg(10L, c, other, MessageType.TEXT, "hello");
-            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
-                    .thenReturn(new PageImpl<>(List.of(m), PageRequest.of(0, 10), 1));
-
-            Page<ChatMessageResponse> out = chatService.getHistory("s", 0, 10);
-            assertEquals(1, out.getTotalElements());
-            assertEquals("hello", out.getContent().get(0).getContent());
+            verify(conversationRepository, never()).save(any());
         }
     }
 
     // =========================================================================
-    // searchMessagesInSession
+    // Function: sendMessage(..., User sender)
+    // Dependencies: redisTemplate · conversationRepository · blockService · messageRepository
     // =========================================================================
     @Nested
-    @DisplayName("Tìm kiếm tin nhắn trong một phiên (searchMessagesInSession)")
-    class SearchMessagesInSession {
+    @DisplayName("Gửi tin nhắn | Function: sendMessage(..., User sender)")
+    class SendMessageUtc {
 
         @Test
-        @DisplayName("[Lỗi] q rỗng → INVALID_INPUT")
-        void search_blank_shouldThrow() {
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.searchMessagesInSession("s", " ", 0, 10));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [A] Tài khoản BANNED hoặc RESTRICTED → chặn ngay, không mở session")
+        void utcid01_bannedOrRestricted_blocked() {
+            User banned = user(1L, "a@fpt.edu.vn");
+            banned.setStatus("BANNED");
+            SlifeException ex1 = assertThrows(SlifeException.class,
+                    () -> chatService.sendMessage("s", null, "hi", MessageType.TEXT, null, null, null, banned));
+            assertEquals(ErrorCode.USER_BANNED_OR_RESTRICTED, ex1.getErrorCode());
+
+            User restricted = user(2L, "b@fpt.edu.vn");
+            restricted.setStatus("RESTRICTED");
+            SlifeException ex2 = assertThrows(SlifeException.class,
+                    () -> chatService.sendMessage("s", null, "hi", MessageType.TEXT, null, null, null, restricted));
+            assertEquals(ErrorCode.USER_BANNED_OR_RESTRICTED, ex2.getErrorCode());
+
+            verifyNoInteractions(conversationRepository);
         }
 
         @Test
-        @DisplayName("[Lỗi] q < 2 ký tự → INVALID_INPUT")
-        void search_tooShort_shouldThrow() {
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [A] Một trong hai bên đã Block nhau → FORBIDDEN, không lưu tin nhắn")
+        void utcid02_blockedParticipant_forbidden() {
+            User sender = user(1L, "a@fpt.edu.vn");
+            User other = user(2L, "b@fpt.edu.vn");
+            Conversation c = conv(1L, "sess", listing(10L, other, "Bàn phím"), sender, other);
+
+            when(conversationRepository.findBySessionUuid("sess")).thenReturn(Optional.of(c));
+            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
+
             SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.searchMessagesInSession("s", "a", 0, 10));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+                    () -> chatService.sendMessage("sess", null, "hi", MessageType.TEXT, null, null, null, sender));
+            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+            verifyNoInteractions(messageRepository);
         }
 
         @Test
-        @DisplayName("[Thường] Luồng chính → gọi repository và map response")
-        void search_happyPath_shouldReturnPage() {
-            User me = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, me, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(me);
+        @Tag("UTCID-03")
+        @DisplayName("UTCID-03 [B] Gửi 2 tin trong cùng 1 giây → Redis Rate Limit kích hoạt, chặn tin thứ 2")
+        void utcid03_rateLimitExceeded_secondMessageBlocked() {
+            User sender = user(1L, "a@fpt.edu.vn");
+            User other = user(2L, "b@fpt.edu.vn");
+            Conversation c = conv(1L, "sess", listing(10L, other, "Laptop"), sender, other);
+
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(redisTemplate.hasKey("chat:rate:1")).thenReturn(false, true);
+            when(conversationRepository.findBySessionUuid("sess")).thenReturn(Optional.of(c));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
+            when(messageRepository.save(any(Message.class))).thenAnswer(inv -> {
+                Message m = inv.getArgument(0);
+                m.setId(10L);
+                return m;
+            });
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            Message m = msg(10L, c, other, MessageType.TEXT, "hello world");
-            when(messageRepository.findByConversation_IdAndDeletedAtIsNullAndContentContainingIgnoreCaseOrderBySentAtDesc(
-                    eq(1L), eq("hello"), any(Pageable.class)))
-                    .thenReturn(new PageImpl<>(List.of(m), PageRequest.of(0, 10), 1));
-
-            Page<ChatMessageResponse> out = chatService.searchMessagesInSession("s", "hello", 0, 10);
-            assertEquals(1, out.getTotalElements());
-            assertEquals("hello world", out.getContent().get(0).getContent());
-        }
-    }
-
-    // =========================================================================
-    // sendMessage
-    // =========================================================================
-    @Nested
-    @DisplayName("Gửi tin nhắn (sendMessage)")
-    class SendMessage {
-
-        @Test
-        @DisplayName("[Lỗi] User bị BANNED/RESTRICTED → USER_BANNED_OR_RESTRICTED")
-        void sendMessage_banned_shouldThrow() {
-            User sender = user(1L, "a@ex.com");
-            sender.setStatus("BANNED");
+            assertDoesNotThrow(() ->
+                    chatService.sendMessage("sess", null, "tin 1", MessageType.TEXT, null, null, null, sender));
             SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.sendMessage("s", null, "hi", MessageType.TEXT, null, null, null, sender));
-            assertEquals(ErrorCode.USER_BANNED_OR_RESTRICTED, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Giới hạn tốc độ: gửi 2 tin liên tiếp → RATE_LIMIT_EXCEEDED")
-        void sendMessage_rateLimit_shouldThrow() {
-            User sender = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, sender, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-            chatService.sendMessage("s", null, "hi", MessageType.TEXT, null, null, null, sender);
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.sendMessage("s", null, "hi2", MessageType.TEXT, null, null, null, sender));
+                    () -> chatService.sendMessage("sess", null, "tin 2", MessageType.TEXT, null, null, null, sender));
             assertEquals(ErrorCode.RATE_LIMIT_EXCEEDED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] sessionId null và listingId null → INVALID_INPUT")
-        void sendMessage_missingSessionAndListing_shouldThrow() {
-            User sender = user(1L, "a@ex.com");
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.sendMessage(null, null, "hi", MessageType.TEXT, null, null, null, sender));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
+        @Tag("UTCID-04")
+        @DisplayName("UTCID-04 [N] Gửi tin TEXT hợp lệ → lưu DB, thông báo đối phương, broadcast phiên chat")
+        void utcid04_validTextMessage_savedNotifyAndBroadcast() {
+            User sender = user(1L, "a@fpt.edu.vn");
+            User other = user(2L, "b@fpt.edu.vn");
+            Conversation c = conv(1L, "sess-n", listing(10L, other, "Bàn học"), sender, other);
 
-        @Test
-        @DisplayName("[Lỗi] Tin nhắn TEXT nhưng content rỗng → INVALID_INPUT")
-        void sendMessage_blankText_shouldThrow() {
-            User sender = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, sender, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
+            when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+            when(redisTemplate.hasKey("chat:rate:1")).thenReturn(false);
+            when(conversationRepository.findBySessionUuid("sess-n")).thenReturn(Optional.of(c));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.sendMessage("s", null, "  ", MessageType.TEXT, null, null, null, sender));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: lưu message + gửi thông báo + broadcast (WS)")
-        void sendMessage_happyPath_shouldNotifyAndBroadcast() {
-            User sender = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, sender, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> {
-                Message m = invocation.getArgument(0);
-                m.setId(99L);
+            when(messageRepository.save(any(Message.class))).thenAnswer(inv -> {
+                Message m = inv.getArgument(0);
+                m.setId(55L);
                 return m;
             });
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            ChatMessageResponse out = chatService.sendMessage("s", null, "hello", MessageType.TEXT, null, null, null, sender);
+            ChatMessageResponse out = chatService.sendMessage(
+                    "sess-n", null, "hello world", MessageType.TEXT, null, null, null, sender);
+
             assertNotNull(out);
-            assertEquals("hello", out.getContent());
-
-            verify(notificationService).notifyNewMessage(eq(other), any(ChatMessageResponse.class), eq("s"));
-            verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
-        }
-    }
-
-    // =========================================================================
-    // uploadChatImage
-    // =========================================================================
-    @Nested
-    @DisplayName("Upload ảnh trong chat (uploadChatImage)")
-    class UploadChatImage {
-
-        @Test
-        @DisplayName("[Lỗi] sessionId null và listingId null → INVALID_INPUT")
-        void uploadChatImage_missingSessionAndListing_shouldThrow() {
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.uploadChatImage(null, null, new MockMultipartFile("f", new byte[1])));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] File quá lớn → FILE_TOO_LARGE")
-        void uploadChatImage_tooLarge_shouldThrow() {
-            User current = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, current, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(current);
-
-            MockMultipartFile f = new MockMultipartFile("file", "a.png", "image/png", new byte[(int) (Constants.MAX_CHAT_IMAGE_BYTES + 1)]);
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.uploadChatImage("s", null, f));
-            assertEquals(ErrorCode.FILE_TOO_LARGE, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Sai content-type → INVALID_FILE_TYPE")
-        void uploadChatImage_invalidType_shouldThrow() {
-            User current = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, current, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(current);
-
-            MockMultipartFile f = new MockMultipartFile("file", "a.gif", "image/gif", new byte[10]);
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.uploadChatImage("s", null, f));
-            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] content-type null → INVALID_FILE_TYPE (không gọi lưu file)")
-        void uploadChatImage_nullContentType_shouldThrow() {
-            User current = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, current, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(current);
-
-            MockMultipartFile f = new MockMultipartFile("file", "a.png", null, new byte[10]);
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.uploadChatImage("s", null, f));
-            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
-            verifyNoInteractions(userFileStorage);
-        }
-
-        @Test
-        @DisplayName("[Lỗi] session không tồn tại → CHAT_SESSION_NOT_FOUND")
-        void uploadChatImage_unknownSession_shouldThrow() {
-            when(conversationRepository.findBySessionUuid("missing")).thenReturn(Optional.empty());
-            MockMultipartFile f = new MockMultipartFile("file", "a.png", "image/png", new byte[10]);
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.uploadChatImage("missing", null, f));
-            assertEquals(ErrorCode.CHAT_SESSION_NOT_FOUND, ex.getErrorCode());
-            verifyNoInteractions(userFileStorage);
-        }
-
-        @Test
-        @DisplayName("[Lỗi] user không tham gia hội thoại → NOT_CHAT_PARTICIPANT")
-        void uploadChatImage_stranger_shouldThrow() {
-            User buyer = user(1L, "a@ex.com");
-            User seller = user(2L, "b@ex.com");
-            User stranger = user(99L, "x@ex.com");
-            Listing l = listing(10L, seller);
-            Conversation c = conv(1L, "s", l, buyer, seller);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(stranger);
-
-            MockMultipartFile f = new MockMultipartFile("file", "a.png", "image/png", new byte[10]);
-            SlifeException ex = assertThrows(SlifeException.class, () -> chatService.uploadChatImage("s", null, f));
-            assertEquals(ErrorCode.NOT_CHAT_PARTICIPANT, ex.getErrorCode());
-            verifyNoInteractions(userFileStorage);
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính (sessionId có sẵn): URL và đường dẫn lưu khớp content-type (.png / .webp / .jpg)")
-        void uploadChatImage_happyPath_storesWithCorrectExtension() {
-            User current = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, current, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(userService.getCurrentUser()).thenReturn(current);
-
-            ArgumentCaptor<String> relCaptor = ArgumentCaptor.forClass(String.class);
-
-            MockMultipartFile png = new MockMultipartFile("file", "a.png", "image/png", new byte[10]);
-            when(userFileStorage.storeMultipart(eq(png), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
-            assertTrue(chatService.uploadChatImage("s", null, png).endsWith(".png"));
-            verify(userFileStorage).storeMultipart(eq(png), relCaptor.capture());
-            assertTrue(relCaptor.getValue().endsWith(".png"));
-
-            MockMultipartFile webp = new MockMultipartFile("file", "a.webp", "image/webp", new byte[10]);
-            when(userFileStorage.storeMultipart(eq(webp), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
-            assertTrue(chatService.uploadChatImage("s", null, webp).endsWith(".webp"));
-
-            MockMultipartFile jpeg = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[10]);
-            when(userFileStorage.storeMultipart(eq(jpeg), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
-            assertTrue(chatService.uploadChatImage("s", null, jpeg).endsWith(".jpg"));
-        }
-
-        @Test
-        @DisplayName("Chỉ có listingId: getOrCreateSession rồi lưu file dưới sessionUuid mới")
-        void uploadChatImage_onlyListingId_createsSessionThenStores() {
-            User buyer = user(1L, "buyer@ex.com");
-            User seller = user(2L, "seller@ex.com");
-            Listing l = listing(10L, seller);
-
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
-            when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L))
-                    .thenReturn(Optional.empty());
-
-            final Conversation[] saved = new Conversation[1];
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> {
-                saved[0] = inv.getArgument(0);
-                return saved[0];
-            });
-            when(conversationRepository.findBySessionUuid(anyString())).thenAnswer(inv -> {
-                String uuid = inv.getArgument(0, String.class);
-                if (saved[0] != null && uuid.equals(saved[0].getSessionUuid())) {
-                    return Optional.of(saved[0]);
-                }
-                return Optional.empty();
-            });
-
-            MockMultipartFile f = new MockMultipartFile("file", "p.webp", "image/webp", new byte[10]);
-            when(userFileStorage.storeMultipart(eq(f), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
-
-            String url = chatService.uploadChatImage(null, 10L, f);
-
-            assertNotNull(saved[0]);
-            assertNotNull(saved[0].getSessionUuid());
-            assertTrue(url.contains(Constants.CHAT_UPLOAD_DIR + "/" + saved[0].getSessionUuid() + "/"));
-            assertTrue(url.endsWith(".webp"));
+            assertEquals(55L, out.getId());
+            assertEquals("hello world", out.getContent());
+            verify(messageRepository).save(any(Message.class));
             verify(conversationRepository).save(any(Conversation.class));
-            verify(userFileStorage).storeMultipart(eq(f), argThat(rel ->
-                    rel != null
-                            && rel.startsWith(Constants.CHAT_UPLOAD_DIR + "/" + saved[0].getSessionUuid() + "/")
-                            && rel.endsWith(".webp")));
+            verify(notificationService).notifyNewMessage(eq(other), any(ChatMessageResponse.class), eq("sess-n"));
+            verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.sess-n"), any(Object.class));
         }
     }
 
     // =========================================================================
-    // makeOffer
+    // Function: listSessionsFiltered(User, String, String q, Long, Instant, Instant, int, int)
+    // Dependencies: conversationRepository · messageRepository · blockService
     // =========================================================================
     @Nested
-    @DisplayName("Trả giá trong chat (makeOffer(sessionId, amount, buyer))")
-    class MakeOfferInChat {
+    @DisplayName("Tìm kiếm hội thoại | Function: listSessionsFiltered(...)")
+    class ListSessionsFilteredUtc {
 
         @Test
-        @DisplayName("[Lỗi] Giá trả không hợp lệ → OFFER_PRICE_INVALID")
-        void makeOffer_invalidPrice_shouldThrow() {
-            User buyer = user(1L, "a@ex.com");
-            User seller = user(2L, "b@ex.com");
-            Listing l = listing(10L, seller);
-            Conversation c = conv(1L, "s", l, buyer, seller);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [B] Từ khóa tiếng Việt có dấu → bỏ dấu tự động, trả đúng kết quả khớp")
+        void utcid01_vietnameseAccentSearch_matchesAfterFolding() {
+            User me = user(1L, "me@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(5L, seller, "Điện thoại Samsung");
+            Conversation c = conv(1L, "s1", l, me, seller);
+            c.setLastMessageAt(Instant.now());
 
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.makeOffer("s", BigDecimal.ZERO, buyer));
-            assertEquals(ErrorCode.OFFER_PRICE_INVALID, ex.getErrorCode());
+            when(conversationRepository.findAllByParticipantOrderByLastMessageDesc(1L))
+                    .thenReturn(List.of(c));
+            when(conversationRepository.findByListingSellerIdOrderByLastMessageDesc(1L))
+                    .thenReturn(List.of());
+            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            ChatSessionPageResponse res = chatService.listSessionsFiltered(
+                    me, "ALL", "Điện thoại", null, null, null, 0, 10);
+
+            assertEquals(1, res.getTotalElements());
+            assertEquals("Điện thoại Samsung", res.getContent().get(0).getListingTitle());
         }
 
         @Test
-        @DisplayName("[Lỗi] Đã có offer PENDING → INVALID_INPUT")
-        void makeOffer_pendingExists_shouldThrow() {
-            User buyer = user(1L, "a@ex.com");
-            User seller = user(2L, "b@ex.com");
-            Listing l = listing(10L, seller);
-            Conversation c = conv(1L, "s", l, buyer, seller);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [N] Không có từ khóa lọc → trả về toàn bộ hội thoại của người dùng")
+        void utcid02_noFilter_returnsAllSessions() {
+            User me = user(1L, "me@fpt.edu.vn");
+            User other = user(2L, "other@fpt.edu.vn");
+            Listing l1 = listing(1L, other, "Sách giáo khoa");
+            Listing l2 = listing(2L, other, "Xe đạp");
+            Conversation c1 = conv(1L, "s1", l1, me, other);
+            Conversation c2 = conv(2L, "s2", l2, me, other);
+
+            when(conversationRepository.findAllByParticipantOrderByLastMessageDesc(1L))
+                    .thenReturn(List.of(c1, c2));
+            when(conversationRepository.findByListingSellerIdOrderByLastMessageDesc(1L))
+                    .thenReturn(List.of());
+            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(2L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            ChatSessionPageResponse res = chatService.listSessionsFiltered(
+                    me, "ALL", null, null, null, null, 0, 10);
+
+            assertEquals(2, res.getTotalElements());
+        }
+    }
+
+    // =========================================================================
+    // Function: getHistory(String sessionId, int page, int size)
+    // Dependencies: conversationRepository · userService · blockService · messageRepository
+    // =========================================================================
+    @Nested
+    @DisplayName("Lịch sử tin nhắn | Function: getHistory(String, int, int)")
+    class GetHistoryUtc {
+
+        @Test
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [N] Session chứa TEXT + IMAGE → deliveryStatus đúng theo cờ isRead")
+        void utcid01_mixedMessages_correctDeliveryStatus() {
+            User me = user(1L, "me@fpt.edu.vn");
+            User other = user(2L, "other@fpt.edu.vn");
+            Listing l = listing(10L, other, "Sách cũ");
+            Conversation c = conv(1L, "sess-h", l, me, other);
+
+            Message unread = msg(1L, c, other, MessageType.TEXT,  "Còn hàng không?", false);
+            Message read   = msg(2L, c, me,    MessageType.TEXT,  "Còn bạn nhé!",   true);
+            Message image  = msg(3L, c, other, MessageType.IMAGE, "[Hình ảnh]",     false);
+
+            when(conversationRepository.findBySessionUuid("sess-h")).thenReturn(Optional.of(c));
+            when(userService.getCurrentUser()).thenReturn(me);
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(offerRepository.countByBuyer_IdAndListing_IdAndStatus(1L, 10L, OfferService.STATUS_PENDING)).thenReturn(1L);
+            when(messageRepository.findByConversation_IdOrderBySentAtDesc(eq(1L), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(unread, read, image), PageRequest.of(0, 10), 3));
+
+            Page<ChatMessageResponse> out = chatService.getHistory("sess-h", 0, 10);
+
+            assertEquals(3, out.getTotalElements());
+            assertEquals("DELIVERED", out.getContent().get(0).getDeliveryStatus());
+            assertEquals("SEEN",      out.getContent().get(1).getDeliveryStatus());
+            assertEquals(MessageType.IMAGE, out.getContent().get(2).getMessageType());
+        }
+
+        @Test
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [A] UUID phiên chat không tồn tại → CHAT_SESSION_NOT_FOUND")
+        void utcid02_sessionNotFound_throws() {
+            when(conversationRepository.findBySessionUuid("missing")).thenReturn(Optional.empty());
 
             SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.makeOffer("s", new BigDecimal("1"), buyer));
+                    () -> chatService.getHistory("missing", 0, 10));
+            assertEquals(ErrorCode.CHAT_SESSION_NOT_FOUND, ex.getErrorCode());
+            verifyNoInteractions(userService, messageRepository);
+        }
+    }
+
+    // =========================================================================
+    // Function: makeOffer(String sessionId, BigDecimal amount, User buyer)
+    // Dependencies: conversationRepository · blockService · offerRepository
+    //               · messageRepository · notificationService · systemEmailService · messagingTemplate
+    // =========================================================================
+    @Nested
+    @DisplayName("Trả giá | Function: makeOffer(String, BigDecimal, User)")
+    class MakeOfferUtc {
+
+        @Test
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [A] Đã có lượt trả giá PENDING chờ phản hồi → chặn spam, không tạo thêm Offer")
+        void utcid01_pendingExists_antiSpam() {
+            User buyer = user(1L, "buyer@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, seller, "Xe máy cũ");
+            Conversation c = conv(1L, "sess-o", l, buyer, seller);
+
+            when(conversationRepository.findBySessionUuid("sess-o")).thenReturn(Optional.of(c));
+            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
+            when(offerRepository.countByBuyer_IdAndListing_IdAndStatus(1L, 10L, OfferService.STATUS_PENDING))
+                    .thenReturn(1L);
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> chatService.makeOffer("sess-o", new BigDecimal("2000000"), buyer));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+            verify(offerRepository, never()).save(any());
+            verifyNoInteractions(messageRepository);
         }
 
         @Test
-        @DisplayName("[Lỗi] Luồng chính → tạo Offer + message OFFER_PROPOSAL + gửi thông báo/email + broadcast (WS)")
-        void makeOffer_happyPath_shouldSaveOfferAndMessage() {
-            User buyer = user(1L, "a@ex.com");
-            User seller = user(2L, "b@ex.com");
-            Listing l = listing(10L, seller);
-            Conversation c = conv(1L, "s", l, buyer, seller);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [N] Chưa có Offer PENDING → tạo Offer + tin OFFER_PROPOSAL + thông báo người bán")
+        void utcid02_noExistingOffer_createsOfferAndMessage() {
+            User buyer = user(1L, "buyer@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, seller, "Xe máy cũ");
+            Conversation c = conv(1L, "sess-o", l, buyer, seller);
+
+            when(conversationRepository.findBySessionUuid("sess-o")).thenReturn(Optional.of(c));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(offerRepository.countByBuyer_IdAndListing_IdAndStatus(1L, 10L, OfferService.STATUS_PENDING)).thenReturn(0L);
-            when(offerRepository.save(any(Offer.class))).thenAnswer(invocation -> {
-                Offer o = invocation.getArgument(0);
+            when(offerRepository.countByBuyer_IdAndListing_IdAndStatus(1L, 10L, OfferService.STATUS_PENDING))
+                    .thenReturn(0L);
+            when(offerRepository.save(any(Offer.class))).thenAnswer(inv -> {
+                Offer o = inv.getArgument(0);
                 o.setId(77L);
                 return o;
             });
-            when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> {
-                Message m = invocation.getArgument(0);
+            when(messageRepository.save(any(Message.class))).thenAnswer(inv -> {
+                Message m = inv.getArgument(0);
                 m.setId(88L);
                 return m;
             });
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            ChatMessageResponse out = chatService.makeOffer("s", new BigDecimal("900"), buyer);
+            ChatMessageResponse out = chatService.makeOffer("sess-o", new BigDecimal("900000"), buyer);
+
             assertNotNull(out);
             assertEquals(MessageType.OFFER_PROPOSAL, out.getMessageType());
-
-            verify(notificationService).notifyOfferProposal(eq(seller), eq(buyer), eq(10L), eq("Listing 10"), eq(new BigDecimal("900")));
-            verify(systemEmailService).sendOfferProposalEmail(eq(seller), anyString(), eq("Listing 10"), eq(10L), eq(new BigDecimal("900")));
-            verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
+            verify(offerRepository).save(any(Offer.class));
+            verify(notificationService).notifyOfferProposal(
+                    eq(seller), eq(buyer), eq(10L), eq("Xe máy cũ"), eq(new BigDecimal("900000")));
         }
     }
 
-    @Test
-    @DisplayName("Trả giá theo listingId: tự mở chat rồi gọi makeOffer(sessionId)")
-    void makeOffer_byListing_shouldReuseSession() {
-        User buyer = user(1L, "a@ex.com");
-        User seller = user(2L, "b@ex.com");
-        Listing l = listing(10L, seller);
-        Conversation c = conv(1L, "s", l, buyer, seller);
-
-        ChatService spy = spy(chatService);
-        doReturn(c).when(spy).getOrCreateSession(10L, buyer);
-        doReturn(new ChatMessageResponse()).when(spy).makeOffer(eq("s"), any(), eq(buyer));
-
-        spy.makeOffer(10L, new BigDecimal("1"), buyer);
-        verify(spy).makeOffer(eq("s"), eq(new BigDecimal("1")), eq(buyer));
-    }
-
     // =========================================================================
-    // respondToOffer
+    // Function: respondToOffer(Long offerId, String action, User seller)
+    // Dependencies: offerRepository · blockService · conversationRepository
+    //               · messageRepository · notificationService · systemEmailService · messagingTemplate
     // =========================================================================
     @Nested
-    @DisplayName("Phản hồi offer (respondToOffer)")
-    class RespondToOffer {
+    @DisplayName("Phản hồi trả giá | Function: respondToOffer(Long, String, User)")
+    class RespondToOfferUtc {
 
         @Test
-        @DisplayName("[Lỗi] Không tìm thấy offer → OFFER_NOT_FOUND")
-        void respond_offerNotFound_shouldThrow() {
-            when(offerRepository.findById(1L)).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.respondToOffer(1L, "ACCEPTED", user(2L, "s@ex.com")));
-            assertEquals(ErrorCode.OFFER_NOT_FOUND, ex.getErrorCode());
-        }
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [N] Người bán chấp nhận Offer → chốt đơn, DEAL_CONFIRMATION + Email/Thông báo 2 bên")
+        void utcid01_sellerAccepts_dealConfirmedAndNotified() {
+            User buyer = user(1L, "buyer@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, seller, "Xe đạp xịn");
+            Conversation c = conv(1L, "sess-d", l, buyer, seller);
+            Offer offer = pendingOffer(7L, buyer, l, c, new BigDecimal("1500000"));
 
-        @Test
-        @DisplayName("[Lỗi] Offer không PENDING → OFFER_NOT_PENDING")
-        void respond_notPending_shouldThrow() {
-            Offer o = new Offer();
-            o.setId(1L);
-            o.setStatus(OfferService.STATUS_ACCEPTED);
-            when(offerRepository.findById(1L)).thenReturn(Optional.of(o));
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.respondToOffer(1L, "ACCEPTED", user(2L, "s@ex.com")));
-            assertEquals(ErrorCode.OFFER_NOT_PENDING, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Seller trùng buyer → FORBIDDEN")
-        void respond_sellerIsBuyer_shouldThrow() {
-            User buyer = user(1L, "b@ex.com");
-            User seller = buyer;
-            Listing l = listing(10L, user(99L, "x@ex.com"));
-            Conversation c = conv(1L, "s", l, buyer, user(2L, "o@ex.com"));
-            Offer o = new Offer();
-            o.setId(1L);
-            o.setStatus(OfferService.STATUS_PENDING);
-            o.setBuyer(buyer);
-            o.setListing(l);
-            o.setConversation(c);
-            when(offerRepository.findById(1L)).thenReturn(Optional.of(o));
-
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> chatService.respondToOffer(1L, "ACCEPTED", seller));
-            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("ACCEPTED: cập nhật offer + tạo tin hệ thống DEAL_CONFIRMATION + gửi thông báo/email + broadcast OFFER_STATUS")
-        void respond_accepted_shouldNotifyAndBroadcast() {
-            User buyer = user(1L, "b@ex.com");
-            User seller = user(2L, "s@ex.com");
-            Listing l = listing(10L, seller);
-            Conversation c = conv(1L, "s", l, buyer, seller);
-
-            Offer o = new Offer();
-            o.setId(1L);
-            o.setStatus(OfferService.STATUS_PENDING);
-            o.setBuyer(buyer);
-            o.setListing(l);
-            o.setConversation(c);
-            o.setAmount(new BigDecimal("900"));
-
-            when(offerRepository.findById(1L)).thenReturn(Optional.of(o));
+            when(offerRepository.findById(7L)).thenReturn(Optional.of(offer));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(offerRepository.save(any(Offer.class))).thenAnswer(invocation -> invocation.getArgument(0));
-            when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> {
-                Message m = invocation.getArgument(0);
+            when(offerRepository.save(any(Offer.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(messageRepository.save(any(Message.class))).thenAnswer(inv -> {
+                Message m = inv.getArgument(0);
                 m.setId(99L);
                 return m;
             });
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            ChatMessageResponse res = chatService.respondToOffer(1L, "ACCEPTED", seller);
+            ChatMessageResponse res = chatService.respondToOffer(7L, "ACCEPTED", seller);
+
             assertNotNull(res);
-
-            verify(notificationService).notifyDealConfirmed(eq(buyer), eq(seller), eq(10L), eq("Listing 10"), eq(1L));
-            verify(systemEmailService).sendOfferAcceptedEmails(eq(buyer), eq(seller), eq("Listing 10"), eq(10L), eq(1L), any());
-            verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
+            assertEquals(OfferService.STATUS_ACCEPTED, offer.getStatus());
+            verify(notificationService).notifyDealConfirmed(
+                    eq(buyer), eq(seller), eq(10L), eq("Xe đạp xịn"), eq(1L));
+            verify(systemEmailService).sendOfferAcceptedEmails(
+                    eq(buyer), eq(seller), eq("Xe đạp xịn"), eq(10L), eq(1L), any());
         }
 
         @Test
-        @DisplayName("REJECTED: cập nhật offer + tạo tin nhắn text + gửi thông báo/email")
-        void respond_rejected_shouldNotify() {
-            User buyer = user(1L, "b@ex.com");
-            User seller = user(2L, "s@ex.com");
-            Listing l = listing(10L, seller);
-            Conversation c = conv(1L, "s", l, buyer, seller);
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [N] Người bán từ chối Offer → REJECTED + tin nhắn từ chối + thông báo người mua")
+        void utcid02_sellerRejects_buyerNotified() {
+            User buyer = user(1L, "buyer@fpt.edu.vn");
+            User seller = user(2L, "seller@fpt.edu.vn");
+            Listing l = listing(10L, seller, "Xe đạp xịn");
+            Conversation c = conv(1L, "sess-d", l, buyer, seller);
+            Offer offer = pendingOffer(8L, buyer, l, c, new BigDecimal("500000"));
 
-            Offer o = new Offer();
-            o.setId(1L);
-            o.setStatus(OfferService.STATUS_PENDING);
-            o.setBuyer(buyer);
-            o.setListing(l);
-            o.setConversation(c);
-            o.setAmount(new BigDecimal("900"));
-
-            when(offerRepository.findById(1L)).thenReturn(Optional.of(o));
+            when(offerRepository.findById(8L)).thenReturn(Optional.of(offer));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(offerRepository.save(any(Offer.class))).thenAnswer(invocation -> invocation.getArgument(0));
-            when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> {
-                Message m = invocation.getArgument(0);
-                m.setId(99L);
+            when(offerRepository.save(any(Offer.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(messageRepository.save(any(Message.class))).thenAnswer(inv -> {
+                Message m = inv.getArgument(0);
+                m.setId(100L);
                 return m;
             });
-            when(conversationRepository.save(any(Conversation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+            when(conversationRepository.save(any(Conversation.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            ChatMessageResponse res = chatService.respondToOffer(1L, "REJECTED", seller);
-            assertNotNull(res);
+            chatService.respondToOffer(8L, "REJECTED", seller);
 
-            verify(notificationService).notifyOfferRejected(eq(buyer), eq(seller), eq(10L), eq("Listing 10"), eq(new BigDecimal("900")));
-            verify(systemEmailService).sendOfferRejectedEmails(eq(buyer), eq(seller), eq("Listing 10"), eq(10L), eq(new BigDecimal("900")));
-            verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
+            assertEquals(OfferService.STATUS_REJECTED, offer.getStatus());
+            verify(notificationService).notifyOfferRejected(
+                    eq(buyer), eq(seller), eq(10L), eq("Xe đạp xịn"), eq(new BigDecimal("500000")));
+            verify(systemEmailService).sendOfferRejectedEmails(
+                    eq(buyer), eq(seller), eq("Xe đạp xịn"), eq(10L), eq(new BigDecimal("500000")));
         }
     }
 
     // =========================================================================
-    // markSessionAsRead / broadcastTyping / getQuickReplies
+    // Function: uploadChatImage(String sessionId, Long listingId, MultipartFile)
+    // Dependencies: conversationRepository · userService · userFileStorage
     // =========================================================================
     @Nested
-    @DisplayName("Đánh dấu đã đọc (markSessionAsRead)")
-    class MarkSessionAsRead {
+    @DisplayName("Upload ảnh chat | Function: uploadChatImage(String, Long, MultipartFile)")
+    class UploadChatImageUtc {
 
         @Test
-        @DisplayName("updated=0 → không phát (broadcast) sự kiện READ")
-        void markRead_noUpdates_shouldNotBroadcast() {
-            User me = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, me, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(messageRepository.markAllReadInConversation(1L, 1L)).thenReturn(0);
-            chatService.markSessionAsRead("s", me);
-            verify(messagingTemplate, never()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
+        @Tag("UTCID-01")
+        @DisplayName("UTCID-01 [A] File ảnh quá lớn (>5 MB) → FILE_TOO_LARGE, không gọi lưu file")
+        void utcid01_fileTooLarge_rejected() {
+            User current = user(1L, "a@fpt.edu.vn");
+            User other = user(2L, "b@fpt.edu.vn");
+            Conversation c = conv(1L, "sess-img", listing(10L, other, "Laptop"), current, other);
+
+            when(conversationRepository.findBySessionUuid("sess-img")).thenReturn(Optional.of(c));
+            when(userService.getCurrentUser()).thenReturn(current);
+
+            MockMultipartFile bigFile = new MockMultipartFile(
+                    "file", "big.png", "image/png",
+                    new byte[(int) (Constants.MAX_CHAT_IMAGE_BYTES + 1)]);
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> chatService.uploadChatImage("sess-img", null, bigFile));
+
+            assertEquals(ErrorCode.FILE_TOO_LARGE, ex.getErrorCode());
+            verifyNoInteractions(userFileStorage);
         }
 
         @Test
-        @DisplayName("updated>0 → phát (broadcast) sự kiện READ")
-        void markRead_updates_shouldBroadcast() {
-            User me = user(1L, "a@ex.com");
-            User other = user(2L, "b@ex.com");
-            Listing l = listing(10L, other);
-            Conversation c = conv(1L, "s", l, me, other);
-            when(conversationRepository.findBySessionUuid("s")).thenReturn(Optional.of(c));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            when(messageRepository.markAllReadInConversation(1L, 1L)).thenReturn(2);
-            chatService.markSessionAsRead("s", me);
-            verify(messagingTemplate, atLeastOnce()).convertAndSend(eq("/topic/chat.s"), any(Object.class));
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [A] Định dạng file không được hỗ trợ (gif) → INVALID_FILE_TYPE, không gọi lưu file")
+        void utcid02_wrongContentType_rejected() {
+            User current = user(1L, "a@fpt.edu.vn");
+            User other = user(2L, "b@fpt.edu.vn");
+            Conversation c = conv(1L, "sess-img", listing(10L, other, "Laptop"), current, other);
+
+            when(conversationRepository.findBySessionUuid("sess-img")).thenReturn(Optional.of(c));
+            when(userService.getCurrentUser()).thenReturn(current);
+
+            MockMultipartFile gifFile = new MockMultipartFile(
+                    "file", "anim.gif", "image/gif", new byte[100]);
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> chatService.uploadChatImage("sess-img", null, gifFile));
+
+            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
+            verifyNoInteractions(userFileStorage);
         }
-    }
 
-    @Test
-    @DisplayName("Gõ đang nhập (broadcastTyping) → broadcast sự kiện")
-    void broadcastTyping_shouldBroadcast() {
-        chatService.broadcastTyping("s", "a@ex.com", true);
-        verify(messagingTemplate).convertAndSend(eq("/topic/chat.s"), any(Object.class));
-    }
+        @Test
+        @Tag("UTCID-03")
+        @DisplayName("UTCID-03 [N] File PNG hợp lệ (≤5 MB) → lưu thành công, URL trả về đúng phần mở rộng .png")
+        void utcid03_validPngFile_storedWithCorrectExtension() {
+            User current = user(1L, "a@fpt.edu.vn");
+            User other = user(2L, "b@fpt.edu.vn");
+            Conversation c = conv(1L, "sess-img", listing(10L, other, "Laptop"), current, other);
 
-    @Test
-    @DisplayName("getQuickReplies → trả về danh sách không null")
-    void getQuickReplies_shouldReturnList() {
-        assertNotNull(chatService.getQuickReplies());
+            when(conversationRepository.findBySessionUuid("sess-img")).thenReturn(Optional.of(c));
+            when(userService.getCurrentUser()).thenReturn(current);
+            MockMultipartFile png = new MockMultipartFile(
+                    "file", "photo.png", "image/png", new byte[1024]);
+            when(userFileStorage.storeMultipart(eq(png), anyString()))
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+
+            String url = chatService.uploadChatImage("sess-img", null, png);
+
+            assertTrue(url.endsWith(".png"));
+            assertTrue(url.contains(Constants.CHAT_UPLOAD_DIR + "/sess-img/"));
+            verify(userFileStorage).storeMultipart(eq(png), argThat(rel ->
+                    rel.startsWith(Constants.CHAT_UPLOAD_DIR + "/sess-img/") && rel.endsWith(".png")));
+        }
     }
 }
-

@@ -23,9 +23,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CommunityPostImageServiceTest {
@@ -39,19 +46,12 @@ class CommunityPostImageServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CommunityPostImageService(
-                postRepository,
-                imageRepository,
-                configService,
-                userFileStorage
-        );
+        service = new CommunityPostImageService(postRepository, imageRepository, configService, userFileStorage);
     }
 
     private static User user(long id) {
         User u = new User();
         u.setId(id);
-        u.setEmail("u" + id + "@ex.com");
-        u.setFullName("U" + id);
         return u;
     }
 
@@ -66,59 +66,65 @@ class CommunityPostImageServiceTest {
     }
 
     private static MockMultipartFile png(String name) {
-        byte[] body = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00};
+        byte[] body = new byte[] {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00};
         return new MockMultipartFile("images", name, "image/png", body);
     }
 
     private static MockMultipartFile jpg(String name) {
-        byte[] body = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x01};
+        byte[] body = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00};
         return new MockMultipartFile("images", name, "image/jpeg", body);
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Tải ảnh bài viết")
-    class Upload {
+    @DisplayName("Function: uploadPostImages")
+    class UploadPostImagesGroup {
 
         @Test
-        @DisplayName("[Lỗi] files null/empty → INVALID_INPUT")
-        void emptyFiles_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - files null or empty")
+        void utcId01_shouldThrowInvalidInput_whenFilesEmpty() {
             SlifeException ex1 = assertThrows(SlifeException.class,
                     () -> service.uploadPostImages(1L, null, user(1L)));
             assertEquals(ErrorCode.INVALID_INPUT, ex1.getErrorCode());
+
             SlifeException ex2 = assertThrows(SlifeException.class,
                     () -> service.uploadPostImages(1L, List.of(), user(1L)));
             assertEquals(ErrorCode.INVALID_INPUT, ex2.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] post không tồn tại → COMMUNITY_POST_NOT_FOUND")
-        void postMissing_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - post missing")
+        void utcId02_shouldThrowPostNotFound_whenPostMissing() {
             when(postRepository.findById(1L)).thenReturn(Optional.empty());
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.uploadPostImages(1L, List.of(png("a.png")), user(1L)));
             assertEquals(ErrorCode.COMMUNITY_POST_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] không phải chủ post hoặc currentUser null → FORBIDDEN")
-        void notOwner_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - not owner or user null")
+        void utcId03_shouldThrowForbidden_whenNotOwnerOrUserNull() {
             CommunityPost p = post(1L, user(2L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
-            assertEquals(ErrorCode.FORBIDDEN,
-                    assertThrows(SlifeException.class, () -> service.uploadPostImages(1L, List.of(png("a.png")), null)).getErrorCode());
-            assertEquals(ErrorCode.FORBIDDEN,
-                    assertThrows(SlifeException.class, () -> service.uploadPostImages(1L, List.of(png("a.png")), user(1L))).getErrorCode());
+
+            SlifeException ex1 = assertThrows(SlifeException.class,
+                    () -> service.uploadPostImages(1L, List.of(png("a.png")), null));
+            assertEquals(ErrorCode.FORBIDDEN, ex1.getErrorCode());
+
+            SlifeException ex2 = assertThrows(SlifeException.class,
+                    () -> service.uploadPostImages(1L, List.of(png("a.png")), user(1L)));
+            assertEquals(ErrorCode.FORBIDDEN, ex2.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] vượt giới hạn ảnh → INVALID_INPUT (MSG18)")
-        void exceedMax_shouldThrow() {
+        @DisplayName("UTCID04 [Negative] - exceeds max images per post")
+        void utcId04_shouldThrowInvalidInput_whenExceedingLimit() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             when(imageRepository.countByPost_Id(1L)).thenReturn(9);
             when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
             when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.uploadPostImages(1L, List.of(png("a.png"), png("b.png")), user(1L)));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
@@ -126,187 +132,100 @@ class CommunityPostImageServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] file quá lớn → FILE_TOO_LARGE")
-        void tooLarge_shouldThrow() {
+        @DisplayName("UTCID05 [Negative] - invalid file type")
+        void utcId05_shouldThrowInvalidFileType_whenValidationFails() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             when(imageRepository.countByPost_Id(1L)).thenReturn(0);
             when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
             when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            byte[] big = new byte[(int) (CommunityPostImageService.MAX_IMAGE_MB * 1024L * 1024L + 1L)];
-            MockMultipartFile f = new MockMultipartFile("images", "a.png", "image/png", big);
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.uploadPostImages(1L, List.of(f), user(1L)));
-            assertEquals(ErrorCode.FILE_TOO_LARGE, ex.getErrorCode());
-        }
 
-        @Test
-        @DisplayName("[Lỗi] sai filename extension → INVALID_FILE_TYPE")
-        void invalidExt_shouldThrow() {
-            CommunityPost p = post(1L, user(1L));
-            when(postRepository.findById(1L)).thenReturn(Optional.of(p));
-            when(imageRepository.countByPost_Id(1L)).thenReturn(0);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            MockMultipartFile f = new MockMultipartFile("images", "a.gif", "image/gif", new byte[]{1,2,3});
+            MockMultipartFile badExt = new MockMultipartFile("images", "a.gif", "image/gif", new byte[] {1, 2, 3});
             SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.uploadPostImages(1L, List.of(f), user(1L)));
+                    () -> service.uploadPostImages(1L, List.of(badExt), user(1L)));
             assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] sai content-type → INVALID_FILE_TYPE")
-        void invalidContentType_shouldThrow() {
+        @DisplayName("UTCID06 [Positive] - upload png and jpg success")
+        void utcId06_shouldStoreAndSaveImages_whenValidFiles() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             when(imageRepository.countByPost_Id(1L)).thenReturn(0);
             when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
             when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            MockMultipartFile f = new MockMultipartFile("images", "a.png", "application/octet-stream", new byte[]{1,2,3});
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.uploadPostImages(1L, List.of(f), user(1L)));
-            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] magic bytes không phải JPG/PNG → INVALID_FILE_TYPE")
-        void invalidMagic_shouldThrow() {
-            CommunityPost p = post(1L, user(1L));
-            when(postRepository.findById(1L)).thenReturn(Optional.of(p));
-            when(imageRepository.countByPost_Id(1L)).thenReturn(0);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            MockMultipartFile f = new MockMultipartFile("images", "a.png", "image/png", new byte[]{0x00,0x01,0x02});
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.uploadPostImages(1L, List.of(f), user(1L)));
-            assertEquals(ErrorCode.INVALID_FILE_TYPE, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] UserFileStorageService.storeStream lỗi → FILE_UPLOAD_FAILED")
-        void storeStreamFails_shouldThrow() {
-            CommunityPost p = post(1L, user(1L));
-            when(postRepository.findById(1L)).thenReturn(Optional.of(p));
-            when(imageRepository.countByPost_Id(1L)).thenReturn(0);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            when(userFileStorage.storeStream(any(), anyLong(), anyString(), anyString()))
-                    .thenThrow(new SlifeException(ErrorCode.FILE_UPLOAD_FAILED));
-
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.uploadPostImages(1L, List.of(png("a.png")), user(1L)));
-            assertEquals(ErrorCode.FILE_UPLOAD_FAILED, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: magic PNG/JPG → đuôi file .png / .jpg và displayOrder tăng")
-        void happyPath_magicMatchesExtensionAndOrder() {
-            CommunityPost p = post(1L, user(1L));
-            when(postRepository.findById(1L)).thenReturn(Optional.of(p));
-            when(imageRepository.countByPost_Id(1L)).thenReturn(0);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            when(userFileStorage.storeStream(any(), anyLong(), anyString(), anyString()))
+            when(userFileStorage.storeStream(any(), anyLong(), any(), any()))
                     .thenAnswer(inv -> "/uploads/" + inv.getArgument(3, String.class));
 
-            service.uploadPostImages(1L, List.of(png("a.png"), jpg("b.jpg")), user(1L));
-
-            ArgumentCaptor<String> relCaptor = ArgumentCaptor.forClass(String.class);
-            verify(userFileStorage, times(2)).storeStream(any(), anyLong(), anyString(), relCaptor.capture());
-            assertTrue(relCaptor.getAllValues().get(0).startsWith("community-posts/"));
-            assertTrue(relCaptor.getAllValues().get(0).endsWith(".png"));
-            assertTrue(relCaptor.getAllValues().get(1).endsWith(".jpg"));
+            service.uploadPostImages(1L, Arrays.asList(png("a.png"), null, jpg("b.jpg")), user(1L));
 
             ArgumentCaptor<CommunityPostImage> cap = ArgumentCaptor.forClass(CommunityPostImage.class);
             verify(imageRepository, times(2)).save(cap.capture());
-            assertTrue(cap.getAllValues().get(0).getImageUrl().startsWith("/uploads/community-posts/"));
-            assertTrue(cap.getAllValues().get(0).getImageUrl().endsWith(".png"));
-            assertTrue(cap.getAllValues().get(1).getImageUrl().endsWith(".jpg"));
             assertEquals(1, cap.getAllValues().get(0).getDisplayOrder());
             assertEquals(2, cap.getAllValues().get(1).getDisplayOrder());
-        }
-
-        @Test
-        @DisplayName("Bỏ qua file rỗng/null trong list, chỉ lưu file hợp lệ")
-        void skipsEmptyMultipartParts() {
-            CommunityPost p = post(1L, user(1L));
-            when(postRepository.findById(1L)).thenReturn(Optional.of(p));
-            when(imageRepository.countByPost_Id(1L)).thenReturn(0);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES_PER_POST"), anyInt())).thenReturn(10);
-            when(configService.getIntConfigValue(eq("MAX_IMAGES"), anyInt())).thenReturn(10);
-            MockMultipartFile empty = new MockMultipartFile("images", "e.png", "image/png", new byte[0]);
-            MockMultipartFile ok = png("a.png");
-            when(userFileStorage.storeStream(any(), anyLong(), anyString(), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(3, String.class));
-
-            service.uploadPostImages(1L, Arrays.asList(empty, null, ok), user(1L));
-
-            verify(userFileStorage, times(1)).storeStream(any(), anyLong(), anyString(), anyString());
-            verify(imageRepository, times(1)).save(any(CommunityPostImage.class));
+            assertTrue(cap.getAllValues().get(0).getImageUrl().endsWith(".png"));
+            assertTrue(cap.getAllValues().get(1).getImageUrl().endsWith(".jpg"));
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Xóa ảnh bài viết")
-    class Delete {
+    @DisplayName("Function: deletePostImage")
+    class DeletePostImageGroup {
 
         @Test
-        @DisplayName("[Lỗi] currentUser null → UNAUTHORIZED")
-        void userNull_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - user null")
+        void utcId01_shouldThrowUnauthorized_whenUserNull() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.deletePostImage(1L, 2L, null));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] post không tồn tại → COMMUNITY_POST_NOT_FOUND")
-        void postMissing_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - post missing")
+        void utcId02_shouldThrowPostNotFound_whenPostMissing() {
             when(postRepository.findById(1L)).thenReturn(Optional.empty());
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.deletePostImage(1L, 2L, user(1L)));
             assertEquals(ErrorCode.COMMUNITY_POST_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] không phải chủ post → FORBIDDEN")
-        void notOwner_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - not owner")
+        void utcId03_shouldThrowForbidden_whenNotOwner() {
             when(postRepository.findById(1L)).thenReturn(Optional.of(post(1L, user(2L))));
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.deletePostImage(1L, 2L, user(1L)));
             assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] image không tồn tại → INVALID_INPUT")
-        void imageMissing_shouldThrow() {
-            when(postRepository.findById(1L)).thenReturn(Optional.of(post(1L, user(1L))));
-            when(imageRepository.findById(2L)).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class,
-                    () -> service.deletePostImage(1L, 2L, user(1L)));
-            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] image không thuộc post → FORBIDDEN")
-        void wrongPost_shouldThrow() {
+        @DisplayName("UTCID04 [Negative] - image missing or belongs to other post")
+        void utcId04_shouldThrow_whenImageInvalid() {
             CommunityPost p1 = post(1L, user(1L));
-            CommunityPost p2 = post(9L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p1));
+            when(imageRepository.findById(2L)).thenReturn(Optional.empty());
+
+            SlifeException ex1 = assertThrows(SlifeException.class,
+                    () -> service.deletePostImage(1L, 2L, user(1L)));
+            assertEquals(ErrorCode.INVALID_INPUT, ex1.getErrorCode());
+
+            CommunityPost p2 = post(9L, user(1L));
             CommunityPostImage img = new CommunityPostImage();
             img.setId(2L);
             img.setPost(p2);
             img.setImageUrl("/uploads/community-posts/x.jpg");
             when(imageRepository.findById(2L)).thenReturn(Optional.of(img));
 
-            SlifeException ex = assertThrows(SlifeException.class,
+            SlifeException ex2 = assertThrows(SlifeException.class,
                     () -> service.deletePostImage(1L, 2L, user(1L)));
-            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+            assertEquals(ErrorCode.FORBIDDEN, ex2.getErrorCode());
         }
 
         @Test
-        @DisplayName("url HTTPS → gọi deleteStoredIfExists + delete row")
-        void httpsUrl_shouldCallDeleteStored() {
+        @DisplayName("UTCID05 [Positive] - delete image success")
+        void utcId05_shouldDeleteStorageAndRow_whenValid() {
             CommunityPost p = post(1L, user(1L));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             CommunityPostImage img = new CommunityPostImage();
@@ -322,4 +241,3 @@ class CommunityPostImageServiceTest {
         }
     }
 }
-

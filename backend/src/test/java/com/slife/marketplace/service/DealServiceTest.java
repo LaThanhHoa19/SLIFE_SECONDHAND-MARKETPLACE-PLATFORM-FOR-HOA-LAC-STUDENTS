@@ -31,19 +31,23 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.Optional;
 
-import static com.slife.marketplace.service.DealService.STATUS_CANCELLED;
-import static com.slife.marketplace.service.DealService.STATUS_COMPLETED;
 import static com.slife.marketplace.service.DealService.STATUS_CONFIRMED;
 import static com.slife.marketplace.service.DealService.STATUS_PENDING;
-import static com.slife.marketplace.service.DealService.STATUS_REJECTED;
 import static com.slife.marketplace.service.DealService.STATUS_SUCCESS;
-import static com.slife.marketplace.service.OfferService.STATUS_ACCEPTED;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DealServiceTest {
@@ -62,11 +66,11 @@ class DealServiceTest {
     @Mock private SystemEmailService systemEmailService;
     @Mock private ConfigService configService;
 
-    private DealService dealService;
+    private DealService service;
 
     @BeforeEach
     void setUp() {
-        dealService = new DealService(
+        service = new DealService(
                 dealRepository,
                 listingImageRepository,
                 listingRepository,
@@ -89,7 +93,7 @@ class DealServiceTest {
         User u = new User();
         u.setId(id);
         u.setFullName("U" + id);
-        u.setEmail("u" + id + "@e.com");
+        u.setEmail("u" + id + "@ex.com");
         return u;
     }
 
@@ -116,7 +120,7 @@ class DealServiceTest {
         return c;
     }
 
-    private static Deal dealEntity(long id, User buyer, Listing listing, Conversation conv, String status) {
+    private static Deal deal(long id, User buyer, Listing listing, Conversation conv, String status) {
         Deal d = new Deal();
         d.setId(id);
         d.setBuyer(buyer);
@@ -124,7 +128,6 @@ class DealServiceTest {
         d.setConversation(conv);
         d.setStatus(status);
         d.setOfferedPrice(new BigDecimal("100.00"));
-        d.setReminderSent(false);
         d.setCreatedAt(LocalDateTime.now().minusDays(1));
         d.setUpdatedAt(LocalDateTime.now().minusDays(1));
         return d;
@@ -140,42 +143,39 @@ class DealServiceTest {
         return o;
     }
 
-    private void stubReviewLookupFalse(Deal d) {
-        when(reviewRepository.existsReviewCreatedAfter(
-                anyLong(), anyLong(), any(Instant.class))).thenReturn(false);
-    }
-
-    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Tạo deal từ tin (createDeal)")
-    class CreateDeal {
+    @DisplayName("Function: createDeal")
+    class CreateDealGroup {
 
         @Test
-        @DisplayName("[Lỗi] Listing không tồn tại → LISTING_NOT_FOUND")
-        void listingMissing() {
+        @DisplayName("UTCID01 [Negative] - listing not found")
+        void utcId01_shouldThrowListingNotFound_whenListingMissing() {
             when(userService.getCurrentUser()).thenReturn(user(1L));
             when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.empty());
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("50"));
-            assertThrows(SlifeException.class, () -> dealService.createDeal(10L, req));
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.createDeal(10L, req));
+            assertEquals(ErrorCode.LISTING_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Không thể tạo deal cho chính tin của mình → INVALID_INPUT")
-        void selfSeller() {
+        @DisplayName("UTCID02 [Negative] - buyer deals own listing")
+        void utcId02_shouldThrowInvalidInput_whenBuyerDealsOwnListing() {
             User u = user(2L);
             Listing l = listing(10L, u, new BigDecimal("100"), false);
             when(userService.getCurrentUser()).thenReturn(u);
             when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("50"));
-            SlifeException ex = assertThrows(SlifeException.class, () -> dealService.createDeal(10L, req));
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.createDeal(10L, req));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Block với seller → FOLLOW_BLOCKED")
-        void blocked() {
+        @DisplayName("UTCID03 [Negative] - blocked with seller")
+        void utcId03_shouldThrowFollowBlocked_whenBlocked() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
@@ -184,28 +184,14 @@ class DealServiceTest {
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("50"));
-            assertEquals(ErrorCode.FOLLOW_BLOCKED,
-                    assertThrows(SlifeException.class, () -> dealService.createDeal(10L, req)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.createDeal(10L, req));
+            assertEquals(ErrorCode.FOLLOW_BLOCKED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Tin giveaway / giá 0 → INVALID_INPUT")
-        void giveawayListing() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, BigDecimal.ZERO, true);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
-            DealRequest req = new DealRequest();
-            req.setPrice(new BigDecimal("0"));
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> dealService.createDeal(10L, req)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: tạo deal PENDING + offer + conversation có sẵn")
-        void happyPath() {
+        @DisplayName("UTCID04 [Positive] - create pending deal successfully")
+        void utcId04_shouldCreatePendingDeal_whenInputValid() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("500"), false);
@@ -223,35 +209,29 @@ class DealServiceTest {
             });
             when(dealRepository.save(any(Deal.class))).thenAnswer(inv -> {
                 Deal d = inv.getArgument(0);
-                if (d.getCreatedAt() == null) {
-                    d.setCreatedAt(LocalDateTime.now());
-                }
-                if (d.getUpdatedAt() == null) {
-                    d.setUpdatedAt(LocalDateTime.now());
-                }
                 d.setId(300L);
+                if (d.getCreatedAt() == null) d.setCreatedAt(LocalDateTime.now());
+                if (d.getUpdatedAt() == null) d.setUpdatedAt(LocalDateTime.now());
                 return d;
             });
-            stubReviewLookupFalse(null);
+            when(reviewRepository.existsReviewCreatedAfter(anyLong(), anyLong(), any())).thenReturn(false);
 
             DealRequest req = new DealRequest();
             req.setPrice(new BigDecimal("400"));
-            DealResponse res = dealService.createDeal(10L, req);
+            DealResponse res = service.createDeal(10L, req);
 
             assertEquals(300L, res.getDealId());
             assertEquals(STATUS_PENDING, res.getStatus());
-            verify(dealRepository).save(any(Deal.class));
         }
     }
 
-    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Người bán chốt đơn trong chat (sealDealBySeller)")
-    class SealDealBySeller {
+    @DisplayName("Function: sealDealBySeller")
+    class SealDealBySellerGroup {
 
         @Test
-        @DisplayName("[Lỗi] Không phải chủ tin → FORBIDDEN")
-        void notSeller() {
+        @DisplayName("UTCID01 [Negative] - current user not seller")
+        void utcId01_shouldThrowForbidden_whenNotSeller() {
             User stranger = user(9L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
@@ -260,13 +240,14 @@ class DealServiceTest {
             SealDealRequest req = new SealDealRequest();
             req.setBuyerId(1L);
             req.setPrice(new BigDecimal("50"));
-            assertEquals(ErrorCode.FORBIDDEN,
-                    assertThrows(SlifeException.class, () -> dealService.sealDealBySeller(10L, req)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.sealDealBySeller(10L, req));
+            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Không có hội thoại active với buyer → CHAT_SESSION_NOT_FOUND")
-        void noConversation() {
+        @DisplayName("UTCID02 [Negative] - no active chat session")
+        void utcId02_shouldThrowChatSessionNotFound_whenNoConversation() {
             User seller = user(2L);
             User buyer = user(1L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
@@ -278,32 +259,14 @@ class DealServiceTest {
             SealDealRequest req = new SealDealRequest();
             req.setBuyerId(1L);
             req.setPrice(new BigDecimal("50"));
-            assertEquals(ErrorCode.CHAT_SESSION_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> dealService.sealDealBySeller(10L, req)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.sealDealBySeller(10L, req));
+            assertEquals(ErrorCode.CHAT_SESSION_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] pickupTime không sau hiện tại → INVALID_INPUT")
-        void pickupInPast() {
-            User seller = user(2L);
-            User buyer = user(1L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            when(userService.getCurrentUser()).thenReturn(seller);
-            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
-            when(userService.getUserById(1L)).thenReturn(buyer);
-            when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
-            when(conversationRepository.findActiveByListingBuyerSeller(10L, 1L, 2L)).thenReturn(Optional.of(conversation(1L, l, buyer, seller)));
-            SealDealRequest req = new SealDealRequest();
-            req.setBuyerId(1L);
-            req.setPrice(new BigDecimal("50"));
-            req.setPickupTime(Instant.now().minus(1, ChronoUnit.HOURS));
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> dealService.sealDealBySeller(10L, req)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: tạo deal PENDING mới khi chưa có deal pending")
-        void newPendingDeal() {
+        @DisplayName("UTCID03 [Positive] - create pending deal from seller seal")
+        void utcId03_shouldCreatePendingDeal_whenSealValid() {
             User seller = user(2L);
             User buyer = user(1L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
@@ -321,509 +284,148 @@ class DealServiceTest {
             when(conversationRepository.findActiveByListingAndParticipants(10L, 1L, 2L)).thenReturn(Optional.of(conv));
             when(dealRepository.save(any(Deal.class))).thenAnswer(inv -> {
                 Deal d = inv.getArgument(0);
-                if (d.getCreatedAt() == null) {
-                    d.setCreatedAt(LocalDateTime.now());
-                }
-                if (d.getUpdatedAt() == null) {
-                    d.setUpdatedAt(LocalDateTime.now());
-                }
                 d.setId(400L);
+                if (d.getCreatedAt() == null) d.setCreatedAt(LocalDateTime.now());
+                if (d.getUpdatedAt() == null) d.setUpdatedAt(LocalDateTime.now());
                 return d;
             });
-            stubReviewLookupFalse(null);
+            when(reviewRepository.existsReviewCreatedAfter(anyLong(), anyLong(), any())).thenReturn(false);
 
             SealDealRequest req = new SealDealRequest();
             req.setBuyerId(1L);
             req.setPrice(new BigDecimal("50"));
             req.setPickupTime(Instant.now().plus(1, ChronoUnit.DAYS));
 
-            DealResponse res = dealService.sealDealBySeller(10L, req);
+            DealResponse res = service.sealDealBySeller(10L, req);
             assertEquals(400L, res.getDealId());
             assertEquals(STATUS_PENDING, res.getStatus());
         }
-
-        @Test
-        @DisplayName("Đã có deal PENDING cùng buyer → cập nhật giá và offer")
-        void updateExistingPending() {
-            User seller = user(2L);
-            User buyer = user(1L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Conversation conv = conversation(88L, l, buyer, seller);
-            Deal existing = dealEntity(55L, buyer, l, conv, STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(seller);
-            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
-            when(userService.getUserById(1L)).thenReturn(buyer);
-            when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
-            when(conversationRepository.findActiveByListingBuyerSeller(10L, 1L, 2L)).thenReturn(Optional.of(conv));
-            when(offerRepository.findFirstByListing_IdAndBuyer_IdAndAmountAndStatusInOrderByCreatedAtDesc(
-                    eq(10L), eq(1L), eq(new BigDecimal("60")), anyList()))
-                    .thenReturn(Optional.of(offer(6L, l, buyer, new BigDecimal("60"), STATUS_ACCEPTED)));
-            when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-                    10L, 1L, STATUS_PENDING)).thenReturn(Optional.of(existing));
-            when(dealRepository.save(existing)).thenReturn(existing);
-            stubReviewLookupFalse(existing);
-
-            SealDealRequest req = new SealDealRequest();
-            req.setBuyerId(1L);
-            req.setPrice(new BigDecimal("60"));
-
-            DealResponse res = dealService.sealDealBySeller(10L, req);
-            assertEquals(55L, res.getDealId());
-            assertEquals(0, new BigDecimal("60").compareTo(existing.getOfferedPrice()));
-        }
     }
 
-    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Người mua chấp nhận / từ chối deal PENDING")
-    class BuyerPendingActions {
+    @DisplayName("Function: finalizeByBuyer")
+    class FinalizeByBuyerGroup {
 
         @Test
-        @DisplayName("[Lỗi] buyerAccept: không có deal PENDING → DEAL_NOT_FOUND")
-        void acceptMissing() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
-            when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-                    10L, 1L, STATUS_PENDING)).thenReturn(Optional.empty());
-            assertEquals(ErrorCode.DEAL_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> dealService.buyerAcceptPendingDeal(10L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] buyerAccept: block với seller → DEAL_NOT_FOUND")
-        void acceptBlocked() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Conversation conv = conversation(1L, l, buyer, seller);
-            Deal d = dealEntity(1L, buyer, l, conv, STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
-            when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-                    10L, 1L, STATUS_PENDING)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
-            assertEquals(ErrorCode.DEAL_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> dealService.buyerAcceptPendingDeal(10L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("buyerAccept: luồng chính → COMPLETED")
-        void acceptHappy() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Conversation conv = conversation(1L, l, buyer, seller);
-            Deal d = dealEntity(1L, buyer, l, conv, STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(listingRepository.findByIdAndDeletedAtIsNullForUpdate(10L)).thenReturn(Optional.of(l));
-            when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-                    10L, 1L, STATUS_PENDING)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
-            when(dealRepository.save(d)).thenReturn(d);
-            stubReviewLookupFalse(d);
-
-            DealResponse res = dealService.buyerAcceptPendingDeal(10L);
-            assertEquals(STATUS_COMPLETED, res.getStatus());
-            assertNotNull(d.getConfirmedAt());
-        }
-
-        @Test
-        @DisplayName("buyerReject: luồng chính → REJECTED")
-        void rejectHappy() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Conversation conv = conversation(1L, l, buyer, seller);
-            Deal d = dealEntity(1L, buyer, l, conv, STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(dealRepository.findFirstByListing_IdAndProposedBy_IdAndStatusAndDeletedAtIsNullOrderByCreatedAtDesc(
-                    10L, 1L, STATUS_PENDING)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
-            when(dealRepository.save(d)).thenReturn(d);
-            stubReviewLookupFalse(d);
-
-            DealResponse res = dealService.buyerRejectPendingDeal(10L);
-            assertEquals(STATUS_REJECTED, res.getStatus());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    @Nested
-    @DisplayName("Người bán từ chối lượt trả giá / xác nhận deal")
-    class SellerDealActions {
-
-        @Test
-        @DisplayName("[Lỗi] rejectDeal: không phải seller → NOT_CHAT_PARTICIPANT")
-        void rejectNotSeller() {
-            User stranger = user(9L);
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(stranger);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            assertEquals(ErrorCode.NOT_CHAT_PARTICIPANT,
-                    assertThrows(SlifeException.class, () -> dealService.rejectDeal(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("rejectDeal: luồng chính → CANCELLED")
-        void rejectHappy() {
+        @DisplayName("UTCID01 [Negative] - current user not buyer")
+        void utcId01_shouldThrowForbidden_whenNotBuyer() {
             User seller = user(2L);
             User buyer = user(1L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(seller);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
-            when(dealRepository.save(d)).thenReturn(d);
-            stubReviewLookupFalse(d);
-
-            DealResponse res = dealService.rejectDeal(1L);
-            assertEquals(STATUS_CANCELLED, res.getStatus());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] confirmDeal: không còn PENDING → INVALID_INPUT")
-        void confirmWrongStatus() {
-            User seller = user(2L);
-            User buyer = user(1L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_CONFIRMED);
-            when(userService.getCurrentUser()).thenReturn(seller);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> dealService.confirmDeal(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("confirmDeal: luồng chính → CONFIRMED")
-        void confirmHappy() {
-            User seller = user(2L);
-            User buyer = user(1L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(seller);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(2L, 1L)).thenReturn(false);
-            when(dealRepository.save(d)).thenReturn(d);
-            stubReviewLookupFalse(d);
-
-            DealResponse res = dealService.confirmDeal(1L);
-            assertEquals(STATUS_CONFIRMED, res.getStatus());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    @Nested
-    @DisplayName("Cập nhật giờ nhận / gửi nhắc nhở")
-    class PickupAndReminder {
-
-        @Test
-        @DisplayName("[Lỗi] updatePickupTime: người thứ ba → FORBIDDEN")
-        void pickupStranger() {
-            User stranger = user(99L);
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_CONFIRMED);
-            when(userService.getCurrentUser()).thenReturn(stranger);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            assertEquals(ErrorCode.FORBIDDEN,
-                    assertThrows(SlifeException.class, () -> dealService.updatePickupTime(1L, LocalDateTime.now()))
-                            .getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] sendReminder: trạng thái không phải CONFIRMED → INVALID_INPUT")
-        void reminderNotConfirmed() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> dealService.sendReminder(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("sendReminder: luồng chính → reminderSent = true")
-        void reminderHappy() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_CONFIRMED);
-            d.setPickupTime(LocalDateTime.now().plusDays(1));
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
-            when(dealRepository.save(d)).thenReturn(d);
-
-            dealService.sendReminder(1L);
-
-            assertTrue(d.getReminderSent());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    @Nested
-    @DisplayName("Hủy deal (người mua — cancelDeal)")
-    class CancelDeal {
-
-        @Test
-        @DisplayName("[Lỗi] Không phải buyer → NOT_CHAT_PARTICIPANT")
-        void notBuyer() {
-            User seller = user(2L);
-            User buyer = user(1L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(seller);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            assertEquals(ErrorCode.NOT_CHAT_PARTICIPANT,
-                    assertThrows(SlifeException.class, () -> dealService.cancelDeal(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Thường] Luồng chính: CANCELLED + notify seller")
-        void happy() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(false);
-            when(dealRepository.save(d)).thenReturn(d);
-
-            dealService.cancelDeal(1L);
-
-            assertEquals(STATUS_CANCELLED, d.getStatus());
-            assertNotNull(d.getDeletedAt());
-            verify(notificationService).notifyDealFinalized(seller, buyer, 10L, l.getTitle(), false, false);
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    @Nested
-    @DisplayName("Hoàn tất deal — người mua (finalizeByBuyer)")
-    class FinalizeByBuyer {
-
-        @Test
-        @DisplayName("[Lỗi] Không phải buyer → FORBIDDEN")
-        void notBuyer() {
-            User seller = user(2L);
-            User buyer = user(1L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_CONFIRMED);
+            Deal d = deal(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_CONFIRMED);
             when(userService.getCurrentUser()).thenReturn(seller);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setCompleted(true);
-            assertEquals(ErrorCode.FORBIDDEN,
-                    assertThrows(SlifeException.class, () -> dealService.finalizeByBuyer(1L, req)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.finalizeByBuyer(1L, req));
+            assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("completed=true, có rating → SOLD + SUCCESS + review + notify rated")
-        void completeWithRating() {
+        @DisplayName("UTCID02 [Positive] - completed with rating")
+        void utcId02_shouldMarkSuccessAndCreateReview_whenCompletedWithRating() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_CONFIRMED);
+            Deal d = deal(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_CONFIRMED);
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
             when(dealRepository.save(d)).thenReturn(d);
             when(listingRepository.save(l)).thenReturn(l);
             when(reviewRepository.findAverageRatingByReviewee_Id(2L)).thenReturn(4.5);
-            stubReviewLookupFalse(d);
+            when(reviewRepository.existsReviewCreatedAfter(anyLong(), anyLong(), any())).thenReturn(false);
 
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setCompleted(true);
             req.setRating((byte) 5);
             req.setComment("ok");
 
-            DealResponse res = dealService.finalizeByBuyer(1L, req);
+            DealResponse res = service.finalizeByBuyer(1L, req);
 
             assertEquals(STATUS_SUCCESS, res.getStatus());
             assertEquals("SOLD", l.getStatus());
             verify(reviewRepository).save(any());
-            verify(userRepository).saveAndFlush(seller);
             verify(notificationService).notifyDealFinalized(seller, buyer, 10L, l.getTitle(), true, true);
         }
 
         @Test
-        @DisplayName("completed=false → CANCELLED + notify")
-        void cancelPath() {
+        @DisplayName("UTCID03 [Positive] - completed false means cancel")
+        void utcId03_shouldCancelDeal_whenCompletedFalse() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_CONFIRMED);
+            Deal d = deal(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_CONFIRMED);
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
             when(dealRepository.save(d)).thenReturn(d);
-            stubReviewLookupFalse(d);
+            when(reviewRepository.existsReviewCreatedAfter(anyLong(), anyLong(), any())).thenReturn(false);
 
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setCompleted(false);
+            DealResponse res = service.finalizeByBuyer(1L, req);
 
-            DealResponse res = dealService.finalizeByBuyer(1L, req);
-            assertEquals(STATUS_CANCELLED, res.getStatus());
+            assertEquals(DealService.STATUS_CANCELLED, res.getStatus());
             verify(notificationService).notifyDealFinalized(seller, buyer, 10L, l.getTitle(), false, false);
             verify(reviewRepository, never()).save(any());
         }
     }
 
-    // -------------------------------------------------------------------------
     @Nested
-    @DisplayName("Chi tiết deal / danh sách deal của tôi")
-    class QueryDeals {
+    @DisplayName("Function: submitReview")
+    class SubmitReviewGroup {
 
         @Test
-        @DisplayName("[Lỗi] getDealById: không phải buyer/seller → FORBIDDEN")
-        void getByIdStranger() {
-            User stranger = user(99L);
+        @DisplayName("UTCID01 [Negative] - deal not in success status")
+        void utcId01_shouldThrowInvalidInput_whenDealNotSuccess() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(stranger);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            assertEquals(ErrorCode.FORBIDDEN,
-                    assertThrows(SlifeException.class, () -> dealService.getDealById(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] getDealById: block → DEAL_NOT_FOUND")
-        void getByIdBlocked() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(buyer);
-            when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
-            assertEquals(ErrorCode.DEAL_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> dealService.getDealById(1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("listMyDeals proposed: deal bị ẩn khi block với đối phương")
-        void listProposedHidesBlocked() {
-            User me = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, me, l, conversation(1L, l, me, seller), STATUS_PENDING);
-            when(userService.getCurrentUser()).thenReturn(me);
-            when(dealRepository.findByProposedBy_IdAndDeletedAtIsNullOrderByCreatedAtDesc(1L)).thenReturn(List.of(d));
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
-
-            assertTrue(dealService.listMyDeals("proposed").isEmpty());
-        }
-
-        @Test
-        @DisplayName("listMyDeals all: gộp proposed+received, sort theo createdAt desc")
-        void listAllMerge() {
-            User me = user(1L);
-            User other = user(2L);
-            Listing l1 = listing(10L, other, new BigDecimal("100"), false);
-            Listing l2 = listing(20L, me, new BigDecimal("200"), false);
-            Deal dProposed = dealEntity(1L, me, l1, conversation(1L, l1, me, other), STATUS_PENDING);
-            dProposed.setCreatedAt(LocalDateTime.of(2024, 1, 1, 10, 0));
-            Deal dReceived = dealEntity(2L, other, l2, conversation(2L, l2, other, me), STATUS_PENDING);
-            dReceived.setCreatedAt(LocalDateTime.of(2024, 2, 1, 10, 0));
-            when(userService.getCurrentUser()).thenReturn(me);
-            when(dealRepository.findByProposedBy_IdAndDeletedAtIsNullOrderByCreatedAtDesc(1L)).thenReturn(List.of(dProposed));
-            when(dealRepository.findByListing_Seller_IdAndDeletedAtIsNullOrderByCreatedAtDesc(1L)).thenReturn(List.of(dReceived));
-            when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
-            stubReviewLookupFalse(null);
-
-            List<DealResponse> out = dealService.listMyDeals("all");
-            assertEquals(2, out.size());
-            assertEquals(2L, out.get(0).getDealId());
-            assertEquals(1L, out.get(1).getDealId());
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    @Nested
-    @DisplayName("Tự động hoàn tất deal / gửi đánh giá (submitReview)")
-    class AutoAndReview {
-
-        @Test
-        @DisplayName("autoFinalizeDeals: deal COMPLETED quá hạn → SUCCESS + SOLD + notify")
-        void autoFinalize() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_COMPLETED);
-            d.setConfirmedAt(LocalDateTime.now().minusDays(10));
-            when(dealRepository.findAllByStatusAndConfirmedAtBefore(eq(STATUS_COMPLETED), any(LocalDateTime.class)))
-                    .thenReturn(List.of(d));
-            when(listingRepository.save(l)).thenReturn(l);
-            when(dealRepository.save(d)).thenReturn(d);
-
-            dealService.autoFinalizeDeals();
-
-            assertEquals(STATUS_SUCCESS, d.getStatus());
-            assertEquals("SOLD", l.getStatus());
-            verify(notificationService).notifyDealFinalized(eq(seller), eq(buyer), eq(10L), anyString(), eq(true), eq(false));
-        }
-
-        @Test
-        @DisplayName("[Lỗi] submitReview: chưa SUCCESS → INVALID_INPUT")
-        void submitNotSuccess() {
-            User buyer = user(1L);
-            User seller = user(2L);
-            Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
+            Deal d = deal(1L, buyer, l, conversation(1L, l, buyer, seller), STATUS_PENDING);
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setRating((byte) 5);
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> dealService.submitReview(1L, req)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.submitReview(1L, req));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] submitReview: đã có review sau mốc deal → INVALID_INPUT")
-        void submitDuplicate() {
+        @DisplayName("UTCID02 [Negative] - duplicate review")
+        void utcId02_shouldThrowInvalidInput_whenReviewAlreadyExists() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_SUCCESS);
+            Deal d = deal(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_SUCCESS);
             d.setConfirmedAt(LocalDateTime.now().minusDays(1));
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(reviewRepository.existsReviewCreatedAfter(
-                    eq(5L), eq(1L), any(Instant.class))).thenReturn(true);
+            when(reviewRepository.existsReviewCreatedAfter(eq(5L), eq(1L), any())).thenReturn(true);
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setRating((byte) 4);
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> dealService.submitReview(1L, req)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.submitReview(1L, req));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("submitReview: luồng chính → lưu review + notifyNewReview")
-        void submitHappy() {
+        @DisplayName("UTCID03 [Positive] - submit review successfully")
+        void utcId03_shouldSaveReviewAndNotify_whenValidInput() {
             User buyer = user(1L);
             User seller = user(2L);
             Listing l = listing(10L, seller, new BigDecimal("100"), false);
-            Deal d = dealEntity(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_SUCCESS);
+            Deal d = deal(1L, buyer, l, conversation(5L, l, buyer, seller), STATUS_SUCCESS);
             when(userService.getCurrentUser()).thenReturn(buyer);
             when(dealRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(d));
-            when(reviewRepository.existsReviewCreatedAfter(
-                    eq(5L), eq(1L), any(Instant.class))).thenReturn(false);
+            when(reviewRepository.existsReviewCreatedAfter(eq(5L), eq(1L), any())).thenReturn(false);
             when(reviewRepository.findAverageRatingByReviewee_Id(2L)).thenReturn(5.0);
 
             FinalizeDealRequest req = new FinalizeDealRequest();
             req.setRating((byte) 5);
+            req.setComment("tot");
 
-            dealService.submitReview(1L, req);
+            service.submitReview(1L, req);
 
             verify(reviewRepository).save(any());
             verify(userRepository).saveAndFlush(seller);

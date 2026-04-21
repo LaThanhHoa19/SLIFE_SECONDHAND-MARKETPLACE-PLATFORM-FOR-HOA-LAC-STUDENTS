@@ -5,6 +5,7 @@ import com.slife.marketplace.entity.Listing;
 import com.slife.marketplace.repository.ListingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -23,19 +24,10 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-/**
- * Unit test cho {@link SearchService}.
- *
- * Mục tiêu:
- * - Xác nhận các quy tắc chuẩn hoá input (q/location), whitelist (purpose/condition),
- *   clamp page/size, và parse sort.
- * - Đảm bảo service truyền đúng tham số vào {@link ListingRepository#findByFilters}.
- *
- * Lưu ý: Đây là unit test thuần logic + verify args, không kiểm tra SQL/JPA thực thi.
- */
 class SearchServiceTest {
 
-    @Mock private ListingRepository listingRepository;
+    @Mock
+    private ListingRepository listingRepository;
     private SearchService service;
 
     @BeforeEach
@@ -43,122 +35,120 @@ class SearchServiceTest {
         service = new SearchService(listingRepository);
     }
 
-    @Test
-    @DisplayName("default page/size/sort; normalize q/location; purpose/condition whitelist; subcategory override")
-    void search_shouldNormalizeAndClamp() {
-        SearchRequest req = new SearchRequest();
-        req.setPage(-1);
-        req.setSize(null);
-        req.setSort(null);
-        req.setQ("  Hello  ");
-        req.setLocation("  Ha Noi ");
-        req.setPurpose("sale");
-        req.setItemCondition("USED_GOOD");
-        req.setCategoryId(1L);
-        req.setSubcategoryId(2L);
-        req.setPriceMin(BigDecimal.ONE);
-        req.setPriceMax(BigDecimal.TEN);
+    @Nested
+    @DisplayName("Function: search")
+    class SearchGroup {
 
-        Page<Listing> outPage = new PageImpl<>(List.of());
-        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(outPage);
+        @Test
+        @DisplayName("UTCID01 [Positive] - normalize filters, default paging, subcategory override")
+        void utcId01_shouldNormalizeAndUseDefaults() {
+            SearchRequest req = new SearchRequest();
+            req.setPage(-1);
+            req.setSize(null);
+            req.setSort(null);
+            req.setQ("  Hello  ");
+            req.setLocation("  Ha Noi ");
+            req.setPurpose("sale");
+            req.setItemCondition("USED_GOOD");
+            req.setCategoryId(1L);
+            req.setSubcategoryId(2L);
+            req.setPriceMin(BigDecimal.ONE);
+            req.setPriceMax(BigDecimal.TEN);
 
-        Page<Listing> out = service.search(req);
-        assertSame(outPage, out);
+            Page<Listing> outPage = new PageImpl<>(List.of());
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(outPage);
 
-        ArgumentCaptor<Pageable> pageableCap = ArgumentCaptor.forClass(Pageable.class);
-        verify(listingRepository).findByFilters(
-                eq("hello"),
-                eq(2L),
-                eq("ha noi"),
-                eq("SALE"),
-                eq("USED_GOOD"),
-                eq(BigDecimal.ONE),
-                eq(BigDecimal.TEN),
-                any(),
-                pageableCap.capture()
-        );
-        Pageable pageable = pageableCap.getValue();
-        assertEquals(0, pageable.getPageNumber());
-        assertEquals(20, pageable.getPageSize());
-        assertEquals(Sort.by(Sort.Direction.DESC, "createdAt"), pageable.getSort());
-    }
+            Page<Listing> out = service.search(req);
+            assertSame(outPage, out);
 
-    @Test
-    @DisplayName("giới hạn size: <10 → 10; >20 → 20")
-    void sizeClamp_shouldWork() {
-        SearchRequest req = new SearchRequest();
-        req.setSize(1);
-        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of()));
-        service.search(req);
-        verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), argThat(p -> p.getPageSize() == 10));
+            ArgumentCaptor<Pageable> pageableCap = ArgumentCaptor.forClass(Pageable.class);
+            verify(listingRepository).findByFilters(
+                    eq("hello"),
+                    eq(2L),
+                    eq("ha noi"),
+                    eq("SALE"),
+                    eq("USED_GOOD"),
+                    eq(BigDecimal.ONE),
+                    eq(BigDecimal.TEN),
+                    any(),
+                    pageableCap.capture()
+            );
+            Pageable pageable = pageableCap.getValue();
+            assertEquals(0, pageable.getPageNumber());
+            assertEquals(20, pageable.getPageSize());
+            assertEquals(Sort.by(Sort.Direction.DESC, "createdAt"), pageable.getSort());
+        }
 
-        SearchRequest req2 = new SearchRequest();
-        req2.setSize(999);
-        service.search(req2);
-        verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), argThat(p -> p.getPageSize() == 20));
-    }
+        @Test
+        @DisplayName("UTCID02 [Boundary] - size below minimum gets clamped to 10")
+        void utcId02_shouldClampSizeTo10_whenBelowMinimum() {
+            SearchRequest req = new SearchRequest();
+            req.setSize(1);
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
 
-    @Test
-    @DisplayName("phân tích sort: trường không hợp lệ → dự phòng createdAt (direction vẫn theo input)")
-    void sortParse_invalidField_fallbackCreatedAt() {
-        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of()));
+            service.search(req);
 
-        SearchRequest req = new SearchRequest();
-        req.setSort("nope,asc");
-        service.search(req);
-        verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), argThat(p ->
-                p.getSort().getOrderFor("createdAt") != null
-                        && p.getSort().getOrderFor("createdAt").getDirection() == Sort.Direction.ASC));
-    }
+            verify(listingRepository).findByFilters(
+                    any(), any(), any(), any(), any(), any(), any(), any(),
+                    argThat(p -> p.getPageSize() == 10)
+            );
+        }
 
-    @Test
-    @DisplayName("phân tích sort: allowed field + asc")
-    void sortParse_allowedField_asc() {
-        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of()));
+        @Test
+        @DisplayName("UTCID03 [Boundary] - size above maximum gets clamped to 20")
+        void utcId03_shouldClampSizeTo20_whenAboveMaximum() {
+            SearchRequest req = new SearchRequest();
+            req.setSize(999);
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
 
-        SearchRequest req = new SearchRequest();
-        req.setSort("price,asc");
-        service.search(req);
-        verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), argThat(p ->
-                p.getSort().getOrderFor("price") != null
-                        && p.getSort().getOrderFor("price").getDirection() == Sort.Direction.ASC));
-    }
+            service.search(req);
 
-    @Test
-    @DisplayName("purpose/condition không hợp lệ → null (no filter)")
-    void invalidPurposeCondition_shouldBecomeNull() {
-        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of()));
+            verify(listingRepository).findByFilters(
+                    any(), any(), any(), any(), any(), any(), any(), any(),
+                    argThat(p -> p.getPageSize() == 20)
+            );
+        }
 
-        SearchRequest req = new SearchRequest();
-        req.setPurpose("xxx");
-        req.setItemCondition("yyy");
-        service.search(req);
+        @Test
+        @DisplayName("UTCID04 [Positive] - allowed sort field with asc direction")
+        void utcId04_shouldParseAllowedSortAsc() {
+            SearchRequest req = new SearchRequest();
+            req.setSort("price,asc");
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
 
-        verify(listingRepository).findByFilters(any(), any(), any(), isNull(), isNull(), any(), any(), any(), any());
-    }
+            service.search(req);
 
-    @Test
-    @DisplayName("[Lỗi] request null → NullPointerException (hợp đồng API: không chấp nhận null)")
-    void search_nullRequest_throwsNpe() {
-        assertThrows(NullPointerException.class, () -> service.search(null));
-        verifyNoInteractions(listingRepository);
-    }
+            verify(listingRepository).findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), argThat(p ->
+                    p.getSort().getOrderFor("price") != null
+                            && p.getSort().getOrderFor("price").getDirection() == Sort.Direction.ASC));
+        }
 
-    @Test
-    @DisplayName("q/location chỉ khoảng trắng → truyền null vào repository")
-    void blankQAndLocation_normalizedToNull() {
-        when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of()));
-        SearchRequest req = new SearchRequest();
-        req.setQ("   \t");
-        req.setLocation("");
-        service.search(req);
-        verify(listingRepository).findByFilters(isNull(), any(), isNull(), any(), any(), any(), any(), any(), any());
+        @Test
+        @DisplayName("UTCID05 [Negative] - invalid purpose and condition become null filters")
+        void utcId05_shouldConvertInvalidWhitelistValuesToNull() {
+            SearchRequest req = new SearchRequest();
+            req.setPurpose("invalid-purpose");
+            req.setItemCondition("invalid-condition");
+            when(listingRepository.findByFilters(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new PageImpl<>(List.of()));
+
+            service.search(req);
+
+            verify(listingRepository).findByFilters(
+                    any(), any(), any(), isNull(), isNull(), any(), any(), any(), any()
+            );
+        }
+
+        @Test
+        @DisplayName("UTCID06 [Negative] - null request throws NullPointerException")
+        void utcId06_shouldThrowNpe_whenRequestIsNull() {
+            assertThrows(NullPointerException.class, () -> service.search(null));
+            verifyNoInteractions(listingRepository);
+        }
     }
 }
 

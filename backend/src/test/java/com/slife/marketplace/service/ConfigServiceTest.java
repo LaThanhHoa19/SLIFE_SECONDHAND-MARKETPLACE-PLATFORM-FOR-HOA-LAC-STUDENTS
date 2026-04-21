@@ -24,7 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -65,12 +68,12 @@ class ConfigServiceTest {
     }
 
     @Nested
-    @DisplayName("Getters (getAllConfigurations/getConfigurationById/getConfigValue*/getIntConfigValue)")
-    class Getters {
+    @DisplayName("Function: getAllConfigurations")
+    class GetAllConfigurationsGroup {
 
         @Test
-        @DisplayName("getAllConfigurations: map list → DTO")
-        void getAllConfigurations_maps() {
+        @DisplayName("UTCID01 [Positive] - có cấu hình đang hoạt động → trả danh sách DTO")
+        void utcId01_shouldMapActiveConfigurations() {
             Configuration c1 = new Configuration();
             c1.setId(1L);
             c1.setConfigName("MAX_IMAGES");
@@ -86,9 +89,24 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getConfigurationById: tìm thấy → map DTO")
-        void getConfigurationById_found() {
+        @DisplayName("UTCID02 [Positive] - chưa có dòng cấu hình nào → danh sách rỗng")
+        void utcId02_shouldReturnEmpty_whenNoRows() {
+            when(configRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc()).thenReturn(List.of());
+
+            List<ConfigResponseDTO> out = configService.getAllConfigurations();
+            assertEquals(0, out.size());
+        }
+    }
+
+    @Nested
+    @DisplayName("Function: getConfigurationById")
+    class GetConfigurationByIdGroup {
+
+        @Test
+        @DisplayName("UTCID01 [Positive] - admin mở chi tiết đúng id còn hiệu lực")
+        void utcId01_shouldReturnDto_whenFound() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+
             ConfigResponseDTO dto = configService.getConfigurationById(10L);
             assertEquals(10L, dto.id());
             assertEquals("REPORT_THRESHOLD", dto.configKey());
@@ -96,31 +114,52 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] getConfigurationById: không tồn tại → CONFIGURATION_NOT_FOUND")
-        void getConfigurationById_notFound_throws() {
+        @DisplayName("UTCID02 [Negative] - id không tồn tại hoặc đã xóa mềm")
+        void utcId02_shouldThrow_whenNotFound() {
             when(configRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.getConfigurationById(99L));
             assertEquals(ErrorCode.CONFIGURATION_NOT_FOUND, ex.getErrorCode());
         }
+    }
+
+    @Nested
+    @DisplayName("Function: getConfigValueByKey")
+    class GetConfigValueByKeyGroup {
 
         @Test
-        @DisplayName("getConfigValueByKey: normalize key (trim+uppercase) + not found → null")
-        void getConfigValueByKey_normalizes_andNotFound() {
+        @DisplayName("UTCID01 [Positive] - tìm theo tên key có khoảng trắng và chữ thường")
+        void utcId01_shouldNormalizeKeyAndReturnValue() {
+            Configuration row = cfg("MAX_IMAGES", "10");
+            when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES")).thenReturn(Optional.of(row));
+
+            assertEquals("10", configService.getConfigValueByKey("  max_images "));
+        }
+
+        @Test
+        @DisplayName("UTCID02 [Positive] - key hợp lệ nhưng không có bản ghi chưa xóa")
+        void utcId02_shouldReturnNull_whenNotFound() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES")).thenReturn(Optional.empty());
+
             assertNull(configService.getConfigValueByKey("  max_images "));
         }
 
         @Test
-        @DisplayName("[Lỗi] getConfigValueByKey: blank key → INVALID_INPUT")
-        void getConfigValueByKey_blankKey_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - key để trống / chỉ khoảng trắng")
+        void utcId03_shouldThrow_whenKeyBlank() {
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.getConfigValueByKey("   "));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
             verifyNoInteractions(configRepository);
         }
+    }
+
+    @Nested
+    @DisplayName("Function: getIntConfigValue")
+    class GetIntConfigValueGroup {
 
         @Test
-        @DisplayName("getIntConfigValue: value null/blank → trả default")
-        void getIntConfigValue_blank_returnsDefault() {
+        @DisplayName("UTCID01 [Positive] - giá trị trong DB trống hoặc chỉ khoảng trắng → dùng mặc định")
+        void utcId01_shouldReturnDefault_whenBlankStored() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES"))
                     .thenReturn(Optional.of(cfg("MAX_IMAGES", "   ")));
 
@@ -128,8 +167,8 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getIntConfigValue: value không phải số → trả default")
-        void getIntConfigValue_nonNumeric_returnsDefault() {
+        @DisplayName("UTCID02 [Positive] - giá trị không parse được số → dùng mặc định")
+        void utcId02_shouldReturnDefault_whenNonNumeric() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES"))
                     .thenReturn(Optional.of(cfg("MAX_IMAGES", "abc")));
 
@@ -137,8 +176,8 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("getIntConfigValue: value hợp lệ → parse int")
-        void getIntConfigValue_ok_parses() {
+        @DisplayName("UTCID03 [Positive] - chuỗi số có khoảng trắng → parse đúng")
+        void utcId03_shouldParse_whenValidIntegerString() {
             when(configRepository.findByConfigNameAndDeletedAtIsNull("MAX_IMAGES"))
                     .thenReturn(Optional.of(cfg("MAX_IMAGES", " 12 ")));
 
@@ -147,12 +186,12 @@ class ConfigServiceTest {
     }
 
     @Nested
-    @DisplayName("Xóa cấu hình (deleteConfigurationById)")
-    class DeleteById {
+    @DisplayName("Function: deleteConfigurationById")
+    class DeleteConfigurationByIdGroup {
 
         @Test
-        @DisplayName("[Thường] Luồng chính: soft-delete → set deletedAt + updatedBy")
-        void deleteConfigurationById_softDeletes() {
+        @DisplayName("UTCID01 [Positive] - cấu hình đang dùng được đánh dấu xóa mềm")
+        void utcId01_shouldSoftDelete_whenActive() {
             when(configRepository.findById(10L)).thenReturn(Optional.of(existing));
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -166,31 +205,33 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] Đã xóa trước đó → CONFIGURATION_NOT_FOUND")
-        void deleteConfigurationById_alreadyDeleted_throws() {
+        @DisplayName("UTCID02 [Negative] - bản ghi đã xóa mềm trước đó")
+        void utcId02_shouldThrow_whenAlreadyDeleted() {
             existing.setDeletedAt(Instant.now());
             when(configRepository.findById(10L)).thenReturn(Optional.of(existing));
+
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.deleteConfigurationById(10L, admin));
             assertEquals(ErrorCode.CONFIGURATION_NOT_FOUND, ex.getErrorCode());
             verify(configRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("[Lỗi] Không tồn tại → CONFIGURATION_NOT_FOUND")
-        void deleteConfigurationById_notFound_throws() {
+        @DisplayName("UTCID03 [Negative] - id không tồn tại")
+        void utcId03_shouldThrow_whenIdMissing() {
             when(configRepository.findById(99L)).thenReturn(Optional.empty());
+
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.deleteConfigurationById(99L, admin));
             assertEquals(ErrorCode.CONFIGURATION_NOT_FOUND, ex.getErrorCode());
         }
     }
 
     @Nested
-    @DisplayName("Cập nhật 1 cấu hình (updateConfigurationById)")
-    class UpdateSingle {
+    @DisplayName("Function: updateConfigurationById")
+    class UpdateConfigurationByIdGroup {
 
         @Test
-        @DisplayName("[Thường] Luồng chính: update value + description")
-        void updateConfigurationById_success() {
+        @DisplayName("UTCID01 [Positive] - đổi giá trị và mô tả cùng lúc")
+        void utcId01_shouldUpdateValueAndDescription() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -202,8 +243,8 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Bỏ description (null) → giữ nguyên")
-        void updateConfigurationById_omitsDescription_preserves() {
+        @DisplayName("UTCID02 [Positive] - không gửi mô tả mới → giữ mô tả cũ")
+        void utcId02_shouldPreserveDescription_whenNullInRequest() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -215,73 +256,149 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] Không tồn tại → CONFIGURATION_NOT_FOUND")
-        void updateConfigurationById_notFound_throws() {
+        @DisplayName("UTCID03 [Negative] - id không còn bản ghi active")
+        void utcId03_shouldThrow_whenNotFound() {
             when(configRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> configService.updateConfigurationById(99L, new ConfigSingleUpdateRequest("1", null), admin));
             assertEquals(ErrorCode.CONFIGURATION_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Key numeric nhưng value không phải số → INVALID_INPUT")
-        void updateConfigurationById_invalidNumeric_throws() {
+        @DisplayName("UTCID04 [Negative] - key dạng số nhưng giá trị không phải số")
+        void utcId04_shouldThrow_whenNumericKeyInvalidFormat() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> configService.updateConfigurationById(10L, new ConfigSingleUpdateRequest("x", null), admin));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Key numeric nhưng value vượt range → INVALID_INPUT")
-        void updateConfigurationById_outOfRange_throws() {
+        @DisplayName("UTCID05 [Negative] - key số vượt ngưỡng cho phép")
+        void utcId05_shouldThrow_whenOutOfRange() {
             when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
-            // REPORT_THRESHOLD valid range 1..100
+
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> configService.updateConfigurationById(10L, new ConfigSingleUpdateRequest("101", null), admin));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
-    }
-
-    @Nested
-    @DisplayName("Cập nhật nhiều cấu hình (updateConfigurations)")
-    class UpdateBulk {
 
         @Test
-        @DisplayName("[Lỗi] Danh sách null/empty → INVALID_INPUT")
-        void updateConfigurations_empty_shouldThrow() {
-            SlifeException ex1 = assertThrows(SlifeException.class, () -> configService.updateConfigurations(null, admin));
-            assertEquals(ErrorCode.INVALID_INPUT, ex1.getErrorCode());
+        @DisplayName("UTCID06 [Positive] - DEAL_TIMEOUT_UNIT = DAYS")
+        void utcId06_shouldAcceptDealTimeoutUnitDays() {
+            existing.setConfigName("DEAL_TIMEOUT_UNIT");
+            existing.setConfigValue("DAYS");
+            when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+            when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            SlifeException ex2 = assertThrows(SlifeException.class, () -> configService.updateConfigurations(List.of(), admin));
-            assertEquals(ErrorCode.INVALID_INPUT, ex2.getErrorCode());
+            ConfigResponseDTO dto = configService.updateConfigurationById(
+                    10L, new ConfigSingleUpdateRequest("DAYS", null), admin);
+            assertEquals("DAYS", dto.configValue());
         }
 
         @Test
-        @DisplayName("[Lỗi] Key trùng (case-insensitive) → INVALID_INPUT")
-        void updateConfigurations_duplicateKeys_shouldThrow() {
+        @DisplayName("UTCID07 [Positive] - DEAL_TIMEOUT_UNIT = MINUTES")
+        void utcId07_shouldAcceptDealTimeoutUnitMinutes() {
+            existing.setConfigName("DEAL_TIMEOUT_UNIT");
+            existing.setConfigValue("DAYS");
+            when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+            when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            ConfigResponseDTO dto = configService.updateConfigurationById(
+                    10L, new ConfigSingleUpdateRequest("MINUTES", null), admin);
+            assertEquals("MINUTES", dto.configValue());
+        }
+
+        @Test
+        @DisplayName("UTCID08 [Negative] - DEAL_TIMEOUT_UNIT không phải DAYS/MINUTES")
+        void utcId08_shouldThrow_whenDealTimeoutUnitInvalid() {
+            existing.setConfigName("DEAL_TIMEOUT_UNIT");
+            existing.setConfigValue("DAYS");
+            when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> configService.updateConfigurationById(
+                            10L, new ConfigSingleUpdateRequest("HOURS", null), admin));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID09 [Negative] - REVIEW_TIMEOUT_VALUE dưới min")
+        void utcId09_shouldThrow_whenReviewTimeoutValueBelowMin() {
+            existing.setConfigName("REVIEW_TIMEOUT_VALUE");
+            existing.setConfigValue("7");
+            when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> configService.updateConfigurationById(
+                            10L, new ConfigSingleUpdateRequest("0", null), admin));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID10 [Positive] - REVIEW_TIMEOUT_UNIT = MINUTES")
+        void utcId10_shouldAcceptReviewTimeoutUnitMinutes() {
+            existing.setConfigName("REVIEW_TIMEOUT_UNIT");
+            existing.setConfigValue("DAYS");
+            when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
+            when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            ConfigResponseDTO dto = configService.updateConfigurationById(
+                    10L, new ConfigSingleUpdateRequest("MINUTES", null), admin);
+            assertEquals("MINUTES", dto.configValue());
+        }
+    }
+
+    @Nested
+    @DisplayName("Function: updateConfigurations")
+    class UpdateConfigurationsGroup {
+
+        @Test
+        @DisplayName("UTCID01 [Negative] - danh sách null")
+        void utcId01_shouldThrow_whenListNull() {
+            SlifeException ex = assertThrows(SlifeException.class, () -> configService.updateConfigurations(null, admin));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID02 [Negative] - danh sách rỗng")
+        void utcId02_shouldThrow_whenListEmpty() {
+            SlifeException ex = assertThrows(SlifeException.class, () -> configService.updateConfigurations(List.of(), admin));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID03 [Negative] - trùng key sau khi chuẩn hóa")
+        void utcId03_shouldThrow_whenDuplicateKeys() {
             List<ConfigUpdateRequest> reqs = new ArrayList<>();
             reqs.add(new ConfigUpdateRequest("max_images", "10", null));
             reqs.add(new ConfigUpdateRequest("MAX_IMAGES", "11", null));
+
             SlifeException ex = assertThrows(SlifeException.class, () -> configService.updateConfigurations(reqs, admin));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] Key blank hoặc value blank → INVALID_INPUT")
-        void updateConfigurations_invalidKeyOrValue_shouldThrow() {
-            SlifeException ex1 = assertThrows(SlifeException.class,
+        @DisplayName("UTCID04 [Negative] - key chỉ có khoảng trắng")
+        void utcId04_shouldThrow_whenKeyBlank() {
+            SlifeException ex = assertThrows(SlifeException.class,
                     () -> configService.updateConfigurations(List.of(new ConfigUpdateRequest("   ", "1", null)), admin));
-            assertEquals(ErrorCode.INVALID_INPUT, ex1.getErrorCode());
-
-            SlifeException ex2 = assertThrows(SlifeException.class,
-                    () -> configService.updateConfigurations(List.of(new ConfigUpdateRequest("MAX_IMAGES", "   ", null)), admin));
-            assertEquals(ErrorCode.INVALID_INPUT, ex2.getErrorCode());
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("Tạo mới: set description khi tạo")
-        void updateConfigurations_bulk_setsDescriptionOnCreate() {
+        @DisplayName("UTCID05 [Negative] - value để trống")
+        void utcId05_shouldThrow_whenValueBlank() {
+            SlifeException ex = assertThrows(SlifeException.class,
+                    () -> configService.updateConfigurations(List.of(new ConfigUpdateRequest("MAX_IMAGES", "   ", null)), admin));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID06 [Positive] - key mới chưa có trong hệ thống → tạo bản ghi")
+        void utcId06_shouldCreate_whenNewKey() {
             when(configRepository.findByConfigNameInAndDeletedAtIsNull(List.of("NEW_KEY"))).thenReturn(List.of());
             when(configRepository.findByConfigName("NEW_KEY")).thenReturn(Optional.empty());
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -299,8 +416,8 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Khôi phục soft-deleted → deletedAt=null")
-        void updateConfigurations_bulk_restoresSoftDeleted() {
+        @DisplayName("UTCID07 [Positive] - key từng bị xóa mềm → khôi phục và cập nhật giá trị")
+        void utcId07_shouldRestoreSoftDeleted() {
             Configuration dead = new Configuration();
             dead.setId(3L);
             dead.setConfigName("OLD_KEY");
@@ -321,8 +438,8 @@ class ConfigServiceTest {
         }
 
         @Test
-        @DisplayName("Description blank → trimToNull → null")
-        void updateConfigurations_blankDescription_shouldBecomeNull() {
+        @DisplayName("UTCID08 [Positive] - mô tả chỉ khoảng trắng → lưu null")
+        void utcId08_shouldTrimBlankDescriptionToNull() {
             when(configRepository.findByConfigNameInAndDeletedAtIsNull(List.of("NEW_KEY"))).thenReturn(List.of());
             when(configRepository.findByConfigName("NEW_KEY")).thenReturn(Optional.empty());
             when(configRepository.save(any(Configuration.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -334,67 +451,5 @@ class ConfigServiceTest {
             verify(configRepository).save(cap.capture());
             assertNull(cap.getValue().getDescription());
         }
-    }
-
-    // ── ENUM unit config tests (DEAL_TIMEOUT_UNIT, REVIEW_TIMEOUT_UNIT) ─────────
-
-    @Test
-    void updateConfigurationById_dealTimeoutUnit_DAYS_accepted() {
-        existing.setConfigName("DEAL_TIMEOUT_UNIT");
-        existing.setConfigValue("DAYS");
-        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
-        when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        ConfigResponseDTO dto = configService.updateConfigurationById(
-                10L, new ConfigSingleUpdateRequest("DAYS", null), admin);
-        assertEquals("DAYS", dto.configValue());
-    }
-
-    @Test
-    void updateConfigurationById_dealTimeoutUnit_MINUTES_accepted() {
-        existing.setConfigName("DEAL_TIMEOUT_UNIT");
-        existing.setConfigValue("DAYS");
-        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
-        when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        ConfigResponseDTO dto = configService.updateConfigurationById(
-                10L, new ConfigSingleUpdateRequest("MINUTES", null), admin);
-        assertEquals("MINUTES", dto.configValue());
-    }
-
-    @Test
-    void updateConfigurationById_dealTimeoutUnit_invalidEnum_throws() {
-        existing.setConfigName("DEAL_TIMEOUT_UNIT");
-        existing.setConfigValue("DAYS");
-        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
-
-        SlifeException ex = assertThrows(SlifeException.class,
-                () -> configService.updateConfigurationById(
-                        10L, new ConfigSingleUpdateRequest("HOURS", null), admin));
-        assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
-    }
-
-    @Test
-    void updateConfigurationById_reviewTimeoutValue_numericRange() {
-        existing.setConfigName("REVIEW_TIMEOUT_VALUE");
-        existing.setConfigValue("7");
-        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
-
-        // value 0 is below min=1 → throws
-        assertThrows(SlifeException.class,
-                () -> configService.updateConfigurationById(
-                        10L, new ConfigSingleUpdateRequest("0", null), admin));
-    }
-
-    @Test
-    void updateConfigurationById_reviewTimeoutUnit_MINUTES_accepted() {
-        existing.setConfigName("REVIEW_TIMEOUT_UNIT");
-        existing.setConfigValue("DAYS");
-        when(configRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(existing));
-        when(configRepository.save(any(Configuration.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        ConfigResponseDTO dto = configService.updateConfigurationById(
-                10L, new ConfigSingleUpdateRequest("MINUTES", null), admin);
-        assertEquals("MINUTES", dto.configValue());
     }
 }

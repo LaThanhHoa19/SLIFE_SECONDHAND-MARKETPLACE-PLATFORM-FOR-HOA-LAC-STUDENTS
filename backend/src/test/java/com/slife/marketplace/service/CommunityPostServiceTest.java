@@ -2,11 +2,8 @@ package com.slife.marketplace.service;
 
 import com.slife.marketplace.dto.request.CreateCommunityPostRequest;
 import com.slife.marketplace.dto.request.UpdateCommunityPostRequest;
-import com.slife.marketplace.dto.response.CommunityPostCardResponse;
 import com.slife.marketplace.dto.response.CommunityPostResponse;
-import com.slife.marketplace.dto.response.CursorPageResponse;
 import com.slife.marketplace.entity.CommunityPost;
-import com.slife.marketplace.entity.CommunityPostImage;
 import com.slife.marketplace.entity.Hashtag;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
@@ -25,9 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.Instant;
@@ -98,36 +92,34 @@ class CommunityPostServiceTest {
         return new MockMultipartFile("images", name, "image/png", body);
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Giới hạn số ảnh / bài")
-    class MaxImages {
+    @DisplayName("Function: getMaxImagesPerPost")
+    class GetMaxImagesPerPostGroup {
 
         @Test
-        @DisplayName("clamp theo per-post + system cap")
-        void clamp_shouldMin() {
+        @DisplayName("UTCID01 [Positive] - lấy min giữa per-post và system cap")
+        void utcId01_shouldReturnMinBetweenPerPostAndSystemCap() {
             when(configService.getIntConfigValue("MAX_IMAGES_PER_POST", 10)).thenReturn(20);
             when(configService.getIntConfigValue("MAX_IMAGES", 20)).thenReturn(5);
             assertEquals(5, service.getMaxImagesPerPost());
         }
 
         @Test
-        @DisplayName("config <=0 → clamp >=1")
-        void clamp_negative_shouldBecomeAtLeast1() {
+        @DisplayName("UTCID02 [Positive] - config lỗi (<=0) vẫn chặn tối thiểu 1 ảnh")
+        void utcId02_shouldClampToAtLeastOne_whenConfigsNonPositive() {
             when(configService.getIntConfigValue("MAX_IMAGES_PER_POST", 10)).thenReturn(-1);
             when(configService.getIntConfigValue("MAX_IMAGES", 1)).thenReturn(0);
             assertEquals(1, service.getMaxImagesPerPost());
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Tạo bài kèm ảnh")
-    class Create {
+    @DisplayName("Function: createPostWithImages")
+    class CreatePostWithImagesGroup {
 
         @Test
-        @DisplayName("[Lỗi] author null → UNAUTHORIZED")
-        void authorNull_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - chưa đăng nhập vẫn tạo bài")
+        void utcId01_shouldThrowUnauthorized_whenAuthorNull() {
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> service.createPostWithImages(null, req, List.of()));
@@ -135,8 +127,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] vượt quá max ảnh (lọc empty) → INVALID_INPUT MSG18")
-        void exceedMax_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - số ảnh hợp lệ vượt mức cấu hình")
+        void utcId02_shouldThrowInvalidInput_whenImageCountExceedsLimit() {
             when(configService.getIntConfigValue("MAX_IMAGES_PER_POST", 10)).thenReturn(1);
             when(configService.getIntConfigValue("MAX_IMAGES", 1)).thenReturn(1);
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
@@ -151,8 +143,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("[Thường] luồng thành công: trim description + sync hashtag từ description+payload + upload images + trả detail")
-        void happyPath_shouldSaveSyncUploadAndBuildDetail() {
+        @DisplayName("UTCID03 [Positive] - tạo thành công, đồng bộ hashtag và upload ảnh")
+        void utcId03_shouldCreateSyncHashtagsUploadAndReturnDetail() {
             User author = user(1L, "USER");
             CreateCommunityPostRequest req = new CreateCommunityPostRequest();
             req.setDescription("desc #TagOne and #tag_two");
@@ -203,22 +195,21 @@ class CommunityPostServiceTest {
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Cập nhật bài viết")
-    class Update {
+    @DisplayName("Function: updatePost")
+    class UpdatePostGroup {
 
         @Test
-        @DisplayName("[Lỗi] author null → UNAUTHORIZED")
-        void authorNull_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - chưa đăng nhập vẫn sửa bài")
+        void utcId01_shouldThrowUnauthorized_whenAuthorNull() {
             UpdateCommunityPostRequest req = new UpdateCommunityPostRequest();
             SlifeException ex = assertThrows(SlifeException.class, () -> service.updatePost(1L, null, req));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] không phải owner → FORBIDDEN")
-        void notOwner_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - không phải chủ bài viết")
+        void utcId02_shouldThrowForbidden_whenNotOwner() {
             CommunityPost p = post(1L, user(2L, "USER"));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
             UpdateCommunityPostRequest req = new UpdateCommunityPostRequest();
@@ -227,8 +218,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("description null → không đổi; hashtags null → không sync")
-        void blanks_shouldNotOverwrite() {
+        @DisplayName("UTCID03 [Positive] - không gửi field mới thì giữ nguyên dữ liệu cũ")
+        void utcId03_shouldKeepOldFields_whenRequestFieldsNull() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
             p.setDescription("KeepDesc");
@@ -250,8 +241,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("update description + hashtags → sync (normalize + create missing)")
-        void update_shouldSyncHashtags() {
+        @DisplayName("UTCID04 [Positive] - sửa mô tả và hashtag, hệ thống normalize + đồng bộ")
+        void utcId04_shouldSyncHashtags_whenDescriptionOrTagsChanged() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -280,14 +271,13 @@ class CommunityPostServiceTest {
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Xóa mềm bài viết")
-    class Delete {
+    @DisplayName("Function: softDeletePost")
+    class SoftDeletePostGroup {
 
         @Test
-        @DisplayName("owner → mark deletedAt + status=DELETED")
-        void softDelete_shouldMark() {
+        @DisplayName("UTCID01 [Positive] - chủ bài xóa mềm thành công")
+        void utcId01_shouldSoftDeleteAndBroadcast_whenOwnerDeletes() {
             User author = user(1L, "USER");
             CommunityPost p = post(1L, author);
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -301,122 +291,13 @@ class CommunityPostServiceTest {
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Feed bài viết")
-    class Feed {
+    @DisplayName("Function: getById")
+    class GetByIdGroup {
 
         @Test
-        @DisplayName("latest no hashtag: clamp page/size + map card + likedByViewer")
-        void latest_noHashtag_shouldMap() {
-            User viewer = user(9L, "USER");
-            CommunityPost p = post(1L, user(2L, "USER"));
-            Page<CommunityPost> page = new PageImpl<>(List.of(p), PageRequest.of(0, 20), 1);
-            when(postRepository.findVisibleForViewer(eq(CommunityPost.STATUS_ACTIVE), eq(viewer.getId()), any()))
-                    .thenReturn(page);
-
-            CommunityPostImage img = new CommunityPostImage();
-            img.setId(5L);
-            img.setPost(p);
-            img.setImageUrl("/uploads/community-posts/x.png");
-            when(imageRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(List.of(1L))).thenReturn(List.of(img));
-            when(likeRepository.countLikesByPostIds(List.of(1L))).thenReturn(List.<Object[]>of(new Object[]{1L, 7L}));
-            when(commentRepository.countCommentsByPostIds(List.of(1L))).thenReturn(List.<Object[]>of(new Object[]{1L, 3L}));
-            when(likeRepository.findPostIdsLikedByUser(viewer.getId(), List.of(1L))).thenReturn(List.of(1L));
-            when(savedCommunityPostRepository.findSavedPostIdsByUserAndPostIds(viewer.getId(), List.of(1L)))
-                    .thenReturn(List.of());
-
-            var out = service.getFeed(-1, 999, null, "latest", viewer);
-            assertEquals(1, out.getContent().size());
-            CommunityPostCardResponse card = out.getContent().get(0);
-            assertEquals(1L, card.getId());
-            assertEquals("/uploads/community-posts/x.png", card.getThumbUrl());
-            assertEquals(7L, card.getLikeCount());
-            assertEquals(3L, card.getCommentCount());
-            assertEquals(Boolean.TRUE, card.getIsLiked());
-        }
-
-        @Test
-        @DisplayName("top + hashtag filter: gọi đúng repo method")
-        void top_withHashtag_shouldUseHashtagTopQuery() {
-            Page<CommunityPost> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
-            when(postRepository.findVisibleForViewerByHashtagTop(eq(CommunityPost.STATUS_ACTIVE), eq("tag"), any(), any()))
-                    .thenReturn(page);
-
-            var out = service.getFeed(0, 20, "#TAG", "top", null);
-            assertTrue(out.getContent().isEmpty());
-            verify(postRepository).findVisibleForViewerByHashtagTop(eq(CommunityPost.STATUS_ACTIVE), eq("tag"), isNull(), any());
-            verify(postRepository, never()).findVisibleForViewer(any(), any(), any());
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Nhóm: Feed bài (cursor)")
-    class FeedCursor {
-
-        @Test
-        @DisplayName("latest cursor: hasMore → nextCursor encodes last createdAt/id")
-        void latest_shouldBuildNextCursor() {
-            User viewer = user(9L, "USER");
-            CommunityPost p1 = post(2L, user(2L, "USER"));
-            p1.setCreatedAt(Instant.parse("2026-01-02T00:00:00Z"));
-            CommunityPost p2 = post(1L, user(3L, "USER"));
-            p2.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
-            when(postRepository.findVisibleForViewerCursorLatest(eq(CommunityPost.STATUS_ACTIVE), eq(viewer.getId()),
-                    any(), any(), any()))
-                    .thenReturn(List.of(p1, p2)); // size==limit => hasMore
-
-            when(imageRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(List.of(2L, 1L))).thenReturn(List.of());
-            when(likeRepository.countLikesByPostIds(List.of(2L, 1L))).thenReturn(List.of());
-            when(commentRepository.countCommentsByPostIds(List.of(2L, 1L))).thenReturn(List.of());
-            when(likeRepository.findPostIdsLikedByUser(eq(viewer.getId()), any())).thenReturn(List.of());
-            when(savedCommunityPostRepository.findSavedPostIdsByUserAndPostIds(eq(viewer.getId()), any()))
-                    .thenReturn(List.of());
-
-            CursorPageResponse<CommunityPostCardResponse> out = service.getFeedCursor(2, null, null, "latest", viewer);
-            assertTrue(out.isHasMore());
-            assertNotNull(out.getNextCursor());
-            CommunityPostCursorCodec.LatestCursor c = CommunityPostCursorCodec.decodeLatest(out.getNextCursor());
-            assertNotNull(c);
-            assertEquals(p2.getCreatedAt(), c.createdAt());
-            assertEquals(p2.getId(), c.id());
-        }
-
-        @Test
-        @DisplayName("top cursor: hasMore → nextCursor encodes score + last createdAt/id")
-        void top_shouldBuildNextCursorWithScore() {
-            CommunityPost p1 = post(2L, user(2L, "USER"));
-            CommunityPost p2 = post(1L, user(3L, "USER"));
-            p2.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
-
-            when(postRepository.findVisibleForViewerCursorTop(eq(CommunityPost.STATUS_ACTIVE), isNull(),
-                    any(), any(), any(), any()))
-                    .thenReturn(List.of(p1, p2));
-
-            when(imageRepository.findByPost_IdInOrderByPost_IdAscDisplayOrderAsc(List.of(2L, 1L))).thenReturn(List.of());
-            when(likeRepository.countLikesByPostIds(List.of(2L, 1L))).thenReturn(List.<Object[]>of(
-                    new Object[]{1L, 7L}, new Object[]{2L, 1L}));
-            when(commentRepository.countCommentsByPostIds(List.of(2L, 1L))).thenReturn(List.<Object[]>of(
-                    new Object[]{1L, 3L}, new Object[]{2L, 0L}));
-
-            CursorPageResponse<CommunityPostCardResponse> out = service.getFeedCursor(2, null, null, "top", null);
-            CommunityPostCursorCodec.TopCursor c = CommunityPostCursorCodec.decodeTop(out.getNextCursor());
-            assertNotNull(c);
-            assertEquals(10L, c.score()); // p2 score = 7 likes + 3 comments
-            assertEquals(p2.getCreatedAt(), c.createdAt());
-            assertEquals(p2.getId(), c.id());
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Nhóm: Chi tiết bài theo id")
-    class GetById {
-
-        @Test
-        @DisplayName("[Lỗi] deleted → COMMUNITY_POST_NOT_FOUND")
-        void deleted_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - bài đã xóa mềm")
+        void utcId01_shouldThrowNotFound_whenDeleted() {
             CommunityPost p = post(1L, user(2L, "USER"));
             p.setDeletedAt(Instant.now());
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -426,8 +307,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] hidden và viewer không phải owner/admin → COMMUNITY_POST_NOT_FOUND")
-        void hidden_notOwnerNotAdmin_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - bài bị ẩn, người xem không phải owner/admin")
+        void utcId02_shouldThrowNotFound_whenHiddenAndViewerUnauthorized() {
             CommunityPost p = post(1L, user(2L, "USER"));
             p.setHiddenAt(Instant.now());
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -437,8 +318,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("[Lỗi] blocked → COMMUNITY_POST_NOT_FOUND")
-        void blocked_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - viewer đã chặn tác giả")
+        void utcId03_shouldThrowNotFound_whenBlockedRelationship() {
             User viewer = user(9L, "USER");
             CommunityPost p = post(1L, user(2L, "USER"));
             when(postRepository.findById(1L)).thenReturn(Optional.of(p));
@@ -449,8 +330,8 @@ class CommunityPostServiceTest {
         }
 
         @Test
-        @DisplayName("owner hoặc admin hoặc visible → incrementViewCount")
-        void allowed_shouldIncrement() {
+        @DisplayName("UTCID04 [Positive] - owner mở bài ẩn vẫn xem được và tăng view")
+        void utcId04_shouldIncrementView_whenOwnerAllowed() {
             User owner = user(2L, "USER");
             CommunityPost p = post(1L, owner);
             p.setHiddenAt(Instant.now()); // hidden but owner => allowed

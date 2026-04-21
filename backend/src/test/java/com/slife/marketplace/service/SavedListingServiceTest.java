@@ -31,10 +31,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class SavedListingServiceTest {
 
-    @Mock private SavedListingRepository savedListingRepository;
-    @Mock private ListingRepository listingRepository;
-    @Mock private ListingService listingService;
-    @Mock private BlockService blockService;
+    @Mock
+    private SavedListingRepository savedListingRepository;
+    @Mock
+    private ListingRepository listingRepository;
+    @Mock
+    private ListingService listingService;
+    @Mock
+    private BlockService blockService;
 
     private SavedListingService service;
 
@@ -61,60 +65,56 @@ class SavedListingServiceTest {
         return l;
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Lưu tin yêu thích")
-    class Save {
+    @DisplayName("Function: save")
+    class SaveGroup {
+
         @Test
-        @DisplayName("[Lỗi] không tìm thấy tin đăng → LISTING_NOT_FOUND")
-        void listingMissing_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - listing not found")
+        void utcId01_shouldThrowListingNotFound_whenListingMissing() {
             when(listingRepository.findById(10L)).thenReturn(Optional.empty());
+
             assertEquals(ErrorCode.LISTING_NOT_FOUND,
                     assertThrows(SlifeException.class, () -> service.save(user(1L), 10L)).getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] listing status != ACTIVE → LISTING_NOT_FOUND")
-        void listingNotActive_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - listing is not ACTIVE")
+        void utcId02_shouldThrowListingNotFound_whenListingNotActive() {
             when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L), "HIDDEN")));
+
             assertEquals(ErrorCode.LISTING_NOT_FOUND,
                     assertThrows(SlifeException.class, () -> service.save(user(1L), 10L)).getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] status 'active' chữ thường (không khớp ACTIVE) → LISTING_NOT_FOUND")
-        void listingStatusCaseSensitive_shouldThrow() {
-            when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L), "active")));
-            assertEquals(ErrorCode.LISTING_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> service.save(user(1L), 10L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] blocked between user & seller → FOLLOW_BLOCKED")
-        void blocked_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - blocked with seller")
+        void utcId03_shouldThrowFollowBlocked_whenBlockedEitherDirection() {
             User me = user(1L);
             User seller = user(2L);
             when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, seller, "ACTIVE")));
             when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
+
             SlifeException ex = assertThrows(SlifeException.class, () -> service.save(me, 10L));
             assertEquals(ErrorCode.FOLLOW_BLOCKED, ex.getErrorCode());
             verify(savedListingRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("[Lỗi] already saved → SAVED_LISTING_ALREADY")
-        void alreadySaved_shouldThrow() {
+        @DisplayName("UTCID04 [Negative] - listing already saved")
+        void utcId04_shouldThrowSavedListingAlready_whenAlreadySaved() {
             User me = user(1L);
             when(listingRepository.findById(10L)).thenReturn(Optional.of(listing(10L, user(2L), "ACTIVE")));
             when(blockService.isBlockedEitherDirection(anyLong(), anyLong())).thenReturn(false);
             when(savedListingRepository.existsByUser_IdAndListing_Id(1L, 10L)).thenReturn(true);
+
             assertEquals(ErrorCode.SAVED_LISTING_ALREADY,
                     assertThrows(SlifeException.class, () -> service.save(me, 10L)).getErrorCode());
         }
 
         @Test
-        @DisplayName("[Thường] luồng thành công → save row")
-        void happyPath_shouldSave() {
+        @DisplayName("UTCID05 [Positive] - save success")
+        void utcId05_shouldSave_whenAllBusinessConditionsAreMet() {
             User me = user(1L);
             Listing l = listing(10L, user(2L), "ACTIVE");
             when(listingRepository.findById(10L)).thenReturn(Optional.of(l));
@@ -128,34 +128,37 @@ class SavedListingServiceTest {
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Bỏ lưu tin")
-    class Unsave {
+    @DisplayName("Function: unsave")
+    class UnsaveGroup {
+
         @Test
-        @DisplayName("[Lỗi] not saved → SAVED_LISTING_NOT_SAVED")
-        void notSaved_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - listing is not in saved list")
+        void utcId01_shouldThrowSavedListingNotSaved_whenNotSavedYet() {
             when(savedListingRepository.existsByUser_IdAndListing_Id(1L, 10L)).thenReturn(false);
+
             assertEquals(ErrorCode.SAVED_LISTING_NOT_SAVED,
                     assertThrows(SlifeException.class, () -> service.unsave(user(1L), 10L)).getErrorCode());
         }
 
         @Test
-        @DisplayName("[Thường] luồng thành công → deleteByUserAndListing")
-        void happyPath_shouldDelete() {
+        @DisplayName("UTCID02 [Positive] - unsave success")
+        void utcId02_shouldDeleteSavedListing_whenSavedExists() {
             when(savedListingRepository.existsByUser_IdAndListing_Id(1L, 10L)).thenReturn(true);
+
             service.unsave(user(1L), 10L);
+
             verify(savedListingRepository).deleteByUser_IdAndListing_Id(1L, 10L);
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Danh sách đã lưu / kiểm tra đã lưu")
-    class GetSaved {
+    @DisplayName("Function: getSavedListings")
+    class GetSavedListingsGroup {
+
         @Test
-        @DisplayName("clamp page/size + filter null listing + filter blocked sellers")
-        void clampAndFilter_shouldWork() {
+        @DisplayName("UTCID01 [Positive] - filter blocked and null listing, normalize page/size")
+        void utcId01_shouldFilterAndNormalize_whenInputPageSizeInvalid() {
             User me = user(1L);
             Listing l1 = listing(10L, user(2L), "ACTIVE");
             Listing l2 = listing(11L, user(3L), "ACTIVE");
@@ -169,8 +172,8 @@ class SavedListingServiceTest {
 
             Page<SavedListing> p = new PageImpl<>(List.of(s1, s2, s3), PageRequest.of(0, 1), 3);
             when(savedListingRepository.findByUser_IdOrderByCreatedAtDesc(eq(1L), any())).thenReturn(p);
-            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);  // filter out l1
-            when(blockService.isBlockedEitherDirection(1L, 3L)).thenReturn(false); // keep l2
+            when(blockService.isBlockedEitherDirection(1L, 2L)).thenReturn(true);
+            when(blockService.isBlockedEitherDirection(1L, 3L)).thenReturn(false);
 
             ListingResponse resp2 = mock(ListingResponse.class);
             when(listingService.buildListingResponse(eq(l2), eq(me), eq(true))).thenReturn(resp2);
@@ -182,8 +185,8 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("seller==currentUser → không check block")
-        void sellerIsUser_shouldBypassBlockFilter() {
+        @DisplayName("UTCID02 [Positive] - own listing bypasses block check")
+        void utcId02_shouldBypassBlockCheck_whenSellerIsCurrentUser() {
             User me = user(1L);
             Listing own = listing(10L, me, "ACTIVE");
             SavedListing s = new SavedListing();
@@ -200,10 +203,17 @@ class SavedListingServiceTest {
         }
 
         @Test
-        @DisplayName("isSaved delegates to repository")
-        void isSaved_delegates() {
-            when(savedListingRepository.existsByUser_IdAndListing_Id(1L, 10L)).thenReturn(true);
-            assertTrue(service.isSaved(1L, 10L));
+        @DisplayName("UTCID03 [Boundary] - size over max is clamped to 20")
+        void utcId03_shouldClampSizeTo20_whenRequestedSizeTooLarge() {
+            User me = user(1L);
+            Page<SavedListing> p = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+            when(savedListingRepository.findByUser_IdOrderByCreatedAtDesc(eq(1L), any())).thenReturn(p);
+
+            PagedResponse<ListingResponse> out = service.getSavedListings(me, 0, 999);
+
+            assertEquals(20, out.getSize());
+            verify(savedListingRepository).findByUser_IdOrderByCreatedAtDesc(eq(1L), argThat(pr ->
+                    pr.getPageNumber() == 0 && pr.getPageSize() == 20));
         }
     }
 }

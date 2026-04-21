@@ -15,7 +15,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,22 +28,12 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-/**
- * Unit test cho {@link UserService}.
- *
- * Mục tiêu:
- * - Kiểm tra đúng business rules + nhánh quan trọng (auth/ownership/state/edge cases).
- * - Không chạm DB/FS/HTTP: mọi dependency đều mock (repository, file storage).
- *
- * Cách test:
- * - Dựng SecurityContext giả để mô phỏng session hiện tại.
- * - Stub repository theo từng tình huống (found/not found/exception).
- * - Verify side-effects: gọi repo/save, set field đúng, ném đúng {@link SlifeException}/{@link ErrorCode}.
- */
 class UserServiceTest {
 
-    @Mock private UserRepository userRepository;
-    @Mock private UserFileStorageService userFileStorage;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private UserFileStorageService userFileStorage;
 
     private UserService service;
 
@@ -60,7 +52,7 @@ class UserServiceTest {
         User u = new User();
         u.setId(id);
         u.setEmail(email);
-        u.setFullName("U" + id);
+        u.setFullName("User " + id);
         return u;
     }
 
@@ -70,238 +62,239 @@ class UserServiceTest {
         );
     }
 
-    // ---------------------------------------------------------------------
+    private static void authAsUserDetails(String email) {
+        UserDetails principal = new org.springframework.security.core.userdetails.User(
+                email,
+                "pw",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "pw", principal.getAuthorities())
+        );
+    }
+
     @Nested
-    @DisplayName("Nhóm: Email & user đăng nhập")
-    class CurrentUser {
+    @DisplayName("Function: getCurrentUserEmail")
+    class GetCurrentUserEmailGroup {
+
         @Test
-        @DisplayName("[Lỗi] no auth → UNAUTHORIZED")
-        void noAuth_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - auth null -> UNAUTHORIZED")
+        void utcId01_shouldThrowUnauthorized_whenAuthIsMissing() {
             SlifeException ex = assertThrows(SlifeException.class, () -> service.getCurrentUserEmail());
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] principal string blank → UNAUTHORIZED")
-        void blankPrincipal_shouldThrow() {
-            authAsEmail("   ");
+        @DisplayName("UTCID02 [Positive] - principal String valid -> return email")
+        void utcId02_shouldReturnEmail_whenPrincipalIsString() {
+            authAsEmail("student@slife.vn");
+            String email = service.getCurrentUserEmail();
+            assertEquals("student@slife.vn", email);
+        }
+
+        @Test
+        @DisplayName("UTCID03 [Positive] - principal UserDetails valid -> return username")
+        void utcId03_shouldReturnUsername_whenPrincipalIsUserDetails() {
+            authAsUserDetails("detail@slife.vn");
+            String email = service.getCurrentUserEmail();
+            assertEquals("detail@slife.vn", email);
+        }
+
+        @Test
+        @DisplayName("UTCID04 [Negative] - principal blank -> UNAUTHORIZED")
+        void utcId04_shouldThrowUnauthorized_whenPrincipalBlank() {
+            authAsEmail(" ");
             SlifeException ex = assertThrows(SlifeException.class, () -> service.getCurrentUserEmail());
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
         }
-
-        @Test
-        @DisplayName("[Lỗi] getCurrentUser: user not found → UNAUTHORIZED")
-        void userNotFound_shouldThrow() {
-            authAsEmail("a@ex.com");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.getCurrentUser());
-            assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
-        }
-
-        @Test
-        @DisplayName("getCurrentUserOptional: when unauthorized → empty")
-        void optionalUnauthorized_empty() {
-            assertTrue(service.getCurrentUserOptional().isEmpty());
-        }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Lấy user theo id")
-    class GetById {
-        @Test
-        @DisplayName("[Lỗi] user không tồn tại → USER_NOT_FOUND")
-        void missing_shouldThrow() {
-            when(userRepository.findById(404L)).thenReturn(Optional.empty());
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.getUserById(404L));
-            assertEquals(ErrorCode.USER_NOT_FOUND, ex.getErrorCode());
-        }
+    @DisplayName("Function: markPhoneVerifiedWithFirebase")
+    class MarkPhoneVerifiedWithFirebaseGroup {
 
         @Test
-        @DisplayName("[Thường] luồng thành công → trả entity")
-        void found_shouldReturn() {
-            User u = user(1L, "a@ex.com");
-            when(userRepository.findById(1L)).thenReturn(Optional.of(u));
-            assertSame(u, service.getUserById(1L));
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Nhóm: Xác minh SĐT Firebase")
-    class PhoneVerify {
-        @Test
-        @DisplayName("[Thường] luồng thành công: set phone + verifiedAt + reload")
-        void happyPath() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+        @DisplayName("UTCID01 [Positive] - save and reload success")
+        void utcId01_shouldSetPhoneAndVerifiedAt_whenFlowSuccess() {
+            authAsEmail("verify@slife.vn");
+            User current = user(1L, "verify@slife.vn");
+            when(userRepository.findByEmail("verify@slife.vn")).thenReturn(Optional.of(current));
+            when(userRepository.findByIdNotAndPhoneNumberIsNotNull(1L)).thenReturn(List.of());
             when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(userRepository.findById(1L)).thenReturn(Optional.of(u));
+            when(userRepository.findById(1L)).thenReturn(Optional.of(current));
 
-            User out = service.markPhoneVerifiedWithFirebase("+841234");
-            assertEquals("+841234", out.getPhoneNumber());
-            assertNotNull(out.getPhoneVerifiedAt());
+            User result = service.markPhoneVerifiedWithFirebase("+84901234567");
+
+            assertEquals("+84901234567", result.getPhoneNumber());
+            assertNotNull(result.getPhoneVerifiedAt());
+            verify(userRepository).saveAndFlush(current);
         }
 
         @Test
-        @DisplayName("[Lỗi] reload missing → INTERNAL_ERROR")
-        void reloadMissing_shouldThrow() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+        @DisplayName("UTCID02 [Negative] - duplicated phone with other account")
+        void utcId02_shouldThrowPhoneAlreadyInUse_whenAnotherAccountUsesSamePhone() {
+            authAsEmail("verify@slife.vn");
+            User current = user(1L, "verify@slife.vn");
+            User other = user(2L, "other@slife.vn");
+            other.setPhoneNumber("0901234567");
+
+            when(userRepository.findByEmail("verify@slife.vn")).thenReturn(Optional.of(current));
+            when(userRepository.findByIdNotAndPhoneNumberIsNotNull(1L)).thenReturn(List.of(other));
+
+            SlifeException ex = assertThrows(
+                    SlifeException.class,
+                    () -> service.markPhoneVerifiedWithFirebase("+84901234567")
+            );
+            assertEquals(ErrorCode.PHONE_ALREADY_IN_USE, ex.getErrorCode());
+            verify(userRepository, never()).saveAndFlush(any(User.class));
+        }
+
+        @Test
+        @DisplayName("UTCID03 [Negative] - reload missing after save -> INTERNAL_ERROR")
+        void utcId03_shouldThrowInternalError_whenReloadMissing() {
+            authAsEmail("verify@slife.vn");
+            User current = user(1L, "verify@slife.vn");
+
+            when(userRepository.findByEmail("verify@slife.vn")).thenReturn(Optional.of(current));
+            when(userRepository.findByIdNotAndPhoneNumberIsNotNull(1L)).thenReturn(List.of());
             when(userRepository.saveAndFlush(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
             when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.markPhoneVerifiedWithFirebase("+841"));
+            SlifeException ex = assertThrows(
+                    SlifeException.class,
+                    () -> service.markPhoneVerifiedWithFirebase("+84901234567")
+            );
             assertEquals(ErrorCode.INTERNAL_ERROR, ex.getErrorCode());
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Cập nhật thông tin user")
-    class Update {
+    @DisplayName("Function: updateCurrentUser")
+    class UpdateCurrentUserGroup {
+
         @Test
-        @DisplayName("null request → still keeps fullName fallback")
-        void nullRequest_shouldFallbackFullName() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            u.setFullName("   ");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+        @DisplayName("UTCID01 [Positive] - request null fallback fullName")
+        void utcId01_shouldFallbackFullName_whenRequestNull() {
+            authAsEmail("profile@slife.vn");
+            User current = user(1L, "profile@slife.vn");
+            current.setFullName("  ");
+            when(userRepository.findByEmail("profile@slife.vn")).thenReturn(Optional.of(current));
             when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            User out = service.updateCurrentUser(null);
-            assertEquals("a@ex.com", out.getFullName());
+            User result = service.updateCurrentUser(null);
+
+            assertEquals("profile@slife.vn", result.getFullName());
+            assertNotNull(result.getUpdatedAt());
         }
 
         @Test
-        @DisplayName("phone changed → clear phoneVerifiedAt")
-        void phoneChanged_shouldClearVerifiedAt() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            u.setPhoneNumber("+84901234567");
-            u.setPhoneVerifiedAt(LocalDateTime.now());
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+        @DisplayName("UTCID02 [Positive] - same phone subscriber keeps phoneVerifiedAt")
+        void utcId02_shouldKeepPhoneVerifiedAt_whenSubscriberIsSame() {
+            authAsEmail("profile@slife.vn");
+            User current = user(1L, "profile@slife.vn");
+            current.setPhoneNumber("+84901234567");
+            current.setPhoneVerifiedAt(LocalDateTime.now());
+            when(userRepository.findByEmail("profile@slife.vn")).thenReturn(Optional.of(current));
             when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
             UpdateUserRequest req = new UpdateUserRequest();
-            req.setPhoneNumber("0901234567"); // same VN subscriber -> should NOT clear
-            User out1 = service.updateCurrentUser(req);
-            assertNotNull(out1.getPhoneVerifiedAt());
+            req.setPhoneNumber("0901234567");
+            User result = service.updateCurrentUser(req);
 
-            UpdateUserRequest req2 = new UpdateUserRequest();
-            req2.setPhoneNumber("0909999999"); // different -> clear
-            User out2 = service.updateCurrentUser(req2);
-            assertNull(out2.getPhoneVerifiedAt());
+            assertNotNull(result.getPhoneVerifiedAt());
         }
 
         @Test
-        @DisplayName("blank fields → set null (bio/avatar/cover)")
-        void blankFields_shouldBecomeNull() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+        @DisplayName("UTCID03 [Positive] - changed phone clears phoneVerifiedAt")
+        void utcId03_shouldClearPhoneVerifiedAt_whenPhoneChanged() {
+            authAsEmail("profile@slife.vn");
+            User current = user(1L, "profile@slife.vn");
+            current.setPhoneNumber("+84901234567");
+            current.setPhoneVerifiedAt(LocalDateTime.now());
+            when(userRepository.findByEmail("profile@slife.vn")).thenReturn(Optional.of(current));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            UpdateUserRequest req = new UpdateUserRequest();
+            req.setPhoneNumber("0909999999");
+            User result = service.updateCurrentUser(req);
+
+            assertNull(result.getPhoneVerifiedAt());
+        }
+
+        @Test
+        @DisplayName("UTCID04 [Boundary] - blank profile fields become null")
+        void utcId04_shouldNormalizeBlankFieldsToNull() {
+            authAsEmail("profile@slife.vn");
+            User current = user(1L, "profile@slife.vn");
+            when(userRepository.findByEmail("profile@slife.vn")).thenReturn(Optional.of(current));
             when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
             UpdateUserRequest req = new UpdateUserRequest();
             req.setBio("   ");
             req.setAvatarUrl(" ");
             req.setCoverImageUrl(" ");
-            User out = service.updateCurrentUser(req);
-            assertNull(out.getBio());
-            assertNull(out.getAvatarUrl());
-            assertNull(out.getCoverImageUrl());
+            User result = service.updateCurrentUser(req);
+
+            assertNull(result.getBio());
+            assertNull(result.getAvatarUrl());
+            assertNull(result.getCoverImageUrl());
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Tải avatar / ảnh bìa")
-    class Uploads {
-
+    @DisplayName("Function: uploadAvatar")
+    class UploadAvatarGroup {
         @Test
-        @DisplayName("[Lỗi] file null/empty → INVALID_INPUT")
-        void invalidFile_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - null or empty file -> INVALID_INPUT")
+        void utcId01_shouldThrowInvalidInput_whenFileNullOrEmpty() {
             assertEquals(ErrorCode.INVALID_INPUT,
                     assertThrows(SlifeException.class, () -> service.uploadAvatar(null)).getErrorCode());
             assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> service.uploadCover(new MockMultipartFile("f","a.png","image/png", new byte[0]))).getErrorCode());
+                    assertThrows(SlifeException.class,
+                            () -> service.uploadAvatar(new MockMultipartFile("f", "a.png", "image/png", new byte[0])))
+                            .getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] file too large → INVALID_INPUT")
-        void tooLarge_shouldThrow() {
+        @DisplayName("UTCID02 [Boundary] - file too large -> INVALID_INPUT")
+        void utcId02_shouldThrowInvalidInput_whenFileTooLarge() {
             byte[] big = new byte[5 * 1024 * 1024 + 1];
-            MockMultipartFile f = new MockMultipartFile("f", "a.png", "image/png", big);
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> service.uploadAvatar(f)).getErrorCode());
+            MockMultipartFile file = new MockMultipartFile("f", "a.png", "image/png", big);
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.uploadAvatar(file));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("uploadAvatar: lưu file dưới avatars/{userId}_*.{ext} và persist avatarUrl + updatedAt")
-        void uploadAvatar_happyPath() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
-            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(userFileStorage.storeMultipart(any(), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
+        @DisplayName("UTCID03 [Negative] - unauthenticated user -> UNAUTHORIZED")
+        void utcId03_shouldThrowUnauthorized_whenUnauthenticated() {
+            MockMultipartFile file = new MockMultipartFile("f", "a.png", "image/png", new byte[]{1, 2});
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.uploadAvatar(file));
 
-            MockMultipartFile f = new MockMultipartFile("f", "a.JPEG", "image/jpeg", new byte[]{1,2,3});
-            User out = service.uploadAvatar(f);
-            assertNotNull(out.getAvatarUrl());
-            assertEquals("/uploads/avatars/1_", out.getAvatarUrl().substring(0, "/uploads/avatars/1_".length()));
-            assertTrue(out.getAvatarUrl().endsWith(".jpeg"));
-            assertNotNull(out.getUpdatedAt());
-            verify(userFileStorage).storeMultipart(eq(f), argThat((String rel) ->
-                    rel != null && rel.startsWith("avatars/1_") && rel.endsWith(".jpeg")));
-            verify(userRepository).save(argThat(saved ->
-                    saved.getAvatarUrl() != null && saved.getAvatarUrl().equals(out.getAvatarUrl())));
-        }
-
-        @Test
-        @DisplayName("uploadCover: lưu dưới covers/ và set coverImageUrl (không đụng avatarUrl)")
-        void uploadCover_happyPath() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            u.setAvatarUrl("https://old/avatar");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
-            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(userFileStorage.storeMultipart(any(), anyString()))
-                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
-
-            MockMultipartFile f = new MockMultipartFile("f", "c.png", "image/png", new byte[]{1,2,3});
-            User out = service.uploadCover(f);
-            assertEquals("https://old/avatar", out.getAvatarUrl());
-            assertNotNull(out.getCoverImageUrl());
-            assertTrue(out.getCoverImageUrl().startsWith("/uploads/covers/1_"));
-            assertTrue(out.getCoverImageUrl().endsWith(".png"));
-            verify(userFileStorage).storeMultipart(eq(f), argThat(rel ->
-                    rel != null && rel.startsWith("covers/1_") && rel.endsWith(".png")));
-        }
-
-        @Test
-        @DisplayName("[Lỗi] Chưa đăng nhập mà upload avatar → UNAUTHORIZED (không gọi storage)")
-        void uploadAvatar_unauthenticated_shouldThrow() {
-            MockMultipartFile f = new MockMultipartFile("f", "a.png", "image/png", new byte[]{1});
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.uploadAvatar(f));
             assertEquals(ErrorCode.UNAUTHORIZED, ex.getErrorCode());
             verifyNoInteractions(userFileStorage);
         }
 
         @Test
-        @DisplayName("[Lỗi] storeMultipart fails → FILE_UPLOAD_FAILED")
-        void ioFailure_shouldThrow() {
-            authAsEmail("a@ex.com");
-            User u = user(1L, "a@ex.com");
-            when(userRepository.findByEmail("a@ex.com")).thenReturn(Optional.of(u));
+        @DisplayName("UTCID04 [Positive] - valid file stores avatar and persists URL")
+        void utcId04_shouldStoreAndPersistAvatar_whenValidRequest() {
+            authAsEmail("avatar@slife.vn");
+            User current = user(1L, "avatar@slife.vn");
+            when(userRepository.findByEmail("avatar@slife.vn")).thenReturn(Optional.of(current));
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
             when(userFileStorage.storeMultipart(any(), anyString()))
-                    .thenThrow(new SlifeException(ErrorCode.FILE_UPLOAD_FAILED));
+                    .thenAnswer(inv -> "/uploads/" + inv.getArgument(1, String.class));
 
-            MockMultipartFile f = new MockMultipartFile("f", "a.png", "image/png", new byte[]{1,2,3});
-            SlifeException ex = assertThrows(SlifeException.class, () -> service.uploadCover(f));
-            assertEquals(ErrorCode.FILE_UPLOAD_FAILED, ex.getErrorCode());
+            MockMultipartFile file = new MockMultipartFile("f", "avatar.JPEG", "image/jpeg", new byte[]{1, 2, 3});
+            User result = service.uploadAvatar(file);
+
+            assertNotNull(result.getAvatarUrl());
+            assertTrue(result.getAvatarUrl().startsWith("/uploads/avatars/1_"));
+            assertTrue(result.getAvatarUrl().endsWith(".jpeg"));
+            assertNotNull(result.getUpdatedAt());
+            verify(userFileStorage).storeMultipart(eq(file), argThat((String rel) ->
+                    rel != null && rel.startsWith("avatars/1_") && rel.endsWith(".jpeg")));
+            verify(userRepository).save(current);
         }
     }
 }

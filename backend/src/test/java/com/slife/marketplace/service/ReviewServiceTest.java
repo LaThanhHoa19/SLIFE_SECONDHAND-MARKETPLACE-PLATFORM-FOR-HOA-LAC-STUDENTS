@@ -9,6 +9,7 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.repository.ReviewRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,7 +26,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ReviewServiceTest {
 
-    @Mock private ReviewRepository reviewRepository;
+    @Mock
+    private ReviewRepository reviewRepository;
 
     private ReviewService service;
 
@@ -37,125 +39,131 @@ class ReviewServiceTest {
     private static User user(long id) {
         User u = new User();
         u.setId(id);
-        u.setFullName("U" + id);
-        u.setAvatarUrl("ava" + id);
+        u.setFullName("User " + id);
+        u.setAvatarUrl("avatar-" + id);
         return u;
     }
 
-    @Test
-    @DisplayName("getUserReviews: ánh xạ trường cơ bản; an toàn null (reviewer/conversation)")
-    void getUserReviews_mapsAndNullSafe() {
-        Review r1 = new Review();
-        r1.setId(1L);
-        r1.setRating((byte) 5);
-        r1.setComment("good");
-        r1.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
-        r1.setReviewer(user(9L));
+    @Nested
+    @DisplayName("Function: getUserReviews")
+    class GetUserReviewsGroup {
 
-        Review r2 = new Review();
-        r2.setId(2L);
-        r2.setRating((byte) 4);
-        r2.setComment(null);
-        r2.setCreatedAt(Instant.parse("2026-01-02T00:00:00Z"));
-        r2.setReviewer(null);
-        r2.setConversation(null);
+        @Test
+        @DisplayName("UTCID01 [Positive] - empty review list returns empty response")
+        void utcId01_shouldReturnEmptyList_whenNoReviewExists() {
+            when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(7L)).thenReturn(Collections.emptyList());
 
-        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r1, r2));
+            List<ReviewResponse> result = service.getUserReviews(7L);
 
-        List<ReviewResponse> out = service.getUserReviews(5L);
-        assertEquals(2, out.size());
-        assertEquals(1L, out.get(0).getId());
-        assertEquals(5, out.get(0).getRating().intValue());
-        assertEquals("good", out.get(0).getComment());
-        assertEquals(9L, out.get(0).getReviewerId());
-        assertEquals("U9", out.get(0).getReviewerName());
-        assertEquals("ava9", out.get(0).getReviewerAvatar());
+            assertTrue(result.isEmpty());
+        }
 
-        assertEquals(2L, out.get(1).getId());
-        assertNull(out.get(1).getReviewerId());
-        assertNull(out.get(1).getListingId());
-    }
+        @Test
+        @DisplayName("UTCID02 [Positive] - map base fields and reviewer info")
+        void utcId02_shouldMapBasicAndReviewerFields() {
+            Review r = new Review();
+            r.setId(1L);
+            r.setRating((byte) 5);
+            r.setComment("Great trade");
+            r.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+            r.setReviewer(user(9L));
 
-    @Test
-    @DisplayName("getUserReviews: ánh xạ tin đăng + ảnh đầu tiên nếu có")
-    void getUserReviews_mapsListingAndImage() {
-        Listing listing = new Listing();
-        listing.setId(10L);
-        listing.setTitle("T");
-        listing.setPrice(BigDecimal.valueOf(12.5));
+            when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r));
 
-        ListingImage img1 = new ListingImage();
-        img1.setImageUrl("img1");
-        listing.setImages(List.of(img1));
+            ReviewResponse out = service.getUserReviews(5L).get(0);
 
-        Conversation conv = new Conversation();
-        conv.setListing(listing);
+            assertEquals(1L, out.getId());
+            assertEquals(5, out.getRating().intValue());
+            assertEquals("Great trade", out.getComment());
+            assertEquals(9L, out.getReviewerId());
+            assertEquals("User 9", out.getReviewerName());
+            assertEquals("avatar-9", out.getReviewerAvatar());
+        }
 
-        Review r = new Review();
-        r.setId(1L);
-        r.setRating((byte) 5);
-        r.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
-        r.setConversation(conv);
+        @Test
+        @DisplayName("UTCID03 [Positive] - map listing fields and first image")
+        void utcId03_shouldMapListingFieldsAndFirstImage_whenConversationHasListing() {
+            Listing listing = new Listing();
+            listing.setId(10L);
+            listing.setTitle("Laptop");
+            listing.setPrice(BigDecimal.valueOf(12.5));
 
-        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r));
+            ListingImage img1 = new ListingImage();
+            img1.setImageUrl("img1");
+            ListingImage img2 = new ListingImage();
+            img2.setImageUrl("img2");
+            listing.setImages(List.of(img1, img2));
 
-        ReviewResponse out = service.getUserReviews(5L).get(0);
-        assertEquals(10L, out.getListingId());
-        assertEquals("T", out.getListingTitle());
-        assertEquals(BigDecimal.valueOf(12.5), out.getListingPrice());
-        assertEquals("img1", out.getListingImage());
-    }
+            Conversation conv = new Conversation();
+            conv.setListing(listing);
 
-    @Test
-    @DisplayName("getUserReviews: không có review → danh sách rỗng")
-    void getUserReviews_empty_returnsEmpty() {
-        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(7L)).thenReturn(Collections.emptyList());
-        assertTrue(service.getUserReviews(7L).isEmpty());
-    }
+            Review r = new Review();
+            r.setId(2L);
+            r.setRating((byte) 4);
+            r.setCreatedAt(Instant.parse("2026-01-02T00:00:00Z"));
+            r.setConversation(conv);
 
-    @Test
-    @DisplayName("getUserReviews: conversation không gắn listing → không map listingId/title/price/image")
-    void getUserReviews_conversationWithoutListing_nullListingFields() {
-        Conversation conv = new Conversation();
-        conv.setListing(null);
-        Review r = new Review();
-        r.setId(3L);
-        r.setRating((byte) 5);
-        r.setCreatedAt(Instant.parse("2026-01-03T00:00:00Z"));
-        r.setConversation(conv);
+            when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r));
 
-        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r));
+            ReviewResponse out = service.getUserReviews(5L).get(0);
 
-        ReviewResponse out = service.getUserReviews(5L).get(0);
-        assertNull(out.getListingId());
-        assertNull(out.getListingTitle());
-        assertNull(out.getListingPrice());
-        assertNull(out.getListingImage());
-    }
+            assertEquals(10L, out.getListingId());
+            assertEquals("Laptop", out.getListingTitle());
+            assertEquals(BigDecimal.valueOf(12.5), out.getListingPrice());
+            assertEquals("img1", out.getListingImage());
+        }
 
-    @Test
-    @DisplayName("getUserReviews: listing không có ảnh → listingImage null")
-    void getUserReviews_listingWithEmptyImages_noImageUrl() {
-        Listing listing = new Listing();
-        listing.setId(20L);
-        listing.setTitle("NoImg");
-        listing.setPrice(BigDecimal.ONE);
-        listing.setImages(Collections.emptyList());
+        @Test
+        @DisplayName("UTCID04 [Boundary] - null reviewer and missing listing keep related fields null")
+        void utcId04_shouldKeepOptionalFieldsNull_whenReviewerOrListingMissing() {
+            Conversation conv = new Conversation();
+            conv.setListing(null);
 
-        Conversation conv = new Conversation();
-        conv.setListing(listing);
+            Review r = new Review();
+            r.setId(3L);
+            r.setRating((byte) 3);
+            r.setCreatedAt(Instant.parse("2026-01-03T00:00:00Z"));
+            r.setReviewer(null);
+            r.setConversation(conv);
 
-        Review r = new Review();
-        r.setId(4L);
-        r.setRating((byte) 3);
-        r.setCreatedAt(Instant.now());
-        r.setConversation(conv);
+            when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(5L)).thenReturn(List.of(r));
 
-        when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(2L)).thenReturn(List.of(r));
+            ReviewResponse out = service.getUserReviews(5L).get(0);
 
-        ReviewResponse out = service.getUserReviews(2L).get(0);
-        assertEquals(20L, out.getListingId());
-        assertNull(out.getListingImage());
+            assertNull(out.getReviewerId());
+            assertNull(out.getReviewerName());
+            assertNull(out.getReviewerAvatar());
+            assertNull(out.getListingId());
+            assertNull(out.getListingTitle());
+            assertNull(out.getListingPrice());
+            assertNull(out.getListingImage());
+        }
+
+        @Test
+        @DisplayName("UTCID05 [Boundary] - listing without images sets listingImage to null")
+        void utcId05_shouldSetListingImageNull_whenListingHasNoImages() {
+            Listing listing = new Listing();
+            listing.setId(20L);
+            listing.setTitle("No image item");
+            listing.setPrice(BigDecimal.ONE);
+            listing.setImages(Collections.emptyList());
+
+            Conversation conv = new Conversation();
+            conv.setListing(listing);
+
+            Review r = new Review();
+            r.setId(4L);
+            r.setRating((byte) 5);
+            r.setCreatedAt(Instant.now());
+            r.setConversation(conv);
+
+            when(reviewRepository.findByReviewee_IdOrderByCreatedAtDesc(2L)).thenReturn(List.of(r));
+
+            ReviewResponse out = service.getUserReviews(2L).get(0);
+
+            assertEquals(20L, out.getListingId());
+            assertNull(out.getListingImage());
+        }
     }
 }
 

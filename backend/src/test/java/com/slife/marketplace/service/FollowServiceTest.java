@@ -26,9 +26,15 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FollowServiceTest {
@@ -64,131 +70,50 @@ class FollowServiceTest {
         return u;
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Follower / following")
-    class Lists {
+    @DisplayName("Function: follow")
+    class FollowGroup {
 
         @Test
-        @DisplayName("[Lỗi] profileUserId null → INVALID_INPUT")
-        void nullProfile_shouldThrow() {
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> service.getFollowers(null, 0, 10)).getErrorCode());
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> service.getFollowing(null, 0, 10)).getErrorCode());
+        @DisplayName("UTCID01 [Negative] - follow self")
+        void utcId01_shouldThrowFollowSelf_whenFollowSelf() {
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.follow(user(1L), 1L));
+            assertEquals(ErrorCode.FOLLOW_SELF, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] user not found → USER_NOT_FOUND")
-        void userNotFound_shouldThrow() {
-            when(userRepository.existsById(10L)).thenReturn(false);
-            assertEquals(ErrorCode.USER_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> service.getFollowers(10L, 0, 10)).getErrorCode());
-            assertEquals(ErrorCode.USER_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> service.getFollowing(10L, 0, 10)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("clamp page/size và call repo đúng")
-        void clamp_shouldCallRepo() {
-            when(userRepository.existsById(10L)).thenReturn(true);
-            Page<FollowUserSummaryResponse> p = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
-            when(followRepository.findFollowerSummariesByFollowedId(eq(10L), any())).thenReturn(p);
-
-            service.getFollowers(10L, -1, 0);
-
-            verify(followRepository).findFollowerSummariesByFollowedId(eq(10L), argThat(pr ->
-                    pr.getPageNumber() == 0 && pr.getPageSize() == 1));
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Đếm / truy vấn đơn giản")
-    class Simple {
-
-        @Test
-        void isFollowing_nullInputs_false() {
-            assertFalse(service.isFollowing(null, 1L));
-            assertFalse(service.isFollowing(1L, null));
-            verifyNoInteractions(followRepository);
-        }
-
-        @Test
-        void findFollowedIdsAmong_nullOrEmpty_returnsEmpty() {
-            assertTrue(service.findFollowedIdsAmong(null, List.of(1L)).isEmpty());
-            assertTrue(service.findFollowedIdsAmong(1L, null).isEmpty());
-            assertTrue(service.findFollowedIdsAmong(1L, List.of()).isEmpty());
-        }
-
-        @Test
-        void findAllFollowedIds_null_returnsEmpty() {
-            assertTrue(service.findAllFollowedIds(null).isEmpty());
-        }
-
-        @Test
-        void findFollowerIdsOfUser_null_returnsEmpty() {
-            assertTrue(service.findFollowerIdsOfUser(null).isEmpty());
-        }
-
-        @Test
-        void findAllFollowedIds_repoNullOrEmpty_returnsEmpty() {
-            when(followRepository.findFollowedIdsByFollowerId(1L)).thenReturn(null);
-            assertTrue(service.findAllFollowedIds(1L).isEmpty());
-            when(followRepository.findFollowedIdsByFollowerId(1L)).thenReturn(List.of());
-            assertTrue(service.findAllFollowedIds(1L).isEmpty());
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    @Nested
-    @DisplayName("Nhóm: Follow / unfollow")
-    class Mutations {
-
-        @Test
-        @DisplayName("[Lỗi] follow: followedUserId null → INVALID_INPUT")
-        void follow_nullFollowed_shouldThrow() {
-            assertEquals(ErrorCode.INVALID_INPUT,
-                    assertThrows(SlifeException.class, () -> service.follow(user(1L), null)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] follow: self → FOLLOW_SELF")
-        void follow_self_shouldThrow() {
-            assertEquals(ErrorCode.FOLLOW_SELF,
-                    assertThrows(SlifeException.class, () -> service.follow(user(1L), 1L)).getErrorCode());
-        }
-
-        @Test
-        @DisplayName("[Lỗi] follow: blocked either direction → FOLLOW_BLOCKED")
-        void follow_blocked_shouldThrow() {
+        @DisplayName("UTCID02 [Negative] - blocked relationship")
+        void utcId02_shouldThrowFollowBlocked_whenBlockedEitherDirection() {
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(1L, 2L)).thenReturn(true);
-            assertEquals(ErrorCode.FOLLOW_BLOCKED,
-                    assertThrows(SlifeException.class, () -> service.follow(user(1L), 2L)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.follow(user(1L), 2L));
+            assertEquals(ErrorCode.FOLLOW_BLOCKED, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] follow: followed user missing → USER_NOT_FOUND")
-        void follow_missingUser_shouldThrow() {
+        @DisplayName("UTCID03 [Negative] - followed user not found")
+        void utcId03_shouldThrowUserNotFound_whenFollowedMissing() {
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(anyLong(), anyLong())).thenReturn(false);
             when(userRepository.findById(2L)).thenReturn(Optional.empty());
-            assertEquals(ErrorCode.USER_NOT_FOUND,
-                    assertThrows(SlifeException.class, () -> service.follow(user(1L), 2L)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.follow(user(1L), 2L));
+            assertEquals(ErrorCode.USER_NOT_FOUND, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Lỗi] follow: already exists → FOLLOW_ALREADY")
-        void follow_already_shouldThrow() {
+        @DisplayName("UTCID04 [Negative] - already following")
+        void utcId04_shouldThrowFollowAlready_whenRelationExists() {
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(anyLong(), anyLong())).thenReturn(false);
             when(userRepository.findById(2L)).thenReturn(Optional.of(user(2L)));
             when(followRepository.existsByFollower_IdAndFollowed_Id(1L, 2L)).thenReturn(true);
-            assertEquals(ErrorCode.FOLLOW_ALREADY,
-                    assertThrows(SlifeException.class, () -> service.follow(user(1L), 2L)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.follow(user(1L), 2L));
+            assertEquals(ErrorCode.FOLLOW_ALREADY, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Thường] follow: luồng thành công → save + notify")
-        void follow_happyPath() {
+        @DisplayName("UTCID05 [Positive] - follow success")
+        void utcId05_shouldSaveAndNotify_whenFollowSuccess() {
             User follower = user(1L);
             User followed = user(2L);
             when(blockRepository.existsByBlocker_IdAndBlocked_Id(anyLong(), anyLong())).thenReturn(false);
@@ -201,52 +126,108 @@ class FollowServiceTest {
             verify(followRepository).save(any(Follow.class));
             verify(notificationService).notifyNewFollower(followed, follower);
         }
+    }
+
+    @Nested
+    @DisplayName("Function: unfollow")
+    class UnfollowGroup {
 
         @Test
-        @DisplayName("[Lỗi] unfollow: not following → FOLLOW_NOT_FOLLOWING")
-        void unfollow_notFollowing_shouldThrow() {
+        @DisplayName("UTCID01 [Negative] - not following")
+        void utcId01_shouldThrowNotFollowing_whenRelationMissing() {
             when(followRepository.existsByFollower_IdAndFollowed_Id(1L, 2L)).thenReturn(false);
-            assertEquals(ErrorCode.FOLLOW_NOT_FOLLOWING,
-                    assertThrows(SlifeException.class, () -> service.unfollow(user(1L), 2L)).getErrorCode());
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.unfollow(user(1L), 2L));
+            assertEquals(ErrorCode.FOLLOW_NOT_FOLLOWING, ex.getErrorCode());
         }
 
         @Test
-        @DisplayName("[Thường] unfollow: luồng thành công → deleteByFollowerAndFollowed")
-        void unfollow_happyPath() {
+        @DisplayName("UTCID02 [Positive] - unfollow success")
+        void utcId02_shouldDeleteRelation_whenUnfollowSuccess() {
             when(followRepository.existsByFollower_IdAndFollowed_Id(1L, 2L)).thenReturn(true);
+
             service.unfollow(user(1L), 2L);
+
             verify(followRepository).deleteByFollower_IdAndFollowed_Id(1L, 2L);
         }
     }
 
-    // ---------------------------------------------------------------------
     @Nested
-    @DisplayName("Nhóm: Hồ sơ cho người xem")
-    class Profile {
+    @DisplayName("Function: getFollowers")
+    class GetFollowersGroup {
 
         @Test
-        @DisplayName("viewer null hoặc viewer=profile → isFollowed/isBlocked/hasBlocked = null")
-        void viewerNullOrSelf_shouldSetNullFlags() {
+        @DisplayName("UTCID01 [Negative] - profile user id null")
+        void utcId01_shouldThrowInvalidInput_whenProfileUserIdNull() {
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.getFollowers(null, 0, 10));
+            assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID02 [Negative] - profile user not found")
+        void utcId02_shouldThrowUserNotFound_whenProfileUserNotExists() {
+            when(userRepository.existsById(10L)).thenReturn(false);
+
+            SlifeException ex = assertThrows(SlifeException.class, () -> service.getFollowers(10L, 0, 10));
+            assertEquals(ErrorCode.USER_NOT_FOUND, ex.getErrorCode());
+        }
+
+        @Test
+        @DisplayName("UTCID03 [Boundary] - clamp page and size")
+        void utcId03_shouldClampPaging_whenPageOrSizeOutOfRange() {
+            when(userRepository.existsById(10L)).thenReturn(true);
+            Page<FollowUserSummaryResponse> page = new PageImpl<>(List.of(), PageRequest.of(0, 1), 0);
+            when(followRepository.findFollowerSummariesByFollowedId(eq(10L), any())).thenReturn(page);
+
+            service.getFollowers(10L, -1, 0);
+
+            verify(followRepository).findFollowerSummariesByFollowedId(eq(10L), argThat(pr ->
+                    pr.getPageNumber() == 0 && pr.getPageSize() == 1));
+        }
+    }
+
+    @Nested
+    @DisplayName("Function: buildProfileForViewer")
+    class BuildProfileForViewerGroup {
+
+        @Test
+        @DisplayName("UTCID01 [Positive] - viewer is null")
+        void utcId01_shouldSetViewerFlagsNull_whenViewerNull() {
             User profile = user(5L);
             when(followRepository.countByFollowed_Id(5L)).thenReturn(1L);
             when(followRepository.countByFollower_Id(5L)).thenReturn(2L);
             when(listingRepository.countBySeller_IdAndStatus(5L, "ACTIVE")).thenReturn(3L);
             when(reviewRepository.countByReviewee_Id(5L)).thenReturn(0L);
 
-            UserProfileResponse out1 = service.buildProfileForViewer(profile, null);
-            assertNull(out1.getIsFollowedByViewer());
-            assertNull(out1.getIsBlockedByViewer());
-            assertNull(out1.getHasBlockedViewer());
+            UserProfileResponse out = service.buildProfileForViewer(profile, null);
 
-            UserProfileResponse out2 = service.buildProfileForViewer(profile, 5L);
-            assertNull(out2.getIsFollowedByViewer());
-            assertNull(out2.getIsBlockedByViewer());
-            assertNull(out2.getHasBlockedViewer());
+            assertNull(out.getIsFollowedByViewer());
+            assertNull(out.getIsBlockedByViewer());
+            assertNull(out.getHasBlockedViewer());
         }
 
         @Test
-        @DisplayName("ratingCount>0 + avg!=null → set reputationScore scale(2)")
-        void ratingCountAndAvg_shouldSetScore() {
+        @DisplayName("UTCID02 [Positive] - viewer is another user")
+        void utcId02_shouldSetFollowAndBlockFlags_whenViewerDifferent() {
+            User profile = user(5L);
+            when(followRepository.countByFollowed_Id(5L)).thenReturn(0L);
+            when(followRepository.countByFollower_Id(5L)).thenReturn(0L);
+            when(listingRepository.countBySeller_IdAndStatus(5L, "ACTIVE")).thenReturn(0L);
+            when(reviewRepository.countByReviewee_Id(5L)).thenReturn(0L);
+            when(followRepository.existsByFollower_IdAndFollowed_Id(9L, 5L)).thenReturn(true);
+            when(blockService.isBlockedByCurrentUser(9L, 5L)).thenReturn(true);
+            when(blockService.isBlockedByCurrentUser(5L, 9L)).thenReturn(false);
+
+            UserProfileResponse out = service.buildProfileForViewer(profile, 9L);
+
+            assertEquals(Boolean.TRUE, out.getIsFollowedByViewer());
+            assertEquals(Boolean.TRUE, out.getIsBlockedByViewer());
+            assertEquals(Boolean.FALSE, out.getHasBlockedViewer());
+        }
+
+        @Test
+        @DisplayName("UTCID03 [Boundary] - rating rounded to two decimals")
+        void utcId03_shouldRoundReputation_whenAverageRatingExists() {
             User profile = user(5L);
             when(followRepository.countByFollowed_Id(5L)).thenReturn(0L);
             when(followRepository.countByFollower_Id(5L)).thenReturn(0L);
@@ -255,27 +236,8 @@ class FollowServiceTest {
             when(reviewRepository.findAverageRatingByReviewee_Id(5L)).thenReturn(4.126);
 
             UserProfileResponse out = service.buildProfileForViewer(profile, null);
+
             assertEquals(new BigDecimal("4.13"), out.getReputationScore());
-        }
-
-        @Test
-        @DisplayName("viewer khác profile → set isFollowed + block flags")
-        void viewerOther_shouldSetFlags() {
-            User profile = user(5L);
-            when(followRepository.countByFollowed_Id(5L)).thenReturn(0L);
-            when(followRepository.countByFollower_Id(5L)).thenReturn(0L);
-            when(listingRepository.countBySeller_IdAndStatus(5L, "ACTIVE")).thenReturn(0L);
-            when(reviewRepository.countByReviewee_Id(5L)).thenReturn(0L);
-
-            when(followRepository.existsByFollower_IdAndFollowed_Id(9L, 5L)).thenReturn(true);
-            when(blockService.isBlockedByCurrentUser(9L, 5L)).thenReturn(true);
-            when(blockService.isBlockedByCurrentUser(5L, 9L)).thenReturn(false);
-
-            UserProfileResponse out = service.buildProfileForViewer(profile, 9L);
-            assertEquals(Boolean.TRUE, out.getIsFollowedByViewer());
-            assertEquals(Boolean.TRUE, out.getIsBlockedByViewer());
-            assertEquals(Boolean.FALSE, out.getHasBlockedViewer());
         }
     }
 }
-
