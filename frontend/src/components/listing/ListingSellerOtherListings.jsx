@@ -12,7 +12,7 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const TEXT_SEC = 'rgba(255,255,255,0.55)';
 export const PURPLE = '#9D6EED';
 
-export default function ListingSellerOtherListings({ sellerListings, loadingRelated, seller, listing }) {
+export default function ListingSellerOtherListings({ sellerListings, loadingRelated, seller, listing, onToggleLike, likeSubmittingId }) {
   const navigate = useNavigate();
   const scrollRef = useRef(null);
   const [showLeft, setShowLeft] = useState(false);
@@ -128,7 +128,12 @@ export default function ListingSellerOtherListings({ sellerListings, loadingRela
                   scrollSnapAlign: 'start'
                 }}
               >
-                <MiniListingCard listing={l} compact />
+                <MiniListingCard
+                  listing={l}
+                  compact
+                  onToggleLike={onToggleLike}
+                  likeDisabled={String(likeSubmittingId) === String(l.id ?? l.listingId)}
+                />
               </Box>
             ))}
           </Box>

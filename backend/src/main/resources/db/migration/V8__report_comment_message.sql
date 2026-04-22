@@ -4,4 +4,5 @@
 ALTER TABLE reports
     MODIFY COLUMN target_type ENUM('USER', 'LISTING', 'COMMENT', 'MESSAGE') NOT NULL;
 
-CREATE INDEX idx_reports_target ON reports (target_type, target_id);
+-- Bỏ dòng lệnh CREATE INDEX vì index idx_reports_target đã có sẵn từ Script V1:
+-- CREATE INDEX idx_reports_target ON reports (target_type, target_id);
