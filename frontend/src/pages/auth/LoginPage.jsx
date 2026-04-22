@@ -53,9 +53,30 @@ export default function LoginPage() {
 
     const displayError = urlError || googleError || authError || '';
 
+    /** Backend OAuth redirect: /login?google_error=... (AuthController.googleCallbackRedirect) */
     useEffect(() => {
-        clearAuthError();
-    }, [clearAuthError]);
+        const params = new URLSearchParams(location.search);
+        const ge = params.get('google_error');
+        if (!ge) return;
+        try {
+            setUrlError(decodeURIComponent(ge.replace(/\+/g, ' ')));
+        } catch {
+            setUrlError(ge);
+        }
+    }, [location.search]);
+
+    /**
+     * Xóa authError khi user chuyển từ route khác sang /login — không xóa khi chỉ đổi query (?google_error, ?redirect)
+     * hoặc khi đã ở /login (tránh mất thông báo sau GIS/API lỗi).
+     */
+    const prevPathnameRef = useRef(null);
+    useEffect(() => {
+        const prev = prevPathnameRef.current;
+        if (location.pathname === '/login' && prev !== null && prev !== '/login') {
+            clearAuthError();
+        }
+        prevPathnameRef.current = location.pathname;
+    }, [location.pathname, clearAuthError]);
 
     useEffect(() => {
         let cancelled = false;
@@ -81,7 +102,7 @@ export default function LoginPage() {
                                 }
                             },
                         });
-                        if (!result.success && !cancelled) {
+                        if (!result.success) {
                             setGoogleError(result.error || 'Đăng nhập Google thất bại.');
                         }
                     },
@@ -255,7 +276,15 @@ export default function LoginPage() {
                     </Typography>
 
                     {displayError && (
-                        <Alert severity="error" onClose={() => setUrlError('')} sx={{ mb: 2, textAlign: 'left' }}>
+                        <Alert
+                            severity="error"
+                            onClose={() => {
+                                setUrlError('');
+                                setGoogleError('');
+                                clearAuthError();
+                            }}
+                            sx={{ mb: 2, textAlign: 'left' }}
+                        >
                             {displayError}
                         </Alert>
                     )}

@@ -1,5 +1,6 @@
 /** Mục đích/API: GET /api/users/me, GET /api/users/{id}, PUT /api/users/me, upload avatar/cover, block. */
 import axiosClient from './axiosClient';
+import uploadClient from './uploadClient';
 import adminAxiosClient from './adminAxiosClient';
 
 export const getUser = () => axiosClient.get('/api/users/me');
@@ -17,14 +18,14 @@ export const checkPhoneVerificationEligibility = (payload) =>
 export const uploadAvatar = (file) => {
   const form = new FormData();
   form.append('file', file);
-  return axiosClient.post('/api/users/me/avatar', form);
+  return uploadClient.post('/api/users/me/avatar', form);
 };
 
 /** Upload ảnh bìa: FormData với key "file". */
 export const uploadCover = (file) => {
   const form = new FormData();
   form.append('file', file);
-  return axiosClient.post('/api/users/me/cover', form);
+  return uploadClient.post('/api/users/me/cover', form);
 };
 
 export const blockUser = (userId) => axiosClient.post(`/api/users/${userId}/block`);

@@ -110,7 +110,7 @@ export default function ProfilePage() {
   const [communityLoading, setCommunityLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ fullName: '', phoneNumber: '', bio: '' });
+  const [editForm, setEditForm] = useState({ fullName: '', phoneNumber: '', bio: '', showPhoneNumber: true });
   const [tab, setTab] = useState(location.state?.profileTab === 'posts' ? 0 : 1);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState(null);
   const [, setSuccessMessage] = useState('');
@@ -280,6 +280,7 @@ export default function ProfilePage() {
         fullName: profileUser.fullName ?? profileUser.full_name ?? '',
         phoneNumber: normalizedPhone,
         bio: profileUser.bio ?? '',
+        showPhoneNumber: profileUser.showPhoneNumber ?? profileUser.show_phone_number ?? true,
       });
     }
   }, [profileUser]);
@@ -327,7 +328,8 @@ export default function ProfilePage() {
     try {
       const payloadToSave = {
         ...editForm,
-        phoneNumber: editForm.phoneNumber ? `+84${editForm.phoneNumber}` : null
+        phoneNumber: editForm.phoneNumber ? `+84${editForm.phoneNumber}` : null,
+        showPhoneNumber: Boolean(editForm.showPhoneNumber),
       };
       const res = await userApi.updateUser(payloadToSave);
       const patch = getPayload(res);

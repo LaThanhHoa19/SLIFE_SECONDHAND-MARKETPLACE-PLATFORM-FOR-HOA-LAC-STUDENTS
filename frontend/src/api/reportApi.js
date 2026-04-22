@@ -1,5 +1,6 @@
 /** Mục đích/API: POST /api/reports; admin: GET pending, GET page, GET by id, PATCH xử lý. */
 import axiosClient from './axiosClient';
+import uploadClient from './uploadClient';
 import adminAxiosClient from './adminAxiosClient';
 
 export const createReport = (payload) => axiosClient.post('/api/reports', payload);
@@ -7,7 +8,7 @@ export const createReport = (payload) => axiosClient.post('/api/reports', payloa
 export const uploadReportImage = (file) => {
     const form = new FormData();
     form.append('file', file);
-    return axiosClient.post('/api/reports/upload-image', form, {
+    return uploadClient.post('/api/reports/upload-image', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 };

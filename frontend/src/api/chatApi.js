@@ -2,6 +2,7 @@
  * API chat: sessions, history, gửi tin, upload ảnh, offer, deal.
  */
 import axiosClient from './axiosClient';
+import uploadClient from './uploadClient';
 
 /**
  * Danh sách phiên chat. Truyền string → filter; hoặc object { filter, q, listingId, page, size, … }.
@@ -51,7 +52,7 @@ export const uploadChatImage = (sessionId, file, listingId = null) => {
   if (sessionId) form.append('sessionId', sessionId);
   if (listingId != null) form.append('listingId', String(listingId));
   form.append('file', file);
-  return axiosClient.post('/api/v1/chats/upload', form, {
+  return uploadClient.post('/api/v1/chats/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };

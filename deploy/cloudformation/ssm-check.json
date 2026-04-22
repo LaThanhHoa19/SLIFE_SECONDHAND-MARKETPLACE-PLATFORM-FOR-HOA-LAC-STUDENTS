@@ -1,0 +1,5 @@
+{
+  "commands": [
+    "TOKEN=$(docker exec slife-be sh -c 'curl -sf -X POST http://localhost:8080/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\"email\\\":\\\"slife.hola@gmail.com\\\",\\\"password\\\":\\\"Admin@123\\\"}\"' | python3 -c 'import sys,json; print(json.load(sys.stdin)[\"data\"][\"accessToken\"])' 2>/dev/null); echo \"Token len: ${#TOKEN}\"; dd if=/dev/urandom bs=1024 count=1 2>/dev/null | base64 > /tmp/test.png; docker exec slife-be sh -c \"curl -v -X POST http://localhost:8080/api/community/posts -H 'Authorization: Bearer $TOKEN' -F 'payload=@-;type=application/json' -F 'images=@/tmp/test.png;type=image/png;filename=test.png' <<< '{\\\"description\\\":\\\"direct multipart test\\\"}' 2>&1\" || echo DIRECT_TEST_FAILED"
+  ]
+}
