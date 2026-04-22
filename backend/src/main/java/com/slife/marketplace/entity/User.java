@@ -40,6 +40,14 @@ public class User {
     @Column(name = "phone_number", length = 50)
     private String phoneNumber;
 
+    /**
+     * Cho phép hiển thị số điện thoại của user trong listing details.
+     */
+    @NotNull
+    @ColumnDefault("1")
+    @Column(name = "show_phone_number", nullable = false)
+    private Boolean showPhoneNumber = true;
+
     @Column(name = "phone_verified_at", columnDefinition = "DATETIME")
     private LocalDateTime phoneVerifiedAt;
 
