@@ -379,7 +379,7 @@ export default function NotificationsPage() {
                         ),
                         endAdornment: q ? (
                             <InputAdornment position="end">
-                                <IconButton size="small" onClick={() => setQ('')} aria-label="Clear search" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                                <IconButton size="small" onClick={() => setQ('')} aria-label="Xóa tìm kiếm" sx={{ color: 'rgba(255,255,255,0.7)' }}>
                                     <CloseIcon fontSize="small" />
                                 </IconButton>
                             </InputAdornment>
