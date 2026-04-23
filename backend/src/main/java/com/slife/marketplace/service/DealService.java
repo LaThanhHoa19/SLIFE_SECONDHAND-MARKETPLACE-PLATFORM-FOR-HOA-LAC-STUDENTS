@@ -42,7 +42,10 @@ import java.util.Set;
 @Service
 public class DealService {
 
-    /** Mọi {@link LocalDateTime} nghiệp vụ deal (pickup, confirmed, …) lưu theo giờ Việt Nam. */
+    /**
+     * Mọi {@link LocalDateTime} nghiệp vụ deal (pickup, confirmed, …) lưu theo giờ
+     * Việt Nam.
+     */
     public static final ZoneId ZONE_VIETNAM = TimeZones.VIETNAM;
 
     public static final String STATUS_PENDING = "PENDING";
@@ -53,12 +56,17 @@ public class DealService {
     public static final String STATUS_SUCCESS = "SUCCESS";
     /** Người mua từ chối sau khi người bán chốt đơn (deal đang PENDING). */
     public static final String STATUS_REJECTED = "REJECTED";
-    /** Hệ thống tự đóng deal sau khi quá hạn mà buyer không bấm gì. Listing giữ nguyên trạng thái. */
+    /**
+     * Hệ thống tự đóng deal sau khi quá hạn mà buyer không bấm gì. Listing giữ
+     * nguyên trạng thái.
+     */
     public static final String STATUS_CLOSED = "CLOSED";
 
     /**
-     * Một tin chỉ có tối đa một giao dịch ở các trạng thái này cùng lúc (đã chiếm chỗ).
-     * Lưu ý: SUCCESS và CLOSED không còn chiếm chỗ vì deal đã kết thúc — listing cần được tự do
+     * Một tin chỉ có tối đa một giao dịch ở các trạng thái này cùng lúc (đã chiếm
+     * chỗ).
+     * Lưu ý: SUCCESS và CLOSED không còn chiếm chỗ vì deal đã kết thúc — listing
+     * cần được tự do
      * để người bán tạo đợt mới hoặc ẩn/xóa bài đăng theo ý muốn.
      */
     private static final Set<String> LISTING_RESERVATION_STATUSES = Set.of(
@@ -134,7 +142,10 @@ public class DealService {
         }
     }
 
-    /** Trước khi một deal PENDING chuyển COMPLETED: hủy mọi deal PENDING khác cùng tin. */
+    /**
+     * Trước khi một deal PENDING chuyển COMPLETED: hủy mọi deal PENDING khác cùng
+     * tin.
+     */
     private void rejectPendingDealsExcept(Long listingId, Long winningDealId) {
         List<Deal> pendings = dealRepository.findByListing_IdAndDeletedAtIsNullAndStatus(listingId, STATUS_PENDING);
         List<Deal> toSave = new ArrayList<>();
@@ -676,8 +687,8 @@ public class DealService {
      *
      * Đọc từ DB config — không cần restart Docker khi thay đổi giá trị.
      */
-    @Scheduled(cron = "0 0 1 * * ?") // Runs daily at 1:00 AM
-    @SchedulerLock(name = "autoFinalizeDeals", lockAtLeastFor = "PT10M", lockAtMostFor = "PT1H")
+    @Scheduled(cron = "0 0 * * * *") // Runs every 1 hour
+    @SchedulerLock(name = "autoFinalizeDeals", lockAtLeastFor = "PT5M", lockAtMostFor = "PT30M")
     @Transactional
     public void autoFinalizeDeals() {
         int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 7));
