@@ -58,7 +58,7 @@ function formatJoinDate(createdAt) {
   return `Tham gia từ ${String(m).padStart(2, '0')}/${y}`;
 }
 
-/** Gộp payload user từ API — đồng bộ xác thực SĐT chỉ theo phoneVerifiedAt (tránh stale khi BE bỏ field null trong JSON). */
+/** Gộp payload user từ API — đồng bộ xác thực SĐT và trạng thái hiển thị để tránh stale UI khi BE bỏ sót field. */
 function applyUserProfilePatch(prev, patch) {
   if (!patch || typeof patch !== 'object') return prev || {};
   const prevObj = prev || {};
@@ -84,6 +84,16 @@ function applyUserProfilePatch(prev, patch) {
     at = atFromPatch ?? null;
   } else if (phoneChanged) {
     at = null;
+  }
+
+  const hasExplicitShowPhoneInPatch =
+      Object.prototype.hasOwnProperty.call(patch, 'showPhoneNumber') ||
+      Object.prototype.hasOwnProperty.call(patch, 'show_phone_number');
+  const showPhoneFromPatch = patch.showPhoneNumber ?? patch.show_phone_number;
+  if (hasExplicitShowPhoneInPatch) {
+    const visible = Boolean(showPhoneFromPatch);
+    next.showPhoneNumber = visible;
+    next.show_phone_number = visible;
   }
 
   const verified = at != null && at !== '';
@@ -337,8 +347,16 @@ export default function ProfilePage() {
         showToast('Đã lưu nhưng không nhận được dữ liệu người dùng từ máy chủ.', 'warning');
         return;
       }
-      setProfileUser((prev) => applyUserProfilePatch(prev, patch));
-      if (updateAuthUser) updateAuthUser(applyUserProfilePatch(currentUser || {}, patch));
+
+      const mergedPatch = {
+        ...patch,
+        showPhoneNumber: Object.prototype.hasOwnProperty.call(patch, 'showPhoneNumber') || Object.prototype.hasOwnProperty.call(patch, 'show_phone_number')
+            ? patch.showPhoneNumber ?? patch.show_phone_number
+            : payloadToSave.showPhoneNumber,
+      };
+
+      setProfileUser((prev) => applyUserProfilePatch(prev, mergedPatch));
+      if (updateAuthUser) updateAuthUser(applyUserProfilePatch(currentUser || {}, mergedPatch));
       setEditing(false);
       setSuccessMessage('');
       showToast('Đã lưu thay đổi.', 'success');

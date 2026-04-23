@@ -9,10 +9,21 @@ export const TEXT_PRI = 'rgba(255,255,255,0.95)';
 export const PURPLE = '#9D6EED';
 export const GREEN = '#2ED573';
 
-export default function ListingActions({ phoneNumber, startingChat = false, handleShowPhone, handleChat }) {
+export default function ListingActions({
+                                           phoneNumber,
+                                           showPhoneNumber = true,
+                                           isOwnListing = false,
+                                           startingChat = false,
+                                           handleShowPhone,
+                                           handleChat,
+                                       }) {
+    const canShowRealPhone = Boolean(isOwnListing || (showPhoneNumber && phoneNumber));
+    const phoneLabel = canShowRealPhone ? phoneNumber : 'Hiện số điện thoại';
+    const tooltipTitle = canShowRealPhone ? 'Gọi ngay' : 'Xem số điện thoại';
+
     return (
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-            <Tooltip title={phoneNumber ? "Gọi ngay" : "Xem số điện thoại"}>
+            <Tooltip title={tooltipTitle}>
                 <Button
                     variant="outlined"
                     onClick={handleShowPhone}
@@ -28,9 +39,9 @@ export default function ListingActions({ phoneNumber, startingChat = false, hand
                         gap: 1.5,
                         textTransform: 'none',
                         transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                        '&:hover': { 
-                            bgcolor: 'rgba(157, 110, 237, 0.05)', 
-                            borderColor: PURPLE, 
+                        '&:hover': {
+                            bgcolor: 'rgba(157, 110, 237, 0.05)',
+                            borderColor: PURPLE,
                             color: PURPLE,
                             transform: 'translateY(-2px)',
                             boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
@@ -38,9 +49,9 @@ export default function ListingActions({ phoneNumber, startingChat = false, hand
                         '&:active': { transform: 'translateY(0)' }
                     }}
                 >
-                    <PhoneAndroidIcon sx={{ fontSize: 22, color: phoneNumber ? GREEN : 'inherit' }} />
-                    <Typography fontSize={14} fontWeight={700} color={phoneNumber ? GREEN : TEXT_PRI}>
-                        {phoneNumber || 'Hiện số điện thoại'}
+                    <PhoneAndroidIcon sx={{ fontSize: 22, color: canShowRealPhone ? GREEN : 'inherit' }} />
+                    <Typography fontSize={14} fontWeight={700} color={canShowRealPhone ? GREEN : TEXT_PRI}>
+                        {phoneLabel}
                     </Typography>
                 </Button>
             </Tooltip>
@@ -62,7 +73,7 @@ export default function ListingActions({ phoneNumber, startingChat = false, hand
                             gap: 1.5,
                             textTransform: 'none',
                             transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                            '&:hover': { 
+                            '&:hover': {
                                 bgcolor: '#835cd4',
                                 transform: 'translateY(-2px)',
                                 boxShadow: `0 8px 25px rgba(157, 110, 237, 0.4)`,

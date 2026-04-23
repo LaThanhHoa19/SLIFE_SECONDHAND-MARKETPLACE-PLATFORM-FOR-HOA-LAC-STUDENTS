@@ -874,6 +874,7 @@ public class ListingService {
         seller.put("fullName", listing.getSeller().getFullName());
         seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
         seller.put("phoneNumber", listing.getSeller().getPhoneNumber());
+        seller.put("showPhoneNumber", listing.getSeller().getShowPhoneNumber());
         seller.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
 
         return seller;
