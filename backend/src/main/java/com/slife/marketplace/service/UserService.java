@@ -149,7 +149,7 @@ public class UserService {
             boolean changed = (user.getPhoneNumber() == null && normalizedPhone != null)
                     || (user.getPhoneNumber() != null && normalizedPhone == null)
                     || (user.getPhoneNumber() != null && normalizedPhone != null
-                            && !sameVietnamMobileNumber(user.getPhoneNumber(), normalizedPhone));
+                    && !sameVietnamMobileNumber(user.getPhoneNumber(), normalizedPhone));
             user.setPhoneNumber(normalizedPhone);
             if (changed) {
                 user.setPhoneVerifiedAt(null);
@@ -157,6 +157,9 @@ public class UserService {
         }
         if (request.getBio() != null) {
             user.setBio(request.getBio().trim().isEmpty() ? null : request.getBio().trim());
+        }
+        if (request.getShowPhoneNumber() != null) {
+            user.setShowPhoneNumber(request.getShowPhoneNumber());
         }
         if (request.getAvatarUrl() != null) {
             user.setAvatarUrl(request.getAvatarUrl().trim().isEmpty() ? null : request.getAvatarUrl().trim());
