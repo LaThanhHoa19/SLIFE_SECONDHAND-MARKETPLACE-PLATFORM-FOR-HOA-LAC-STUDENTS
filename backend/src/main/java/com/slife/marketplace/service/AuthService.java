@@ -170,11 +170,13 @@ public class AuthService {
         if (email == null || email.isBlank() || !emailVerified) {
             throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
-        if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(audience)) {
-            throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
-        }
+        // Check domain TRƯỚC audience — đảm bảo user luôn thấy message rõ ràng
+        // khi dùng email không phải @fpt.edu.vn, bất kể audience match hay không.
         if (!studentVerificationService.isAllowedStudentEmail(email)) {
             throw new SlifeException(ErrorCode.GOOGLE_DOMAIN_NOT_ALLOWED);
+        }
+        if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(audience)) {
+            throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
 
         User user = userRepository.findByEmail(email)
