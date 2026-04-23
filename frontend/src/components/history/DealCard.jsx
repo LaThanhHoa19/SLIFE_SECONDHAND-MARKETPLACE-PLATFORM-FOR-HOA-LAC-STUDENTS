@@ -22,7 +22,8 @@ import { formatCurrency as toCurrency } from '../../utils/listingFormatUtils';
 const STATUS_CONFIG = {
     'COMPLETED': { label: 'ĐÃ HOÀN TẤT', color: '#10B981' },
     'SUCCESS': { label: 'GIAO DỊCH THÀNH CÔNG', color: '#10B981' },
-    'CANCELLED': { label: 'ĐÃ HỦY', color: '#EF4444' }
+    'CANCELLED': { label: 'ĐÃ HỦY', color: '#EF4444' },
+    'CLOSED': { label: 'ĐÃ ĐÓNG (HẾT HẠN)', color: '#6B7280' }
 };
 
 export default function DealCard({ deal, onComplete, onCancel, onRate }) {
@@ -44,9 +45,10 @@ export default function DealCard({ deal, onComplete, onCancel, onRate }) {
     // Logic hiển thị nút:
     // 1. SUCCESS -> Hiện "Đánh giá ngay" (nếu chưa đánh giá)
     // 2. COMPLETED -> Hiện "Hủy" và "Đã nhận"
-    // 3. CANCELLED -> Không hiện gì
+    // 3. CANCELLED / CLOSED -> Không hiện gì
     const showReview = status === 'SUCCESS';
     const showActions = status === 'COMPLETED';
+    const isClosed = status === 'CLOSED';
 
     // Đọc reviewDeadline từ backend (backend tính: updatedAt khi deal thành SUCCESS + 7 ngày)
     // Backend trả null nếu đã review hoặc deal chưa SUCCESS
@@ -142,6 +144,15 @@ export default function DealCard({ deal, onComplete, onCancel, onRate }) {
                             <CompleteIcon sx={{ fontSize: 13, color: status === 'SUCCESS' ? '#10B981' : '#EF4444' }} />
                             <Typography variant="caption" fontWeight={600} fontSize={9}>
                                 {status === 'SUCCESS' ? 'Hoàn tất lúc' : 'Hủy lúc'}: <strong>{new Date(updatedAt).toLocaleDateString('vi-VN')}</strong>
+                            </Typography>
+                        </Box>
+                    )}
+
+                    {isClosed && updatedAt && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'rgba(255,255,255,0.3)' }}>
+                            <TimeIcon sx={{ fontSize: 13, color: '#6B7280' }} />
+                            <Typography variant="caption" fontWeight={600} fontSize={9}>
+                                Hệ thống đóng lúc: <strong>{new Date(updatedAt).toLocaleDateString('vi-VN')}</strong>
                             </Typography>
                         </Box>
                     )}
