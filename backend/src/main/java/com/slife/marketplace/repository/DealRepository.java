@@ -93,4 +93,25 @@ public interface DealRepository extends JpaRepository<Deal, Long> {
             @Param("lower") LocalDateTime lower,
             @Param("upper") LocalDateTime upper,
             @Param("nowPlusH") LocalDateTime nowPlusH);
+
+    /**
+     * Deal cần gửi email nhắc buyer xác nhận trước auto-finalize:
+     * - Status = COMPLETED (seller đã chốt, chờ buyer xác nhận)
+     * - Chưa gửi reminder (autoFinalizeReminderSent = false)
+     * - confirmedAt nằm trong khoảng: deadline - reminderWindow đã qua nhưng deadline chưa qua
+     *   tức confirmedAt <= cutoffReminder AND confirmedAt > cutoffAutoFinalize
+     */
+    @EntityGraph(attributePaths = {"listing", "listing.seller", "proposedBy"})
+    @Query("""
+            SELECT d FROM Deal d
+            WHERE d.deletedAt IS NULL
+              AND d.status = 'COMPLETED'
+              AND d.autoFinalizeReminderSent = false
+              AND d.confirmedAt IS NOT NULL
+              AND d.confirmedAt <= :cutoffReminder
+              AND d.confirmedAt > :cutoffAutoFinalize
+            """)
+    List<Deal> findDealsForAutoFinalizeReminder(
+            @Param("cutoffReminder") LocalDateTime cutoffReminder,
+            @Param("cutoffAutoFinalize") LocalDateTime cutoffAutoFinalize);
 }

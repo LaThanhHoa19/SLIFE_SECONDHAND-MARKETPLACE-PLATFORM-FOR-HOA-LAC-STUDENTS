@@ -73,6 +73,11 @@ public class Deal {
     private Boolean reminderSent = false;
 
     @NotNull
+    @ColumnDefault("0")
+    @Column(name = "auto_finalize_reminder_sent", nullable = false)
+    private Boolean autoFinalizeReminderSent = false;
+
+    @NotNull
     @Column(name = "created_at", nullable = false, columnDefinition = "DATETIME DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt;
 
@@ -89,6 +94,7 @@ public class Deal {
         updatedAt = LocalDateTime.now(TimeZones.VIETNAM);
         if (status == null) status = "PENDING";
         if (reminderSent == null) reminderSent = false;
+        if (autoFinalizeReminderSent == null) autoFinalizeReminderSent = false;
     }
 
     @PreUpdate
