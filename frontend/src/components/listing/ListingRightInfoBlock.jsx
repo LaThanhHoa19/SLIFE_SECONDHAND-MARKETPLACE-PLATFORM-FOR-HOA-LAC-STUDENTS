@@ -49,14 +49,16 @@ export default function ListingRightInfoBlock({
                 {/* Action Buttons */}
                 {!isOwnListing ? (
                     !isUnavailable && (
-                         <Box sx={{ my: 1.6 }}>
+                        <Box sx={{ my: 1.6 }}>
                             <ListingActions
                                 phoneNumber={phoneNumber}
+                                showPhoneNumber={listing?.seller?.showPhoneNumber ?? true}
+                                isOwnListing={isOwnListing}
                                 startingChat={startingChat}
                                 handleShowPhone={handleShowPhone}
                                 handleChat={handleChat}
                             />
-                         </Box>
+                        </Box>
                     )
                 ) : (
                     <ListingOwnerActions
