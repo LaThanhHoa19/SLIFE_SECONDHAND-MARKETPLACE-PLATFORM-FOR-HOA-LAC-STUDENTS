@@ -46,7 +46,10 @@ public class DealService {
 
     private static final Logger log = LoggerFactory.getLogger(DealService.class);
 
-    /** Mọi {@link LocalDateTime} nghiệp vụ deal (pickup, confirmed, …) lưu theo giờ Việt Nam. */
+    /**
+     * Mọi {@link LocalDateTime} nghiệp vụ deal (pickup, confirmed, …) lưu theo giờ
+     * Việt Nam.
+     */
     public static final ZoneId ZONE_VIETNAM = TimeZones.VIETNAM;
 
     public static final String STATUS_PENDING = "PENDING";
@@ -57,10 +60,21 @@ public class DealService {
     public static final String STATUS_SUCCESS = "SUCCESS";
     /** Người mua từ chối sau khi người bán chốt đơn (deal đang PENDING). */
     public static final String STATUS_REJECTED = "REJECTED";
+    /**
+     * Hệ thống tự đóng deal sau khi quá hạn mà buyer không bấm gì. Listing giữ
+     * nguyên trạng thái.
+     */
+    public static final String STATUS_CLOSED = "CLOSED";
 
-    /** Một tin chỉ có tối đa một giao dịch ở các trạng thái này cùng lúc (đã chiếm chỗ). */
+    /**
+     * Một tin chỉ có tối đa một giao dịch ở các trạng thái này cùng lúc (đã chiếm
+     * chỗ).
+     * Lưu ý: SUCCESS và CLOSED không còn chiếm chỗ vì deal đã kết thúc — listing
+     * cần được tự do
+     * để người bán tạo đợt mới hoặc ẩn/xóa bài đăng theo ý muốn.
+     */
     private static final Set<String> LISTING_RESERVATION_STATUSES = Set.of(
-            STATUS_COMPLETED, STATUS_CONFIRMED, STATUS_SUCCESS);
+            STATUS_COMPLETED, STATUS_CONFIRMED);
 
     private final DealRepository dealRepository;
     private final ListingImageRepository listingImageRepository;
@@ -132,7 +146,10 @@ public class DealService {
         }
     }
 
-    /** Trước khi một deal PENDING chuyển COMPLETED: hủy mọi deal PENDING khác cùng tin. */
+    /**
+     * Trước khi một deal PENDING chuyển COMPLETED: hủy mọi deal PENDING khác cùng
+     * tin.
+     */
     private void rejectPendingDealsExcept(Long listingId, Long winningDealId) {
         List<Deal> pendings = dealRepository.findByListing_IdAndDeletedAtIsNullAndStatus(listingId, STATUS_PENDING);
         List<Deal> toSave = new ArrayList<>();
@@ -665,12 +682,17 @@ public class DealService {
     }
 
     /**
-     * Tự động hoàn thành các deal ở trạng thái COMPLETED (đã chốt trong chat)
-     * mà người mua không bấm gì sau khoảng thời gian cấu hình (DEAL_TIMEOUT_DAYS + DEAL_TIMEOUT_UNIT).
+     * Tự động ĐÓNG (CLOSED) các deal ở trạng thái COMPLETED mà người mua không bấm gì
+     * sau khoảng thời gian cấu hình (DEAL_TIMEOUT_DAYS + DEAL_TIMEOUT_UNIT).
+     *
+     * Thiết kế cố ý: hệ thống KHÔNG tự chuyển listing sang SOLD.
+     * Người bán toàn quyền quyết định ẩn/xóa/giữ nguyên bài đăng.
+     * Điều này ngăn chặn việc farm rating/giao dịch ảo và bảo vệ quyền khiếu nại của Buyer.
+     *
      * Đọc từ DB config — không cần restart Docker khi thay đổi giá trị.
      */
-    @Scheduled(cron = "0 0 1 * * ?") // Runs daily at 1:00 AM
-    @SchedulerLock(name = "autoFinalizeDeals", lockAtLeastFor = "PT10M", lockAtMostFor = "PT1H")
+    @Scheduled(cron = "0 0 * * * *") // Runs every 1 hour
+    @SchedulerLock(name = "autoFinalizeDeals", lockAtLeastFor = "PT5M", lockAtMostFor = "PT30M")
     @Transactional
     public void autoFinalizeDeals() {
         int timeoutValue = Math.max(1, configService.getIntConfigValue("DEAL_TIMEOUT_DAYS", 7));
@@ -682,24 +704,21 @@ public class DealService {
                 ? now.minusMinutes(timeoutValue)
                 : now.minusDays(timeoutValue);
 
-        List<Deal> pendingDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, cutoff);
+        List<Deal> overdueDeals = dealRepository.findAllByStatusAndConfirmedAtBefore(STATUS_COMPLETED, cutoff);
 
-        for (Deal deal : pendingDeals) {
+        for (Deal deal : overdueDeals) {
             try {
-                Listing listing = deal.getListing();
-                if (listing != null) {
-                    listing.setStatus("SOLD");
-                    listingRepository.save(listing);
-                }
-
-                deal.setStatus(STATUS_SUCCESS);
+                // Chuyển deal sang CLOSED — listing KHÔNG bị chạm để tránh tác động hành vi người dùng.
+                deal.setStatus(STATUS_CLOSED);
                 deal.setUpdatedAt(LocalDateTime.now(ZONE_VIETNAM));
                 dealRepository.save(deal);
 
-                // Gửi thông báo in-app cho Seller
-                notificationService.notifyDealFinalized(deal.getSeller(), deal.getBuyer(),
+                // Thông báo cho cả 2 bên biết deal đã bị hệ thống đóng do quá hạn
+                Listing listing = deal.getListing();
+                notificationService.notifyDealClosed(
+                        deal.getSeller(), deal.getBuyer(),
                         listing != null ? listing.getId() : null,
-                        listing != null ? listing.getTitle() : "tin đăng", true, false);
+                        listing != null ? listing.getTitle() : "tin đăng");
 
                 // Gửi email thông báo seller: buyer không xác nhận, hệ thống đã tự động hoàn tất
                 systemEmailService.sendAutoFinalizedNotifySellerEmail(deal);
