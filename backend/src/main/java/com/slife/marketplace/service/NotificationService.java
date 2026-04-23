@@ -260,7 +260,7 @@ public class NotificationService {
                     : "";
             Notification n = buildNotification(listingOwner, TYPE_SYSTEM,
                     "LISTING", listingId,
-                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                    "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Quản trị viên đã ẩn tin đăng \"" + truncate(listingTitle, 40)
                             + "\" do vi phạm quy định" + suffix + ".");
             notificationRepository.save(n);
@@ -279,7 +279,7 @@ public class NotificationService {
                     : "";
             Notification n = buildNotification(user, TYPE_SYSTEM,
                     "USER", user.getId(),
-                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                    "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Tài khoản của bạn đã bị khóa do vi phạm quy định cộng đồng"
                             + suffix
                             + ". Nếu cần khiếu nại, vui lòng liên hệ bộ phận hỗ trợ.");
@@ -299,7 +299,7 @@ public class NotificationService {
                     : "";
             Notification n = buildNotification(user, TYPE_SYSTEM,
                     "USER", user.getId(),
-                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                    "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Báo cáo về tài khoản của bạn đã được duyệt" + suffix
                             + ". Điểm vi phạm hiện tại: " + violationCount + "/" + threshold + ".");
             notificationRepository.save(n);

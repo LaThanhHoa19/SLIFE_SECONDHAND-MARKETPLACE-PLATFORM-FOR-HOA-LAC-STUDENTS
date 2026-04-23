@@ -10,11 +10,14 @@ import {
     IconButton,
     Menu,
     MenuItem,
+    Stack,
+    Switch,
     TextField,
     Tooltip,
     Typography,
     InputAdornment,
     Rating,
+    Chip,
 } from '@mui/material';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import AddIcon from '@mui/icons-material/Add';
@@ -37,45 +40,45 @@ import FollowListDialog from './FollowListDialog';
 const PURPLE = '#9D6EED';
 
 export default function ProfileHeader({
-    user,
-    isMe,
-    editing,
-    setEditing,
-    saving,
-    handleSave,
-    editForm,
-    setEditForm,
-    avatarUrl,
-    fullName,
-    joinDate,
-    reputationScore,
-    ratingCount,
-    chatLoading = false,
-    handleAvatarChange,
-    avatarInputRef,
-    uploadingAvatar,
-    handleChat,
-    handleOpenReportDialog,
-    error,
-    isFollowing,
-    followLoading,
-    onToggleFollow,
-    followListUserId,
-    onOpenFollowList,
-    listingCount,
-    sendingPhoneOtp,
-    verifyingPhoneOtp,
-    otpSent,
-    otpCode,
-    setOtpCode,
-    onRequestPhoneOtp,
-    onVerifyPhoneOtp,
-    otpCooldownActive,
-    otpCooldownLeftSeconds,
-    /** Đăng nhập và đang xem hồ sơ người khác — hiện mục chặn trong menu */
-    canBlock = false,
-    onOpenBlockDialog,
-}) {
+                                          user,
+                                          isMe,
+                                          editing,
+                                          setEditing,
+                                          saving,
+                                          handleSave,
+                                          editForm,
+                                          setEditForm,
+                                          avatarUrl,
+                                          fullName,
+                                          joinDate,
+                                          reputationScore,
+                                          ratingCount,
+                                          chatLoading = false,
+                                          handleAvatarChange,
+                                          avatarInputRef,
+                                          uploadingAvatar,
+                                          handleChat,
+                                          handleOpenReportDialog,
+                                          error,
+                                          isFollowing,
+                                          followLoading,
+                                          onToggleFollow,
+                                          followListUserId,
+                                          onOpenFollowList,
+                                          listingCount,
+                                          sendingPhoneOtp,
+                                          verifyingPhoneOtp,
+                                          otpSent,
+                                          otpCode,
+                                          setOtpCode,
+                                          onRequestPhoneOtp,
+                                          onVerifyPhoneOtp,
+                                          otpCooldownActive,
+                                          otpCooldownLeftSeconds,
+                                          /** Đăng nhập và đang xem hồ sơ người khác — hiện mục chặn trong menu */
+                                          canBlock = false,
+                                          onOpenBlockDialog,
+                                      }) {
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
     const [avatarAnchorEl, setAvatarAnchorEl] = useState(null);
@@ -85,6 +88,7 @@ export default function ProfileHeader({
     const canOpenFollowList = followListUserId != null && typeof onOpenFollowList === 'function';
     const hasPhoneNumber = !!(user.phoneNumber || user.phone_number);
     const isPhoneVerified = !!(user.phoneVerifiedAt || user.phone_verified_at);
+    const showPhoneNumber = user.showPhoneNumber ?? user.show_phone_number ?? true;
 
     const textFieldStyle = {
         mb: 2.5,
@@ -113,7 +117,7 @@ export default function ProfileHeader({
 
     const handleLocalSave = (e) => {
         if (e) e.preventDefault();
-        
+
         let isValid = true;
         const errors = { fullName: '', phoneNumber: '', bio: '' };
 
@@ -233,15 +237,15 @@ export default function ProfileHeader({
                         transformOrigin={{ vertical: 'top', horizontal: 'center' }}
                         PaperProps={{
                             sx: {
-                                bgcolor: '#201D26', 
-                                color: 'white', 
-                                borderRadius: 3, 
+                                bgcolor: '#201D26',
+                                color: 'white',
+                                borderRadius: 3,
                                 minWidth: 210,
                                 mt: 1.5,
                                 border: '1px solid rgba(255,255,255,0.06)',
                                 boxShadow: '0 16px 40px rgba(0,0,0,0.6)',
                                 '& .MuiList-root': { p: 1 },
-                                '& .MuiMenuItem-root': { 
+                                '& .MuiMenuItem-root': {
                                     py: 1.25, px: 2, gap: 1.5, borderRadius: 2,
                                     transition: 'all 0.2s',
                                     fontSize: '0.95rem',
@@ -264,41 +268,41 @@ export default function ProfileHeader({
                 </Box>
 
                 {/* ─── Info Section ──────────────────────────────── */}
-                    <Box 
-                        sx={{ 
-                            flex: 1, pt: 0.5, minWidth: 0, textAlign: { xs: 'center', sm: 'left' },
-                            '&:hover .settings-btn': { opacity: 1 } 
-                        }}
-                    >
-                        {/* Name + More Options */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2.5, gap: 1.5 }}>
-                            <Typography variant="h5" sx={{ color: 'white', fontWeight: 700, letterSpacing: '0.2px', fontSize: '1.65rem' }}>
-                                {fullName}
-                            </Typography>
+                <Box
+                    sx={{
+                        flex: 1, pt: 0.5, minWidth: 0, textAlign: { xs: 'center', sm: 'left' },
+                        '&:hover .settings-btn': { opacity: 1 }
+                    }}
+                >
+                    {/* Name + More Options */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, mb: 2.5, gap: 1.5 }}>
+                        <Typography variant="h5" sx={{ color: 'white', fontWeight: 700, letterSpacing: '0.2px', fontSize: '1.65rem' }}>
+                            {fullName}
+                        </Typography>
 
-                            {isMe ? (
-                                <IconButton 
-                                    className="settings-btn"
-                                    onClick={() => setEditing(true)}
-                                    sx={{ 
-                                        color: 'white', 
-                                        opacity: 0.1, 
-                                        transition: 'opacity 0.3s ease',
-                                        p: 0.5
-                                    }}
-                                >
-                                    <SettingsIcon sx={{ fontSize: '1.2rem' }} />
-                                </IconButton>
-                            ) : (
-                                <IconButton 
-                                    className="settings-btn"
-                                    onClick={(e) => setAnchorEl(e.currentTarget)}
-                                    sx={{ color: 'rgba(255,255,255,0.6)', p: 0.5, opacity: 0.1, transition: 'opacity 0.3s ease' }}
-                                >
-                                    <MoreHorizIcon />
-                                </IconButton>
-                            )}
-                        </Box>
+                        {isMe ? (
+                            <IconButton
+                                className="settings-btn"
+                                onClick={() => setEditing(true)}
+                                sx={{
+                                    color: 'white',
+                                    opacity: 0.1,
+                                    transition: 'opacity 0.3s ease',
+                                    p: 0.5
+                                }}
+                            >
+                                <SettingsIcon sx={{ fontSize: '1.2rem' }} />
+                            </IconButton>
+                        ) : (
+                            <IconButton
+                                className="settings-btn"
+                                onClick={(e) => setAnchorEl(e.currentTarget)}
+                                sx={{ color: 'rgba(255,255,255,0.6)', p: 0.5, opacity: 0.1, transition: 'opacity 0.3s ease' }}
+                            >
+                                <MoreHorizIcon />
+                            </IconButton>
+                        )}
+                    </Box>
 
                     {/* Report Menu */}
                     <Menu
@@ -324,8 +328,8 @@ export default function ProfileHeader({
                                 Chặn người dùng
                             </MenuItem>
                         )}
-                        <MenuItem 
-                            onClick={() => { setAnchorEl(null); handleOpenReportDialog(); }} 
+                        <MenuItem
+                            onClick={() => { setAnchorEl(null); handleOpenReportDialog(); }}
                             sx={{ color: '#ed4956', fontWeight: 700, display: 'flex', gap: 1 }}
                         >
                             <FlagIcon sx={{ fontSize: 18 }} />
@@ -343,14 +347,14 @@ export default function ProfileHeader({
                         <Typography
                             onClick={() => canOpenFollowList && onOpenFollowList('followers')}
                             variant="body2"
-                            sx={{ 
+                            sx={{
                                 color: 'white', fontSize: '1rem', fontWeight: 300,
-                                cursor: canOpenFollowList ? 'pointer' : 'default', 
+                                cursor: canOpenFollowList ? 'pointer' : 'default',
                                 transition: 'all 0.15s ease',
-                                '&:hover': canOpenFollowList ? { 
+                                '&:hover': canOpenFollowList ? {
                                     textShadow: '0.5px 0 currentColor',
-                                    textDecoration: 'none' 
-                                } : {} 
+                                    textDecoration: 'none'
+                                } : {}
                             }}
                         >
                             <span style={{ fontWeight: 600 }}>{user.followerCount ?? user.followers ?? 0}</span> người theo dõi
@@ -358,14 +362,14 @@ export default function ProfileHeader({
                         <Typography
                             onClick={() => canOpenFollowList && onOpenFollowList('following')}
                             variant="body2"
-                            sx={{ 
+                            sx={{
                                 color: 'white', fontSize: '1rem', fontWeight: 300,
-                                cursor: canOpenFollowList ? 'pointer' : 'default', 
+                                cursor: canOpenFollowList ? 'pointer' : 'default',
                                 transition: 'all 0.15s ease',
-                                '&:hover': canOpenFollowList ? { 
+                                '&:hover': canOpenFollowList ? {
                                     textShadow: '0.5px 0 currentColor',
-                                    textDecoration: 'none' 
-                                } : {} 
+                                    textDecoration: 'none'
+                                } : {}
                             }}
                         >
                             Đang theo dõi <span style={{ fontWeight: 600 }}>{user.followingCount ?? 0}</span> người dùng
@@ -392,25 +396,72 @@ export default function ProfileHeader({
                         {/* Số điện thoại + trạng thái xác thực */}
                         {(isMe || hasPhoneNumber) && (
                             <Box sx={{ mt: 0.5 }}>
-                                {isMe && (user.phoneNumber || user.phone_number) && (
-                                    <Typography
-                                        variant="body2"
-                                        sx={{
-                                            color: 'rgba(255,255,255,0.8)',
-                                            fontSize: '0.9rem',
-                                            mb: 0.25,
-                                        }}
-                                    >
-                                        Số điện thoại: <strong>{user.phoneNumber || user.phone_number}</strong>
-                                    </Typography>
+                                {isMe && hasPhoneNumber && showPhoneNumber && (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.75 }}>
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                color: 'rgba(255,255,255,0.82)',
+                                                fontSize: '0.9rem',
+                                            }}
+                                        >
+                                            Số điện thoại: <strong>{user.phoneNumber || user.phone_number}</strong>
+                                        </Typography>
+                                        <Box
+                                            sx={{
+                                                px: 1.1,
+                                                py: 0.45,
+                                                borderRadius: 999,
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.03em',
+                                                textTransform: 'uppercase',
+                                                color: '#bbf7d0',
+                                                bgcolor: 'rgba(74, 222, 128, 0.09)',
+                                                border: '1px solid rgba(74, 222, 128, 0.2)',
+                                            }}
+                                        >
+                                            Đang hiện
+                                        </Box>
+                                    </Box>
                                 )}
-                                <Box 
-                                    sx={{ 
+                                {isMe && hasPhoneNumber && !showPhoneNumber && (
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.75 }}>
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                color: 'rgba(255,255,255,0.58)',
+                                                fontSize: '0.9rem',
+                                                fontStyle: 'italic',
+                                            }}
+                                        >
+                                            Số điện thoại: <strong>Đang ẩn</strong>
+                                        </Typography>
+                                        <Box
+                                            sx={{
+                                                px: 1.1,
+                                                py: 0.45,
+                                                borderRadius: 999,
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                letterSpacing: '0.03em',
+                                                textTransform: 'uppercase',
+                                                color: '#fcd34d',
+                                                bgcolor: 'rgba(250, 204, 21, 0.10)',
+                                                border: '1px solid rgba(250, 204, 21, 0.25)',
+                                            }}
+                                        >
+                                            Đang ẩn
+                                        </Box>
+                                    </Box>
+                                )}
+                                <Box
+                                    sx={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         mt: 0.25,
                                         bgcolor: isPhoneVerified ? 'rgba(74, 222, 128, 0.08)' : 'transparent',
-                                        px: isPhoneVerified ? 1.4 : 0, py: isPhoneVerified ? 0.4 : 0, 
+                                        px: isPhoneVerified ? 1.4 : 0, py: isPhoneVerified ? 0.4 : 0,
                                         borderRadius: '20px',
                                         border: isPhoneVerified ? '1px solid rgba(74, 222, 128, 0.2)' : 'none',
                                         width: 'fit-content'
@@ -432,7 +483,7 @@ export default function ProfileHeader({
                                         </>
                                     )}
                                 </Box>
-                                {isMe && hasPhoneNumber && !isPhoneVerified && !editing && (
+                                {isMe && hasPhoneNumber && showPhoneNumber && !isPhoneVerified && !editing && (
                                     <Box sx={{ mt: 1.25 }}>
                                         <Button
                                             variant="outlined"
@@ -478,8 +529,8 @@ export default function ProfileHeader({
             </Box>
 
             {/* ─── Edit Profile Popup Dialog ────────────────── */}
-            <Dialog 
-                open={editing} 
+            <Dialog
+                open={editing}
                 onClose={handleCloseEdit}
                 maxWidth="xs"
                 fullWidth
@@ -504,7 +555,7 @@ export default function ProfileHeader({
                 </DialogTitle>
                 <DialogContent sx={{ pt: 2, pb: 4, px: { xs: 3, sm: 4 } }}>
                     <Box component="form" onSubmit={handleLocalSave}>
-                        <TextField 
+                        <TextField
                             fullWidth label="Họ tên" variant="outlined" value={editForm.fullName}
                             onChange={(e) => {
                                 setEditForm((f) => ({ ...f, fullName: e.target.value }));
@@ -515,9 +566,9 @@ export default function ProfileHeader({
                             sx={{ ...textFieldStyle, mt: 1 }}
                             size="small"
                         />
-                        <TextField 
-                            fullWidth 
-                            label="Số điện thoại" 
+                        <TextField
+                            fullWidth
+                            label="Số điện thoại"
                             value={editForm.phoneNumber}
                             placeholder="Nhập 9 số thuê bao"
                             onChange={(e) => {
@@ -536,6 +587,35 @@ export default function ProfileHeader({
                             sx={textFieldStyle}
                             size="small"
                         />
+
+                        <Box sx={{ mb: 2.5, mt: 0.5, p: 1.75, borderRadius: 3, border: '1px solid rgba(255,255,255,0.08)', bgcolor: 'rgba(255,255,255,0.03)' }}>
+                            <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="space-between" flexWrap="wrap">
+                                <Box>
+                                    <Typography sx={{ color: 'white', fontWeight: 800, fontSize: '0.95rem' }}>
+                                        Hiển thị số điện thoại
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+                                        Bật để hiện số trong trang chi tiết tin đăng, tắt để ẩn.
+                                    </Typography>
+                                </Box>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <Chip
+                                        label={editForm.showPhoneNumber ? 'Đang hiện' : 'Đang ẩn'}
+                                        sx={{
+                                            fontWeight: 800,
+                                            borderRadius: 999,
+                                            color: editForm.showPhoneNumber ? '#bbf7d0' : '#fcd34d',
+                                            bgcolor: editForm.showPhoneNumber ? 'rgba(74, 222, 128, 0.09)' : 'rgba(250, 204, 21, 0.10)',
+                                            border: editForm.showPhoneNumber ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(250, 204, 21, 0.25)',
+                                        }}
+                                    />
+                                    <Switch
+                                        checked={Boolean(editForm.showPhoneNumber)}
+                                        onChange={(e) => setEditForm((f) => ({ ...f, showPhoneNumber: e.target.checked }))}
+                                    />
+                                </Stack>
+                            </Stack>
+                        </Box>
 
                         {needsPhoneVerification && (
                             <Box sx={{ mb: 2.5, mt: -0.5 }}>
@@ -591,7 +671,7 @@ export default function ProfileHeader({
                                 </Box>
                             </Box>
                         )}
-                        <TextField 
+                        <TextField
                             fullWidth multiline rows={3} label="Giới thiệu" value={editForm.bio}
                             onChange={(e) => {
                                 setEditForm((f) => ({ ...f, bio: e.target.value }));
@@ -602,25 +682,25 @@ export default function ProfileHeader({
                             sx={{ ...textFieldStyle, mb: 1 }}
                             size="small"
                         />
-                        
+
                         {error && (
                             <Typography color="error" variant="caption" sx={{ display: 'block', mb: 2, textAlign: 'center' }}>
                                 {error}
                             </Typography>
                         )}
-                        
+
                         <Box sx={{ mt: 3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                            <Button 
+                            <Button
                                 fullWidth
                                 onClick={handleLocalSave}
-                                variant="contained" 
+                                variant="contained"
                                 disabled={saving}
-                                sx={{ 
-                                    bgcolor: PURPLE, 
-                                    color: 'white', 
-                                    borderRadius: 3, 
+                                sx={{
+                                    bgcolor: PURPLE,
+                                    color: 'white',
+                                    borderRadius: 3,
                                     height: 44,
-                                    textTransform: 'none', 
+                                    textTransform: 'none',
                                     fontWeight: 700,
                                     fontSize: '0.95rem',
                                     '&:hover': { bgcolor: '#835cd4' },
@@ -629,9 +709,9 @@ export default function ProfileHeader({
                             >
                                 {saving ? <CircularProgress size={20} color="inherit" /> : 'Lưu thay đổi'}
                             </Button>
-                            <Button 
+                            <Button
                                 fullWidth
-                                variant="text" 
+                                variant="text"
                                 onClick={handleCloseEdit}
                                 sx={{ color: 'rgba(255,255,255,0.5)', textTransform: 'none', fontSize: '0.9rem', '&:hover': { background: 'transparent' } }}
                             >
@@ -675,9 +755,9 @@ export default function ProfileHeader({
                         <Typography sx={{ color: 'white', fontSize: '1.2rem', fontWeight: 700 }}>
                             +84{editForm.phoneNumber}
                         </Typography>
-                        <Button 
-                            variant="text" 
-                            onClick={() => setOtpVerificationOpen(false)} 
+                        <Button
+                            variant="text"
+                            onClick={() => setOtpVerificationOpen(false)}
                             sx={{ textTransform: 'none', color: '#a374f9', p: 0, minWidth: 'auto', '&:hover': { background: 'transparent' } }}
                         >
                             Đổi số điện thoại khác
@@ -710,8 +790,8 @@ export default function ProfileHeader({
                                             borderRadius: '10px',
                                             bgcolor: 'rgba(255,255,255,0.05)',
                                             border: '2px solid',
-                                            borderColor: char 
-                                                ? '#b996ff' 
+                                            borderColor: char
+                                                ? '#b996ff'
                                                 : (otpCode.length === index ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.1)'),
                                             color: 'white',
                                             fontSize: '1.5rem',
@@ -741,9 +821,9 @@ export default function ProfileHeader({
                             fontSize: '1rem',
                             fontWeight: 700,
                             '&:hover': { bgcolor: '#8b5cf6' },
-                            '&.Mui-disabled': { 
-                                bgcolor: 'rgba(255,255,255,0.1)', 
-                                color: 'rgba(255,255,255,0.3)' 
+                            '&.Mui-disabled': {
+                                bgcolor: 'rgba(255,255,255,0.1)',
+                                color: 'rgba(255,255,255,0.3)'
                             }
                         }}
                     >
@@ -796,9 +876,9 @@ export default function ProfileHeader({
                         backdropFilter: 'blur(10px)',
                         WebkitBackdropFilter: 'blur(10px)',
                         border: '1px solid rgba(255,255,255,0.1)',
-                        '&:hover': { 
-                            bgcolor: '#fff', 
-                            color: '#000', 
+                        '&:hover': {
+                            bgcolor: '#fff',
+                            color: '#000',
                             transform: 'translateY(-2px)',
                             boxShadow: '0 12px 40px rgba(255,255,255,0.2)'
                         },

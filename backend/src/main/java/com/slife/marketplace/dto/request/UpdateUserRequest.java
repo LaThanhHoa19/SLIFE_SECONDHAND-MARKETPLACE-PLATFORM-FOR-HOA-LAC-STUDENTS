@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+
 @Data
 public class UpdateUserRequest {
 
@@ -19,6 +20,8 @@ public class UpdateUserRequest {
 
     @Size(max = 2000, message = "Bio must not exceed 2000 characters")
     private String bio;
+
+    private Boolean showPhoneNumber;
 
     @Size(max = 1000, message = "Avatar URL must not exceed 1000 characters")
     private String avatarUrl;
