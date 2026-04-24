@@ -143,8 +143,8 @@ class AuditLogServiceTest {
         }
 
         @Test
-        @Tag("UTCID-02")
-        @DisplayName("UTCID02 [N] System auto-hide listing: actorType=SYSTEM và đúng listingId")
+        @Tag("UTCID-01")
+        @DisplayName("UTCID01 [N] System auto-hide listing: actorType=SYSTEM và đúng listingId")
         void utcid02_logAutoHideBySystem() throws Exception {
             when(objectMapper.writeValueAsString(any())).thenReturn("{\"pendingReportCount\":8,\"threshold\":5}");
 

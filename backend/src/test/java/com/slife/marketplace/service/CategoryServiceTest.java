@@ -149,11 +149,17 @@ class CategoryServiceTest {
 
         @Test
         @Tag("UTCID-01")
-        @DisplayName("UTCID-01 [B] Tên chỉ gồm khoảng trắng → INVALID_INPUT; tên có khoảng trắng thừa → tự trim")
-        void utcid01_whitespaceName() {
+        @DisplayName("UTCID-01 [B] Tên chỉ gồm khoảng trắng → INVALID_INPUT")
+        void utcid01_whitespaceOnlyName() {
             SlifeException ex = assertThrows(SlifeException.class,
                     () -> categoryService.createCategory(req("   ", "mô tả", null)));
             assertEquals(ErrorCode.INVALID_INPUT, ex.getErrorCode());
+        }
+
+        @Test
+        @Tag("UTCID-02")
+        @DisplayName("UTCID-02 [B] Tên có khoảng trắng thừa → tự trim")
+        void utcid02_nameIsTrimmed() {
 
             when(categoryRepository.findByNameIgnoreCase("Phone")).thenReturn(Optional.empty());
             when(categoryRepository.save(any(Category.class))).thenAnswer(inv -> {
