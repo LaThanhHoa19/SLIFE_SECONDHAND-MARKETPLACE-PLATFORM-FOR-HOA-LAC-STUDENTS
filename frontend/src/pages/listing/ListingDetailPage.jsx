@@ -164,8 +164,7 @@ export default function ListingDetailPage() {
     const [similarListings, setSimilarListings] = useState([]);
     const [loadingRelated, setLoadingRelated] = useState(false);
     const [isSavedItem, setIsSavedItem] = useState(false);
-    const [likeSubmittingSimilarId, setLikeSubmittingSimilarId] = useState(null);
-    const [likeSubmittingSellerListingId, setLikeSubmittingSellerListingId] = useState(null);
+    const [saveSubmittingSimilarId, setSaveSubmittingSimilarId] = useState(null);
     const [sellerFollowed, setSellerFollowed] = useState(false);
     const [reportOpen, setReportOpen] = useState(false);
     const [blockSellerOpen, setBlockSellerOpen] = useState(false);
@@ -359,6 +358,22 @@ export default function ListingDetailPage() {
 
     const handleReport = () => {
         if (!requireAuth('Báo cáo tin đăng', 'Bạn cần đăng nhập để báo cáo tin đăng vi phạm.')) return;
+        const resolvedListingId = Number(listing?.id ?? id);
+        if (!Number.isFinite(resolvedListingId) || resolvedListingId <= 0) {
+            console.warn('[ListingDetailPage] invalid listing id for report', {
+                routeId: id,
+                listingId: listing?.id,
+                resolvedListingId,
+            });
+            showToast('Không thể báo cáo vì ID tin đăng không hợp lệ.', 'error');
+            return;
+        }
+        console.info('[ListingDetailPage] open report dialog', {
+            routeId: id,
+            listingId: listing?.id,
+            resolvedListingId,
+            title: listing?.title,
+        });
         setReportOpen(true);
     };
 
@@ -445,86 +460,37 @@ export default function ListingDetailPage() {
         }
     };
 
-    const handleToggleLikeSimilar = async (targetListing) => {
+    const handleToggleSaveSimilar = async (targetListing) => {
         const targetId = targetListing?.id ?? targetListing?.listingId;
-        if (!targetId || likeSubmittingSimilarId) return;
-        if (!requireAuth('Thích tin đăng', 'Bạn cần đăng nhập để thích tin đăng này.')) return;
-        const wasLiked = !!(targetListing?.isLiked ?? targetListing?.is_liked);
-        const prevCount = Number(targetListing?.likeCount ?? 0);
-        setLikeSubmittingSimilarId(targetId);
-        // Optimistic update
+        if (!targetId || saveSubmittingSimilarId) return;
+        if (!requireAuth('Lưu tin đăng', 'Bạn cần đăng nhập để lưu tin đăng này.')) return;
+        const wasSaved = !!(targetListing?.isSaved ?? targetListing?.saved);
+        setSaveSubmittingSimilarId(targetId);
         setSimilarListings((prev) =>
             prev.map((item) =>
                 String(item?.id ?? item?.listingId) === String(targetId)
-                    ? { ...item, isLiked: !wasLiked, likeCount: Math.max(0, prevCount + (wasLiked ? -1 : 1)) }
+                    ? { ...item, isSaved: !wasSaved }
                     : item
             )
         );
         try {
-            const res = await toggleListingLike(targetId);
-            const body = getPayload(res);
-            const nextLiked = body?.liked ?? body?.isLiked ?? !wasLiked;
-            const nextCount = body?.likeCount ?? Math.max(0, prevCount + (wasLiked ? -1 : 1));
-            setSimilarListings((prev) =>
-                prev.map((item) =>
-                    String(item?.id ?? item?.listingId) === String(targetId)
-                        ? { ...item, isLiked: nextLiked, likeCount: nextCount }
-                        : item
-                )
-            );
-            showToast(!wasLiked ? 'Đã thích' : 'Đã bỏ thích', 'success');
+            if (wasSaved) {
+                await unsaveListing(targetId);
+            } else {
+                await saveListing(targetId);
+            }
+            showToast(!wasSaved ? 'Đã lưu tin rao' : 'Đã bỏ lưu tin rao', 'success');
         } catch {
             setSimilarListings((prev) =>
                 prev.map((item) =>
                     String(item?.id ?? item?.listingId) === String(targetId)
-                        ? { ...item, isLiked: wasLiked, likeCount: prevCount }
+                        ? { ...item, isSaved: wasSaved }
                         : item
                 )
             );
-            showToast('Không cập nhật được lượt thích. Thử lại sau.', 'error');
+            showToast('Không cập nhật được trạng thái lưu tin. Thử lại sau.', 'error');
         } finally {
-            setLikeSubmittingSimilarId(null);
-        }
-    };
-
-    const handleToggleLikeSellerListing = async (targetListing) => {
-        const targetId = targetListing?.id ?? targetListing?.listingId;
-        if (!targetId || likeSubmittingSellerListingId) return;
-        if (!requireAuth('Thích tin đăng', 'Bạn cần đăng nhập để thích tin đăng này.')) return;
-        const wasLiked = !!(targetListing?.isLiked ?? targetListing?.is_liked);
-        const prevCount = Number(targetListing?.likeCount ?? 0);
-        setLikeSubmittingSellerListingId(targetId);
-        setSellerListings((prev) =>
-            prev.map((item) =>
-                String(item?.id ?? item?.listingId) === String(targetId)
-                    ? { ...item, isLiked: !wasLiked, likeCount: Math.max(0, prevCount + (wasLiked ? -1 : 1)) }
-                    : item
-            )
-        );
-        try {
-            const res = await toggleListingLike(targetId);
-            const body = getPayload(res);
-            const nextLiked = body?.liked ?? body?.isLiked ?? !wasLiked;
-            const nextCount = body?.likeCount ?? Math.max(0, prevCount + (wasLiked ? -1 : 1));
-            setSellerListings((prev) =>
-                prev.map((item) =>
-                    String(item?.id ?? item?.listingId) === String(targetId)
-                        ? { ...item, isLiked: nextLiked, likeCount: nextCount }
-                        : item
-                )
-            );
-            showToast(!wasLiked ? 'Đã thích' : 'Đã bỏ thích', 'success');
-        } catch {
-            setSellerListings((prev) =>
-                prev.map((item) =>
-                    String(item?.id ?? item?.listingId) === String(targetId)
-                        ? { ...item, isLiked: wasLiked, likeCount: prevCount }
-                        : item
-                )
-            );
-            showToast('Không cập nhật được lượt thích. Thử lại sau.', 'error');
-        } finally {
-            setLikeSubmittingSellerListingId(null);
+            setSaveSubmittingSimilarId(null);
         }
     };
 
@@ -874,8 +840,6 @@ export default function ListingDetailPage() {
                         loadingRelated={loadingRelated}
                         seller={seller}
                         listing={listing}
-                        onToggleLike={handleToggleLikeSellerListing}
-                        likeSubmittingId={likeSubmittingSellerListingId}
                     />
                 </Box>
             </Box>
@@ -884,15 +848,15 @@ export default function ListingDetailPage() {
             <ListingSimilar
                 similarListings={similarListings}
                 loadingRelated={loadingRelated}
-                onToggleLike={handleToggleLikeSimilar}
-                likeSubmittingId={likeSubmittingSimilarId}
+                onToggleSave={handleToggleSaveSimilar}
+                saveSubmittingId={saveSubmittingSimilarId}
             />
 
             <ReportDialog
                 open={reportOpen}
                 onClose={() => setReportOpen(false)}
                 targetType="LISTING"
-                targetId={id}
+                targetId={Number(listing?.id ?? id)}
                 targetTitle={listing?.title}
             />
 

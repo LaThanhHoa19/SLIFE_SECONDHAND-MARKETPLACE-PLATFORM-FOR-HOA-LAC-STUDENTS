@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Button,
     Dialog,
@@ -31,6 +31,19 @@ const ReportDialog = ({ open, onClose, targetType, targetId, targetTitle }) => {
     const [uploadingEvidence, setUploadingEvidence] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const { showToast } = useToast();
+
+    useEffect(() => {
+        console.debug('[ReportDialog] state changed', {
+            open,
+            targetType,
+            targetId,
+            targetTitle,
+            submitting,
+            uploadingEvidence,
+            reasonLength: reason.length,
+            hasEvidence: Boolean(evidenceImageUrl),
+        });
+    }, [open, targetType, targetId, targetTitle, submitting, uploadingEvidence, reason, evidenceImageUrl]);
 
     const normalizedTargetType = String(targetType || '').toUpperCase();
     const targetLabel =
@@ -74,25 +87,36 @@ const ReportDialog = ({ open, onClose, targetType, targetId, targetTitle }) => {
         e.target.value = '';
         if (!file) return;
 
+        console.debug('[ReportDialog] evidence selected', {
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+        });
+
         const validationError = validateImageFile(file);
         if (validationError) {
+            console.warn('[ReportDialog] evidence validation failed', validationError);
             showToast(validationError, 'warning');
             return;
         }
 
         setUploadingEvidence(true);
         try {
+            console.debug('[ReportDialog] uploading evidence image');
             const res = await uploadReportImage(file);
             const payload = res?.data?.data ?? res?.data;
             const uploadedUrl = payload?.imageUrl || '';
+            console.debug('[ReportDialog] upload response', { status: res?.status, payload });
             if (!uploadedUrl) {
+                console.error('[ReportDialog] upload succeeded but no imageUrl returned', payload);
                 showToast('Upload ảnh thất bại. Vui lòng thử lại.', 'error');
                 return;
             }
             setEvidenceImageUrl(uploadedUrl);
             setEvidencePreviewUrl(URL.createObjectURL(file));
             showToast('Đã tải ảnh bằng chứng thành công.', 'success');
-        } catch {
+        } catch (err) {
+            console.error('[ReportDialog] upload evidence failed', err?.response?.status, err?.response?.data || err);
             showToast('Upload ảnh thất bại. Vui lòng thử lại.', 'error');
         } finally {
             setUploadingEvidence(false);
@@ -108,24 +132,42 @@ const ReportDialog = ({ open, onClose, targetType, targetId, targetTitle }) => {
     };
 
     const handleSubmit = async () => {
-        if (!targetId || !reason.trim()) return;
+        const normalizedTargetId = Number(targetId);
+        if (!Number.isFinite(normalizedTargetId) || normalizedTargetId <= 0 || !reason.trim()) {
+            console.warn('[ReportDialog] submit blocked by missing or invalid fields', {
+                targetId,
+                normalizedTargetId,
+                reasonLength: reason.trim().length,
+            });
+            return;
+        }
         if (uploadingEvidence) {
+            console.warn('[ReportDialog] submit blocked because evidence is still uploading');
             showToast('Vui lòng chờ tải xong ảnh bằng chứng.', 'warning');
             return;
         }
+        const payload = {
+            targetType,
+            targetId: normalizedTargetId,
+            reason: reason.trim(),
+            evidenceImage: evidenceImageUrl || undefined,
+        };
+        console.info('[ReportDialog] submitting report', payload);
         setSubmitting(true);
         try {
-            await createReport({
-                targetType,
-                targetId,
-                reason: reason.trim(),
-                evidenceImage: evidenceImageUrl || undefined
-            });
+            const res = await createReport(payload);
+            console.info('[ReportDialog] createReport success', { status: res?.status, response: res?.data });
             showToast(`Đã gửi báo cáo ${targetLabel} thành công.`, 'success');
             setReason('');
             handleRemoveEvidence();
             onClose();
         } catch (err) {
+            console.error('[ReportDialog] createReport failed', {
+                status: err?.response?.status,
+                data: err?.response?.data,
+                message: err?.message,
+                payload,
+            });
             showToast(resolveErrorMessage(err), 'error');
         } finally {
             setSubmitting(false);
