@@ -2,20 +2,28 @@
  * API bài đăng cộng đồng — khớp backend CommunityPostController.
  */
 import axiosClient from './axiosClient';
+import uploadClient from './uploadClient';
 
 /** Public: { maxImagesPerPost } */
 export const getCommunityPostFormConfig = () => axiosClient.get('/api/community/posts/form-config');
 
 /** Tạo bài + ảnh (multipart) — payload JSON part + images[] */
-export const createCommunityPostWithImages = (payload, imageFiles = []) => {
-    const formData = new FormData();
-    formData.append(
-        'payload',
-        new Blob([JSON.stringify(payload)], { type: 'application/json' }),
-        'payload.json',
-    );
-    (imageFiles || []).forEach((f) => formData.append('images', f));
-    return axiosClient.post('/api/community/posts', formData, { timeout: 120000 });
+export const createCommunityPostWithImages = async (payload, imageFiles = []) => {
+    // Step 1: Create post (JSON — goes through CloudFront fine)
+    const createRes = await axiosClient.post('/api/community/posts', payload, {
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    // Step 2: Upload images via ALB directly (bypass CloudFront multipart issue)
+    const postId = createRes?.data?.data?.id;
+    if (postId && imageFiles && imageFiles.length > 0) {
+        const formData = new FormData();
+        imageFiles.forEach((f) => formData.append('images', f));
+        await uploadClient.post(`/api/community/posts/${postId}/images`, formData, { timeout: 120000 });
+        // Re-fetch to get updated post with images
+        return axiosClient.get(`/api/community/posts/${postId}`);
+    }
+    return createRes;
 };
 
 export const getCommunityPosts = (params = {}, config = {}) =>
@@ -35,7 +43,7 @@ export const deleteCommunityPost = (id) => axiosClient.delete(`/api/community/po
 export const uploadCommunityPostImages = (id, imageFiles = []) => {
     const formData = new FormData();
     (imageFiles || []).forEach((f) => formData.append('images', f));
-    return axiosClient.post(`/api/community/posts/${id}/images`, formData, { timeout: 120000 });
+    return uploadClient.post(`/api/community/posts/${id}/images`, formData, { timeout: 120000 });
 };
 export const deleteCommunityPostImage = (id, imageId) =>
     axiosClient.delete(`/api/community/posts/${id}/images/${imageId}`);

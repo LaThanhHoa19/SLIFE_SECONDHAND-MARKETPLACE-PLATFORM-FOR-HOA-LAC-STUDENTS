@@ -45,7 +45,7 @@ export default function Sidebar({ open = true }) {
             { label: 'Tin nhắn', icon: ChatIcon, path: '/chat' },
             { label: 'Tin đã lưu', icon: BookmarkIcon, path: '/saved' },
             { label: 'Tin của tôi', icon: ListAltIcon, path: '/my-listings' },
-            { label: 'Lịch sử chốt đơn', icon: FactCheckIcon, path: '/order-history' },
+            { label: 'Hoàn tất giao dịch', icon: FactCheckIcon, path: '/order-history' },
             ...(isAuthenticated && user ? [{ label: 'Trang cá nhân', icon: PeopleIcon, path: `/profile/${user.id}` }] : []),
             ...(isAuthenticated ? [{ label: 'Đã chặn', icon: BlockIcon, path: '/settings/blocked' }] : []),
         ];

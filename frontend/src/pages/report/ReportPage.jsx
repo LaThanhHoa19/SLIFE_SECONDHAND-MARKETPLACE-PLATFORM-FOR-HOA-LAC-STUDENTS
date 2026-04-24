@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Box,
     Button,
@@ -44,9 +44,23 @@ export default function ReportPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
+    useEffect(() => {
+        console.debug('[ReportPage] state changed', {
+            targetType,
+            targetId,
+            returnSessionId,
+            isAuthenticated,
+            userId: user?.id,
+            submitting,
+            reasonLength: reason.length,
+            evidenceLength: evidenceImage.length,
+            error,
+        });
+    }, [targetType, targetId, returnSessionId, isAuthenticated, user?.id, submitting, reason, evidenceImage, error]);
+
     const goBackAfterSuccess = () => {
-        if (targetType === 'LISTING' && targetId) return navigate(`/listings/${targetId}`);
-        if (targetType === 'USER' && targetId) return navigate(`/profile/${targetId}`);
+        if (targetType === 'LISTING' && Number.isFinite(targetId) && targetId > 0) return navigate(`/listings/${targetId}`);
+        if (targetType === 'USER' && Number.isFinite(targetId) && targetId > 0) return navigate(`/profile/${targetId}`);
         if (targetType === 'MESSAGE' && returnSessionId) {
             return navigate(`/chat?sessionId=${encodeURIComponent(returnSessionId)}`);
         }
@@ -55,40 +69,67 @@ export default function ReportPage() {
 
     const handleSubmit = async () => {
         setError('');
+        const normalizedTargetId = Number(targetId);
+        const trimmedReason = reason.trim();
+        const trimmedEvidence = evidenceImage.trim();
+
+        console.info('[ReportPage] submit attempt', {
+            targetType,
+            targetId,
+            normalizedTargetId,
+            returnSessionId,
+            isAuthenticated,
+            userId: user?.id,
+            reasonLength: trimmedReason.length,
+            evidenceLength: trimmedEvidence.length,
+        });
+
         if (!isAuthenticated || !user) {
+            console.warn('[ReportPage] blocked submit: unauthenticated');
             setError('Bạn cần đăng nhập để báo cáo.');
             return;
         }
-        if (!targetType || !targetId) {
+        if (!targetType || !Number.isFinite(normalizedTargetId) || normalizedTargetId <= 0) {
+            console.warn('[ReportPage] blocked submit: invalid target info', { targetType, targetId, normalizedTargetId });
             setError('Thiếu thông tin đối tượng cần báo cáo.');
             return;
         }
         if (targetType === 'MESSAGE') {
+            console.warn('[ReportPage] blocked submit: MESSAGE reports disabled');
             setError('Báo cáo tin nhắn đã bị tắt.');
             return;
         }
-        if (!reason.trim()) {
+        if (!trimmedReason) {
+            console.warn('[ReportPage] blocked submit: empty reason');
             setError('Vui lòng nhập lý do báo cáo.');
             return;
         }
 
         setSubmitting(true);
         try {
-            await createReport({
+            const payload = {
                 targetType,
-                targetId,
-                reason: reason.trim(),
-                evidenceImage: evidenceImage.trim() || undefined,
-            });
+                targetId: normalizedTargetId,
+                reason: trimmedReason,
+                evidenceImage: trimmedEvidence || undefined,
+            };
+            console.info('[ReportPage] calling createReport', payload);
+            const res = await createReport(payload);
+            console.info('[ReportPage] createReport success', { status: res?.status, data: res?.data });
             goBackAfterSuccess();
         } catch (err) {
+            console.error('[ReportPage] createReport failed', {
+                status: err?.response?.status,
+                data: err?.response?.data,
+                message: err?.message,
+            });
             setError(err?.response?.data?.message || err?.message || 'Gửi báo cáo thất bại.');
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (!targetType || !targetId) {
+    if (!targetType || !Number.isFinite(targetId) || targetId <= 0) {
         return (
             <Box sx={{ minHeight: '70vh', px: 2, py: 4 }}>
                 <Paper sx={{ maxWidth: 720, mx: 'auto', p: 3, borderRadius: 3 }}>

@@ -17,6 +17,7 @@ public class UserProfileResponse {
     private String email;
     private String fullName;
     private String phoneNumber;
+    private Boolean showPhoneNumber;
     private Boolean phoneVerified;
     private LocalDateTime phoneVerifiedAt;
     private String avatarUrl;
@@ -38,7 +39,7 @@ public class UserProfileResponse {
 
     /** Total number of ACTIVE listings by this user. SCRUM-216 */
     private long listingCount;
-    
+
     /** Number of reviews this user has received. */
     private long ratingCount;
 
@@ -64,6 +65,7 @@ public class UserProfileResponse {
         r.setEmail(user.getEmail());
         r.setFullName(user.getFullName());
         r.setPhoneNumber(user.getPhoneNumber());
+        r.setShowPhoneNumber(user.getShowPhoneNumber());
         r.setPhoneVerifiedAt(user.getPhoneVerifiedAt());
         r.setPhoneVerified(user.getPhoneVerifiedAt() != null);
         r.setAvatarUrl(user.getAvatarUrl());

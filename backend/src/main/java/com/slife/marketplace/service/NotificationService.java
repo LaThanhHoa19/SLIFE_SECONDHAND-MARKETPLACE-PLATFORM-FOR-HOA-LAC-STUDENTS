@@ -224,6 +224,37 @@ public class NotificationService {
         }
     }
 
+    /**
+     * Gửi thông báo cho CẢ HAI bên khi deal bị hệ thống tự động đóng (CLOSED) do quá hạn.
+     * Seller được biết listing vẫn còn hiệu lực để chủ động quyết định ẩn/xóa/tái đăng.
+     * Buyer được biết giao dịch đã hết hạn, không thể khiếu nại qua luồng này nữa.
+     */
+    @Transactional
+    public void notifyDealClosed(User seller, User buyer, Long listingId, String listingTitle) {
+        try {
+            String title = (listingTitle != null && !listingTitle.isBlank()) ? listingTitle.trim() : "tin đăng";
+            // Thông báo cho Seller
+            if (seller != null && seller.getId() != null) {
+                String sellerText = "⏰ Giao dịch sản phẩm «" + truncate(title, 40)
+                        + "» đã tự động đóng do người mua không phản hồi trong thời hạn. "
+                        + "Tin đăng của bạn vẫn còn hiệu lực — bạn có thể ẩn hoặc tiếp tục chờ người mua khác.";
+                Notification ns = buildNotification(seller, TYPE_DEAL, "ORDER_HISTORY", listingId, sellerText);
+                notificationRepository.save(ns);
+                pushNotificationCount(seller);
+            }
+            // Thông báo cho Buyer
+            if (buyer != null && buyer.getId() != null) {
+                String buyerText = "⏰ Giao dịch sản phẩm «" + truncate(title, 40)
+                        + "» đã tự động đóng do bạn không xác nhận hoặc hủy trong thời hạn quy định.";
+                Notification nb = buildNotification(buyer, TYPE_DEAL, "ORDER_HISTORY", listingId, buyerText);
+                notificationRepository.save(nb);
+                pushNotificationCount(buyer);
+            }
+        } catch (Exception ex) {
+            log.error("notifyDealClosed failed listingId={}", listingId, ex);
+        }
+    }
+
     /** Thông báo cho người bán khi nhận được đánh giá mới.
      *  refType SELLER_PROFILE + refId = seller.id → frontend route /profile/{sellerId}. */
     @Transactional
@@ -260,7 +291,7 @@ public class NotificationService {
                     : "";
             Notification n = buildNotification(listingOwner, TYPE_SYSTEM,
                     "LISTING", listingId,
-                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                    "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Quản trị viên đã ẩn tin đăng \"" + truncate(listingTitle, 40)
                             + "\" do vi phạm quy định" + suffix + ".");
             notificationRepository.save(n);
@@ -279,7 +310,7 @@ public class NotificationService {
                     : "";
             Notification n = buildNotification(user, TYPE_SYSTEM,
                     "USER", user.getId(),
-                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                    "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Tài khoản của bạn đã bị khóa do vi phạm quy định cộng đồng"
                             + suffix
                             + ". Nếu cần khiếu nại, vui lòng liên hệ bộ phận hỗ trợ.");
@@ -299,7 +330,7 @@ public class NotificationService {
                     : "";
             Notification n = buildNotification(user, TYPE_SYSTEM,
                     "USER", user.getId(),
-                    "[Moderation] Báo cáo #" + (reportId != null ? reportId : "?")
+                    "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Báo cáo về tài khoản của bạn đã được duyệt" + suffix
                             + ". Điểm vi phạm hiện tại: " + violationCount + "/" + threshold + ".");
             notificationRepository.save(n);

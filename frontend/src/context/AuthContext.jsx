@@ -283,7 +283,7 @@ export function AuthProvider({ children }) {
       const payload = unwrapApiData(await authApi.googleOAuth({ credential }));
       const accessToken = getAccessTokenFromPayload(payload);
       if (!accessToken || !payload?.user) {
-        throw new Error('Invalid Google auth response');
+        throw new Error('Phản hồi đăng nhập Google không hợp lệ. Vui lòng thử lại.');
       }
 
       window.dispatchEvent(new CustomEvent('slife-clear-admin-session'));
@@ -314,7 +314,10 @@ export function AuthProvider({ children }) {
 
       return { success: true, data: payload };
     } catch (error) {
-      const errorMessage = error?.response?.data?.message || error?.message || 'Google login failed. Please try again.';
+      const fromBody = error?.response?.data?.message;
+      const raw = (typeof fromBody === 'string' && fromBody.trim() ? fromBody : null)
+        || (typeof error?.message === 'string' && error.message.trim() ? error.message : null);
+      const errorMessage = raw || 'Đăng nhập Google thất bại. Vui lòng thử lại.';
       setAuthError(errorMessage);
       if (options.onError) {
         options.onError(error);

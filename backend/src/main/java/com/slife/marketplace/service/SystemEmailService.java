@@ -445,6 +445,103 @@ public class SystemEmailService {
     }
 
     /**
+     * Gửi email nhắc buyer xác nhận giao dịch trước khi hệ thống tự động hoàn tất.
+     * Gọi từ DealAutoFinalizeReminderService (scheduler).
+     */
+    @Async("emailTaskExecutor")
+    public void sendAutoFinalizeReminderToBuyer(Deal deal, LocalDateTime deadline) {
+        if (!mailEnabled || deal == null) {
+            return;
+        }
+        Listing listing = deal.getListing();
+        User buyer = deal.getProposedBy();
+        if (buyer == null || buyer.getEmail() == null || buyer.getEmail().isBlank()) {
+            return;
+        }
+        // Không gửi email cho user bị BANNED
+        if (buyer.getStatus() != null && "BANNED".equalsIgnoreCase(buyer.getStatus().trim())) {
+            return;
+        }
+        try {
+            String title = listing != null && listing.getTitle() != null
+                    ? trunc(listing.getTitle(), 80) : "tin đăng";
+            Long listingId = listing != null ? listing.getId() : null;
+            String deadlineStr = deadline != null ? deadline.format(DT_FMT) : "sắp tới";
+            String priceStr = deal.getDealPrice() != null ? formatMoney(deal.getDealPrice()) : "Liên hệ";
+
+            String subject = "[SLIFE] Nhắc xác nhận giao dịch #" + deal.getId() + " — " + trunc(title, 50);
+
+            String bodyContent = "<p>Xin chào " + esc(displayName(buyer)) + ",</p>"
+                    + "<p>Giao dịch <strong>«" + esc(title) + "»</strong> (giá: " + esc(priceStr)
+                    + ") sẽ được hệ thống <strong>tự động xác nhận hoàn tất</strong> vào ngày <strong>"
+                    + esc(deadlineStr) + "</strong>.</p>"
+                    + "<p>Nếu bạn đã nhận hàng, hãy xác nhận và đánh giá người bán.</p>"
+                    + "<p>Nếu có vấn đề, hãy hủy giao dịch trước thời hạn trên.</p>"
+                    + emailPrimarySecondaryActions(
+                            esc(chatOrListingUrl(listingId, null)),
+                            esc(listingUrl(listingId)),
+                            "Xác nhận nhận hàng",
+                            "Xem giao dịch");
+
+            String body = slifeEmailDocument(
+                    "Nhắc xác nhận giao dịch",
+                    bodyContent,
+                    "Email tự động từ SLIFE. Nếu bạn không thao tác, giao dịch sẽ được hoàn tất tự động vào " + esc(deadlineStr) + ".");
+            send(buyer.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendAutoFinalizeReminderToBuyer dealId={}: {}", deal.getId(), ex.getMessage());
+        }
+    }
+
+    /**
+     * Gửi email thông báo seller sau khi deal được auto-finalize (buyer không xác nhận).
+     * Gọi từ DealService.autoFinalizeDeals().
+     */
+    @Async("emailTaskExecutor")
+    public void sendAutoFinalizedNotifySellerEmail(Deal deal) {
+        if (!mailEnabled || deal == null) {
+            return;
+        }
+        Listing listing = deal.getListing();
+        User seller = listing != null ? listing.getSeller() : null;
+        User buyer = deal.getProposedBy();
+        if (seller == null || seller.getEmail() == null || seller.getEmail().isBlank()) {
+            return;
+        }
+        // Không gửi nếu seller = buyer (edge case)
+        if (buyer != null && seller.getId() != null && seller.getId().equals(buyer.getId())) {
+            return;
+        }
+        try {
+            String title = listing.getTitle() != null ? trunc(listing.getTitle(), 80) : "tin đăng";
+            Long listingId = listing.getId();
+            String buyerName = buyer != null ? displayName(buyer) : "Người mua";
+
+            String subject = "[SLIFE] Giao dịch #" + deal.getId() + " đã tự động hoàn tất — " + trunc(title, 40);
+
+            String bodyContent = "<p>Xin chào " + esc(displayName(seller)) + ",</p>"
+                    + "<p>Giao dịch <strong>«" + esc(title) + "»</strong> với "
+                    + esc(buyerName) + " đã được hệ thống <strong>tự động hoàn tất</strong> "
+                    + "do người mua không xác nhận trong thời hạn.</p>"
+                    + "<p>Bài đăng đã được đánh dấu <strong>Đã bán</strong>. "
+                    + "Nếu bạn muốn ẩn bài đăng hoặc đăng lại, hãy truy cập trang quản lý tin đăng.</p>"
+                    + emailPrimarySecondaryActions(
+                            esc(listingUrl(listingId)),
+                            null,
+                            "Quản lý tin đăng",
+                            null);
+
+            String body = slifeEmailDocument(
+                    "Giao dịch tự động hoàn tất",
+                    bodyContent,
+                    "Email tự động từ SLIFE. Người mua không xác nhận trong thời hạn nên hệ thống đã tự động hoàn tất giao dịch.");
+            send(seller.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendAutoFinalizedNotifySellerEmail dealId={}: {}", deal.getId(), ex.getMessage());
+        }
+    }
+
+    /**
      * Ước lượng thời gian còn lại đến {@code pickup} (cùng quy ước giờ VN với cột deal).
      * Email gửi theo cron nên lệch vài phút so với thực tế — không cần độ chính xác tuyệt đối.
      */
