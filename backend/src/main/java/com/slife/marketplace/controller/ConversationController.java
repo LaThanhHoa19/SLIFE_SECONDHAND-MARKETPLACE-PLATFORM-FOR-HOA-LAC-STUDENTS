@@ -1,35 +1,30 @@
-/**
- * Mục đích: Controller Conversation
- * Endpoints liên quan: api
- * TODO implement:
- * - Hoàn thiện nghiệp vụ tại service layer theo đúng use case.
- * - Bổ sung validation, security, transaction boundaries và logging/audit.
- * - Viết unit/integration tests cho happy path + edge cases + error cases.
- */
 package com.slife.marketplace.controller;
 
 import com.slife.marketplace.dto.request.CreateConversationMessageRequest;
+import com.slife.marketplace.dto.request.CreateConversationRequest;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.dto.response.ChatMessageResponse;
+import com.slife.marketplace.dto.response.ChatSessionResponse;
 import com.slife.marketplace.dto.response.ConversationMessageResponse;
 import com.slife.marketplace.dto.response.PagedResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.service.ConversationService;
 import com.slife.marketplace.service.UserService;
 import com.slife.marketplace.util.Constants;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.sql.PreparedStatement;
-import java.sql.Statement;
+import jakarta.validation.Valid;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,25 +34,28 @@ import java.util.Map;
 @RestController
 public class ConversationController {
     private final JdbcTemplate jdbcTemplate;
+    private final ConversationService conversationService;
     private final UserService userService;
     private static final DateTimeFormatter CHAT_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
     public ConversationController(JdbcTemplate jdbcTemplate,
+                                  ConversationService conversationService,
                                   UserService userService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.conversationService = conversationService;
         this.userService = userService;
     }
 
-    // TODO: thêm đầy đủ endpoint theo spec, ví dụ request/response JSON trong từng method.
     @GetMapping("/api/conversations")
     public ResponseEntity<?> m1() {
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/api/conversations")
-    public ResponseEntity<?> m2(@RequestBody Object r) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ApiResponse<ChatSessionResponse>> m2(@Valid @RequestBody CreateConversationRequest r) {
+        ChatSessionResponse session = conversationService.getOrCreateConversation(r.getListingId());
+        return ResponseEntity.ok(ApiResponse.success("OK", session));
     }
 
     @GetMapping("/api/conversations/{id}/messages")
@@ -79,7 +77,6 @@ public class ConversationController {
         );
         int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / safeSize);
 
-        // Query newest first for efficient pagination, then reverse for UI old -> new.
         List<ConversationMessageResponse> descRows = jdbcTemplate.query(
                 """
                 SELECT u.full_name AS sender_name, m.content AS content, m.sent_at AS sent_at
@@ -121,47 +118,7 @@ public class ConversationController {
     public ResponseEntity<ApiResponse<ChatMessageResponse>> m4(
             @PathVariable("id") Long id,
             @Valid @RequestBody CreateConversationMessageRequest request) {
-        User sender = userService.getCurrentUser();
-        ensureConversationParticipant(id, sender);
-        if (sender.getStatus() != null
-                && ("BANNED".equals(sender.getStatus()) || "RESTRICTED".equals(sender.getStatus()))) {
-            throw new SlifeException(ErrorCode.FORBIDDEN, Constants.MSG23);
-        }
-
-        Instant now = Instant.now();
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(conn -> {
-            PreparedStatement ps = conn.prepareStatement(
-                    """
-                    INSERT INTO messages (conversation_id, sender_id, content, is_read, sent_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    Statement.RETURN_GENERATED_KEYS
-            );
-            ps.setLong(1, id);
-            ps.setLong(2, sender.getId());
-            ps.setString(3, request.getContent().trim());
-            ps.setBoolean(4, false);
-            ps.setTimestamp(5, Timestamp.from(now));
-            ps.setTimestamp(6, Timestamp.from(now));
-            return ps;
-        }, keyHolder);
-
-        jdbcTemplate.update(
-                "UPDATE conversations SET last_message_at = ?, updated_at = ? WHERE conversation_id = ?",
-                Timestamp.from(now), Timestamp.from(now), id
-        );
-
-        Number key = keyHolder.getKey();
-        ChatMessageResponse saved = ChatMessageResponse.builder()
-                .id(key != null ? key.longValue() : null)
-                .senderId(sender.getId())
-                .senderName(sender.getFullName())
-                .content(request.getContent().trim())
-                .timestamp(now)
-                .isRead(false)
-                .isFromCurrentUser(true)
-                .build();
+        ChatMessageResponse saved = conversationService.createMessage(id, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("OK", saved));
     }
 

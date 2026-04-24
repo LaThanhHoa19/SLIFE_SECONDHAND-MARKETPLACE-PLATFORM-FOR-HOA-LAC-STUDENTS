@@ -21,3 +21,14 @@ firebase/functions/.env.*
 !firebase/functions/.env.example
 
 AGENTS.md
+
+# Binary / tool JARs
+*.jar
+!backend/**/*.jar
+
+# Error logs (backend)
+backend/err.txt
+backend/err_real.txt
+
+# Tài liệu dự án (local only)
+docs/

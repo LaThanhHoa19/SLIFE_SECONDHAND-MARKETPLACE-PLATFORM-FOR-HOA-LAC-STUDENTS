@@ -358,6 +358,22 @@ export default function ListingDetailPage() {
 
     const handleReport = () => {
         if (!requireAuth('Báo cáo tin đăng', 'Bạn cần đăng nhập để báo cáo tin đăng vi phạm.')) return;
+        const resolvedListingId = Number(listing?.id ?? id);
+        if (!Number.isFinite(resolvedListingId) || resolvedListingId <= 0) {
+            console.warn('[ListingDetailPage] invalid listing id for report', {
+                routeId: id,
+                listingId: listing?.id,
+                resolvedListingId,
+            });
+            showToast('Không thể báo cáo vì ID tin đăng không hợp lệ.', 'error');
+            return;
+        }
+        console.info('[ListingDetailPage] open report dialog', {
+            routeId: id,
+            listingId: listing?.id,
+            resolvedListingId,
+            title: listing?.title,
+        });
         setReportOpen(true);
     };
 
@@ -540,12 +556,19 @@ export default function ListingDetailPage() {
     const isOwnListing = currentUser && sellerId && String(currentUser.id) === String(sellerId);
     // Lấy số điện thoại theo thứ tự ưu tiên: top-level field -> seller object -> sellerSummary object
     // Kiểm tra cả camelCase và snake_case để tránh lỗi serialization
-    const rawPhone = listing?.sellerPhone
-        || seller?.phoneNumber || seller?.phone_number
-        || listing?.sellerSummary?.phoneNumber || listing?.sellerSummary?.phone_number;
+    const sellerAllowsPhone =
+        listing?.seller?.showPhoneNumber ??
+        listing?.sellerSummary?.showPhoneNumber ??
+        listing?.sellerSummary?.show_phone_number ??
+        true;
+    const rawPhone = sellerAllowsPhone
+        ? (listing?.sellerPhone
+            || seller?.phoneNumber || seller?.phone_number
+            || listing?.sellerSummary?.phoneNumber || listing?.sellerSummary?.phone_number)
+        : null;
 
     const phoneNumber = isAuthenticated && showPhone
-        ? (rawPhone || 'Thông tin liên hệ trống')
+        ? (rawPhone || (sellerAllowsPhone ? 'Thông tin liên hệ trống' : 'Người bán đã ẩn số điện thoại'))
         : null;
     const pickupAddress = listing?.pickupAddress;
     const s = String(listing?.status || listing?.itemStatus || '').toUpperCase();
@@ -833,7 +856,7 @@ export default function ListingDetailPage() {
                 open={reportOpen}
                 onClose={() => setReportOpen(false)}
                 targetType="LISTING"
-                targetId={id}
+                targetId={Number(listing?.id ?? id)}
                 targetTitle={listing?.title}
             />
 

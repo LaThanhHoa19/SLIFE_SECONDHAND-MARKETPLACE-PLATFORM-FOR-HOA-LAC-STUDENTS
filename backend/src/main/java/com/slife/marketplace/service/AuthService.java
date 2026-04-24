@@ -40,6 +40,10 @@ public class AuthService {
     @Value("${app.backend.url:http://localhost:8080}")
     private String backendUrl;
 
+    /** Idle timeout (ms): từ chối refresh nếu token được tạo quá lâu mà không renew. Mặc định 4 giờ. */
+    @Value("${app.auth.idle-timeout-ms:14400000}")
+    private long idleTimeoutMs;
+
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -109,6 +113,19 @@ public class AuthService {
             throw new SlifeException(ErrorCode.UNAUTHORIZED, "Session has been revoked");
         }
 
+        // Idle check: từ chối refresh nếu token quá cũ mà không được renew
+        // Mỗi lần refresh thành công → cấp refresh token mới với lat = now → reset idle timer
+        // Token cũ (không có lat) vẫn pass (backward compatible)
+        Object latRaw = claims.get("lat");
+        if (latRaw != null) {
+            long lat = latRaw instanceof Number n ? n.longValue() : Long.parseLong(latRaw.toString());
+            long idleSeconds = java.time.Instant.now().getEpochSecond() - lat;
+            if (idleSeconds > idleTimeoutMs / 1000) {
+                tokenBlacklistService.blacklist(refreshToken);
+                throw new SlifeException(ErrorCode.UNAUTHORIZED, "Session expired due to inactivity");
+            }
+        }
+
         tokenBlacklistService.blacklist(refreshToken);
         return buildAuthResponse(user);
     }
@@ -166,11 +183,13 @@ public class AuthService {
         if (email == null || email.isBlank() || !emailVerified) {
             throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
-        if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(audience)) {
-            throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
-        }
+        // Check domain TRƯỚC audience — đảm bảo user luôn thấy message rõ ràng
+        // khi dùng email không phải @fpt.edu.vn, bất kể audience match hay không.
         if (!studentVerificationService.isAllowedStudentEmail(email)) {
             throw new SlifeException(ErrorCode.GOOGLE_DOMAIN_NOT_ALLOWED);
+        }
+        if (googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals(audience)) {
+            throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
 
         User user = userRepository.findByEmail(email)
@@ -194,6 +213,10 @@ public class AuthService {
         claims.put("typ", tokenType);
         long tv = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
         claims.put("tv", tv);
+        // Idle check: ghi thời điểm tạo refresh token để backend kiểm tra khi refresh
+        if ("refresh".equals(tokenType)) {
+            claims.put("lat", java.time.Instant.now().getEpochSecond());
+        }
         return claims;
     }
 

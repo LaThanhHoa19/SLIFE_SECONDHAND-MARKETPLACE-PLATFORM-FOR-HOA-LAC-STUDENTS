@@ -247,11 +247,11 @@ public class ListingService {
             for (com.slife.marketplace.dto.response.ListingCardResponse card : content) {
                 Long sid = card.getSellerId();
                 Long lid = card.getId();
-                
+
                 // Gán code bảo mật cho listing và seller
                 card.setCode(com.slife.marketplace.util.IdHasher.encode(lid));
                 card.setSellerCode(com.slife.marketplace.util.IdHasher.encode(sid));
-                
+
                 boolean f = sid != null
                         && !sid.equals(currentUser.getId())
                         && followed.contains(sid);
@@ -659,10 +659,13 @@ public class ListingService {
             sel.put("id", listing.getSeller().getId());
             sel.put("fullName", listing.getSeller().getFullName());
             sel.put("avatarUrl", listing.getSeller().getAvatarUrl());
-            sel.put("phoneNumber", listing.getSeller().getPhoneNumber());
+            boolean showPhone = Boolean.TRUE.equals(listing.getSeller().getShowPhoneNumber());
+            String sellerPhone = showPhone ? listing.getSeller().getPhoneNumber() : null;
+            sel.put("phoneNumber", sellerPhone);
             sel.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
+            sel.put("showPhoneNumber", showPhone);
             response.setSeller(sel);
-            response.setSellerPhone(listing.getSeller().getPhoneNumber());
+            response.setSellerPhone(sellerPhone);
             response.setPhoneVerified(listing.getSeller().getPhoneVerifiedAt() != null);
         }
 
@@ -871,6 +874,7 @@ public class ListingService {
         seller.put("fullName", listing.getSeller().getFullName());
         seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
         seller.put("phoneNumber", listing.getSeller().getPhoneNumber());
+        seller.put("showPhoneNumber", listing.getSeller().getShowPhoneNumber());
         seller.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
 
         return seller;

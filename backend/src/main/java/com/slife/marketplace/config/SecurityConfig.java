@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slife.marketplace.dto.response.ApiResponse;
 import com.slife.marketplace.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -90,7 +91,16 @@ public class SecurityConfig {
                             response.getWriter().write(objectMapper.writeValueAsString(body));
                         })
                         .accessDeniedHandler((request, response, ex) -> {
-                            response.setStatus(403);
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+                            try {
+                                var body = ApiResponse.error("FORBIDDEN",
+                                        "Bạn không có quyền truy cập tính năng này");
+                                response.getWriter().write(objectMapper.writeValueAsString(body));
+                            } catch (IOException ignored) {
+                                // keep 403 status
+                            }
                         }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

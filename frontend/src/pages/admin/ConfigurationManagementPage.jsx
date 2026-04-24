@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Box,
@@ -59,9 +59,31 @@ const PAGE_SIZE = 10;
 const tableContainerSx = {
     bgcolor: TABLE_SURFACE,
     border: `1px solid ${TABLE_BORDER}`,
-    borderRadius: 1,
+    borderRadius: 2,
     boxShadow: 'none',
     maxHeight: 560,
+    overflowY: 'auto',
+    scrollbarWidth: 'thin',
+    scrollbarColor: 'rgba(157, 110, 237, 0.75) rgba(255,255,255,0.06)',
+    '&::-webkit-scrollbar': {
+        width: 10,
+        height: 10,
+    },
+    '&::-webkit-scrollbar-track': {
+        background: 'rgba(255,255,255,0.06)',
+        borderRadius: 999,
+    },
+    '&::-webkit-scrollbar-thumb': {
+        background: 'linear-gradient(180deg, rgba(157, 110, 237, 0.95) 0%, rgba(124, 58, 237, 0.88) 100%)',
+        borderRadius: 999,
+        border: '2px solid rgba(255,255,255,0.06)',
+    },
+    '&::-webkit-scrollbar-thumb:hover': {
+        background: 'linear-gradient(180deg, rgba(180, 140, 255, 1) 0%, rgba(139, 92, 246, 0.95) 100%)',
+    },
+    '&::-webkit-scrollbar-corner': {
+        background: 'transparent',
+    },
 };
 
 const tableSx = {
@@ -139,18 +161,48 @@ const selectFieldSx = {
 
 /** Khớp khóa trong DB / ConfigService (chuẩn hóa UPPER_SNAKE). */
 const CONFIG_LABELS = {
-    LISTING_EXPIRATION: 'Hạn hiển thị tin đăng',
-    MAX_IMAGES: 'Giới hạn ảnh (hệ thống)',
-    MAX_IMAGES_PER_POST: 'Số ảnh tối đa / tin',
-    REPORT_THRESHOLD: 'Ngưỡng báo cáo',
-    DEAL_TIMEOUT_DAYS: 'Thời gian chờ giao dịch',
-    DEAL_TIMEOUT_UNIT: 'Đơn vị thời gian — tự động chuyển SOLD (DAYS / MINUTES)',
-    AUTO_HIDE_REPORT_THRESHOLD: 'Ngưỡng tự ẩn theo báo cáo',
-    PICKUP_REMINDER_HOURS: 'Giờ nhắc trước giờ nhận hàng (email)',
-    MAX_ACTIVE_LISTINGS_PER_USER: 'Số tin ACTIVE tối đa / người',
-    LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Giờ trước khi hết hạn — gửi mail nhắc',
+    LISTING_EXPIRATION: 'Số ngày tin đăng còn hiển thị',
+    MAX_IMAGES: 'Giới hạn ảnh hệ thống chung',
+    MAX_IMAGES_PER_POST: 'Số ảnh tối đa cho mỗi tin đăng',
+    REPORT_THRESHOLD: 'Ngưỡng vi phạm trước khi xử lý',
+    DEAL_TIMEOUT_DAYS: 'Thời gian chờ giao dịch để tự xử lý',
+    DEAL_TIMEOUT_UNIT: 'Đơn vị thời gian tự động đóng giao dịch (NGÀY / PHÚT)',
+    AUTO_HIDE_REPORT_THRESHOLD: 'Ngưỡng báo cáo để tự ẩn tin đăng hoặc bình luận',
+    PICKUP_REMINDER_HOURS: 'Số giờ nhắc trước khi nhận hàng',
+    MAX_ACTIVE_LISTINGS_PER_USER: 'Giới hạn số tin đang hiển thị mỗi người',
+    LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Số giờ trước khi hết hạn để gửi mail nhắc',
     REVIEW_TIMEOUT_VALUE: 'Thời gian được phép đánh giá sau khi giao dịch hoàn tất',
-    REVIEW_TIMEOUT_UNIT: 'Đơn vị thời gian đánh giá (DAYS / MINUTES)',
+    REVIEW_TIMEOUT_UNIT: 'Đơn vị thời gian đánh giá (NGÀY / PHÚT)',
+};
+
+const CONFIG_HELPERS = {
+    LISTING_EXPIRATION: 'Dùng để giới hạn thời gian hiển thị của tin đăng.',
+    MAX_IMAGES: 'Giới hạn chung cho các luồng tải ảnh trong hệ thống.',
+    MAX_IMAGES_PER_POST: 'Áp dụng riêng cho số ảnh đính kèm mỗi tin đăng.',
+    REPORT_THRESHOLD: 'Đủ ngưỡng thì áp dụng cảnh báo hoặc ban khi admin duyệt báo cáo.',
+    DEAL_TIMEOUT_DAYS: 'Dùng cho thời hạn chờ xử lý giao dịch.',
+    DEAL_TIMEOUT_UNIT: 'Nhập DAYS (ngày) hoặc MINUTES (phút). Ví dụ: DAYS = tính theo ngày, MINUTES = tính theo phút (dùng để test nhanh).',
+    AUTO_HIDE_REPORT_THRESHOLD: 'Tự động ẩn tin đăng hoặc bình luận khi số báo cáo đang chờ duyệt đạt ngưỡng này.',
+    PICKUP_REMINDER_HOURS: 'Hệ thống sẽ gửi email nhắc trước số giờ này.',
+    MAX_ACTIVE_LISTINGS_PER_USER: '0 nghĩa là không giới hạn số tin đang hiển thị.',
+    LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Dùng để gửi email nhắc sắp hết hạn.',
+    REVIEW_TIMEOUT_VALUE: 'Khoảng thời gian người dùng được phép đánh giá sau khi hoàn tất giao dịch.',
+    REVIEW_TIMEOUT_UNIT: 'Chọn đơn vị ngày hoặc phút cho thời gian đánh giá.',
+};
+
+const DISPLAY_DESCRIPTION_OVERRIDES = {
+    LISTING_EXPIRATION: 'Số ngày một tin đăng còn được hiển thị trên hệ thống.',
+    MAX_IMAGES: 'Giới hạn số ảnh tối đa cho các luồng tải ảnh trong hệ thống.',
+    MAX_IMAGES_PER_POST: 'Số ảnh tối đa được phép đính kèm cho mỗi tin đăng.',
+    REPORT_THRESHOLD: 'Số báo cáo cần đạt để hệ thống bắt đầu xử lý vi phạm khi admin duyệt.',
+    DEAL_TIMEOUT_DAYS: 'Số ngày chờ giao dịch trước khi hệ thống tự xử lý.',
+    DEAL_TIMEOUT_UNIT: 'Đơn vị thời gian để tự động đóng (CLOSED) giao dịch quá hạn. Nhập DAYS hoặc MINUTES.',
+    AUTO_HIDE_REPORT_THRESHOLD: 'Số báo cáo đang chờ duyệt cần đạt để hệ thống tự ẩn tin đăng hoặc bình luận.',
+    PICKUP_REMINDER_HOURS: 'Số giờ trước thời điểm nhận hàng mà hệ thống sẽ gửi email nhắc.',
+    MAX_ACTIVE_LISTINGS_PER_USER: '0 nghĩa là không giới hạn số tin đang hiển thị của mỗi người.',
+    LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Số giờ trước khi tin đăng hết hạn để gửi email nhắc.',
+    REVIEW_TIMEOUT_VALUE: 'Khoảng thời gian người dùng được phép đánh giá sau khi hoàn tất giao dịch.',
+    REVIEW_TIMEOUT_UNIT: 'Đơn vị thời gian dùng cho cấu hình thời hạn đánh giá.',
 };
 
 const SUPPORTED_CONFIG_KEYS = new Set(Object.keys(CONFIG_LABELS));
@@ -187,6 +239,23 @@ function getDisplayLabel(row) {
     return CONFIG_LABELS[row.config_name] ?? row.config_name ?? '';
 }
 
+function getDisplayHelp(row) {
+    return CONFIG_HELPERS[row.config_name] ?? '';
+}
+
+function getDisplayDescription(row) {
+    return DISPLAY_DESCRIPTION_OVERRIDES[row.config_name] ?? row.description ?? '';
+}
+
+function getDisplayValue(row) {
+    const raw = String(row.config_value ?? '').trim();
+    if (row.config_name === 'DEAL_TIMEOUT_UNIT' || row.config_name === 'REVIEW_TIMEOUT_UNIT') {
+        if (raw.toUpperCase() === 'DAYS') return 'NGÀY';
+        if (raw.toUpperCase() === 'MINUTES') return 'PHÚT';
+    }
+    return raw;
+}
+
 function isSupportedKey(row) {
     return SUPPORTED_CONFIG_KEYS.has(row.config_name);
 }
@@ -195,10 +264,11 @@ function configMatchesSearch(row, rawQuery) {
     const q = rawQuery.trim().toLowerCase();
     if (!q) return true;
     const label = String(getDisplayLabel(row)).toLowerCase();
-    const desc = String(row.description ?? '').toLowerCase();
+    const helper = String(getDisplayHelp(row)).toLowerCase();
+    const desc = String(getDisplayDescription(row)).toLowerCase();
     const key = String(row.config_name ?? '').toLowerCase();
     const idStr = row.id != null ? String(row.id) : '';
-    return label.includes(q) || desc.includes(q) || key.includes(q) || idStr.includes(q);
+    return label.includes(q) || helper.includes(q) || desc.includes(q) || key.includes(q) || idStr.includes(q);
 }
 
 function parseUpdatedAtMs(row) {
@@ -261,7 +331,7 @@ export default function ConfigurationManagementPage() {
     const openEdit = useCallback((row) => {
         setEditing(row);
         setDraftValue(row.config_value ?? '');
-        setDraftDescription(row.description ?? '');
+        setDraftDescription(getDisplayDescription(row));
         setFieldError('');
         setDescriptionError('');
         setEditOpen(true);
@@ -404,6 +474,45 @@ export default function ConfigurationManagementPage() {
         () => sortedFilteredRows.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE),
         [sortedFilteredRows, page],
     );
+
+    const pagedGroupedRows = useMemo(() => {
+        const filtered = pagedRows;
+        const rowsByKey = new Map(filtered.map((row) => [row.config_name, row]));
+        const used = new Set();
+        const output = [];
+
+        const groups = [
+            {
+                title: 'Báo cáo & kiểm duyệt',
+                items: ['REPORT_THRESHOLD', 'AUTO_HIDE_REPORT_THRESHOLD'],
+            },
+            {
+                title: 'Ảnh & tin đăng',
+                items: ['MAX_IMAGES', 'MAX_IMAGES_PER_POST', 'LISTING_EXPIRATION', 'MAX_ACTIVE_LISTINGS_PER_USER', 'LISTING_EXPIRING_SOON_HOURS_BEFORE'],
+            },
+            {
+                title: 'Giao dịch & đánh giá',
+                items: ['DEAL_TIMEOUT_DAYS', 'DEAL_TIMEOUT_UNIT', 'REVIEW_TIMEOUT_VALUE', 'REVIEW_TIMEOUT_UNIT', 'PICKUP_REMINDER_HOURS'],
+            },
+        ];
+
+        groups.forEach((group) => {
+            const groupRows = group.items
+                .map((key) => rowsByKey.get(key))
+                .filter(Boolean)
+                .sort(compareByConfigIdAsc);
+            groupRows.forEach((row) => used.add(row.config_name));
+            if (groupRows.length > 0) {
+                output.push({ title: group.title, rows: groupRows });
+            }
+        });
+
+        const remaining = filtered.filter((row) => !used.has(row.config_name)).sort(compareByConfigIdAsc);
+        if (remaining.length > 0) {
+            output.push({ title: 'Khác', rows: remaining });
+        }
+        return output;
+    }, [pagedRows]);
 
     useEffect(() => {
         const maxPage = Math.max(0, Math.ceil(totalCount / PAGE_SIZE) - 1);
@@ -548,62 +657,81 @@ export default function ConfigurationManagementPage() {
                                             </Stack>
                                         </TableCell>
                                     </TableRow>
-                                ) : null}
-                                {pagedRows.map((row) => (
-                                    <TableRow key={row.id != null ? `cfg-${row.id}` : row.config_id}>
-                                        <TableCell
-                                            sx={{
-                                                color: 'rgba(255,255,255,0.55)',
-                                                fontVariantNumeric: 'tabular-nums',
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                        >
-                                            {row.id != null ? row.id : '—'}
-                                        </TableCell>
-                                        <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
-                                            {CONFIG_LABELS[row.config_name] ?? row.config_name}
-                                        </TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 700 }}>
-                                            {row.config_value}
-                                        </TableCell>
-                                        <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
-                                            {row.description ? (
-                                                <Tooltip title={row.description} arrow placement="top-start">
-                                                    <Typography
-                                                        variant="body2"
+                                ) : (
+                                    pagedGroupedRows.map((group) => (
+                                        <Fragment key={`group-${group.title}`}>
+                                            <TableRow>
+                                                <TableCell colSpan={6} sx={{ bgcolor: 'rgba(157, 110, 237, 0.12)', color: '#e9d5ff', fontWeight: 800 }}>
+                                                    {group.title}
+                                                </TableCell>
+                                            </TableRow>
+                                            {group.rows.map((row) => (
+                                                <TableRow key={row.id != null ? `cfg-${row.id}` : row.config_id}>
+                                                    <TableCell
                                                         sx={{
-                                                            color: 'rgba(255,255,255,0.75)',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
+                                                            color: 'rgba(255,255,255,0.55)',
+                                                            fontVariantNumeric: 'tabular-nums',
                                                             whiteSpace: 'nowrap',
-                                                            maxWidth: 320,
                                                         }}
                                                     >
-                                                        {row.description}
-                                                    </Typography>
-                                                </Tooltip>
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </TableCell>
-                                        <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
-                                            {formatDateTime(row.updated_at)}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Tooltip title={isSupportedKey(row) ? 'Chỉnh sửa giá trị' : 'Khóa này chưa được backend hỗ trợ thao tác'}>
-                                                <IconButton
-                                                    size="small"
-                                                    disabled={!isSupportedKey(row)}
-                                                    onClick={() => openEdit(row)}
-                                                    sx={{ color: '#a78bfa' }}
-                                                    aria-label="Sửa cấu hình"
-                                                >
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                                        {row.id != null ? row.id : '—'}
+                                                    </TableCell>
+                                                    <TableCell sx={{ color: 'rgba(255,255,255,0.92)' }}>
+                                                        <Stack spacing={0.35}>
+                                                            <Typography variant="body2" fontWeight={700}>
+                                                                {CONFIG_LABELS[row.config_name] ?? row.config_name}
+                                                            </Typography>
+                                                            {getDisplayHelp(row) ? (
+                                                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.58)' }}>
+                                                                    {getDisplayHelp(row)}
+                                                                </Typography>
+                                                            ) : null}
+                                                        </Stack>
+                                                    </TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                                                        {getDisplayValue(row)}
+                                                    </TableCell>
+                                                    <TableCell sx={{ color: 'rgba(255,255,255,0.75)', maxWidth: 320 }}>
+                                                        {getDisplayDescription(row) ? (
+                                                            <Tooltip title={getDisplayDescription(row)} arrow placement="top-start">
+                                                                <Typography
+                                                                    variant="body2"
+                                                                    sx={{
+                                                                        color: 'rgba(255,255,255,0.75)',
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        whiteSpace: 'nowrap',
+                                                                        maxWidth: 320,
+                                                                    }}
+                                                                >
+                                                                    {getDisplayDescription(row)}
+                                                                </Typography>
+                                                            </Tooltip>
+                                                        ) : (
+                                                            '—'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell sx={{ color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>
+                                                        {formatDateTime(row.updated_at)}
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Tooltip title={isSupportedKey(row) ? 'Chỉnh sửa giá trị' : 'Khóa này chưa được backend hỗ trợ thao tác'}>
+                                                            <IconButton
+                                                                size="small"
+                                                                disabled={!isSupportedKey(row)}
+                                                                onClick={() => openEdit(row)}
+                                                                sx={{ color: '#a78bfa' }}
+                                                                aria-label="Sửa cấu hình"
+                                                            >
+                                                                <EditIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </Fragment>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </TableContainer>

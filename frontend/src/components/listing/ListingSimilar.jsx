@@ -11,8 +11,8 @@ export const PURPLE = '#9D6EED';
 export default function ListingSimilar({
   similarListings,
   loadingRelated,
-  onToggleSave,
-  saveSubmittingId,
+  onToggleLike,
+  likeSubmittingId,
 }) {
   const navigate = useNavigate();
 
@@ -77,8 +77,8 @@ export default function ListingSimilar({
             <MiniListingCard
               key={l.id ?? l.listingId}
               listing={l}
-              onToggleSave={onToggleSave}
-              saveDisabled={String(saveSubmittingId) === String(l.id ?? l.listingId)}
+              onToggleLike={onToggleLike}
+              likeDisabled={String(likeSubmittingId) === String(l.id ?? l.listingId)}
             />
           ))}
         </Box>
