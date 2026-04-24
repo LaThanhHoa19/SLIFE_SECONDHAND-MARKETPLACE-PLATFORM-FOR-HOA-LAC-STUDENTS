@@ -102,7 +102,15 @@ public class ReportService {
     @Transactional
     public ReportResponse createReport(User reporter, ReportRequest request) {
         String rawTargetType = request.getTargetType() != null ? request.getTargetType().trim().toUpperCase(Locale.ROOT) : "";
+        log.info("createReport invoked: reporterId={}, rawTargetType={}, targetId={}, reasonLength={}, hasEvidence={}",
+                reporter != null ? reporter.getId() : null,
+                rawTargetType,
+                request.getTargetId(),
+                request.getReason() != null ? request.getReason().length() : null,
+                request.getEvidenceImage() != null && !request.getEvidenceImage().isBlank());
         if (!VALID_TARGET_TYPES.contains(rawTargetType)) {
+            log.warn("Invalid report target type: reporterId={}, rawTargetType={}, targetId={}",
+                    reporter != null ? reporter.getId() : null, rawTargetType, request.getTargetId());
             throw new SlifeException(ErrorCode.REPORT_INVALID_TARGET);
         }
         // Alias: POST is the same as LISTING in our schema.
@@ -211,9 +219,13 @@ public class ReportService {
 
     private ReportResponse createListingReport(User reporter, ReportRequest request, String targetType) {
         Listing listing = listingRepository.findById(request.getTargetId())
-                .orElseThrow(() -> new SlifeException(ErrorCode.LISTING_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.warn("Listing not found for report: reporterId={}, listingId={}", reporter.getId(), request.getTargetId());
+                    return new SlifeException(ErrorCode.LISTING_NOT_FOUND);
+                });
 
         if (listing.getSeller().getId().equals(reporter.getId())) {
+            log.warn("Self-report blocked for listing: reporterId={}, listingId={}", reporter.getId(), listing.getId());
             throw new SlifeException(ErrorCode.REPORT_SELF);
         }
 
@@ -229,9 +241,13 @@ public class ReportService {
 
     private ReportResponse createUserReport(User reporter, ReportRequest request, String targetType) {
         User targetUser = userRepository.findById(request.getTargetId())
-                .orElseThrow(() -> new SlifeException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.warn("User not found for report: reporterId={}, targetUserId={}", reporter.getId(), request.getTargetId());
+                    return new SlifeException(ErrorCode.USER_NOT_FOUND);
+                });
 
         if (targetUser.getId().equals(reporter.getId())) {
+            log.warn("Self-report blocked for user: reporterId={}, targetUserId={}", reporter.getId(), targetUser.getId());
             throw new SlifeException(ErrorCode.REPORT_SELF);
         }
 
