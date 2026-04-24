@@ -84,7 +84,7 @@ const formatRelativeShort = (value) => {
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 };
 
-function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
+function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -185,7 +185,11 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
     }, [post?.id, post?.description]);
 
     const showFollowBtn = authorId && !isMe;
-
+    const openDetail = () => {
+        if (id != null) {
+            onOpen?.(id);
+        }
+    };
 
     const handleFollowClick = async (e) => {
         e.stopPropagation();
@@ -480,11 +484,21 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
 
     return (
         <Box
+            onClick={openDetail}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDetail();
+                }
+            }}
             sx={{
                 px: { xs: 1.25, sm: 1.6 },
                 py: 1.6,
                 borderBottom: '1px solid rgba(255,255,255,0.06)',
                 transition: 'background-color .2s ease, box-shadow .2s ease',
+                cursor: 'pointer',
                 '&:hover': {
                     bgcolor: 'rgba(255,255,255,0.018)',
                     boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), inset 0 -1px 0 rgba(255,255,255,0.03)',
@@ -542,15 +556,34 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.2 }}>
                         <Stack direction="row" spacing={0.8} alignItems="center" flexWrap="wrap">
                             <Typography
-                                component={RouterLink}
-                                to={String(authorId) === String(user?.id) ? '/profile' : authorId ? `/profile/${authorId}` : '#'}
-                                state={{ profileTab: 'posts' }}
-                                sx={{ textDecoration: 'none', color: '#fff', fontSize: 14, fontWeight: 700 }}
-                                onClick={(e) => e.stopPropagation()}
+                                component="button"
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDetail();
+                                }}
+                                sx={{
+                                    appearance: 'none',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    padding: 0,
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    color: '#fff',
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                    '&:hover': { textDecoration: 'underline' },
+                                }}
                             >
                                 {authorName}
                             </Typography>
-                            <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+                            <Typography
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    openDetail();
+                                }}
+                                sx={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                            >
                                 {formatRelativeShort(post?.createdAt) || 'Vừa đăng'}
                             </Typography>
                         </Stack>
@@ -559,7 +592,13 @@ function CommunityPostCard({ post, onPatchPost, onDeletePost }) {
                         </IconButton>
                     </Box>
 
-                    <Box sx={{ mb: mediaUrls.length > 0 ? 1 : 0.7 }}>
+                    <Box
+                        sx={{ mb: mediaUrls.length > 0 ? 1 : 0.7 }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openDetail();
+                        }}
+                    >
                         <CommunityPostExpandableDescription text={post?.description} lineClamp={4} />
                     </Box>
 

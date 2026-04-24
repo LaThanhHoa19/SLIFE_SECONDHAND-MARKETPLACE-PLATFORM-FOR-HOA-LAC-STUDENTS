@@ -32,6 +32,7 @@ import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutl
 import WarningIcon from '@mui/icons-material/Warning';
 
 import { createAdminCategory, deleteAdminCategory, getAdminCategories, updateAdminCategory } from '../../api/categoryAdminApi';
+import { useToast } from '../../context/ToastContext';
 import { ADMIN_THEME as palette } from '../../theme/adminTheme';
 
 const ROOT_PARENT_ID = null;
@@ -654,6 +655,7 @@ const parentSelectMenuProps = {
 };
 
 export default function CategoryManagementPage() {
+    const { showToast } = useToast();
     const [flatCategories, setFlatCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -766,6 +768,7 @@ export default function CategoryManagementPage() {
         setFormDescription('');
         setFormParentId(ROOT_PARENT_ID);
         setDialogOpen(true);
+        showToast('Đã mở form thêm danh mục gốc.', 'info');
     };
 
     const openCreateChild = (parentId) => {
@@ -776,6 +779,7 @@ export default function CategoryManagementPage() {
         setFormDescription('');
         setFormParentId(parentId ?? null);
         setDialogOpen(true);
+        showToast('Đã mở form thêm danh mục con.', 'info');
     };
 
     const openEdit = (node) => {
@@ -786,32 +790,42 @@ export default function CategoryManagementPage() {
         setFormDescription(node.description || '');
         setFormParentId(node.parentId ?? null);
         setDialogOpen(true);
+        showToast('Đã mở form chỉnh sửa danh mục.', 'info');
     };
 
     const closeDialog = () => {
         setDialogOpen(false);
         setEditingId(null);
         setFormErrors({ name: '', description: '' });
+        showToast('Đã đóng form danh mục.', 'info');
     };
 
     const openEditWithId = (node) => {
-        if (isSystemCategory(node)) return;
+        if (isSystemCategory(node)) {
+            showToast('Danh mục hệ thống không thể chỉnh sửa.', 'warning');
+            return;
+        }
         setEditingId(node.id ?? null);
         openEdit(node);
     };
 
     const openDelete = (id) => {
         const row = flatCategories.find((c) => Number(c.id) === Number(id));
-        if (isSystemCategory(row)) return;
+        if (isSystemCategory(row)) {
+            showToast('Danh mục hệ thống không thể xóa.', 'warning');
+            return;
+        }
         setDeleteTargetId(id);
         setDeleteTargetName(row?.name?.trim() || '');
         setDeleteConfirmOpen(true);
+        showToast('Đã mở xác nhận xóa danh mục.', 'info');
     };
 
     const closeDeleteDialog = () => {
         setDeleteConfirmOpen(false);
         setDeleteTargetId(null);
         setDeleteTargetName('');
+        showToast('Đã đóng xác nhận xóa.', 'info');
     };
 
     const confirmDelete = async () => {
@@ -820,8 +834,11 @@ export default function CategoryManagementPage() {
             await deleteAdminCategory(deleteTargetId);
             closeDeleteDialog();
             await reload();
+            showToast('Xóa danh mục thành công.', 'success');
         } catch (e) {
-            setError(formatApiError(e, 'Xóa thất bại.'));
+            const msg = formatApiError(e, 'Xóa thất bại.');
+            setError(msg);
+            showToast(msg, 'error');
         }
     };
 
@@ -834,6 +851,7 @@ export default function CategoryManagementPage() {
         setFormErrors(errors);
         if (!valid) {
             setError('');
+            showToast('Vui lòng kiểm tra lại dữ liệu danh mục.', 'warning');
             return;
         }
 
@@ -852,8 +870,18 @@ export default function CategoryManagementPage() {
             }
             closeDialog();
             await reload();
+            if (dialogMode === 'edit') {
+                showToast('Cập nhật danh mục thành công.', 'success');
+            } else if (dialogMode === 'createChild') {
+                showToast('Thêm danh mục con thành công.', 'success');
+            } else {
+                showToast('Thêm danh mục gốc thành công.', 'success');
+            }
+            showToast('Dữ liệu danh mục đã được làm mới.', 'info');
         } catch (e) {
-            setError(formatApiError(e, 'Có lỗi khi lưu danh mục.'));
+            const msg = formatApiError(e, 'Có lỗi khi lưu danh mục.');
+            setError(msg);
+            showToast(msg, 'error');
         }
     };
 
