@@ -143,7 +143,10 @@ export default function Bubble({
         const formatted = formatDealConfirmationDisplayContent(msg.content);
         const detailBody =
             decided && typeof formatted === 'string'
-                ? formatted.replace(/^🧾\s*XÁC NHẬN THỎA THUẬN\s*\n*/i, '').trim()
+                ? formatted
+                    .replace(/^🧾\s*XÁC NHẬN THỎA THUẬN\s*\n*/i, '')
+                    .replace(/\n*Vui lòng chọn: Chấp nhận hoặc Hủy\.*$/i, '')
+                    .trim()
                 : formatted;
         const isAccept = msg?.dealDecision === 'ACCEPT';
         const isCancel = msg?.dealDecision === 'CANCEL';
@@ -177,9 +180,9 @@ export default function Bubble({
                     {decided && isDealConfirmationRequest ? (
                         <>
                             <Typography variant="subtitle1" fontWeight={800} sx={{ color: titleColor, lineHeight: 1.35 }}>
-                                {isAccept && `${responder} đã chấp nhận giao dịch`}
-                                {isCancel && `${responder} đã từ chối / hủy giao dịch`}
-                                {!isAccept && !isCancel && `${responder} đã phản hồi về giao dịch`}
+                                {isAccept && `${responder} đã chấp nhận thông tin thỏa thuận`}
+                                {isCancel && `${responder} đã từ chối / hủy thông tin thỏa thuận`}
+                                {!isAccept && !isCancel && `${responder} đã phản hồi về thông tin thỏa thuận`}
                             </Typography>
                             {detailBody ? (
                                 <Typography
