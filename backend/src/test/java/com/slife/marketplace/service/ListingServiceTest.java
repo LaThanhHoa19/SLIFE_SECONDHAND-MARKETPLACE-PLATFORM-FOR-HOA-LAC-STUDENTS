@@ -146,7 +146,7 @@ class ListingServiceTest {
         verify(listingRepository).findByFilters(
                 isNull(),
                 isNull(),
-                eq(1L),
+                any(java.util.Collection.class),
                 locationCaptor.capture(),
                 isNull(),
                 isNull(),

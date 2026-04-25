@@ -36,7 +36,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             WHERE l.status = 'ACTIVE'
               AND l.deletedAt IS NULL
               AND (l.expirationDate IS NULL OR l.expirationDate >= :now)
-              AND (:categoryId IS NULL OR c.id = :categoryId)
+              AND (:categoryIds IS NULL OR c.id IN :categoryIds)
               AND (:location IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
               AND (:purpose IS NULL OR :purpose = '' OR l.purpose = :purpose)
               AND (
@@ -57,7 +57,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
     Page<Listing> findByFilters(
             @Param("q") String q,
             @Param("searchPrefix") String searchPrefix,
-            @Param("categoryId") Long categoryId,
+            @Param("categoryIds") java.util.Collection<Long> categoryIds,
             @Param("location") String location,
             @Param("purpose") String purpose,
             @Param("itemCond") String itemCond,

@@ -134,10 +134,16 @@ public class ListingService {
         Instant catalogNow = Instant.now();
         String normalizedQ = normalizeParam(q);
         String searchPrefix = toSearchPrefix(normalizedQ);
+        Set<Long> categoryIds = null;
+        if (categoryId != null) {
+            categoryIds = new HashSet<>();
+            categoryIds.add(categoryId);
+        }
+
         Page<Listing> pageResult = listingRepository.findByFilters(
                 normalizedQ,
                 searchPrefix,
-                categoryId,
+                categoryIds,
                 normalizeParam(location),
                 null, // purpose
                 null, // itemCond
