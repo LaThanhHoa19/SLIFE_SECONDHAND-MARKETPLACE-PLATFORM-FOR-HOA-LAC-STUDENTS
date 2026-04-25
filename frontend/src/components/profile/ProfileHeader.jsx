@@ -396,13 +396,14 @@ export default function ProfileHeader({
                         {/* Số điện thoại + trạng thái xác thực */}
                         {(isMe || hasPhoneNumber) && (
                             <Box sx={{ mt: 0.5 }}>
-                                {isMe && hasPhoneNumber && showPhoneNumber && (
+                                {isMe && hasPhoneNumber && (
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.75 }}>
                                         <Typography
                                             variant="body2"
                                             sx={{
-                                                color: 'rgba(255,255,255,0.82)',
+                                                color: showPhoneNumber ? 'rgba(255,255,255,0.82)' : 'rgba(255,255,255,0.58)',
                                                 fontSize: '0.9rem',
+                                                fontStyle: showPhoneNumber ? 'normal' : 'italic',
                                             }}
                                         >
                                             Số điện thoại: <strong>{user.phoneNumber || user.phone_number}</strong>
@@ -416,42 +417,12 @@ export default function ProfileHeader({
                                                 fontWeight: 800,
                                                 letterSpacing: '0.03em',
                                                 textTransform: 'uppercase',
-                                                color: '#bbf7d0',
-                                                bgcolor: 'rgba(74, 222, 128, 0.09)',
-                                                border: '1px solid rgba(74, 222, 128, 0.2)',
+                                                color: showPhoneNumber ? '#bbf7d0' : '#fcd34d',
+                                                bgcolor: showPhoneNumber ? 'rgba(74, 222, 128, 0.09)' : 'rgba(250, 204, 21, 0.10)',
+                                                border: showPhoneNumber ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(250, 204, 21, 0.25)',
                                             }}
                                         >
-                                            Đang hiện
-                                        </Box>
-                                    </Box>
-                                )}
-                                {isMe && hasPhoneNumber && !showPhoneNumber && (
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.75 }}>
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                color: 'rgba(255,255,255,0.58)',
-                                                fontSize: '0.9rem',
-                                                fontStyle: 'italic',
-                                            }}
-                                        >
-                                            Số điện thoại: <strong>Đang ẩn</strong>
-                                        </Typography>
-                                        <Box
-                                            sx={{
-                                                px: 1.1,
-                                                py: 0.45,
-                                                borderRadius: 999,
-                                                fontSize: '0.72rem',
-                                                fontWeight: 800,
-                                                letterSpacing: '0.03em',
-                                                textTransform: 'uppercase',
-                                                color: '#fcd34d',
-                                                bgcolor: 'rgba(250, 204, 21, 0.10)',
-                                                border: '1px solid rgba(250, 204, 21, 0.25)',
-                                            }}
-                                        >
-                                            Đang ẩn
+                                            {showPhoneNumber ? 'Đang hiện' : 'Đang ẩn'}
                                         </Box>
                                     </Box>
                                 )}

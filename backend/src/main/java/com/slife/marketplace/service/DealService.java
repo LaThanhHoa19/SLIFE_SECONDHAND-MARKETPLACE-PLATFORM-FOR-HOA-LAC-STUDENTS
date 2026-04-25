@@ -24,6 +24,8 @@ import com.slife.marketplace.repository.ReviewRepository;
 import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.util.TimeZones;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,8 @@ import java.util.Set;
 
 @Service
 public class DealService {
+
+    private static final Logger log = LoggerFactory.getLogger(DealService.class);
 
     /**
      * Mọi {@link LocalDateTime} nghiệp vụ deal (pickup, confirmed, …) lưu theo giờ
@@ -716,8 +720,11 @@ public class DealService {
                         listing != null ? listing.getId() : null,
                         listing != null ? listing.getTitle() : "tin đăng");
 
+                // Gửi email thông báo seller: buyer không xác nhận, hệ thống đã tự động hoàn tất
+                systemEmailService.sendAutoFinalizedNotifySellerEmail(deal);
+
             } catch (Exception e) {
-                // Log and continue
+                log.error("autoFinalizeDeals: failed dealId={}: {}", deal.getId(), e.getMessage(), e);
             }
         }
     }

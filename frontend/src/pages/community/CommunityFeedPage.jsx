@@ -32,7 +32,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import RightPanel from '../../components/layout/RightPanel';
 import { useAuth } from '../../hooks/useAuth';
 import CommunityPostCard from '../../components/community/CommunityPostCard';
-import { createCommunityPostWithImages, getCommunityPosts, getSavedCommunityPosts, getLikedCommunityPosts, getMyCommunityPosts } from '../../api/communityApi';
+import { createCommunityPostWithImages, getCommunityPosts, getSavedCommunityPosts, getLikedCommunityPosts, getMyCommunityPosts, getCommunityPost } from '../../api/communityApi';
 import { getFollowing } from '../../api/followApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import useCommunityFeedRealtime from '../../hooks/useCommunityFeedRealtime';
@@ -190,6 +190,8 @@ export default function CommunityFeedPage() {
                 if (e?.name === 'CanceledError' || e?.code === 'ERR_CANCELED') return;
                 setError(e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Không tải được bài cộng đồng.');
                 if (!append) setPosts([]);
+                setCursor(null);
+                setHasMore(false);
             }
         },
         [hashtagFilter, sortFeed, isSavedRoute, isLikedRoute, isMineRoute],
@@ -198,9 +200,12 @@ export default function CommunityFeedPage() {
     const loadInitial = useCallback(async () => {
         setLoading(true);
         setCursor(null);
-        setHasMore(true);
-        await fetchPage(null, false);
-        setLoading(false);
+        setHasMore(false);
+        try {
+            await fetchPage(null, false);
+        } finally {
+            setLoading(false);
+        }
     }, [fetchPage]);
 
     useEffect(() => {
@@ -295,8 +300,27 @@ export default function CommunityFeedPage() {
     const openPost = useCallback((postId) => navigate(`/community/posts/${postId}`), [navigate]);
 
     const handlePatchPost = useCallback((postId, patch) => {
-        setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
+        setPosts((prev) => prev.map((p) => (Number(p.id) === Number(postId) ? { ...p, ...patch } : p)));
     }, []);
+
+    const handleRefreshPost = useCallback(async (postId) => {
+        try {
+            const res = await getCommunityPost(postId);
+            const fresh = unwrapApiData(res);
+            if (fresh && typeof fresh === 'object') {
+                const imageUrls = Array.isArray(fresh?.images) ? fresh.images : Array.isArray(fresh?.imageUrls) ? fresh.imageUrls : [];
+                handlePatchPost(postId, {
+                    ...fresh,
+                    imageUrls,
+                    thumbUrl: fresh?.thumbUrl ?? imageUrls[0] ?? null,
+                    likeCount: Number(fresh?.likeCount ?? fresh?.like_count ?? 0),
+                    commentCount: Number(fresh?.commentCount ?? fresh?.comment_count ?? 0),
+                });
+            }
+        } catch {
+            // ignore refresh errors
+        }
+    }, [handlePatchPost]);
 
     const handleDeletePost = useCallback((postId) => {
         setPosts((prev) => prev.filter((p) => Number(p.id) !== Number(postId)));
@@ -336,28 +360,21 @@ export default function CommunityFeedPage() {
                 return;
             }
 
-            if (type === 'SAVED_TOGGLED') {
+            if (type === 'SAVED_TOGGLED' || type === 'LIKED_TOGGLED') {
                 const evUserId = Number(evt?.userId);
                 if (!Number.isFinite(evUserId) || Number(user?.id) !== evUserId) return;
-                const saved = !!evt?.saved;
+                const isSavedToggle = type === 'SAVED_TOGGLED';
+                const active = isSavedToggle ? !!evt?.saved : !!evt?.liked;
                 setPosts((prev) => {
-                    if (isSavedRoute && !saved) {
-                        return prev.filter((p) => Number(p.id) !== postId);
+                    if ((isSavedToggle && isSavedRoute) || (!isSavedToggle && isLikedRoute)) {
+                        if (!active) {
+                            return prev.filter((p) => Number(p.id) !== postId);
+                        }
                     }
-                    return prev.map((p) => (Number(p.id) === postId ? { ...p, isSaved: saved } : p));
-                });
-                return;
-            }
-
-            if (type === 'LIKED_TOGGLED') {
-                const evUserId = Number(evt?.userId);
-                if (!Number.isFinite(evUserId) || Number(user?.id) !== evUserId) return;
-                const liked = !!evt?.liked;
-                setPosts((prev) => {
-                    if (isLikedRoute && !liked) {
-                        return prev.filter((p) => Number(p.id) !== postId);
-                    }
-                    return prev.map((p) => (Number(p.id) === postId ? { ...p, isLiked: liked } : p));
+                    return prev.map((p) => {
+                        if (Number(p.id) !== postId) return p;
+                        return isSavedToggle ? { ...p, isSaved: active } : { ...p, isLiked: active };
+                    });
                 });
             }
         },
@@ -666,6 +683,7 @@ export default function CommunityFeedPage() {
                                         onOpen={openPost}
                                         onPatchPost={handlePatchPost}
                                         onDeletePost={handleDeletePost}
+                                        onRefreshPost={handleRefreshPost}
                                     />
                                 ))}
 

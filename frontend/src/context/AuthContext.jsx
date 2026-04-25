@@ -283,7 +283,7 @@ export function AuthProvider({ children }) {
       const payload = unwrapApiData(await authApi.googleOAuth({ credential }));
       const accessToken = getAccessTokenFromPayload(payload);
       if (!accessToken || !payload?.user) {
-        throw new Error('Invalid Google auth response');
+        throw new Error('Phản hồi đăng nhập Google không hợp lệ. Vui lòng thử lại.');
       }
 
       window.dispatchEvent(new CustomEvent('slife-clear-admin-session'));

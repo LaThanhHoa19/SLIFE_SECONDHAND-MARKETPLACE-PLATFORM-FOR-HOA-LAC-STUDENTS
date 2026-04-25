@@ -10,11 +10,13 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.service.ReportService;
 import com.slife.marketplace.service.UserService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -22,6 +24,8 @@ import java.util.Map;
 
 @RestController
 public class ReportController {
+
+    private static final Logger log = LoggerFactory.getLogger(ReportController.class);
 
     private final ReportService reportService;
     private final UserService userService;
@@ -34,7 +38,23 @@ public class ReportController {
     @PostMapping("/api/reports")
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(@Valid @RequestBody ReportRequest request) {
         User reporter = userService.getCurrentUser();
+        if (reporter == null) {
+            log.warn("Report submission rejected: unauthenticated request. payload targetType={}, targetId={}, reasonLength={}, hasEvidence={}",
+                    request.getTargetType(), request.getTargetId(),
+                    request.getReason() != null ? request.getReason().length() : null,
+                    request.getEvidenceImage() != null && !request.getEvidenceImage().isBlank());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("UNAUTHORIZED", "Authentication required"));
+        }
+
+        log.info("Report submission received: userId={}, targetType={}, targetId={}, reasonLength={}, hasEvidence={}",
+                reporter.getId(), request.getTargetType(), request.getTargetId(),
+                request.getReason() != null ? request.getReason().length() : null,
+                request.getEvidenceImage() != null && !request.getEvidenceImage().isBlank());
+
         ReportResponse response = reportService.createReport(reporter, request);
+        log.info("Report submission succeeded: userId={}, targetType={}, targetId={}, reportId={}",
+                reporter.getId(), request.getTargetType(), request.getTargetId(), response.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Report submitted successfully", response));
     }
