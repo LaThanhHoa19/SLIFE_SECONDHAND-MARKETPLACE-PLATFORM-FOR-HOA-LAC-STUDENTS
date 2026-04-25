@@ -41,6 +41,7 @@ public class SearchService {
         Pageable pageable = PageRequest.of(pageIndex, pageSize, parseSort(request.getSort()));
 
         String q = normalize(request.getQ());
+        String searchPrefix = toSearchPrefix(q);
         String location = normalize(request.getLocation());
         String purpose = toUpperOrNull(request.getPurpose(), VALID_PURPOSE);
         String itemCond = toUpperOrNull(request.getItemCondition(), VALID_CONDITION);
@@ -54,6 +55,7 @@ public class SearchService {
 
         return listingRepository.findByFilters(
                 q,
+                searchPrefix,
                 effectiveCategoryId,
                 location,
                 purpose,
@@ -67,6 +69,19 @@ public class SearchService {
 
     private static String normalize(String s) {
         return (s == null || s.isBlank()) ? null : s.trim().toLowerCase();
+    }
+
+    private static String toSearchPrefix(String q) {
+        if (q == null) {
+            return null;
+        }
+        String[] parts = q.split("\\s+");
+        for (String part : parts) {
+            if (!part.isBlank()) {
+                return part;
+            }
+        }
+        return null;
     }
 
     private static String toUpperOrNull(String s, Set<String> whitelist) {

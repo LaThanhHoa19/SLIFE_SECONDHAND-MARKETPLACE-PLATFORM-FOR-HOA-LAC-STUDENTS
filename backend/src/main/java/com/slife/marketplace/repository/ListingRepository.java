@@ -36,9 +36,9 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
             WHERE l.status = 'ACTIVE'
               AND l.deletedAt IS NULL
               AND (l.expirationDate IS NULL OR l.expirationDate >= :now)
-              AND (:categoryId IS NULL OR c.id           = :categoryId)
-              AND (:location   IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
-              AND (:purpose    IS NULL OR :purpose = ''  OR l.purpose      = :purpose)
+              AND (:categoryId IS NULL OR c.id = :categoryId)
+              AND (:location IS NULL OR :location = '' OR LOWER(a.locationName) LIKE LOWER(CONCAT('%', :location, '%')))
+              AND (:purpose IS NULL OR :purpose = '' OR l.purpose = :purpose)
               AND (
                   :itemCond IS NULL OR :itemCond = ''
                   OR l.itemCondition = :itemCond
@@ -47,16 +47,16 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
                       AND l.itemCondition IN ('USED_LIKE_NEW', 'USED_GOOD', 'USED_FAIR')
                   )
               )
-              AND (:priceMin   IS NULL OR l.price >= :priceMin)
-              AND (:priceMax   IS NULL OR l.price <= :priceMax)
+              AND (:priceMin IS NULL OR l.price >= :priceMin)
+              AND (:priceMax IS NULL OR l.price <= :priceMax)
               AND (
                   :q IS NULL OR :q = ''
-                  OR LOWER(l.title) LIKE LOWER(CONCAT('%', :q, '%'))
-                  OR l.description  LIKE CONCAT('%', :q, '%')
+                  OR LOWER(l.title) LIKE LOWER(CONCAT(:searchPrefix, '%'))
               )
             """)
     Page<Listing> findByFilters(
             @Param("q") String q,
+            @Param("searchPrefix") String searchPrefix,
             @Param("categoryId") Long categoryId,
             @Param("location") String location,
             @Param("purpose") String purpose,
