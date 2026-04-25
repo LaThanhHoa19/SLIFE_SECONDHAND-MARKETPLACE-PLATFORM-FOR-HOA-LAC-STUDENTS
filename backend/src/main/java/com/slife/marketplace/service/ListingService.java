@@ -132,9 +132,18 @@ public class ListingService {
                 parseSort(sort));
 
         Instant catalogNow = Instant.now();
+        String normalizedQ = normalizeParam(q);
+        String searchPrefix = toSearchPrefix(normalizedQ);
+        Set<Long> categoryIds = null;
+        if (categoryId != null) {
+            categoryIds = new HashSet<>();
+            categoryIds.add(categoryId);
+        }
+
         Page<Listing> pageResult = listingRepository.findByFilters(
-                normalizeParam(q),
-                categoryId,
+                normalizedQ,
+                searchPrefix,
+                categoryIds,
                 normalizeParam(location),
                 null, // purpose
                 null, // itemCond
@@ -928,6 +937,37 @@ public class ListingService {
         }
         String normalized = value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String toSearchPrefix(String q) {
+        if (q == null) {
+            return null;
+        }
+        String normalized = q.toLowerCase();
+        String[] parts = normalized.split("\\s+");
+        for (String part : parts) {
+            if (part.isBlank()) {
+                continue;
+            }
+            return part;
+        }
+        return null;
+    }
+
+    private String toSearchText(String q) {
+        if (q == null) {
+            return null;
+        }
+        String normalized = q.toLowerCase().trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        normalized = normalized.replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+        String[] tokens = normalized.split("\\s+");
+        if (tokens.length == 1) {
+            return tokens[0] + '*';
+        }
+        return String.join("* ", tokens) + '*';
     }
 
     private String normalizeCondition(String condition) {

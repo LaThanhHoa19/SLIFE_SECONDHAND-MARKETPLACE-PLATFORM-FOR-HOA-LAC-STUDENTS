@@ -44,6 +44,8 @@ import {
     SuspenseAdminLoginPage,
     SuspenseTermsPage,
     SuspenseCommunityFeedPage,
+    SuspenseCommunitySavedPage,
+    SuspenseCommunityLikedPage,
     SuspenseCommunityPostDetailPage,
     SuspenseBlockedUsersPage,
 } from './LazyRoutes';
@@ -113,7 +115,7 @@ export default function AppRouter() {
                     path="/community/saved"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseCommunityFeedPage />
+                            <SuspenseCommunitySavedPage />
                         </RouteGuard>
                     }
                 />
@@ -121,7 +123,7 @@ export default function AppRouter() {
                     path="/community/liked"
                     element={
                         <RouteGuard guards={GUARD_PRESETS.AUTH_REQUIRED}>
-                            <SuspenseCommunityFeedPage />
+                            <SuspenseCommunityLikedPage />
                         </RouteGuard>
                     }
                 />
