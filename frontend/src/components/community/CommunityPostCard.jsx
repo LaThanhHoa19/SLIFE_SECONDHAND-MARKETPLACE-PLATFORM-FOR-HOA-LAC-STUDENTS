@@ -76,15 +76,15 @@ const formatRelativeShort = (value) => {
     const diffMs = Date.now() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins}m`;
+    if (diffMins < 60) return `${diffMins} phút`;
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h`;
+    if (diffHours < 24) return `${diffHours} giờ`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d`;
+    if (diffDays < 7) return `${diffDays} ngày`;
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 };
 
-function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost }) {
+function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshPost }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, token, isAuthenticated, updateUser: updateAuthUser } = useAuth();
@@ -235,6 +235,7 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost }) {
             setIsLiked(finalLiked);
             setLikeCount(finalCount);
             onPatchPost?.(id, { likeCount: finalCount, isLiked: finalLiked });
+            onRefreshPost?.(id, { likeCount: finalCount, isLiked: finalLiked });
         } catch {
             setIsLiked(prevLiked);
             setLikeCount(prevCount);
