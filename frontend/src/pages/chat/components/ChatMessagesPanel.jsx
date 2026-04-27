@@ -28,7 +28,6 @@ export default function ChatMessagesPanel({
                                               handleDealConfirmDecision,
                                               handleReplyMessage,
                                               handleJumpToMessage,
-                                              handleReportMessage,
                                               typingLabel,
                                               bottomRef,
                                               newOpponentMsgCount,
@@ -177,7 +176,6 @@ export default function ChatMessagesPanel({
                                         onDealConfirmDecision={handleDealConfirmDecision}
                                         onReply={handleReplyMessage}
                                         onJumpToMessage={handleJumpToMessage}
-                                        onReportMessage={handleReportMessage}
                                         contentHighlightQuery={contentHighlightQuery}
                                     />
                                 </div>
