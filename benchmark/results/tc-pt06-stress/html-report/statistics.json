@@ -1,0 +1,34 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 8626,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 273.20855552979367,
+    "medianResTime" : 104.0,
+    "minResTime" : 93.0,
+    "maxResTime" : 5353.0,
+    "pct1ResTime" : 113.0,
+    "pct2ResTime" : 130.0,
+    "pct3ResTime" : 5106.0,
+    "throughput" : 132.9510950817651,
+    "receivedKBytesPerSec" : 1163.8379151590989,
+    "sentKBytesPerSec" : 23.110639574759944
+  },
+  "GET /api/listings (Stress)" : {
+    "transaction" : "GET /api/listings (Stress)",
+    "sampleCount" : 8626,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 273.20855552979367,
+    "medianResTime" : 104.0,
+    "minResTime" : 93.0,
+    "maxResTime" : 5353.0,
+    "pct1ResTime" : 113.0,
+    "pct2ResTime" : 130.0,
+    "pct3ResTime" : 5106.0,
+    "throughput" : 132.9510950817651,
+    "receivedKBytesPerSec" : 1163.8379151590989,
+    "sentKBytesPerSec" : 23.110639574759944
+  }
+}
