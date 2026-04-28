@@ -12,6 +12,10 @@ const PURPLE = '#9D6EED';
 export default function CommunityCommentModal({ open, onClose, postId, post, onThreadDelta }) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
+    const handleClose = (event, reason) => {
+        event?.stopPropagation?.();
+        onClose?.(event, reason);
+    };
     const { showToast } = useToast();
 
     const thumb = fullImageUrl(post?.thumbUrl || post?.images?.[0]);
@@ -25,7 +29,7 @@ export default function CommunityCommentModal({ open, onClose, postId, post, onT
     return (
         <Dialog
             open={open}
-            onClose={onClose}
+            onClose={handleClose}
             fullScreen={fullScreen}
             maxWidth="sm"
             fullWidth
@@ -54,7 +58,7 @@ export default function CommunityCommentModal({ open, onClose, postId, post, onT
                 </Typography>
                 <IconButton
                     aria-label="close"
-                    onClick={onClose}
+                    onClick={handleClose}
                     sx={{
                         color: 'rgba(255,255,255,0.5)',
                         '&:hover': { color: '#FFF', bgcolor: 'rgba(255,255,255,0.1)' },
@@ -113,7 +117,24 @@ export default function CommunityCommentModal({ open, onClose, postId, post, onT
                         </Typography>
                     </Box>
                 </Box>
-                <Box sx={{ height: fullScreen ? 'calc(100vh - 120px)' : '500px', overflow: 'auto' }}>
+                <Box
+                    sx={{
+                        height: fullScreen ? 'calc(100vh - 120px)' : '500px',
+                        overflow: 'auto',
+                        '&::-webkit-scrollbar': { width: '8px' },
+                        '&::-webkit-scrollbar-track': { background: 'rgba(255,255,255,0.03)' },
+                        '&::-webkit-scrollbar-thumb': {
+                            background: 'linear-gradient(180deg, rgba(157,110,237,0.8) 0%, rgba(124,58,237,0.95) 100%)',
+                            borderRadius: '999px',
+                            border: '2px solid rgba(26, 22, 31, 0.9)',
+                        },
+                        '&::-webkit-scrollbar-thumb:hover': {
+                            background: 'linear-gradient(180deg, rgba(186,159,255,0.95) 0%, rgba(157,110,237,1) 100%)',
+                        },
+                        scrollbarColor: 'rgba(157,110,237,0.9) rgba(255,255,255,0.03)',
+                        scrollbarWidth: 'thin',
+                    }}
+                >
                     {postId ? (
                         <CommunityPostComments postId={postId} onNotify={onNotify} onThreadDelta={onThreadDelta} />
                     ) : null}
