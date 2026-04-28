@@ -219,7 +219,7 @@ export default function StitchLandingPage() {
                   <span className="text-violet-300">Đủ đồ dùng</span>, <span className="text-slate-100">Ngay tại Hòa Lạc</span>
                 </h1>
                 <p className="text-lg text-slate-300 max-w-xl mx-auto lg:mx-0">
-                  Nền tảng mua bán ký gửi dành riêng cho sinh viên FPT University. An toàn, tiết kiệm và cực kỳ tiện lợi ngay trong Campus.
+                  Sản phẩm mà bạn không cần đến vẫn có thể trở thành vật quý giá với người khác. Đừng do dự mà hãy gửi thông tin về sản phẩm của bạn ngay bây giờ!
                 </p>
                 <div className="flex flex-wrap justify-center lg:justify-start gap-4">
                   <button
