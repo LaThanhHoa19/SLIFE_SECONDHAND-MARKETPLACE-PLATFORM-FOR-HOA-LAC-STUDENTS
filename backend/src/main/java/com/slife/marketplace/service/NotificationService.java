@@ -303,17 +303,19 @@ public class NotificationService {
 
     /** Notify user when admin bans account due to violation/report. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyAdminBannedUser(User user, Long reportId, String reasonCode) {
+    public void notifyAdminBannedUser(User user, Long reportId, String reasonCode, int violationCount, int threshold) {
         try {
             String suffix = (reasonCode != null && !reasonCode.isBlank())
                     ? " (lý do: " + reasonCode.trim() + ")"
                     : "";
+            String countText = buildViolationCountText(violationCount, threshold);
             Notification n = buildNotification(user, TYPE_SYSTEM,
                     "USER", user.getId(),
                     "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
-                            + ": Tài khoản của bạn đã bị khóa do vi phạm quy định cộng đồng"
+                            + ": Bạn đã bị báo cáo và tài khoản/tin đăng của bạn đã bị xử lý do vi phạm quy định cộng đồng"
                             + suffix
-                            + ". Nếu cần khiếu nại, vui lòng liên hệ bộ phận hỗ trợ.");
+                            + ". " + countText
+                            + ". Tài khoản của bạn đã bị khóa theo quy định hệ thống.");
             notificationRepository.save(n);
             pushNotificationCount(user);
         } catch (Exception ex) {
@@ -328,16 +330,43 @@ public class NotificationService {
             String suffix = (reasonCode != null && !reasonCode.isBlank())
                     ? " (lý do: " + reasonCode.trim() + ")"
                     : "";
+            String countText = buildViolationCountText(violationCount, threshold);
             Notification n = buildNotification(user, TYPE_SYSTEM,
                     "USER", user.getId(),
                     "[Kiểm duyệt] Báo cáo #" + (reportId != null ? reportId : "?")
                             + ": Báo cáo về tài khoản của bạn đã được duyệt" + suffix
-                            + ". Điểm vi phạm hiện tại: " + violationCount + "/" + threshold + ".");
+                            + ". " + countText
+                            + ". Quyết định xử lý sẽ dựa trên ngưỡng vi phạm cấu hình của hệ thống.");
             notificationRepository.save(n);
             pushNotificationCount(user);
         } catch (Exception ex) {
             log.error("notifyReportApprovedUserWarning failed userId={}", user.getId(), ex);
         }
+    }
+
+    /** Notify the reporter when their report has been reviewed and approved. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyReportApprovedReporter(User reporter, Long reportId) {
+        try {
+            if (reporter == null || reporter.getId() == null) {
+                return;
+            }
+            Notification n = buildNotification(reporter, TYPE_SYSTEM,
+                    "REPORT", reportId,
+                    "Báo cáo của bạn đã được duyệt. Cảm ơn bạn đã hỗ trợ cộng đồng SLIFE trong việc giữ môi trường mua bán an toàn và lành mạnh.");
+            notificationRepository.save(n);
+            pushNotificationCount(reporter);
+        } catch (Exception ex) {
+            log.error("notifyReportApprovedReporter failed reporterId={}", reporter != null ? reporter.getId() : null, ex);
+        }
+    }
+
+    private static String buildViolationCountText(int violationCount, int threshold) {
+        if (violationCount <= 0 || threshold <= 0) {
+            return "Điểm vi phạm hiện tại: chưa xác định";
+        }
+        return "Điểm vi phạm hiện tại: " + violationCount + "/" + threshold
+                + " (ngưỡng xử lý theo cấu hình hệ thống)";
     }
 
     /** Notify user when someone starts following them. */
