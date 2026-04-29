@@ -323,6 +323,14 @@ public class NotificationService {
         }
     }
 
+    /** Backward-compatible overload used by existing moderation flow. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void notifyAdminBannedUser(User user, Long reportId, String reasonCode) {
+        int violationCount = user != null && user.getViolationCount() != null ? user.getViolationCount() : 0;
+        int threshold = 0;
+        notifyAdminBannedUser(user, reportId, reasonCode, violationCount, threshold);
+    }
+
     /** Notify user when user-report approved but account has not reached ban threshold yet. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyReportApprovedUserWarning(User user, Long reportId, String reasonCode, int violationCount, int threshold) {

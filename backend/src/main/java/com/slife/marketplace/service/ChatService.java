@@ -786,8 +786,8 @@ public class ChatService {
     }
 
     private Message buildMessage(Conversation conv, User sender, String content,
-                                  MessageType type, String fileUrl,
-                                  Message replyTo, Message quote) {
+                                 MessageType type, String fileUrl,
+                                 Message replyTo, Message quote) {
         Message msg = new Message();
         msg.setConversation(conv);
         msg.setSender(sender);
@@ -857,6 +857,7 @@ public class ChatService {
                 .findByConversation_IdOrderBySentAtDesc(c.getId(), PageRequest.of(0, 1))
                 .getContent().stream().findFirst();
         Message lastMsg = firstMsg.orElse(null);
+        long unreadCount = messageRepository.countByConversation_IdAndIsReadFalseAndSender_IdNot(c.getId(), currentUserId);
         return ChatSessionResponse.builder()
                 .sessionId(c.getSessionUuid())
                 .listingId(c.getListing() != null ? c.getListing().getId() : null)
@@ -869,6 +870,7 @@ public class ChatService {
                 .status(c.getStatus())
                 .lastMessageAt(c.getLastMessageAt())
                 .lastMessagePreview(lastMsg != null ? truncate(lastMsg.getContent(), 80) : null)
+                .unreadCount(unreadCount)
                 .build();
     }
 
