@@ -25,4 +25,5 @@ public class ChatSessionResponse {
     private String status;
     private Instant lastMessageAt;
     private String lastMessagePreview;
+    private Long unreadCount;
 }
