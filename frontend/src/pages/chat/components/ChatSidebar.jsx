@@ -162,26 +162,39 @@ export default function ChatSidebar({
                         const listingGone =
                             Number.isFinite(lid) && lid > 0 && Boolean(listingUnavailableByListingId[lid]);
 
+                        console.log('[ChatSidebar] session debug', {
+                            sessionId: s.sessionId,
+                            unreadCount,
+                            lastMessagePreview: s.lastMessagePreview,
+                            selected: s.sessionId === activeSessionId,
+                        });
+
+                        const unreadLabel = unreadCount > 99 ? '99+' : unreadCount;
                         const titleBlock = hasListing ? (
                             <Box sx={{ minWidth: 0 }}>
-                                <SearchHighlight
-                                    text={listingTitle}
-                                    query={highlightSearchQuery}
-                                    component="div"
-                                    sx={{
-                                        fontWeight: unread ? 800 : 700,
-                                        fontSize: '0.78rem',
-                                        lineHeight: 1.35,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.04em',
-                                        color: listingGone ? 'text.disabled' : 'primary.main',
-                                        overflow: 'hidden',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical',
-                                        wordBreak: 'break-word',
-                                    }}
-                                />
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75, minWidth: 0 }}>
+                                    <SearchHighlight
+                                        text={listingTitle}
+                                        query={highlightSearchQuery}
+                                        component="div"
+                                        sx={{
+                                            fontWeight: unread ? 900 : 700,
+                                            fontSize: '0.78rem',
+                                            lineHeight: 1.35,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.04em',
+                                            color: listingGone ? 'text.disabled' : 'primary.main',
+                                            overflow: 'hidden',
+                                            display: '-webkit-box',
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: 'vertical',
+                                            wordBreak: 'break-word',
+                                            flex: 1,
+                                            minWidth: 0,
+                                        }}
+                                    />
+
+                                </Box>
                                 {listingGone && (
                                     <Chip
                                         size="small"
@@ -203,10 +216,10 @@ export default function ChatSidebar({
                                     query={highlightSearchQuery}
                                     component="div"
                                     sx={{
-                                        fontWeight: unread ? 600 : 500,
+                                        fontWeight: unread ? 700 : 500,
                                         fontSize: '0.82rem',
                                         lineHeight: 1.4,
-                                        color: 'text.secondary',
+                                        color: unread ? 'text.primary' : 'text.secondary',
                                         mt: 0.35,
                                         overflow: 'hidden',
                                         display: '-webkit-box',
@@ -217,21 +230,42 @@ export default function ChatSidebar({
                                 />
                             </Box>
                         ) : (
-                            <SearchHighlight
-                                text={otherName || 'Chat'}
-                                query={highlightSearchQuery}
-                                component="div"
-                                sx={{
-                                    fontWeight: unread ? 700 : 600,
-                                    fontSize: '0.88rem',
-                                    lineHeight: 1.35,
-                                    overflow: 'hidden',
-                                    display: '-webkit-box',
-                                    WebkitLineClamp: 2,
-                                    WebkitBoxOrient: 'vertical',
-                                    wordBreak: 'break-word',
-                                }}
-                            />
+                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75, minWidth: 0 }}>
+                                <SearchHighlight
+                                    text={otherName || 'Chat'}
+                                    query={highlightSearchQuery}
+                                    component="div"
+                                    sx={{
+                                        fontWeight: unread ? 800 : 600,
+                                        fontSize: '0.88rem',
+                                        lineHeight: 1.35,
+                                        overflow: 'hidden',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        wordBreak: 'break-word',
+                                        flex: 1,
+                                        minWidth: 0,
+                                    }}
+                                />
+                                {unread && (
+                                    <Chip
+                                        size="small"
+                                        label={unreadLabel}
+                                        sx={{
+                                            height: 20,
+                                            px: 0.3,
+                                            fontSize: '0.68rem',
+                                            fontWeight: 800,
+                                            color: '#fff',
+                                            bgcolor: 'primary.main',
+                                            border: '1px solid',
+                                            borderColor: alpha(theme.palette.common.white, 0.18),
+                                            flexShrink: 0,
+                                        }}
+                                    />
+                                )}
+                            </Box>
                         );
 
                         return (
@@ -268,8 +302,20 @@ export default function ChatSidebar({
                                 <ListItemText
                                     primary={titleBlock}
                                     primaryTypographyProps={{ component: 'div' }}
-                                    secondary={s.lastMessagePreview || 'Chưa có tin nhắn'}
-                                    secondaryTypographyProps={{ noWrap: true, fontSize: '0.75rem' }}
+                                    secondary={
+                                        <Typography
+                                            component="div"
+                                            noWrap
+                                            sx={{
+                                                fontSize: '0.75rem',
+                                                fontWeight: unread ? 700 : 400,
+                                                color: unread ? 'text.primary' : 'text.secondary',
+                                            }}
+                                        >
+                                            {s.lastMessagePreview || 'Chưa có tin nhắn'}
+                                        </Typography>
+                                    }
+                                    secondaryTypographyProps={{ component: 'div' }}
                                     sx={{ mr: 0.5, minWidth: 0 }}
                                 />
                                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>

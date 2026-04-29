@@ -24,12 +24,14 @@ import CheckIcon from '@mui/icons-material/Check';
 import PersonIcon from '@mui/icons-material/Person';
 import FavoriteBorder from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import ModeCommentOutlined from '@mui/icons-material/ModeCommentOutlined';
 import ShareOutlined from '@mui/icons-material/ShareOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import CloseIcon from '@mui/icons-material/Close';
 import FlagIcon from '@mui/icons-material/Flag';
-import { getCommunityPost, toggleCommunityPostLike } from '../../api/communityApi';
+import { getCommunityPost, toggleCommunityPostLike, toggleCommunityPostSave } from '../../api/communityApi';
 import { unwrapApiData } from '../../utils/apiPayload';
 import { fullImageUrl } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
@@ -75,6 +77,8 @@ export default function CommunityPostDetailPage() {
     const [likeCount, setLikeCount] = useState(0);
     const [isLiked, setIsLiked] = useState(false);
     const [likeSubmitting, setLikeSubmitting] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+    const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [commentCount, setCommentCount] = useState(0);
     const [followed, setFollowed] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
@@ -93,6 +97,7 @@ export default function CommunityPostDetailPage() {
             setPost(data);
             setLikeCount(Number(data?.likeCount ?? 0));
             setIsLiked(!!data?.isLiked);
+            setIsSaved(!!data?.isSaved);
             setCommentCount(Number(data?.commentCount ?? 0));
         } catch (e) {
             setPost(null);
@@ -157,6 +162,31 @@ export default function CommunityPostDetailPage() {
             setLikeCount(prevCount);
         } finally {
             setLikeSubmitting(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!id || saveSubmitting) return;
+        if (!token) {
+            showToast('Bạn cần đăng nhập để lưu bài viết.', 'warning');
+            navigate('/login', { state: { from: `/community/posts/${id}` } });
+            return;
+        }
+        const prevSaved = isSaved;
+        setIsSaved(!prevSaved);
+        setSaveSubmitting(true);
+        try {
+            const res = await toggleCommunityPostSave(id);
+            const raw = unwrapApiData(res);
+            const nextSaved = raw?.saved ?? raw?.isSaved;
+            const finalSaved = typeof nextSaved === 'boolean' ? nextSaved : !prevSaved;
+            setIsSaved(finalSaved);
+            setPost((p) => (p ? { ...p, isSaved: finalSaved } : p));
+        } catch {
+            setIsSaved(prevSaved);
+            showToast('Không thể lưu bài viết. Vui lòng thử lại.', 'error');
+        } finally {
+            setSaveSubmitting(false);
         }
     };
 
@@ -483,7 +513,7 @@ export default function CommunityPostDetailPage() {
                                 </Box>
                             )}
 
-                            <Stack direction="row" alignItems="center" spacing={3} sx={{ pt: 0.5 }}>
+                            <Stack direction="row" alignItems="center" spacing={2} sx={{ pt: 0.5 }}>
                                 <Tooltip title={isLiked ? 'Bỏ thích' : 'Thích'}>
                                     <Stack direction="row" alignItems="center" spacing={0.5}>
                                         <IconButton size="small" disabled={likeSubmitting} onClick={handleLike} sx={{ color: isLiked ? LIKE_RED : 'rgba(255,255,255,0.6)' }}>
@@ -492,6 +522,13 @@ export default function CommunityPostDetailPage() {
                                         <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
                                             {likeCount}
                                         </Typography>
+                                    </Stack>
+                                </Tooltip>
+                                <Tooltip title={isSaved ? 'Bỏ lưu' : 'Lưu bài viết'}>
+                                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                                        <IconButton size="small" disabled={saveSubmitting} onClick={handleSave} sx={{ color: isSaved ? '#FFD166' : 'rgba(255,255,255,0.6)' }}>
+                                            {isSaved ? <BookmarkIcon sx={{ fontSize: 20 }} /> : <BookmarkBorderIcon sx={{ fontSize: 20 }} />}
+                                        </IconButton>
                                     </Stack>
                                 </Tooltip>
                                 <Tooltip title="Bình luận">

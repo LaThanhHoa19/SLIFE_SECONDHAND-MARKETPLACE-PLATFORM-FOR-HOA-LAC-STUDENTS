@@ -13,7 +13,6 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
 import ReplyRoundedIcon from '@mui/icons-material/ReplyRounded';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -92,15 +91,15 @@ function OfferBubble({ msg, onAccept, onReject }) {
                         superseded && msg.offerStatus !== 'ACCEPTED' && msg.offerStatus !== 'REJECTED'
                             ? '✅ Đã chốt đơn (xem tin xác nhận bên dưới)'
                             : msg.offerStatus === 'ACCEPTED'
-                              ? '✅ Đã chấp nhận'
-                              : '❌ Đã từ chối'
+                                ? '✅ Đã chấp nhận'
+                                : '❌ Đã từ chối'
                     }
                     color={
                         superseded && msg.offerStatus !== 'ACCEPTED' && msg.offerStatus !== 'REJECTED'
                             ? 'success'
                             : msg.offerStatus === 'ACCEPTED'
-                              ? 'success'
-                              : 'error'
+                                ? 'success'
+                                : 'error'
                     }
                     sx={{ mt: 0.5 }}
                 />
@@ -110,15 +109,14 @@ function OfferBubble({ msg, onAccept, onReject }) {
 }
 
 export default function Bubble({
-    msg,
-    onAccept,
-    onReject,
-    onDealConfirmDecision,
-    onReply,
-    onJumpToMessage,
-    onReportMessage,
-    contentHighlightQuery = '',
-}) {
+                                   msg,
+                                   onAccept,
+                                   onReject,
+                                   onDealConfirmDecision,
+                                   onReply,
+                                   onJumpToMessage,
+                                   contentHighlightQuery = '',
+                               }) {
     const theme = useTheme();
     const [menuAnchor, setMenuAnchor] = useState(null);
     const isMe = msg.isFromCurrentUser === true;
@@ -128,8 +126,7 @@ export default function Bubble({
     const quoteRefId = msg?.quote?.id ?? msg?.quoteMessageId ?? null;
     const remindRefId = msg?.replyTo?.id ?? msg?.replyToMessageId ?? null;
     const stableMessageId = msg?.id != null && !String(msg.id).startsWith('tmp');
-    const showReport = !isMe && stableMessageId && typeof onReportMessage === 'function';
-    const showBubbleMenu = !isPending && stableMessageId && (Boolean(onReply) || showReport);
+    const showBubbleMenu = !isPending && stableMessageId && Boolean(onReply);
 
     if (isSystem) {
         const decided =
@@ -143,10 +140,7 @@ export default function Bubble({
         const formatted = formatDealConfirmationDisplayContent(msg.content);
         const detailBody =
             decided && typeof formatted === 'string'
-                ? formatted
-                    .replace(/^🧾\s*XÁC NHẬN THỎA THUẬN\s*\n*/i, '')
-                    .replace(/\n*Vui lòng chọn: Chấp nhận hoặc Hủy\.*$/i, '')
-                    .trim()
+                ? formatted.replace(/^🧾\s*XÁC NHẬN THỎA THUẬN\s*\n*/i, '').trim()
                 : formatted;
         const isAccept = msg?.dealDecision === 'ACCEPT';
         const isCancel = msg?.dealDecision === 'CANCEL';
@@ -161,8 +155,8 @@ export default function Bubble({
                 ? theme.palette.error.light
                 : theme.palette.error.dark
             : theme.palette.mode === 'dark'
-              ? theme.palette.success.light
-              : theme.palette.success.dark;
+                ? theme.palette.success.light
+                : theme.palette.success.dark;
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
                 <Paper
@@ -180,9 +174,9 @@ export default function Bubble({
                     {decided && isDealConfirmationRequest ? (
                         <>
                             <Typography variant="subtitle1" fontWeight={800} sx={{ color: titleColor, lineHeight: 1.35 }}>
-                                {isAccept && `${responder} đã chấp nhận thông tin thỏa thuận`}
-                                {isCancel && `${responder} đã từ chối / hủy thông tin thỏa thuận`}
-                                {!isAccept && !isCancel && `${responder} đã phản hồi về thông tin thỏa thuận`}
+                                {isAccept && `${responder} đã chấp nhận giao dịch`}
+                                {isCancel && `${responder} đã từ chối / hủy giao dịch`}
+                                {!isAccept && !isCancel && `${responder} đã phản hồi về giao dịch`}
                             </Typography>
                             {detailBody ? (
                                 <Typography
@@ -215,25 +209,25 @@ export default function Bubble({
                         isDealConfirmationRequest &&
                         typeof onDealConfirmDecision === 'function' &&
                         !decided && (
-                        <Box sx={{ display: 'flex', gap: 1, mt: 1.25, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => onDealConfirmDecision(msg, 'CANCEL')}
-                                sx={{ fontWeight: 800, textTransform: 'none' }}
-                            >
-                                Hủy
-                            </Button>
-                            <Button
-                                size="small"
-                                variant="contained"
-                                onClick={() => onDealConfirmDecision(msg, 'ACCEPT')}
-                                sx={{ fontWeight: 900, textTransform: 'none' }}
-                            >
-                                Chấp nhận
-                            </Button>
-                        </Box>
-                    )}
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1.25, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={() => onDealConfirmDecision(msg, 'CANCEL')}
+                                    sx={{ fontWeight: 800, textTransform: 'none' }}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    size="small"
+                                    variant="contained"
+                                    onClick={() => onDealConfirmDecision(msg, 'ACCEPT')}
+                                    sx={{ fontWeight: 900, textTransform: 'none' }}
+                                >
+                                    Chấp nhận
+                                </Button>
+                            </Box>
+                        )}
                 </Paper>
             </Box>
         );
@@ -280,20 +274,7 @@ export default function Bubble({
                         Nhắc lại
                     </MenuItem>
                 ) : null}
-                {showReport ? (
-                    <MenuItem
-                        dense
-                        onClick={() => {
-                            onReportMessage(msg);
-                            setMenuAnchor(null);
-                        }}
-                    >
-                        <ListItemIcon sx={{ minWidth: 36 }}>
-                            <OutlinedFlagIcon fontSize="small" />
-                        </ListItemIcon>
-                        Báo cáo tin nhắn
-                    </MenuItem>
-                ) : null}
+                {null}
             </Menu>
         </>
     ) : null;
