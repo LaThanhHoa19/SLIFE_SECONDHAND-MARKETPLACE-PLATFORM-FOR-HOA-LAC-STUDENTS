@@ -269,6 +269,23 @@ public class SystemEmailService {
     }
 
     @Async("emailTaskExecutor")
+    public void sendReportApprovedReporterEmail(User reporter, Long reportId) {
+        if (!mailEnabled || reporter == null || reporter.getEmail() == null || reporter.getEmail().isBlank()) {
+            return;
+        }
+        try {
+            String subject = "[SLIFE] Báo cáo của bạn đã được duyệt";
+            String body = htmlWrap(
+                    "<p>Xin chào " + esc(displayName(reporter)) + ",</p>"
+                            + "<p>Báo cáo của bạn đã được <strong>duyệt</strong>. Cảm ơn bạn đã hỗ trợ cộng đồng SLIFE trong việc giữ môi trường mua bán an toàn và lành mạnh.</p>"
+                            + "<p><a href=\"" + esc(frontendUrl) + "\">Mở SLIFE</a></p>");
+            send(reporter.getEmail(), subject, body);
+        } catch (Exception ex) {
+            log.warn("sendReportApprovedReporterEmail failed: {}", ex.getMessage());
+        }
+    }
+
+    @Async("emailTaskExecutor")
     public void sendListingExpiringSoonEmail(User seller, String listingTitle, Long listingId, LocalDateTime expiresAt) {
         if (!mailEnabled || seller == null || seller.getEmail() == null || seller.getEmail().isBlank()) {
             return;
@@ -478,10 +495,10 @@ public class SystemEmailService {
                     + "<p>Nếu bạn đã nhận hàng, hãy xác nhận và đánh giá người bán.</p>"
                     + "<p>Nếu có vấn đề, hãy hủy giao dịch trước thời hạn trên.</p>"
                     + emailPrimarySecondaryActions(
-                            esc(chatOrListingUrl(listingId, null)),
-                            esc(listingUrl(listingId)),
-                            "Xác nhận nhận hàng",
-                            "Xem giao dịch");
+                    esc(chatOrListingUrl(listingId, null)),
+                    esc(listingUrl(listingId)),
+                    "Xác nhận nhận hàng",
+                    "Xem giao dịch");
 
             String body = slifeEmailDocument(
                     "Nhắc xác nhận giao dịch",
@@ -526,10 +543,10 @@ public class SystemEmailService {
                     + "<p>Bài đăng đã được đánh dấu <strong>Đã bán</strong>. "
                     + "Nếu bạn muốn ẩn bài đăng hoặc đăng lại, hãy truy cập trang quản lý tin đăng.</p>"
                     + emailPrimarySecondaryActions(
-                            esc(listingUrl(listingId)),
-                            null,
-                            "Quản lý tin đăng",
-                            null);
+                    esc(listingUrl(listingId)),
+                    null,
+                    "Quản lý tin đăng",
+                    null);
 
             String body = slifeEmailDocument(
                     "Giao dịch tự động hoàn tất",

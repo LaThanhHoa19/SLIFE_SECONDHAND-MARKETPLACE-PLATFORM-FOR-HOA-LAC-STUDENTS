@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Avatar,
     Box,
@@ -17,11 +17,9 @@ import {
     DialogContentText,
     DialogTitle,
     Button,
-    Tooltip,
 } from '@mui/material';
 import {
     Send as SendIcon,
-    Close as CloseIcon,
     MoreVert as MoreIcon,
     Edit as EditIcon,
     Delete as DeleteIcon,
@@ -38,565 +36,448 @@ import {
     replyCommunityPostComment,
     updateCommunityPostComment,
 } from '../../api/communityApi';
-import { BORDER, PURPLE, TEXT_PRI, TEXT_SEC } from '../listing/ListingComments';
 
-const BUBBLE_BG = 'rgba(255, 255, 255, 0.04)';
-const BUBBLE_BORDER = 'rgba(255, 255, 255, 0.08)';
+export const BORDER = 'rgba(255,255,255,0.1)';
+export const TEXT_PRI = 'rgba(255,255,255,0.95)';
+export const TEXT_SEC = 'rgba(255,255,255,0.45)';
+export const PURPLE = '#9D6EED';
 
-/**
- * Bình luận bài cộng đồng — cùng giao diện với ListingComments, API /api/v1/community-posts/...
- */
+const BUBBLE_BG = 'rgba(255, 255, 255, 0.05)';
+
+const CommentInput = ({
+                          currentUser,
+                          value,
+                          setValue,
+                          onSend,
+                          onCancel = null,
+                          autoFocus = false,
+                          parentId = null,
+                          targetName = null,
+                          placeholder = 'Để lại lời nhắn...',
+                      }) => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSend = async () => {
+        if (!value.trim() || isSubmitting) return;
+        setIsSubmitting(true);
+        try {
+            await onSend({ parentId, content: value.trim() });
+            setValue('');
+            if (onCancel) onCancel();
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Box sx={{ display: 'flex', gap: 1.5, mb: parentId ? 1 : 0, mt: parentId ? 1.5 : 0 }}>
+            <Avatar
+                src={fullImageUrl(currentUser?.avatarUrl)}
+                sx={{
+                    width: parentId ? 28 : 36,
+                    height: parentId ? 28 : 36,
+                    border: `1px solid ${BORDER}`,
+                    bgcolor: 'rgba(255,255,255,0.05)',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                }}
+            >
+                {currentUser?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+            </Avatar>
+            <Box sx={{ flex: 1 }}>
+                <TextField
+                    fullWidth
+                    multiline
+                    rows={1}
+                    autoFocus={autoFocus}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend();
+                        }
+                    }}
+                    placeholder={targetName ? `Trả lời ${targetName}...` : placeholder}
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    onClick={handleSend}
+                                    disabled={!value.trim() || isSubmitting}
+                                    sx={{ color: value.trim() ? PURPLE : TEXT_SEC }}
+                                >
+                                    {isSubmitting ? <CircularProgress size={18} /> : <SendIcon sx={{ fontSize: 18 }} />}
+                                </IconButton>
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={{
+                        '& .MuiOutlinedInput-root': {
+                            bgcolor: 'rgba(255,255,255,0.03)',
+                            borderRadius: '18px',
+                            color: TEXT_PRI,
+                            padding: '8px 14px',
+                            '& fieldset': { border: `1px solid ${BORDER}` },
+                            '&.Mui-focused fieldset': { borderColor: PURPLE },
+                        },
+                        '& input::placeholder': { color: TEXT_SEC, opacity: 0.6 },
+                    }}
+                />
+                {onCancel && (
+                    <Typography
+                        fontSize={11}
+                        sx={{ mt: 0.5, pl: 1, cursor: 'pointer', color: TEXT_SEC, '&:hover': { color: '#fff' } }}
+                        onClick={onCancel}
+                    >
+                        Hủy
+                    </Typography>
+                )}
+            </Box>
+        </Box>
+    );
+};
+
+const CommentItem = ({
+                         comment,
+                         currentUser,
+                         editingId,
+                         setEditingId,
+                         replyingTo,
+                         setReplyingTo,
+                         onUpdateCallback,
+                         setSelectedComment,
+                         setDeleteConfirmOpen,
+                         postId,
+                         fetchComments,
+                         onNotify,
+                         depth = 0,
+                         isLast = false,
+                     }) => {
+    const author = comment.author || {};
+    const authorId = author.userId || author.id;
+    const isOwner = String(authorId) === String(currentUser?.id || currentUser?.userId);
+    const isEditing = editingId === comment.id;
+    const isReply = depth > 0;
+    const [localEditValue, setLocalEditValue] = useState(comment.content || '');
+    const [menuAnchor, setMenuAnchor] = useState(null);
+
+    useEffect(() => {
+        if (isEditing) {
+            setLocalEditValue(comment.content || '');
+        }
+    }, [isEditing, comment.content]);
+
+    return (
+        <Box sx={{ mb: isReply ? 1 : 2, position: 'relative' }}>
+            {isReply && (
+                <>
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            left: -26,
+                            top: -16,
+                            width: 26,
+                            height: 30,
+                            borderLeft: `1.5px solid ${BORDER}`,
+                            borderBottom: `1.5px solid ${BORDER}`,
+                            borderBottomLeftRadius: '12px',
+                            zIndex: 0,
+                        }}
+                    />
+                    {!isLast && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                left: -26,
+                                top: 14,
+                                bottom: -20,
+                                borderLeft: `1.5px solid ${BORDER}`,
+                                zIndex: 0,
+                            }}
+                        />
+                    )}
+                </>
+            )}
+
+            <Box sx={{ display: 'flex', gap: isReply ? 1 : 1.2, zIndex: 1, position: 'relative' }}>
+                <Avatar
+                    component={RouterLink}
+                    to={isOwner ? '/profile' : `/profile/${authorId || ''}`}
+                    src={fullImageUrl(author.avatarUrl)}
+                    sx={{
+                        width: isReply ? 28 : 36,
+                        height: isReply ? 28 : 36,
+                        border: `1px solid ${BORDER}`,
+                        bgcolor: 'rgba(255,255,255,0.05)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    }}
+                >
+                    {author?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                </Avatar>
+
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {isEditing ? (
+                        <Box sx={{ bgcolor: 'rgba(157, 110, 237, 0.05)', p: 1, borderRadius: '16px', border: `1px solid ${PURPLE}` }}>
+                            <TextField
+                                fullWidth
+                                multiline
+                                size="small"
+                                autoFocus
+                                value={localEditValue}
+                                onChange={(e) => setLocalEditValue(e.target.value)}
+                                sx={{ '& .MuiOutlinedInput-root': { color: TEXT_PRI, fontSize: 14, '& fieldset': { border: 'none' } } }}
+                            />
+                            <Box sx={{ mt: 0.5, display: 'flex', gap: 2, px: 1 }}>
+                                <Typography fontSize={11} fontWeight={800} color={PURPLE} sx={{ cursor: 'pointer' }} onClick={() => onUpdateCallback(comment.id, localEditValue)}>
+                                    LƯU
+                                </Typography>
+                                <Typography fontSize={11} color={TEXT_SEC} sx={{ cursor: 'pointer' }} onClick={() => setEditingId(null)}>
+                                    HỦY
+                                </Typography>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ bgcolor: BUBBLE_BG, borderRadius: '18px', px: 1.5, py: 0.8, maxWidth: '92%' }}>
+                                <Typography
+                                    component={RouterLink}
+                                    to={isOwner ? '/profile' : `/profile/${authorId || ''}`}
+                                    variant="caption"
+                                    sx={{ fontWeight: 700, color: '#fff', display: 'block', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                                >
+                                    {author?.fullName || 'Người dùng'}
+                                </Typography>
+                                <Typography fontSize={14.5} color={TEXT_PRI} sx={{ lineHeight: 1.4, wordBreak: 'break-word' }}>
+                                    {comment.content}
+                                </Typography>
+                            </Box>
+                            {isOwner && (
+                                <IconButton size="small" onClick={(e) => setMenuAnchor(e.currentTarget)} sx={{ ml: 0.5, color: TEXT_SEC, '&:hover': { color: '#fff' } }}>
+                                    <MoreIcon sx={{ fontSize: 16 }} />
+                                </IconButton>
+                            )}
+                        </Box>
+                    )}
+
+                    <Box sx={{ display: 'flex', gap: 1, mt: 0.4, pl: 1, alignItems: 'center', color: TEXT_SEC }}>
+                        <Typography fontSize={11}>{formatDate(comment.createdAt)}</Typography>
+                        <Box component="span" sx={{ fontSize: 10 }}>·</Box>
+                        <Typography
+                            fontSize={11}
+                            fontWeight={700}
+                            sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                            onClick={() => {
+                                setReplyingTo({ id: comment.id, name: author?.fullName || 'Người dùng' });
+                            }}
+                        >
+                            Trả lời
+                        </Typography>
+                    </Box>
+
+                    {replyingTo?.id === comment.id && currentUser && (
+                        <CommentInput
+                            currentUser={currentUser}
+                            value={replyingTo?.draft || ''}
+                            setValue={(v) => setReplyingTo((prev) => (prev?.id === comment.id ? { ...prev, draft: v } : prev))}
+                            onSend={async ({ content }) => {
+                                await replyCommunityPostComment(comment.id, { content });
+                                setReplyingTo(null);
+                                await fetchComments(true);
+                                if (onNotify) onNotify('Đã phản hồi bình luận!');
+                            }}
+                            autoFocus
+                            parentId={comment.id}
+                            targetName={author.fullName}
+                            onCancel={() => setReplyingTo(null)}
+                        />
+                    )}
+                </Box>
+            </Box>
+
+            {comment.replies && comment.replies.length > 0 && (
+                <Box sx={{ pl: depth < 2 ? 5.5 : 0, mt: 1, position: 'relative' }}>
+                    {comment.replies.map((r, idx) => (
+                        <CommentItem
+                            key={r.id}
+                            comment={r}
+                            currentUser={currentUser}
+                            editingId={editingId}
+                            setEditingId={setEditingId}
+                            replyingTo={replyingTo}
+                            setReplyingTo={setReplyingTo}
+                            onUpdateCallback={onUpdateCallback}
+                            setSelectedComment={setSelectedComment}
+                            setDeleteConfirmOpen={setDeleteConfirmOpen}
+                            postId={postId}
+                            fetchComments={fetchComments}
+                            onNotify={onNotify}
+                            depth={depth + 1}
+                            isLast={idx === comment.replies.length - 1}
+                        />
+                    ))}
+                </Box>
+            )}
+
+            <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
+                <MenuItem onClick={() => { setEditingId(comment.id); setMenuAnchor(null); }}>
+                    <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
+                    <ListItemText>Sửa</ListItemText>
+                </MenuItem>
+                <MenuItem onClick={() => { setSelectedComment(comment); setDeleteConfirmOpen(true); setMenuAnchor(null); }}>
+                    <ListItemIcon><DeleteIcon fontSize="small" sx={{ color: '#f02849' }} /></ListItemIcon>
+                    <ListItemText sx={{ color: '#f02849' }}>Xóa</ListItemText>
+                </MenuItem>
+            </Menu>
+        </Box>
+    );
+};
+
 export default function CommunityPostComments({ postId, onNotify, onThreadDelta }) {
     const { user: currentUser } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const inputDomId = useMemo(() => `community-cmt-${postId}`, [postId]);
-
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
-    const [text, setText] = useState('');
     const [replyingTo, setReplyingTo] = useState(null);
-    const [editingComment, setEditingComment] = useState(null);
+    const [editingId, setEditingId] = useState(null);
     const [showAll, setShowAll] = useState(false);
     const [selectedComment, setSelectedComment] = useState(null);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [mainInputValue, setMainInputValue] = useState('');
 
-    const fetchComments = useCallback(
-        async (silent = false) => {
-            if (!postId) return;
-            if (!silent) setLoading(true);
-            try {
-                const res = await getCommunityPostComments(postId);
-                const data = unwrapApiData(res);
-                const sorted = Array.isArray(data) ? [...data].sort((a, b) => (b.id || 0) - (a.id || 0)) : [];
-                setComments(sorted);
-            } catch (err) {
-                console.error('Failed to fetch community comments:', err);
-            } finally {
-                setLoading(false);
-            }
-        },
-        [postId],
-    );
+    const fetchComments = useCallback(async (silent = false) => {
+        if (!postId) return;
+        if (!silent && comments.length === 0) setLoading(true);
+        try {
+            const res = await getCommunityPostComments(postId);
+            const data = unwrapApiData(res);
+            const sorted = Array.isArray(data) ? [...data].sort((a, b) => (b.id || 0) - (a.id || 0)) : [];
+            setComments(sorted);
+        } catch (err) {
+            console.error('Failed to fetch community comments:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [postId, comments.length]);
 
     useEffect(() => {
         fetchComments();
     }, [fetchComments]);
 
-    const handleSubmit = async () => {
-        if (!currentUser) return;
-        if (!text.trim() || submitting) return;
-        setSubmitting(true);
-        const wasReply = !!replyingTo;
+    const handleMainSubmit = async ({ content }) => {
+        if (!content.trim()) return;
+        await createCommunityPostComment(postId, { content: content.trim() });
+        setMainInputValue('');
+        await fetchComments(true);
+        if (onThreadDelta) onThreadDelta(1);
+        if (onNotify) onNotify('Đã gửi bình luận!');
+    };
+
+    const handleUpdate = async (id, content) => {
+        if (!content.trim()) return;
         try {
-            if (replyingTo) {
-                await replyCommunityPostComment(replyingTo.id, { content: text.trim() });
-            } else {
-                await createCommunityPostComment(postId, { content: text.trim() });
-            }
-            setText('');
-            setReplyingTo(null);
+            await updateCommunityPostComment(id, { content: content.trim() });
+            setEditingId(null);
             await fetchComments(true);
-            onThreadDelta?.(1);
-            if (onNotify) onNotify(wasReply ? 'Đã gửi phản hồi!' : 'Đã gửi bình luận!');
-        } catch (err) {
-            if (onNotify) onNotify(err?.response?.data?.message || 'Không gửi được bình luận.', 'error');
-        } finally {
-            setSubmitting(false);
+            if (onNotify) onNotify('Đã cập nhật bình luận!');
+        } catch {
+            if (onNotify) onNotify('Không thể cập nhật bình luận.', 'error');
         }
     };
 
     const confirmDelete = async () => {
         if (!selectedComment) return;
-        setLoading(true);
         try {
             await deleteCommunityPostComment(selectedComment.id);
             await fetchComments(true);
-            onThreadDelta?.(-1);
+            if (onThreadDelta) onThreadDelta(-1);
             if (onNotify) onNotify('Đã xóa bình luận!');
-        } catch (err) {
+        } catch {
             if (onNotify) onNotify('Không thể xóa bình luận.', 'error');
         } finally {
-            setLoading(false);
             setDeleteConfirmOpen(false);
             setSelectedComment(null);
         }
     };
 
-    const handleUpdate = async () => {
-        if (!editingComment || !editingComment.content.trim()) return;
-        setSubmitting(true);
-        try {
-            await updateCommunityPostComment(editingComment.id, { content: editingComment.content.trim() });
-            setEditingComment(null);
-            await fetchComments(true);
-            if (onNotify) onNotify('Đã cập nhật bình luận!');
-        } catch (err) {
-            if (onNotify) onNotify('Không thể cập nhật bình luận.', 'error');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const CommentItem = ({
-        comment,
-        depth = 0,
-        currentUser: cu,
-        editingComment: ec,
-        setEditingComment: sec,
-        handleUpdate: hu,
-        setReplyingTo: srt,
-        setSelectedComment: ssc,
-        setDeleteConfirmOpen: sdco,
-    }) => {
-        const author = comment.author || {};
-        const authorId = author.userId || author.id;
-        const isMyComment = String(authorId) === String(cu?.id ?? cu?.userId);
-        const isEditing = ec?.id === comment.id;
-        const [menuAnchor, setMenuAnchor] = useState(null);
-
-        return (
-            <Box sx={{ mb: 2.5, position: 'relative' }}>
-                <Box sx={{ display: 'flex', gap: 1.2 }}>
-                    <Avatar
-                        component={RouterLink}
-                        to={authorId === (cu?.id ?? cu?.userId) ? '/profile' : `/profile/${authorId || ''}`}
-                        src={fullImageUrl(author.avatarUrl)}
-                        sx={{
-                            width: 34,
-                            height: 34,
-                            mt: 0.1,
-                            cursor: 'pointer',
-                            textDecoration: 'none',
-                            bgcolor: PURPLE,
-                            border: isMyComment ? `1.5px solid ${PURPLE}` : `1px solid ${BORDER}`,
-                        }}
-                    >
-                        {author?.fullName ? author.fullName.charAt(0).toUpperCase() : 'U'}
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                        {isEditing ? (
-                            <Box
-                                sx={{
-                                    width: '100%',
-                                    p: 1,
-                                    borderRadius: '16px',
-                                    border: `1px solid ${PURPLE}`,
-                                    animation: 'pulse-glow 2s infinite',
-                                    '@keyframes pulse-glow': {
-                                        '0%': { boxShadow: `0 0 0 0 ${PURPLE}22` },
-                                        '50%': { boxShadow: `0 0 10px 0 ${PURPLE}44` },
-                                        '100%': { boxShadow: `0 0 0 0 ${PURPLE}22` },
-                                    },
-                                }}
-                            >
-                                <TextField
-                                    fullWidth
-                                    multiline
-                                    size="small"
-                                    autoFocus
-                                    value={ec.content}
-                                    onFocus={(e) => {
-                                        const len = e.currentTarget.value.length;
-                                        e.currentTarget.setSelectionRange(len, len);
-                                    }}
-                                    onChange={(e) => sec({ ...ec, content: e.target.value })}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            bgcolor: 'transparent',
-                                            color: TEXT_PRI,
-                                            fontSize: 14,
-                                            '& fieldset': { border: 'none' },
-                                        },
-                                    }}
-                                />
-                                <Box sx={{ mt: 1, display: 'flex', gap: 2, px: 1 }}>
-                                    <Typography
-                                        fontSize={11}
-                                        fontWeight={700}
-                                        color={PURPLE}
-                                        sx={{ cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
-                                        onClick={hu}
-                                    >
-                                        LƯU
-                                    </Typography>
-                                    <Typography
-                                        fontSize={11}
-                                        fontWeight={600}
-                                        color={TEXT_SEC}
-                                        sx={{ cursor: 'pointer', '&:hover': { color: '#fff' } }}
-                                        onClick={() => sec(null)}
-                                    >
-                                        HỦY
-                                    </Typography>
-                                </Box>
-                            </Box>
-                        ) : (
-                            <Box sx={{ display: 'flex', alignItems: 'flex-start', maxWidth: '100%' }}>
-                                <Box
-                                    sx={{
-                                        bgcolor: BUBBLE_BG,
-                                        borderRadius: '16px',
-                                        px: 1.8,
-                                        py: 1.2,
-                                        border: `1px solid ${BUBBLE_BORDER}`,
-                                        maxWidth: '100%',
-                                        position: 'relative',
-                                        '&:hover .more-btn': { opacity: 1 },
-                                    }}
-                                >
-                                    <Typography
-                                        component={RouterLink}
-                                        to={authorId === (cu?.id ?? cu?.userId) ? '/profile' : `/profile/${authorId || ''}`}
-                                        fontSize={12}
-                                        fontWeight={800}
-                                        color={PURPLE}
-                                        sx={{ mb: 0.1, textDecoration: 'none', cursor: 'pointer', '&:hover': { color: '#fff' } }}
-                                    >
-                                        {author?.fullName || 'Người dùng'}
-                                    </Typography>
-                                    <Typography
-                                        fontSize={14}
-                                        color={TEXT_PRI}
-                                        sx={{ lineHeight: 1.5, wordBreak: 'break-word', fontWeight: 400 }}
-                                    >
-                                        {comment.content}
-                                    </Typography>
-                                </Box>
-                                {isMyComment && (
-                                    <Tooltip title="Tùy chọn bình luận">
-                                        <IconButton
-                                            size="small"
-                                            className="more-btn"
-                                            onClick={(e) => setMenuAnchor(e.currentTarget)}
-                                            sx={{
-                                                ml: 0.5,
-                                                color: TEXT_SEC,
-                                                opacity: 0.6,
-                                                transition: 'all 0.2s',
-                                                '&:hover': { color: PURPLE, opacity: 1, bgcolor: 'rgba(255,255,255,0.05)' },
-                                            }}
-                                        >
-                                            <MoreIcon sx={{ fontSize: 18 }} />
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
-                            </Box>
-                        )}
-                        <Box sx={{ display: 'flex', gap: 2.2, alignItems: 'center', mt: 0.6, pl: 1 }}>
-                            <Typography fontSize={11} color={TEXT_SEC} sx={{ fontWeight: 500 }}>
-                                {formatDate(comment.createdAt)}
-                            </Typography>
-                            <Typography
-                                sx={{
-                                    cursor: 'pointer',
-                                    fontSize: 11,
-                                    fontWeight: 700,
-                                    color: TEXT_SEC,
-                                    '&:hover': { color: PURPLE },
-                                }}
-                                onClick={() => {
-                                    srt({ id: comment.id, name: author?.fullName || 'Người dùng' });
-                                    document.getElementById(inputDomId)?.focus();
-                                }}
-                            >
-                                Phản hồi
-                            </Typography>
-                        </Box>
-                    </Box>
-                </Box>
-                {isMyComment && (
-                    <Menu
-                        anchorEl={menuAnchor}
-                        open={Boolean(menuAnchor)}
-                        onClose={() => setMenuAnchor(null)}
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                        PaperProps={{
-                            sx: {
-                                bgcolor: '#1E1B28',
-                                border: `1px solid ${BORDER}`,
-                                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                                '& .MuiMenuItem-root': {
-                                    fontSize: 13,
-                                    py: 1,
-                                    px: 2,
-                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
-                                },
-                            },
-                        }}
-                    >
-                        <MenuItem
-                            onClick={() => {
-                                sec({ id: comment.id, content: comment.content });
-                                setMenuAnchor(null);
-                            }}
-                        >
-                            <ListItemIcon>
-                                <EditIcon fontSize="small" sx={{ color: TEXT_SEC }} />
-                            </ListItemIcon>
-                            <ListItemText sx={{ color: TEXT_PRI }}>Sửa</ListItemText>
-                        </MenuItem>
-                        <MenuItem
-                            onClick={() => {
-                                ssc(comment);
-                                sdco(true);
-                                setMenuAnchor(null);
-                            }}
-                        >
-                            <ListItemIcon>
-                                <DeleteIcon fontSize="small" sx={{ color: '#FF4D4D' }} />
-                            </ListItemIcon>
-                            <ListItemText sx={{ color: '#FF4D4D' }}>Xóa</ListItemText>
-                        </MenuItem>
-                    </Menu>
-                )}
-                {comment.replies && comment.replies.length > 0 && (
-                    <Box sx={{ pl: 4.5, mt: 2, borderLeft: `1px solid ${BORDER}`, ml: 2 }}>
-                        {comment.replies.map((reply) => (
-                            <CommentItem
-                                key={reply.id}
-                                comment={reply}
-                                depth={depth + 1}
-                                currentUser={cu}
-                                editingComment={ec}
-                                setEditingComment={sec}
-                                handleUpdate={hu}
-                                setReplyingTo={srt}
-                                setSelectedComment={ssc}
-                                setDeleteConfirmOpen={sdco}
-                            />
-                        ))}
-                    </Box>
-                )}
-            </Box>
-        );
-    };
-
     return (
-        <Box
-            sx={{
-                '&::-webkit-scrollbar': { width: '6px' },
-                '&::-webkit-scrollbar-track': { background: 'transparent' },
-                '&::-webkit-scrollbar-thumb': { background: 'rgba(255,255,255,0.1)', borderRadius: '10px' },
-                '&::-webkit-scrollbar-thumb:hover': { background: 'rgba(255,255,255,0.2)' },
-            }}
-        >
-            <Box sx={{ px: 2, pt: 1 }}>
-                <Typography fontSize={15} fontWeight={800} color={TEXT_PRI} sx={{ mb: 2 }}>
+        <Box sx={{ p: 0, position: 'relative', minHeight: comments.length > 0 ? '150px' : 'auto', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ p: 2, flex: 1, pb: 5 }}>
+                <Typography fontSize={15} fontWeight={800} color={TEXT_PRI} sx={{ mb: 2.5 }}>
                     {comments.length > 0 ? `${comments.length} bình luận` : 'Chưa có bình luận'}
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start', mb: 3 }}>
-                    {currentUser ? (
-                        <>
-                            <Avatar
-                                src={fullImageUrl(currentUser?.avatarUrl)}
-                                sx={{
-                                    width: 38,
-                                    height: 38,
-                                    mt: 0.5,
-                                    bgcolor: 'rgba(255,255,255,0.05)',
-                                    border: `1px solid ${BORDER}`,
-                                }}
-                            >
-                                {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
-                            </Avatar>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={1}
-                                value={text}
-                                onChange={(e) => setText(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handleSubmit();
-                                    }
-                                }}
-                                id={inputDomId}
-                                placeholder={replyingTo ? `Phản hồi ${replyingTo.name}...` : 'Để lại lời nhắn...'}
-                                variant="outlined"
-                                disabled={submitting}
-                                InputProps={{
-                                    startAdornment: replyingTo && (
-                                        <InputAdornment position="start">
-                                            <Box
-                                                sx={{
-                                                    bgcolor: `${PURPLE}22`,
-                                                    color: PURPLE,
-                                                    px: 1.2,
-                                                    py: 0.4,
-                                                    borderRadius: '8px',
-                                                    fontSize: 12,
-                                                    fontWeight: 700,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 0.5,
-                                                }}
-                                            >
-                                                @{replyingTo.name}
-                                                <IconButton size="small" onClick={() => setReplyingTo(null)} sx={{ p: 0, color: PURPLE }}>
-                                                    <CloseIcon sx={{ fontSize: 14 }} />
-                                                </IconButton>
-                                            </Box>
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                size="small"
-                                                onClick={handleSubmit}
-                                                disabled={!text.trim() || submitting}
-                                                sx={{
-                                                    color: text.trim() ? PURPLE : TEXT_SEC,
-                                                    transition: 'all 0.2s',
-                                                    opacity: text.trim() ? 1 : 0.6,
-                                                }}
-                                            >
-                                                {submitting ? (
-                                                    <CircularProgress size={18} color="inherit" />
-                                                ) : (
-                                                    <SendIcon sx={{ fontSize: 18 }} />
-                                                )}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        bgcolor: 'rgba(255,255,255,0.03)',
-                                        borderRadius: '20px',
-                                        color: TEXT_PRI,
-                                        padding: '8px 14px',
-                                        '& fieldset': { border: `1px solid ${BORDER}` },
-                                        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.15)' },
-                                        '&.Mui-focused fieldset': { borderColor: PURPLE, borderWidth: '1px' },
-                                    },
-                                    '& input::placeholder': { color: TEXT_SEC, opacity: 0.6 },
-                                }}
-                            />
-                        </>
-                    ) : (
-                        <Box
-                            onClick={() => navigate('/login', { state: { from: location.pathname } })}
-                            sx={{
-                                width: '100%',
-                                cursor: 'pointer',
-                                p: 1.8,
-                                px: 2.5,
-                                bgcolor: 'rgba(255,255,255,0.03)',
-                                border: `1px solid ${BORDER}`,
-                                borderRadius: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                transition: 'all 0.2s',
-                                '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.15)' },
-                            }}
-                        >
-                            <Typography fontSize={14} color={TEXT_SEC} sx={{ fontStyle: 'italic', opacity: 0.6 }}>
-                                Vui lòng{' '}
-                                <Box component="span" sx={{ color: PURPLE, fontWeight: 800, textDecoration: 'underline' }}>
-                                    Đăng nhập
-                                </Box>{' '}
-                                để bình luận bài cộng đồng này...
-                            </Typography>
-                            <SendIcon sx={{ fontSize: 18, color: TEXT_SEC, opacity: 0.6 }} />
-                        </Box>
-                    )}
-                </Box>
+
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                        <CircularProgress size={24} sx={{ color: PURPLE }} />
-                    </Box>
-                ) : comments.length === 0 ? (
-                    <Typography fontSize={13} color={TEXT_SEC} textAlign="center" sx={{ py: 4 }}>
-                        Chưa có gì ở đây. Hãy mở lời trước nhé!
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', pb: 2 }}>
+                    <Box>
                         {(showAll ? comments : comments.slice(0, 3)).map((c) => (
                             <CommentItem
                                 key={c.id}
                                 comment={c}
                                 currentUser={currentUser}
-                                editingComment={editingComment}
-                                setEditingComment={setEditingComment}
-                                handleUpdate={handleUpdate}
+                                editingId={editingId}
+                                setEditingId={setEditingId}
+                                replyingTo={replyingTo}
                                 setReplyingTo={setReplyingTo}
+                                onUpdateCallback={handleUpdate}
                                 setSelectedComment={setSelectedComment}
                                 setDeleteConfirmOpen={setDeleteConfirmOpen}
+                                postId={postId}
+                                fetchComments={fetchComments}
+                                onNotify={onNotify}
                             />
                         ))}
-                        {comments.length > 3 && !showAll && (
+                        {comments.length > 3 && (
                             <Typography
-                                onClick={() => setShowAll(true)}
                                 fontSize={13}
                                 fontWeight={700}
-                                sx={{
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    textAlign: 'center',
-                                    mt: 2,
-                                    py: 1,
-                                    bgcolor: 'rgba(255,255,255,0.05)',
-                                    borderRadius: '12px',
-                                    width: 'fit-content',
-                                    px: 3,
-                                    mx: 'auto',
-                                    transition: 'all 0.2s',
-                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.1)', color: PURPLE },
-                                }}
+                                color={PURPLE}
+                                textAlign="center"
+                                sx={{ mt: 2, cursor: 'pointer' }}
+                                onClick={() => setShowAll(!showAll)}
                             >
-                                Xem thêm {comments.length - 3} bình luận khác
-                            </Typography>
-                        )}
-                        {showAll && comments.length > 3 && (
-                            <Typography
-                                onClick={() => setShowAll(false)}
-                                fontSize={13}
-                                fontWeight={700}
-                                sx={{
-                                    color: TEXT_SEC,
-                                    cursor: 'pointer',
-                                    textAlign: 'center',
-                                    mt: 2,
-                                    py: 1,
-                                    bgcolor: 'transparent',
-                                    borderRadius: '12px',
-                                    width: 'fit-content',
-                                    px: 3,
-                                    mx: 'auto',
-                                    transition: 'all 0.2s',
-                                    border: `1px solid ${BORDER}`,
-                                    '&:hover': { color: '#fff', bgcolor: 'rgba(255,255,255,0.05)' },
-                                }}
-                            >
-                                Thu gọn bình luận
+                                {showAll ? 'Thu gọn' : `Xem thêm ${comments.length - 3} bình luận`}
                             </Typography>
                         )}
                     </Box>
                 )}
             </Box>
-            <Dialog
-                open={deleteConfirmOpen}
-                onClose={() => setDeleteConfirmOpen(false)}
-                PaperProps={{
-                    sx: { bgcolor: '#1A161F', color: TEXT_PRI, borderRadius: '16px', border: `1px solid ${BORDER}` },
+
+            <Box
+                sx={{
+                    position: 'sticky', bottom: 0, left: 0, right: 0,
+                    bgcolor: 'rgba(26, 22, 31, 0.95)', p: 1.5,
+                    borderTop: `1px solid ${BORDER}`, zIndex: 10,
+                    backdropFilter: 'blur(12px)', boxShadow: '0 -10px 30px rgba(0,0,0,0.4)'
                 }}
             >
+                {currentUser ? (
+                    <CommentInput
+                        currentUser={currentUser}
+                        value={mainInputValue}
+                        setValue={setMainInputValue}
+                        onSend={handleMainSubmit}
+                        placeholder="Bình luận dưới tên bạn..."
+                    />
+                ) : (
+                    <Box
+                        onClick={() => navigate('/login', { state: { from: location.pathname } })}
+                        sx={{ p: 1.5, bgcolor: 'rgba(255,255,255,0.03)', border: `1px solid ${BORDER}`, borderRadius: '20px', textAlign: 'center', cursor: 'pointer' }}
+                    >
+                        <Typography fontSize={13} color={TEXT_SEC}>Đăng nhập để bình luận...</Typography>
+                    </Box>
+                )}
+            </Box>
+
+            <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
                 <DialogTitle sx={{ fontWeight: 800 }}>Xác nhận xóa?</DialogTitle>
                 <DialogContent>
-                    <DialogContentText sx={{ color: TEXT_SEC }}>Bình luận này sẽ hoàn toàn biến mất.</DialogContentText>
+                    <DialogContentText sx={{ color: TEXT_SEC }}>Bình luận này sẽ bị xóa vĩnh viễn.</DialogContentText>
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setDeleteConfirmOpen(false)} sx={{ color: TEXT_SEC, fontWeight: 700 }}>
-                        HỦY
-                    </Button>
-                    <Button onClick={confirmDelete} sx={{ color: '#FF4D4D', fontWeight: 700 }}>
-                        XÓA BỎ
-                    </Button>
+                    <Button onClick={() => setDeleteConfirmOpen(false)}>Hủy</Button>
+                    <Button onClick={confirmDelete} color="error" variant="contained">Xóa</Button>
                 </DialogActions>
             </Dialog>
         </Box>

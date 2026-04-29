@@ -19,12 +19,15 @@ public interface CommunityPostLikeRepository extends JpaRepository<CommunityPost
 
     @EntityGraph(attributePaths = {"post.author", "post.hashtags"})
     @Query("""
-            SELECT l.post FROM CommunityPostLike l
-            WHERE l.user.id = :userId
-              AND l.post.status = :activeStatus
-              AND l.post.deletedAt IS NULL
-              AND l.post.hiddenAt IS NULL
-            ORDER BY l.createdAt DESC
+            SELECT p FROM CommunityPost p
+            WHERE p.id IN (
+                SELECT l.post.id FROM CommunityPostLike l
+                WHERE l.user.id = :userId
+            )
+              AND p.status = :activeStatus
+              AND p.deletedAt IS NULL
+              AND p.hiddenAt IS NULL
+            ORDER BY p.createdAt DESC
             """)
     Page<CommunityPost> findLikedPostsVisibleByUserId(
             @Param("userId") Long userId,
