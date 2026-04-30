@@ -32,6 +32,7 @@ import {
     SuspenseReportManagementPage,
     SuspenseReportDetailPage,
     SuspenseUserManagementPage,
+    SuspenseUserDetailPage,
     SuspenseCategoryManagementPage,
     SuspenseConfigurationManagementPage,
     SuspenseReportPage,
@@ -95,6 +96,7 @@ export default function AppRouter() {
                 <Route path="reports/:reportId" element={<SuspenseReportDetailPage />} />
                 <Route path="reports" element={<SuspenseReportManagementPage />} />
                 <Route path="users" element={<SuspenseUserManagementPage />} />
+                <Route path="users/:id" element={<SuspenseUserDetailPage />} />
                 <Route path="categories" element={<SuspenseCategoryManagementPage />} />
                 <Route path="settings" element={<SuspenseConfigurationManagementPage />} />
             </Route>
