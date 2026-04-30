@@ -69,6 +69,22 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         }, 350);
     }, [fetchSessions]);
 
+    const markSessionReadOptimistic = useCallback((sessionId) => {
+        if (!sessionId) return;
+        setSessions((prev) =>
+            (Array.isArray(prev) ? prev : []).map((s) => {
+                if (!s || s.sessionId !== sessionId) return s;
+                return {
+                    ...s,
+                    unreadCount: 0,
+                    unread_count: 0,
+                    unreadMessages: 0,
+                    unread_messages: 0,
+                };
+            }),
+        );
+    }, []);
+
     useEffect(() => {
         return () => {
             if (fetchSessionsDebounceRef.current != null) {
@@ -224,6 +240,7 @@ export function useChatSessions({ activeSessionId, currentUserId, sessionsVersio
         suggestedChatPhrases,
         fetchSessions,
         scheduleFetchSessions,
+        markSessionReadOptimistic,
         setSessions,
         listingUnavailableByListingId,
     };

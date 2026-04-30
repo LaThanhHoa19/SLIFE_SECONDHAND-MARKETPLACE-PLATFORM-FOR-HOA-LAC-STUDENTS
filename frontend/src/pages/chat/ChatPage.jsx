@@ -469,6 +469,7 @@ function ChatPageInner() {
     suggestedChatPhrases,
     fetchSessions,
     scheduleFetchSessions,
+    markSessionReadOptimistic,
     listingUnavailableByListingId,
   } = useChatSessions({
     activeSessionId,
@@ -1651,6 +1652,7 @@ function ChatPageInner() {
 
   const handleSelectChatSession = useCallback(
       (sessionId) => {
+        markSessionReadOptimistic(sessionId);
         setActiveSessionId(sessionId);
         setDraftListing(null);
         setSearchParams(
@@ -1664,7 +1666,7 @@ function ChatPageInner() {
             { replace: true, preventScrollReset: true }
         );
       },
-      [setSearchParams]
+      [markSessionReadOptimistic, setSearchParams]
   );
 
   /** MUI v5 + native picker: `inputProps.min` chặn chọn quá khứ; cập nhật theo mỗi lần render khi dialog mở. */
