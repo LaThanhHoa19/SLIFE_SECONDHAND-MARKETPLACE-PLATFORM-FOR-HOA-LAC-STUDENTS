@@ -33,7 +33,10 @@ export default function CommunityCommentModal({ open, onClose, postId, post, onT
             fullScreen={fullScreen}
             maxWidth="sm"
             fullWidth
+            onClick={(e) => e.stopPropagation()}
             PaperProps={{
+                onClick: (e) => e.stopPropagation(),
+                onMouseDown: (e) => e.stopPropagation(),
                 sx: {
                     bgcolor: '#1A161F',
                     backgroundImage: 'none',
