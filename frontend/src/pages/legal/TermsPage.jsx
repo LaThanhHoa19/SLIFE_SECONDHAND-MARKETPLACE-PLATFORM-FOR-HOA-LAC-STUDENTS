@@ -115,7 +115,7 @@ export default function TermsPage() {
                             '- Đăng ký và xác thực: Người dùng đăng nhập qua Google SSO; ưu tiên sử dụng email giáo dục (ví dụ: @fpt.edu.vn) để xác thực danh tính sinh viên.\n' +
                             '- Xác minh số điện thoại (mục bổ sung):\n' +
                             '  - Yêu cầu xác minh: Người dùng có thể cung cấp và xác thực số điện thoại trong phần Cập nhật hồ sơ để tăng độ tin cậy khi liên lạc.\n' +
-                            '  - Hiển thị trạng thái: After khi xác minh thành công, hồ sơ công khai sẽ hiển thị trạng thái “Số điện thoại đã xác thực”.\n' +
+                            '  - Hiển thị trạng thái: Sau khi xác minh thành công, hồ sơ công khai sẽ hiển thị trạng thái “Số điện thoại đã xác thực”.\n' +
                             '  - Tính duy nhất: Mỗi số điện thoại chỉ được đăng ký cho một tài khoản; hệ thống sẽ báo lỗi nếu số đã tồn tại.\n' +
                             '  - Định dạng hợp lệ: Số điện thoại phải đúng định dạng quy định; hệ thống sẽ từ chối và hiển thị thông báo lỗi nếu không hợp lệ.\n' +
                             '- Trách nhiệm và bảo mật: Người dùng tự quản lý thông tin cá nhân, đảm bảo tính chính xác của dữ liệu và chịu trách nhiệm về nội dung/hoạt động phát sinh từ tài khoản.\n' +
