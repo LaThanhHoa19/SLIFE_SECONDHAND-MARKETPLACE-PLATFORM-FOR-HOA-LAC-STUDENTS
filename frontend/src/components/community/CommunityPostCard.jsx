@@ -867,7 +867,10 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                     onClose={() => setEditOpen(false)}
                     fullWidth
                     maxWidth="md"
+                    onClick={(e) => e.stopPropagation()}
                     PaperProps={{
+                        onClick: (e) => e.stopPropagation(),
+                        onMouseDown: (e) => e.stopPropagation(),
                         sx: {
                             bgcolor: '#10121a',
                             color: '#fff',
@@ -949,7 +952,10 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                                     <IconButton
                                         size="small"
                                         sx={{ color: 'rgba(255,255,255,0.72)' }}
-                                        onClick={() => editImageInputRef.current?.click()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            editImageInputRef.current?.click();
+                                        }}
                                         aria-label="Thêm ảnh"
                                     >
                                         <AddPhotoAlternateOutlinedIcon fontSize="small" />
@@ -973,7 +979,16 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                                             .map((img, idx) => (
                                                 <Box key={img._k || `cur-${idx}`} sx={{ position: 'relative', width: 120, minWidth: 120, borderRadius: 1.2, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.12)' }}>
                                                     <Box component="img" src={fullImageUrl(img.imageUrl)} alt="" sx={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
-                                                    <IconButton size="small" onClick={() => handleRemoveCurrentImage(img)} sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+                                                    <IconButton
+                                                        type="button"
+                                                        size="small"
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveCurrentImage(img);
+                                                        }}
+                                                        sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff', zIndex: 2 }}
+                                                    >
                                                         <CloseIcon sx={{ fontSize: 14 }} />
                                                     </IconButton>
                                                 </Box>
@@ -982,7 +997,16 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                                         {editNewImages.map((file, idx) => (
                                             <Box key={`${file.name}-${idx}`} sx={{ position: 'relative', width: 120, minWidth: 120, borderRadius: 1.2, overflow: 'hidden', border: '1px solid rgba(157,110,237,0.45)' }}>
                                                 <Box component="img" src={URL.createObjectURL(file)} alt="" sx={{ width: '100%', height: 120, objectFit: 'cover', display: 'block' }} />
-                                                <IconButton size="small" onClick={() => handleRemoveNewImageAt(idx)} sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff' }}>
+                                                <IconButton
+                                                    type="button"
+                                                    size="small"
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRemoveNewImageAt(idx);
+                                                    }}
+                                                    sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,0.55)', color: '#fff', zIndex: 2 }}
+                                                >
                                                     <CloseIcon sx={{ fontSize: 14 }} />
                                                 </IconButton>
                                             </Box>
