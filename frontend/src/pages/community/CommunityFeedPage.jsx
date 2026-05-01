@@ -860,14 +860,20 @@ export default function CommunityFeedPage() {
                                                     sx={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
                                                 />
                                                 <IconButton
+                                                    type="button"
                                                     size="small"
-                                                    onClick={() => removeComposerImageAt(idx)}
+                                                    onPointerDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeComposerImageAt(idx);
+                                                    }}
                                                     sx={{
                                                         position: 'absolute',
                                                         top: 6,
                                                         right: 6,
                                                         bgcolor: 'rgba(0,0,0,0.55)',
                                                         color: '#fff',
+                                                        zIndex: 2,
                                                         '&:hover': { bgcolor: 'rgba(0,0,0,0.72)' },
                                                     }}
                                                     aria-label="Xóa ảnh"
