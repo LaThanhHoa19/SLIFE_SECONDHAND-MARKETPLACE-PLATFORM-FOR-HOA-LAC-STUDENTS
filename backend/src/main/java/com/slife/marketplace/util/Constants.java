@@ -32,7 +32,7 @@ public final class Constants {
     public static final String SYSTEM_SENDER = "Hệ thống";
 
     /** Deal confirmed auto-message text. */
-    public static final String DEAL_CONFIRMED_MSG = "✅ Deal Confirmed! Vui lòng hẹn gặp tại Hoa Lac Campus.";
+    public static final String DEAL_CONFIRMED_MSG = "✅ Chấp nhận trả giá!";
 
     /** Chat upload folder prefix (under uploadBasePath). */
     public static final String CHAT_UPLOAD_DIR = "chats";
