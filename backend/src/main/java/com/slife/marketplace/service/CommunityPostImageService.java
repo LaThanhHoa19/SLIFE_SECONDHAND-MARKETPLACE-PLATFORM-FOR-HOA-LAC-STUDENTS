@@ -40,16 +40,16 @@ public class CommunityPostImageService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostImageRepository communityPostImageRepository;
     private final ConfigService configService;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
 
     public CommunityPostImageService(CommunityPostRepository communityPostRepository,
                                      CommunityPostImageRepository communityPostImageRepository,
                                      ConfigService configService,
-                                     UserFileStorageService fileStorage) {
+                                     UserFileStorageService userFileStorage) {
         this.communityPostRepository = communityPostRepository;
         this.communityPostImageRepository = communityPostImageRepository;
         this.configService = configService;
-        this.fileStorage = fileStorage;
+        this.userFileStorage = userFileStorage;
     }
 
     @Transactional
@@ -86,25 +86,23 @@ public class CommunityPostImageService {
             String baseName = postId + "_" + System.currentTimeMillis() + "_" + displayOrder;
             String storedFilename;
             String url;
-            try {
-                try (InputStream raw = file.getInputStream();
-                     PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(raw), 16)) {
-                    byte[] head = new byte[12];
-                    int n = in.read(head);
-                    if (n < 2) {
-                        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "File ảnh không hợp lệ hoặc trống");
-                    }
-                    in.unread(head, 0, n);
-                    boolean jpeg = isJpegMagic(head, n);
-                    boolean png = isPngMagic(head, n);
-                    if (!jpeg && !png) {
-                        throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Nội dung không phải JPG hoặc PNG");
-                    }
-                    String ext = jpeg ? ".jpg" : ".png";
-                    storedFilename = baseName + ext;
-                    String ct = rawCt != null ? rawCt.trim().toLowerCase(Locale.ROOT) : "image/jpeg";
-                    url = fileStorage.storeStream(in, file.getSize(), ct, "community-posts/" + storedFilename);
+            try (InputStream raw = file.getInputStream();
+                 PushbackInputStream in = new PushbackInputStream(new BufferedInputStream(raw), 16)) {
+                byte[] head = new byte[12];
+                int n = in.read(head);
+                if (n < 2) {
+                    throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "File ảnh không hợp lệ hoặc trống");
                 }
+                in.unread(head, 0, n);
+                boolean jpeg = isJpegMagic(head, n);
+                boolean png = isPngMagic(head, n);
+                if (!jpeg && !png) {
+                    throw new SlifeException(ErrorCode.INVALID_FILE_TYPE, "Nội dung không phải JPG hoặc PNG");
+                }
+                String ext = jpeg ? ".jpg" : ".png";
+                storedFilename = baseName + ext;
+                String ct = rawCt != null ? rawCt.trim().toLowerCase(Locale.ROOT) : "image/jpeg";
+                url = userFileStorage.storeStream(in, file.getSize(), ct, "community-posts/" + storedFilename);
             } catch (IOException e) {
                 log.error("uploadPostImages failed postId={}", postId, e);
                 throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
@@ -160,7 +158,7 @@ public class CommunityPostImageService {
         if (!img.getPost().getId().equals(postId)) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        fileStorage.deleteStoredIfExists(img.getImageUrl());
+        userFileStorage.deleteStoredIfExists(img.getImageUrl());
         communityPostImageRepository.delete(img);
     }
 }
