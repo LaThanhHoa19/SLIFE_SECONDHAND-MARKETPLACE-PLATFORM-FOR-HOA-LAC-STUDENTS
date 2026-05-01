@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   Alert,
   Avatar,
@@ -7,6 +9,7 @@ import {
   Button,
   Chip,
   FormControl,
+  IconButton,
   InputAdornment,
   InputLabel,
   MenuItem,
@@ -211,6 +214,7 @@ function userMatchesSearch(row, rawQuery) {
 }
 
 export default function UserManagementPage() {
+  const navigate = useNavigate();
   const [allUsers, setAllUsers] = useState([]);
   const [page, setPage] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -301,27 +305,27 @@ export default function UserManagementPage() {
       label: 'Vai trò',
       width: 120,
       render: (row) => (
-          <Chip
-              label={row.role}
-              size="small"
-              sx={{
-                fontSize: 11,
-                fontWeight: 600,
-                borderRadius: 999,
-                bgcolor:
-                    row.role === 'ADMIN'
-                        ? 'rgba(37,99,235,0.08)'
-                        : row.role === 'MODERATOR'
-                            ? 'rgba(16,185,129,0.08)'
-                            : 'rgba(148,163,184,0.08)',
-                color:
-                    row.role === 'ADMIN'
-                        ? '#1d4ed8'
-                        : row.role === 'MODERATOR'
-                            ? '#047857'
-                            : '#475569',
-              }}
-          />
+        <Chip
+          label={row.role}
+          size="small"
+          sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            borderRadius: 999,
+            bgcolor:
+              row.role === 'ADMIN'
+                ? 'rgba(37,99,235,0.08)'
+                : row.role === 'MODERATOR'
+                  ? 'rgba(16,185,129,0.08)'
+                  : 'rgba(148,163,184,0.08)',
+            color:
+              row.role === 'ADMIN'
+                ? '#1d4ed8'
+                : row.role === 'MODERATOR'
+                  ? '#047857'
+                  : '#475569',
+          }}
+        />
       ),
     },
     {
@@ -329,30 +333,30 @@ export default function UserManagementPage() {
       label: 'Trạng thái',
       width: 120,
       render: (row) => (
-          <Chip
-              label={row.status}
-              size="small"
-              sx={{
-                fontSize: 11,
-                borderRadius: 999,
-                bgcolor:
-                    row.status === 'ACTIVE'
-                        ? 'rgba(22,163,74,0.08)'
-                        : row.status === 'BANNED'
-                            ? 'rgba(220,38,38,0.08)'
-                            : row.status === 'RESTRICTED'
-                                ? 'rgba(234,179,8,0.1)'
-                                : 'rgba(148,163,184,0.08)',
-                color:
-                    row.status === 'ACTIVE'
-                        ? '#16a34a'
-                        : row.status === 'BANNED'
-                            ? '#b91c1c'
-                            : row.status === 'RESTRICTED'
-                                ? '#ca8a04'
-                                : '#6b7280',
-              }}
-          />
+        <Chip
+          label={row.status}
+          size="small"
+          sx={{
+            fontSize: 11,
+            borderRadius: 999,
+            bgcolor:
+              row.status === 'ACTIVE'
+                ? 'rgba(22,163,74,0.08)'
+                : row.status === 'BANNED'
+                  ? 'rgba(220,38,38,0.08)'
+                  : row.status === 'RESTRICTED'
+                    ? 'rgba(234,179,8,0.1)'
+                    : 'rgba(148,163,184,0.08)',
+            color:
+              row.status === 'ACTIVE'
+                ? '#16a34a'
+                : row.status === 'BANNED'
+                  ? '#b91c1c'
+                  : row.status === 'RESTRICTED'
+                    ? '#ca8a04'
+                    : '#6b7280',
+          }}
+        />
       ),
     },
     {
@@ -377,158 +381,169 @@ export default function UserManagementPage() {
       width: 180,
       render: (row) => formatDate(row.createdAt ?? row.created_at),
     },
+    {
+      id: 'actions',
+      label: 'Thao tác',
+      width: 120,
+      align: 'center',
+      render: (row) => (
+        <IconButton size="small" onClick={() => navigate(`/admin/users/${row.id}`)}>
+          <VisibilityIcon sx={{ color: '#A78BFA' }} />
+        </IconButton>
+      ),
+    },
   ];
 
   return (
-      <Box>
-        <Stack spacing={2} sx={{ mb: 2.5 }}>
-          <Box>
-            <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
-              Quản lý người dùng
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-              Theo dõi role, trạng thái và uy tín tài khoản trong hệ thống.
-            </Typography>
-          </Box>
+    <Box>
+      <Stack spacing={2} sx={{ mb: 2.5 }}>
+        <Box>
+          <Typography variant="h5" fontWeight={700} sx={{ color: '#fff' }}>
+            Quản lý người dùng
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+            Theo dõi role, trạng thái và uy tín tài khoản trong hệ thống.
+          </Typography>
+        </Box>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1.5}
+          alignItems={{ xs: 'stretch', md: 'center' }}
+          justifyContent="space-between"
+          flexWrap="wrap"
+          useFlexGap
+        >
           <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            spacing={1.5}
-            alignItems={{ xs: 'stretch', md: 'center' }}
-            justifyContent="space-between"
+            direction="row"
             flexWrap="wrap"
+            spacing={1.5}
             useFlexGap
+            alignItems="center"
+            sx={{ flex: 1, minWidth: 0 }}
           >
-            <Stack
-              direction="row"
-              flexWrap="wrap"
-              spacing={1.5}
-              useFlexGap
-              alignItems="center"
-              sx={{ flex: 1, minWidth: 0 }}
-            >
-              <TextField
-                size="small"
-                placeholder="Tìm theo email hoặc họ tên"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                sx={searchFieldSx}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 20 }} />
-                    </InputAdornment>
-                  ),
+            <TextField
+              size="small"
+              placeholder="Tìm theo email hoặc họ tên"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              sx={searchFieldSx}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <FormControl size="small" sx={selectFieldSx}>
+              <InputLabel id="admin-users-status-filter">Trạng thái</InputLabel>
+              <Select
+                labelId="admin-users-status-filter"
+                label="Trạng thái"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                MenuProps={adminSelectMenuProps}
+              >
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.ALL}>Tất cả</MenuItem>
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.ACTIVE}>Hoạt động</MenuItem>
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.BANNED}>Bị khóa</MenuItem>
+                <MenuItem value={ADMIN_USER_STATUS_FILTER.RESTRICTED}>Hạn chế</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={selectFieldSx}>
+              <InputLabel id="admin-users-sort-by">Sắp xếp theo</InputLabel>
+              <Select
+                labelId="admin-users-sort-by"
+                label="Sắp xếp theo"
+                value={sortBy}
+                onChange={(e) => {
+                  setPage(0);
+                  setSortBy(e.target.value);
                 }}
-              />
-              <FormControl size="small" sx={selectFieldSx}>
-                <InputLabel id="admin-users-status-filter">Trạng thái</InputLabel>
+                MenuProps={adminSelectMenuProps}
+              >
+                <MenuItem value={ADMIN_USER_SORT_BY.NONE}>Không chọn</MenuItem>
+                <MenuItem value={ADMIN_USER_SORT_BY.CREATED_AT}>Ngày tạo</MenuItem>
+                <MenuItem value={ADMIN_USER_SORT_BY.REPUTATION}>Uy tín</MenuItem>
+                <MenuItem value={ADMIN_USER_SORT_BY.VIOLATION}>Vi phạm</MenuItem>
+              </Select>
+            </FormControl>
+            {sortBy !== ADMIN_USER_SORT_BY.NONE && (
+              <FormControl size="small" sx={{ ...selectFieldSx, minWidth: 220 }}>
+                <InputLabel id="admin-users-sort-dir">Thứ tự</InputLabel>
                 <Select
-                  labelId="admin-users-status-filter"
-                  label="Trạng thái"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  MenuProps={adminSelectMenuProps}
-                >
-                  <MenuItem value={ADMIN_USER_STATUS_FILTER.ALL}>Tất cả</MenuItem>
-                  <MenuItem value={ADMIN_USER_STATUS_FILTER.ACTIVE}>Hoạt động</MenuItem>
-                  <MenuItem value={ADMIN_USER_STATUS_FILTER.BANNED}>Bị khóa</MenuItem>
-                  <MenuItem value={ADMIN_USER_STATUS_FILTER.RESTRICTED}>Hạn chế</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={selectFieldSx}>
-                <InputLabel id="admin-users-sort-by">Sắp xếp theo</InputLabel>
-                <Select
-                  labelId="admin-users-sort-by"
-                  label="Sắp xếp theo"
-                  value={sortBy}
+                  labelId="admin-users-sort-dir"
+                  label="Thứ tự"
+                  value={sortDir}
                   onChange={(e) => {
                     setPage(0);
-                    setSortBy(e.target.value);
+                    setSortDir(e.target.value);
                   }}
                   MenuProps={adminSelectMenuProps}
                 >
-                  <MenuItem value={ADMIN_USER_SORT_BY.NONE}>Không chọn</MenuItem>
-                  <MenuItem value={ADMIN_USER_SORT_BY.CREATED_AT}>Ngày tạo</MenuItem>
-                  <MenuItem value={ADMIN_USER_SORT_BY.REPUTATION}>Uy tín</MenuItem>
-                  <MenuItem value={ADMIN_USER_SORT_BY.VIOLATION}>Vi phạm</MenuItem>
+                  <MenuItem value="asc">Từ thấp đến cao</MenuItem>
+                  <MenuItem value="desc">Từ cao đến thấp</MenuItem>
                 </Select>
               </FormControl>
-              {sortBy !== ADMIN_USER_SORT_BY.NONE && (
-                <FormControl size="small" sx={{ ...selectFieldSx, minWidth: 220 }}>
-                  <InputLabel id="admin-users-sort-dir">Thứ tự</InputLabel>
-                  <Select
-                    labelId="admin-users-sort-dir"
-                    label="Thứ tự"
-                    value={sortDir}
-                    onChange={(e) => {
-                      setPage(0);
-                      setSortDir(e.target.value);
-                    }}
-                    MenuProps={adminSelectMenuProps}
-                  >
-                    <MenuItem value="asc">Từ thấp đến cao</MenuItem>
-                    <MenuItem value="desc">Từ cao đến thấp</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            </Stack>
-            <Button
-              variant="contained"
-              onClick={loadUsers}
-              disabled={isLoading}
-              sx={{
-                borderRadius: 999,
-                textTransform: 'none',
-                px: 3,
-                alignSelf: { xs: 'stretch', md: 'center' },
-                flexShrink: 0,
-              }}
-            >
-              Tải lại dữ liệu
-            </Button>
+            )}
           </Stack>
-        </Stack>
-
-        {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
-
-        <ReusableTable
-            columns={columns}
-            rows={displayedUsers}
-            getRowId={(row) => String(row?.id ?? '')}
-            isLoading={isLoading}
-            emptyMessage="Không có dữ liệu user."
-            paperSx={userManagementPaperSx}
-            tableSx={userManagementTableSx}
-        />
-
-        <Box
-          sx={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 2,
-            mt: 2,
-            py: 1,
-          }}
-        >
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
-            {totalCount === 0
-              ? '0 kết quả'
-              : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} / ${totalCount}`}
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page + 1}
-            onChange={(_, value) => setPage(value - 1)}
-            disabled={isLoading || totalCount === 0}
-            color="primary"
-            size="small"
+          <Button
+            variant="contained"
+            onClick={loadUsers}
+            disabled={isLoading}
             sx={{
-              '& .MuiPaginationItem-root': { color: 'rgba(255,255,255,0.88)' },
+              borderRadius: 999,
+              textTransform: 'none',
+              px: 3,
+              alignSelf: { xs: 'stretch', md: 'center' },
+              flexShrink: 0,
             }}
-          />
-        </Box>
+          >
+            Tải lại dữ liệu
+          </Button>
+        </Stack>
+      </Stack>
+
+      {errorMessage && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage}</Alert>}
+
+      <ReusableTable
+        columns={columns}
+        rows={displayedUsers}
+        getRowId={(row) => String(row?.id ?? '')}
+        isLoading={isLoading}
+        emptyMessage="Không có dữ liệu user."
+        paperSx={userManagementPaperSx}
+        tableSx={userManagementTableSx}
+      />
+
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+          mt: 2,
+          py: 1,
+        }}
+      >
+        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.72)' }}>
+          {totalCount === 0
+            ? '0 kết quả'
+            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)} / ${totalCount}`}
+        </Typography>
+        <Pagination
+          count={totalPages}
+          page={page + 1}
+          onChange={(_, value) => setPage(value - 1)}
+          disabled={isLoading || totalCount === 0}
+          color="primary"
+          size="small"
+          sx={{
+            '& .MuiPaginationItem-root': { color: 'rgba(255,255,255,0.88)' },
+          }}
+        />
       </Box>
+    </Box>
   );
 }

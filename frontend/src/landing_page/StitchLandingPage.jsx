@@ -219,7 +219,7 @@ export default function StitchLandingPage() {
                   <span className="text-violet-300">Đủ đồ dùng</span>, <span className="text-slate-100">Ngay tại Hòa Lạc</span>
                 </h1>
                 <p className="text-lg text-slate-300 max-w-xl mx-auto lg:mx-0">
-                  Nền tảng mua bán ký gửi dành riêng cho sinh viên FPT University. An toàn, tiết kiệm và cực kỳ tiện lợi ngay trong Campus.
+                  Sản phẩm mà bạn không cần đến vẫn có thể trở thành vật quý giá với người khác. Đừng do dự mà hãy gửi thông tin về sản phẩm của bạn ngay bây giờ!
                 </p>
                 <div className="flex flex-wrap justify-center lg:justify-start gap-4">
                   <button
@@ -260,7 +260,7 @@ export default function StitchLandingPage() {
                     <span className="material-symbols-outlined text-3xl">verified_user</span>
                   </div>
                   <h3 className="text-xl font-bold mb-3">An toàn tuyệt đối</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Xác thực 100% qua Email @fpt.edu.vn. Không lo lừa đảo, không tài khoản ảo.</p>
+                  <p className="text-slate-600 dark:text-slate-400">Xác thực 100% qua Email của trường học. Giảm thiểu nỗi lo tài khoản ảo.</p>
                 </div>
                 <div className="p-8 rounded-3xl bg-background-light dark:bg-slate-800 border border-primary/5 text-center group hover:border-primary/30 transition-all">
                   <div className="size-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
@@ -273,8 +273,8 @@ export default function StitchLandingPage() {
                   <div className="size-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                     <span className="material-symbols-outlined text-3xl">location_on</span>
                   </div>
-                  <h3 className="text-xl font-bold mb-3">Giao dịch Campus</h3>
-                  <p className="text-slate-600 dark:text-slate-400">Gặp mặt trực tiếp tại Dom, Thư viện hay 7-Eleven. Không phí ship, check đồ tận tay.</p>
+                  <h3 className="text-xl font-bold mb-3">Kết nối thông tin nhanh chóng</h3>
+                  <p className="text-slate-600 dark:text-slate-400">Cam kết thông tin nhanh chóng và mới nhất giữa các giao dịch với nhau.</p>
                 </div>
               </div>
             </div>

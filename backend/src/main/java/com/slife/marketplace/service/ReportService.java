@@ -398,6 +398,8 @@ public class ReportService {
 
         Report savedReport = reportRepository.save(report);
         if (approved) {
+            notificationService.notifyReportApprovedReporter(savedReport.getReporter(), savedReport.getId());
+            systemEmailService.sendReportApprovedReporterEmail(savedReport.getReporter(), savedReport.getId());
             applyApproveSideEffects(savedReport, action);
         }
         auditLogService.logReportProcessed(admin, savedReport, approved);

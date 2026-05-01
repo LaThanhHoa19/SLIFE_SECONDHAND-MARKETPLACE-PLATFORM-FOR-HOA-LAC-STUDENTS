@@ -593,7 +593,7 @@ export default function ReportDetailPage() {
                     label={`Trạng thái: ${statusLabel(report.status)}`}
                     sx={{ bgcolor: statusSx.bgcolor, color: '#e2e8f0', border: statusSx.border, fontWeight: 700 }}
                 />
-                {(tt === 'LISTING' || tt === 'POST') && (
+                {((tt === 'LISTING' || tt === 'POST') || tt === 'USER' || tt === 'COMMUNITY_POST') && (
                     <Chip
                         size="small"
                         label={`Cờ vi phạm: ${report?.targetViolationCount ?? 0}/${report?.violationThreshold ?? 3}`}
@@ -889,7 +889,8 @@ export default function ReportDetailPage() {
                                             }}
                                         />
                                     ) : null}
-                                    {(tt === 'USER' && (report?.violationThreshold != null || report?.targetViolationCount != null)) ? (
+                                    {((tt === 'USER' || tt === 'COMMUNITY_POST' || tt === 'LISTING' || tt === 'POST')
+                                        && (report?.violationThreshold != null || report?.targetViolationCount != null)) ? (
                                         <Chip
                                             size="small"
                                             label={`Vi phạm: ${report?.targetViolationCount ?? reportedUserInfo?.violationCount ?? 0} / ${report?.violationThreshold ?? 3}`}

@@ -1536,8 +1536,23 @@ export default function ListingForm({
                                         endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 14, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
                                     }}
                                     sx={{
+                                        "& .MuiInputBase-root": {
+                                            backgroundColor: "#312F37"
+                                        },
                                         "& .MuiInputBase-input": {
                                             fontSize: "14px"
+                                        },
+                                        "& .MuiInputBase-input:-webkit-autofill": {
+                                            WebkitBoxShadow: "0 0 0 100px #312F37 inset",
+                                            WebkitTextFillColor: "#fff",
+                                            caretColor: "#fff",
+                                            borderRadius: "inherit",
+                                            transition: "background-color 9999s ease-out 0s"
+                                        },
+                                        "& .MuiInputBase-input:-webkit-autofill:hover, & .MuiInputBase-input:-webkit-autofill:focus, & .MuiInputBase-input:-webkit-autofill:active": {
+                                            WebkitBoxShadow: "0 0 0 100px #312F37 inset",
+                                            WebkitTextFillColor: "#fff",
+                                            caretColor: "#fff"
                                         },
                                         "& .MuiInputBase-input.Mui-disabled": {
                                             WebkitTextFillColor: "#fff"
