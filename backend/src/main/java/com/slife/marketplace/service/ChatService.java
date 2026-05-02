@@ -47,7 +47,7 @@ public class ChatService {
     private final NotificationService notificationService;
     private final SystemEmailService systemEmailService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
     private final StringRedisTemplate redisTemplate;
     private final RedisWebSocketRelayService wsRelay;
 
@@ -62,6 +62,7 @@ public class ChatService {
                        NotificationService notificationService,
                        SystemEmailService systemEmailService,
                        SimpMessagingTemplate messagingTemplate,
+                       UserFileStorageService userFileStorage,
                        UserFileStorageService fileStorage,
                        StringRedisTemplate redisTemplate,
                        RedisWebSocketRelayService wsRelay) {
@@ -74,7 +75,7 @@ public class ChatService {
         this.notificationService = notificationService;
         this.systemEmailService = systemEmailService;
         this.messagingTemplate = messagingTemplate;
-        this.fileStorage = fileStorage;
+        this.userFileStorage = fileStorage != null ? fileStorage : userFileStorage;
         this.redisTemplate = redisTemplate;
         this.wsRelay = wsRelay;
     }
@@ -496,7 +497,7 @@ public class ChatService {
         };
         String fileName = UUID.randomUUID() + ext;
         String relative = Constants.CHAT_UPLOAD_DIR + "/" + resolvedSessionId + "/" + fileName;
-        return fileStorage.storeMultipart(file, relative);
+        return userFileStorage.storeMultipart(file, relative);
     }
 
     // ── Offer negotiation (UC-30) ─────────────────────────────────────────────

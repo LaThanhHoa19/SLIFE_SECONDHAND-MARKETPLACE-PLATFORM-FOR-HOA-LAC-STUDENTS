@@ -29,16 +29,16 @@ public class ListingImageService {
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
     private final ConfigService configService;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
 
     public ListingImageService(ListingRepository listingRepository,
                                ListingImageRepository listingImageRepository,
                                ConfigService configService,
-                               UserFileStorageService fileStorage) {
+                               UserFileStorageService userFileStorage) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.configService = configService;
-        this.fileStorage = fileStorage;
+        this.userFileStorage = userFileStorage;
     }
 
     @Transactional
@@ -69,7 +69,7 @@ public class ListingImageService {
             }
             String ext = getImageExtension(file.getOriginalFilename());
             String filename = listingId + "_" + System.currentTimeMillis() + "_" + displayOrder + ext;
-            String url = fileStorage.storeMultipart(file, "listings/" + filename);
+            String url = userFileStorage.storeMultipart(file, "listings/" + filename);
 
             ListingImage image = new ListingImage();
             image.setListing(listing);
@@ -107,7 +107,7 @@ public class ListingImageService {
         if (!img.getListing().getId().equals(listingId)) {
             throw new SlifeException(ErrorCode.FORBIDDEN);
         }
-        fileStorage.deleteStoredIfExists(img.getImageUrl());
+        userFileStorage.deleteStoredIfExists(img.getImageUrl());
         listingImageRepository.delete(img);
     }
 }
