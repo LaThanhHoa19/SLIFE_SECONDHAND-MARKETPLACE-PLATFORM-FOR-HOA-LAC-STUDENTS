@@ -211,7 +211,7 @@ export default function MyListingsPage() {
             action: 'unhide',
             listingId: id,
             title: 'Xác nhận hiển thị lại tin đăng',
-            content: 'Tin đăng sẽ hiển thị trở lại trong feed công khai nếu vẫn hợp lệ.',
+            content: 'Tin đăng sẽ hiển thị trở lại trong feed công khai.',
             confirmLabel: 'Hiển thị lại',
             variant: 'info',
         });
@@ -236,9 +236,14 @@ export default function MyListingsPage() {
             return;
         }
 
-        // Chuyển sang màn đăng lại để user có thể chỉnh sửa nếu muốn,
-        // hoặc bấm "ĐĂNG TIN" ngay mà không cần chỉnh sửa.
-        navigate(`/listings/${sourceId}/repost`);
+        openActionConfirm({
+            action: 'repost',
+            listingId: sourceId,
+            title: 'Xác nhận đăng lại tin đăng',
+            content: 'Tin đã hết hạn sẽ được tạo thành một tin ACTIVE mới. Tin gốc sẽ được lưu lại để giữ lịch sử và không bị thay đổi nội dung.',
+            confirmLabel: 'Đăng lại tin',
+            variant: 'info',
+        });
     };
 
     const handleConfirmListingAction = useCallback(async () => {
