@@ -39,7 +39,10 @@ function isAllowedImage(file, maxBytes, profile) {
     const t = (file.type || '').toLowerCase().trim();
     const mimeSet = profile === 'community' ? COMMUNITY_IMAGE_MIME : LISTING_IMAGE_MIME;
     const extRe = profile === 'community' ? /\.(jpe?g|png)$/i : /\.(jpe?g|png|gif|webp)$/i;
-    if (t && mimeSet.has(t)) return true;
+
+    // Nếu trình duyệt cung cấp MIME thì bắt buộc MIME phải hợp lệ.
+    // Chỉ fallback theo đuôi khi MIME trống (một số browser/OS không set type cho file drag-drop).
+    if (t) return mimeSet.has(t);
     return extRe.test(file.name || '');
 }
 
