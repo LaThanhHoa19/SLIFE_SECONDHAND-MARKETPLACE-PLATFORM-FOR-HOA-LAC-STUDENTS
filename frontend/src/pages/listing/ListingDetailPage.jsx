@@ -560,6 +560,7 @@ export default function ListingDetailPage() {
         listing?.seller?.showPhoneNumber ??
         listing?.sellerSummary?.showPhoneNumber ??
         listing?.sellerSummary?.show_phone_number ??
+        listing?.sellerPhone != null ??
         true;
     const rawPhone = sellerAllowsPhone
         ? (listing?.sellerPhone
@@ -710,6 +711,7 @@ export default function ListingDetailPage() {
                             phoneNumber={phoneNumber}
                             handleShowPhone={handleShowPhone}
                             handleChat={handleChat}
+                            isPhoneRevealed={showPhone}
                             seller={seller}
                             sellerId={sellerId}
                             isOwnListing={isOwnListing}
