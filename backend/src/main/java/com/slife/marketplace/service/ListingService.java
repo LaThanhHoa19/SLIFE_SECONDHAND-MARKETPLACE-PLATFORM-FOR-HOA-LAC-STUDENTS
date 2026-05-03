@@ -18,6 +18,7 @@ import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
+import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.util.AddressFormat;
 import com.slife.marketplace.util.Constants;
 import lombok.extern.slf4j.Slf4j;
@@ -82,6 +83,7 @@ public class ListingService {
     private final ListingExpiryBatchService listingExpiryBatchService;
     private final SystemEmailService systemEmailService;
     private final ContentModerationService contentModerationService;
+    private final UserRepository userRepository;
 
     public ListingService(ListingRepository listingRepository,
                           ListingImageRepository listingImageRepository,
@@ -96,7 +98,8 @@ public class ListingService {
                           NotificationService notificationService,
                           ListingExpiryBatchService listingExpiryBatchService,
                           SystemEmailService systemEmailService,
-                          ContentModerationService contentModerationService) {
+                          ContentModerationService contentModerationService,
+                          UserRepository userRepository) {
         this.listingRepository = listingRepository;
         this.listingImageRepository = listingImageRepository;
         this.savedListingRepository = savedListingRepository;
@@ -111,6 +114,7 @@ public class ListingService {
         this.listingExpiryBatchService = listingExpiryBatchService;
         this.systemEmailService = systemEmailService;
         this.contentModerationService = contentModerationService;
+        this.userRepository = userRepository;
     }
 
     // ----------------------------------------------------------------
@@ -665,17 +669,18 @@ public class ListingService {
 
         if (listing.getSeller() != null) {
             Map<String, Object> sel = new HashMap<>();
-            sel.put("id", listing.getSeller().getId());
-            sel.put("fullName", listing.getSeller().getFullName());
-            sel.put("avatarUrl", listing.getSeller().getAvatarUrl());
-            boolean showPhone = Boolean.TRUE.equals(listing.getSeller().getShowPhoneNumber());
-            String sellerPhone = showPhone ? listing.getSeller().getPhoneNumber() : null;
+            User sellerFresh = userRepository.findById(listing.getSeller().getId()).orElse(listing.getSeller());
+            sel.put("id", sellerFresh.getId());
+            sel.put("fullName", sellerFresh.getFullName());
+            sel.put("avatarUrl", sellerFresh.getAvatarUrl());
+            boolean showPhone = Boolean.TRUE.equals(sellerFresh.getShowPhoneNumber());
+            String sellerPhone = showPhone ? sellerFresh.getPhoneNumber() : null;
             sel.put("phoneNumber", sellerPhone);
-            sel.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
+            sel.put("phoneVerified", sellerFresh.getPhoneVerifiedAt() != null);
             sel.put("showPhoneNumber", showPhone);
             response.setSeller(sel);
             response.setSellerPhone(sellerPhone);
-            response.setPhoneVerified(listing.getSeller().getPhoneVerifiedAt() != null);
+            response.setPhoneVerified(sellerFresh.getPhoneVerifiedAt() != null);
         }
 
         response.setIsSaved(isSaved);
@@ -877,14 +882,15 @@ public class ListingService {
         if (listing.getSeller() == null)
             return null;
 
+        User sellerFresh = userRepository.findById(listing.getSeller().getId()).orElse(listing.getSeller());
         Map<String, Object> seller = new HashMap<>();
-        seller.put("userId", listing.getSeller().getId());
-        seller.put("code", com.slife.marketplace.util.IdHasher.encode(listing.getSeller().getId()));
-        seller.put("fullName", listing.getSeller().getFullName());
-        seller.put("avatarUrl", listing.getSeller().getAvatarUrl());
-        seller.put("phoneNumber", listing.getSeller().getPhoneNumber());
-        seller.put("showPhoneNumber", listing.getSeller().getShowPhoneNumber());
-        seller.put("phoneVerified", listing.getSeller().getPhoneVerifiedAt() != null);
+        seller.put("userId", sellerFresh.getId());
+        seller.put("code", com.slife.marketplace.util.IdHasher.encode(sellerFresh.getId()));
+        seller.put("fullName", sellerFresh.getFullName());
+        seller.put("avatarUrl", sellerFresh.getAvatarUrl());
+        seller.put("phoneNumber", sellerFresh.getPhoneNumber());
+        seller.put("showPhoneNumber", sellerFresh.getShowPhoneNumber());
+        seller.put("phoneVerified", sellerFresh.getPhoneVerifiedAt() != null);
 
         return seller;
     }
