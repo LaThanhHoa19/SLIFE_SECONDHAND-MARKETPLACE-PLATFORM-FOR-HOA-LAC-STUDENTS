@@ -243,7 +243,7 @@ export default function MyListingCard({
                                 </IconButton>
                             </Tooltip>
                             {isRenewable(listing?.expirationDate) ? (
-                                <Tooltip title="Gia hạn 15 ngày">
+                                <Tooltip title="Gia hạn">
                                     <IconButton
                                         type="button"
                                         size="small"
