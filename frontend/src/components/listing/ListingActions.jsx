@@ -80,7 +80,7 @@ export default function ListingActions({
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: 1.5,
+                                        gap: 1.2,
                                         textTransform: 'none',
                                         transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                                         '&:hover': {
@@ -94,9 +94,14 @@ export default function ListingActions({
                                     }}
                                 >
                                     <PhoneAndroidIcon sx={{ fontSize: 22, color: GREEN }} />
-                                    <Typography fontSize={14} fontWeight={700} color={GREEN}>
-                                        {phoneNumber}
-                                    </Typography>
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+                                        <Typography fontSize={13} fontWeight={700} color={TEXT_PRI}>
+                                            Xem số điện thoại
+                                        </Typography>
+                                        <Typography fontSize={12} fontWeight={600} color={GREEN}>
+                                            {phoneNumber}
+                                        </Typography>
+                                    </Box>
                                 </Button>
                             </span>
                         </Tooltip>
@@ -113,15 +118,20 @@ export default function ListingActions({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: 1.5,
+                                gap: 1.2,
                                 cursor: 'default',
                                 userSelect: 'text',
                             }}
                         >
                             <PhoneAndroidIcon sx={{ fontSize: 22, color: GREEN }} />
-                            <Typography fontSize={14} fontWeight={700} color={GREEN}>
-                                {phoneNumber}
-                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.1 }}>
+                                <Typography fontSize={13} fontWeight={700} color={TEXT_PRI}>
+                                    Số điện thoại
+                                </Typography>
+                                <Typography fontSize={12} fontWeight={600} color={GREEN}>
+                                    {phoneNumber}
+                                </Typography>
+                            </Box>
                         </Box>
                     )
                 )}
