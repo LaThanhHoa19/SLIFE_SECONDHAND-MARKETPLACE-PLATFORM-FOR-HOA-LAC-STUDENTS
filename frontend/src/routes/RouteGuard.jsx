@@ -8,6 +8,7 @@
  */
 import { useAuth } from '../hooks/useAuth';
 import { useAdminAuth } from '../hooks/useAdminAuth';
+import { getAdminUserSnapshot } from '../adminSessionStore';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Paper } from '@mui/material';
 
@@ -63,7 +64,9 @@ export default function RouteGuard({
     const { user, token, isAuthLoading } = useAuth();
     const { adminToken, adminUser, isAdminAuthLoading } = useAdminAuth() || {};
     const location = useLocation();
-    const context = { user, token, adminToken, adminUser };
+    const adminSnapshot = getAdminUserSnapshot();
+    const effectiveAdminUser = adminUser || adminSnapshot;
+    const context = { user, token, adminToken, adminUser: effectiveAdminUser };
 
     const needsAdminGuard = guards.some((g) => g.name === 'admin');
     if (isAuthLoading) {
@@ -101,7 +104,7 @@ export default function RouteGuard({
         );
     }
 
-    if (needsAdminGuard && isAdminAuthLoading) {
+    if (needsAdminGuard && isAdminAuthLoading && !effectiveAdminUser) {
         if (!showLoading) return null;
 
         return (
