@@ -38,17 +38,10 @@ export default defineConfig({
         target: backendProxyTarget,
         changeOrigin: true,
       },
-      '/chat': {
+      '/ws': {
         target: backendProxyTarget,
         ws: true,
         changeOrigin: true,
-        bypass(req) {
-          const path = req.url?.split('?')[0] ?? ''
-          const accept = req.headers.accept ?? ''
-          if (path === '/chat' && accept.includes('text/html')) {
-            return '/index.html'
-          }
-        },
       },
     }
   }
