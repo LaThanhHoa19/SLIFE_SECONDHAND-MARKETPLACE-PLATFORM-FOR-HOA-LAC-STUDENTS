@@ -294,20 +294,26 @@ export default function LocationPicker({ onConfirm, value, defaultToHoaLac = tru
                             Khu vực được chọn
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
-                            <RadioButtonCheckedIcon sx={{ fontSize: 16, color: '#9D6EED' }} />
-                            <Typography fontSize={14} fontWeight={700} color="#B794F6">
+                            <Box sx={{ width: 18, minWidth: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: '#9D6EED' }} />
+                            </Box>
+                            <Typography fontSize={14} fontWeight={700} color="#B794F6" sx={{ lineHeight: 1.2 }}>
                                 {province.name}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3, pl: 0.5 }}>
-                            <RadioButtonUncheckedIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }} />
-                            <Typography fontSize={13} color="rgba(255,255,255,0.75)">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
+                            <Box sx={{ width: 18, minWidth: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: '#9D6EED' }} />
+                            </Box>
+                            <Typography fontSize={13} color="rgba(255,255,255,0.75)" sx={{ lineHeight: 1.2 }}>
                                 {district.name}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 0.5 }}>
-                            <RadioButtonUncheckedIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }} />
-                            <Typography fontSize={13} color="rgba(255,255,255,0.75)">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 18, minWidth: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: '#9D6EED' }} />
+                            </Box>
+                            <Typography fontSize={13} color="rgba(255,255,255,0.75)" sx={{ lineHeight: 1.2 }}>
                                 {ward.name}
                             </Typography>
                         </Box>

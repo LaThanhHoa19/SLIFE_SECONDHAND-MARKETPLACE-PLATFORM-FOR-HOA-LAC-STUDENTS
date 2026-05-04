@@ -25,6 +25,32 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
                    OR (:scope = 'MARKET' AND UPPER(COALESCE(n.refType, '')) <> 'COMMUNITY_POST')
               )
               AND (
+                   :readFilter = 'ALL'
+                   OR (:readFilter = 'READ' AND n.isRead = true)
+                   OR (:readFilter = 'UNREAD' AND n.isRead = false)
+              )
+              AND (
+                   :typeFilter = 'ALL'
+                   OR (:typeFilter = 'SYSTEM' AND UPPER(COALESCE(n.type, '')) = 'SYSTEM')
+                   OR (:typeFilter = 'DEAL' AND UPPER(COALESCE(n.type, '')) = 'DEAL')
+                   OR (:typeFilter = 'SOCIAL' AND (
+                        UPPER(COALESCE(n.refType, '')) = 'SELLER_PROFILE'
+                        OR UPPER(COALESCE(n.type, '')) IN ('FOLLOW', 'LIKE', 'COMMENT')
+                   ))
+                   OR (:typeFilter = 'LISTING' AND (
+                        UPPER(COALESCE(n.refType, '')) = 'LISTING'
+                        OR UPPER(COALESCE(n.type, '')) = 'REPORT'
+                   ))
+                   OR (:typeFilter = 'OTHER' AND NOT (
+                        UPPER(COALESCE(n.type, '')) = 'SYSTEM'
+                        OR UPPER(COALESCE(n.type, '')) = 'DEAL'
+                        OR UPPER(COALESCE(n.refType, '')) = 'SELLER_PROFILE'
+                        OR UPPER(COALESCE(n.type, '')) IN ('FOLLOW', 'LIKE', 'COMMENT')
+                        OR UPPER(COALESCE(n.refType, '')) = 'LISTING'
+                        OR UPPER(COALESCE(n.type, '')) = 'REPORT'
+                   ))
+              )
+              AND (
                    :cursorCreatedAt IS NULL
                    OR n.createdAt < :cursorCreatedAt
                    OR (n.createdAt = :cursorCreatedAt AND n.id < :cursorId)
@@ -34,6 +60,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findPageByUser(
             @Param("userId") Long userId,
             @Param("scope") String scope,
+            @Param("readFilter") String readFilter,
+            @Param("typeFilter") String typeFilter,
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable
@@ -50,6 +78,32 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
               )
               AND (:q IS NULL OR :q = '' OR n.content LIKE CONCAT('%', :q, '%'))
               AND (
+                   :readFilter = 'ALL'
+                   OR (:readFilter = 'READ' AND n.isRead = true)
+                   OR (:readFilter = 'UNREAD' AND n.isRead = false)
+              )
+              AND (
+                   :typeFilter = 'ALL'
+                   OR (:typeFilter = 'SYSTEM' AND UPPER(COALESCE(n.type, '')) = 'SYSTEM')
+                   OR (:typeFilter = 'DEAL' AND UPPER(COALESCE(n.type, '')) = 'DEAL')
+                   OR (:typeFilter = 'SOCIAL' AND (
+                        UPPER(COALESCE(n.refType, '')) = 'SELLER_PROFILE'
+                        OR UPPER(COALESCE(n.type, '')) IN ('FOLLOW', 'LIKE', 'COMMENT')
+                   ))
+                   OR (:typeFilter = 'LISTING' AND (
+                        UPPER(COALESCE(n.refType, '')) = 'LISTING'
+                        OR UPPER(COALESCE(n.type, '')) = 'REPORT'
+                   ))
+                   OR (:typeFilter = 'OTHER' AND NOT (
+                        UPPER(COALESCE(n.type, '')) = 'SYSTEM'
+                        OR UPPER(COALESCE(n.type, '')) = 'DEAL'
+                        OR UPPER(COALESCE(n.refType, '')) = 'SELLER_PROFILE'
+                        OR UPPER(COALESCE(n.type, '')) IN ('FOLLOW', 'LIKE', 'COMMENT')
+                        OR UPPER(COALESCE(n.refType, '')) = 'LISTING'
+                        OR UPPER(COALESCE(n.type, '')) = 'REPORT'
+                   ))
+              )
+              AND (
                    :cursorCreatedAt IS NULL
                    OR n.createdAt < :cursorCreatedAt
                    OR (n.createdAt = :cursorCreatedAt AND n.id < :cursorId)
@@ -60,6 +114,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             @Param("userId") Long userId,
             @Param("scope") String scope,
             @Param("q") String q,
+            @Param("readFilter") String readFilter,
+            @Param("typeFilter") String typeFilter,
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             org.springframework.data.domain.Pageable pageable

@@ -10,6 +10,7 @@ import {
     DeleteOutline as DeleteIcon,
     EditOutlined as EditIcon,
     ImageNotSupported as NoImageIcon,
+    InfoOutlined as InfoIcon,
     Replay as RepostIcon,
     Visibility as UnhideIcon,
     VisibilityOff as HideIcon,
@@ -23,7 +24,6 @@ import {
     STITCH_ACTION_BAR_BG,
     STITCH_CARD,
     STITCH_CARD_BORDER,
-    STITCH_PRICE_CYAN,
     STITCH_PURPLE,
 } from './myListingsConfig';
 import { formatRelativeTimeVi } from './myListingsUtils';
@@ -40,21 +40,25 @@ const iconBtnSx = {
 };
 
 export default function MyListingCard({
-    listing,
-    activeTab,
-    onHide,
-    onUnhide,
-    onRenew,
-    onRepost,
-    onDeleteDraft,
-}) {
+                                          listing,
+                                          activeTab,
+                                          onHide,
+                                          onUnhide,
+                                          onRenew,
+                                          onRepost,
+                                          onDeleteDraft,
+                                      }) {
     const navigate = useNavigate();
     const id = listing?.id ?? listing?.listingId;
     const images = Array.isArray(listing?.images) ? listing.images : [];
     const thumb = images[0];
+    const status = listing?.status ? String(listing.status).toUpperCase() : '';
     const badge =
-        STATUS_BADGE_LABELS[listing?.status] ||
-        (listing?.status ? String(listing.status).toUpperCase() : 'TIN');
+        STATUS_BADGE_LABELS[status] ||
+        (status || 'TIN');
+    const isModHidden = status === 'MOD_HIDDEN';
+    const canUnhide = status === 'HIDDEN';
+    const canRepost = activeTab === 'EXPIRED' && !isModHidden;
 
     const goDetail = (e) => {
         e?.stopPropagation?.();
@@ -181,7 +185,7 @@ export default function MyListingCard({
                     );
                 })()}
 
-                {(listing?.expirationDate || listing?.reportCount > 0) && (
+                {(listing?.expirationDate || listing?.reportCount > 0 || isModHidden) && (
                     <Stack gap={0.35}>
                         {listing?.expirationDate && activeTab !== 'SOLD' && (
                             <Typography fontSize={10.5} color="rgba(255,255,255,0.32)">
@@ -191,6 +195,11 @@ export default function MyListingCard({
                         {listing?.reportCount > 0 && (
                             <Typography fontSize={10.5} fontWeight={600} color="#ff6b7a">
                                 {listing.reportCount} báo cáo
+                            </Typography>
+                        )}
+                        {isModHidden && (
+                            <Typography fontSize={10.5} fontWeight={600} color="#ffb4a2">
+                                Tin bị ẩn do vi phạm
                             </Typography>
                         )}
                     </Stack>
@@ -234,7 +243,7 @@ export default function MyListingCard({
                                 </IconButton>
                             </Tooltip>
                             {isRenewable(listing?.expirationDate) ? (
-                                <Tooltip title="Gia hạn 15 ngày">
+                                <Tooltip title="Gia hạn">
                                     <IconButton
                                         type="button"
                                         size="small"
@@ -285,29 +294,49 @@ export default function MyListingCard({
                     )}
 
                     {activeTab === 'EXPIRED' && (
-                        <Tooltip title="Đăng lại">
-                            <IconButton
-                                type="button"
-                                size="small"
-                                onClick={(e) => { e.stopPropagation(); onRepost(id); }}
-                                sx={iconBtnSx}
-                            >
-                                <RepostIcon sx={{ fontSize: 19 }} />
-                            </IconButton>
-                        </Tooltip>
+                        canRepost ? (
+                            <Tooltip title="Đăng lại tin đã hết hạn">
+                                <IconButton
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); onRepost(id); }}
+                                    sx={iconBtnSx}
+                                >
+                                    <RepostIcon sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Tooltip>
+                        ) : (
+                            <Tooltip title="Tin bị ẩn do vi phạm nên không thể đăng lại.">
+                                <Box component="span" sx={{ display: 'inline-block' }}>
+                                    <IconButton type="button" size="small" disabled sx={{ ...iconBtnSx, opacity: 0.35 }}>
+                                        <RepostIcon sx={{ fontSize: 19 }} />
+                                    </IconButton>
+                                </Box>
+                            </Tooltip>
+                        )
                     )}
 
                     {activeTab === 'HIDDEN' && (
-                        <Tooltip title="Hiển thị lại">
-                            <IconButton
-                                type="button"
-                                size="small"
-                                onClick={(e) => { e.stopPropagation(); onUnhide(id); }}
-                                sx={iconBtnSx}
-                            >
-                                <UnhideIcon sx={{ fontSize: 19 }} />
-                            </IconButton>
-                        </Tooltip>
+                        canUnhide ? (
+                            <Tooltip title="Hiển thị lại tin đã ẩn">
+                                <IconButton
+                                    type="button"
+                                    size="small"
+                                    onClick={(e) => { e.stopPropagation(); onUnhide(id); }}
+                                    sx={iconBtnSx}
+                                >
+                                    <UnhideIcon sx={{ fontSize: 19 }} />
+                                </IconButton>
+                            </Tooltip>
+                        ) : (
+                            <Tooltip title="Tin bị ẩn do vi phạm — không thể hiển thị lại bằng thao tác này.">
+                                <Box component="span" sx={{ display: 'inline-block' }}>
+                                    <IconButton type="button" size="small" disabled sx={{ ...iconBtnSx, opacity: 0.35 }}>
+                                        <InfoIcon sx={{ fontSize: 19 }} />
+                                    </IconButton>
+                                </Box>
+                            </Tooltip>
+                        )
                     )}
 
                     {activeTab === 'REPORTED' && (

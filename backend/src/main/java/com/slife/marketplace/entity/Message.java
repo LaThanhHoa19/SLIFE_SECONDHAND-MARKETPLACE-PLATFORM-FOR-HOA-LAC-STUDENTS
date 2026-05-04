@@ -1,5 +1,6 @@
 package com.slife.marketplace.entity;
 
+import com.slife.marketplace.util.StringEncryptConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -40,6 +41,7 @@ public class Message {
      * một số DB báo lỗi khi tham số là CLOB.
      */
     @JdbcTypeCode(SqlTypes.LONGVARCHAR)
+    @Convert(converter = StringEncryptConverter.class)
     @Column(name = "content", nullable = false)
     private String content;
 

@@ -24,11 +24,11 @@ public class UserService {
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
 
     private final UserRepository userRepository;
-    private final UserFileStorageService fileStorage;
+    private final UserFileStorageService userFileStorage;
 
-    public UserService(UserRepository userRepository, UserFileStorageService fileStorage) {
+    public UserService(UserRepository userRepository, UserFileStorageService userFileStorage) {
         this.userRepository = userRepository;
-        this.fileStorage = fileStorage;
+        this.userFileStorage = userFileStorage;
     }
 
     public User getCurrentUser() {
@@ -193,7 +193,7 @@ public class UserService {
         String subDir = "avatars";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
         try {
-            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
+            String url = userFileStorage.storeMultipart(file, subDir + "/" + filename);
             user.setAvatarUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);
@@ -218,7 +218,7 @@ public class UserService {
         String subDir = "covers";
         String filename = user.getId() + "_" + System.currentTimeMillis() + ext;
         try {
-            String url = fileStorage.storeMultipart(file, subDir + "/" + filename);
+            String url = userFileStorage.storeMultipart(file, subDir + "/" + filename);
             user.setCoverImageUrl(url);
             user.setUpdatedAt(LocalDateTime.now());
             return userRepository.save(user);

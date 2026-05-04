@@ -14,7 +14,7 @@ import ListingComments from './ListingComments';
 import { fullImageUrl } from '../../utils/constants';
 import { getPurposeInfo } from '../../utils/listingFormatUtils';
 
-export default function CommentModal({ open, onClose, listingId, listing }) {
+export default function CommentModal({ open, onClose, listingId, listing, onThreadDelta }) {
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
@@ -38,11 +38,11 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                 }
             }}
         >
-            <DialogTitle component="div" sx={{ 
-                m: 0, 
-                p: 2, 
-                display: 'flex', 
-                alignItems: 'center', 
+            <DialogTitle component="div" sx={{
+                m: 0,
+                p: 2,
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'space-between',
                 borderBottom: '1px solid rgba(255,255,255,0.05)'
             }}>
@@ -52,7 +52,7 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                 <IconButton
                     aria-label="close"
                     onClick={onClose}
-                    sx={{ 
+                    sx={{
                         color: 'rgba(255,255,255,0.5)',
                         '&:hover': { color: '#FFF', bgcolor: 'rgba(255,255,255,0.1)' }
                     }}
@@ -63,10 +63,10 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
 
             <DialogContent sx={{ p: 0, overflowY: 'auto', maxHeight: fullScreen ? 'none' : '75vh' }}>
                 {/* Visual Listing Header Preview */}
-                <Box sx={{ 
-                    p: 2, 
-                    display: 'flex', 
-                    gap: 2, 
+                <Box sx={{
+                    p: 2,
+                    display: 'flex',
+                    gap: 2,
                     alignItems: 'center',
                     bgcolor: 'rgba(157,110,237,0.05)',
                     borderBottom: '1px solid rgba(255,255,255,0.03)',
@@ -87,28 +87,28 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                             }}
                         />
                     ) : (
-                        <Box sx={{ 
-                            width: 56, height: 56, borderRadius: '10px', 
+                        <Box sx={{
+                            width: 56, height: 56, borderRadius: '10px',
                             bgcolor: 'rgba(255,255,255,0.05)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}>
-                             <Typography variant="caption" color="rgba(255,255,255,0.2)">No Img</Typography>
+                            <Typography variant="caption" color="rgba(255,255,255,0.2)">No Img</Typography>
                         </Box>
                     )}
-                    
+
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography 
-                            fontSize={15} 
-                            fontWeight={700} 
-                            color="#FFF" 
-                            noWrap 
+                        <Typography
+                            fontSize={15}
+                            fontWeight={700}
+                            color="#FFF"
+                            noWrap
                             sx={{ mb: 0.2 }}
                         >
                             {listing?.title}
                         </Typography>
-                        <Typography 
-                            fontSize={16} 
-                            fontWeight={800} 
+                        <Typography
+                            fontSize={16}
+                            fontWeight={800}
                             color={purposeInfo.color}
                         >
                             {purposeInfo.priceText}
@@ -117,7 +117,7 @@ export default function CommentModal({ open, onClose, listingId, listing }) {
                 </Box>
 
                 <Box sx={{ p: 0, overflow: 'visible' }}>
-                    <ListingComments listingId={listingId} />
+                    <ListingComments listingId={listingId} onThreadDelta={onThreadDelta} />
                 </Box>
             </DialogContent>
         </Dialog>

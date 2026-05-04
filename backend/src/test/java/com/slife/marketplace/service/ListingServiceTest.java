@@ -12,6 +12,7 @@ import com.slife.marketplace.repository.ListingImageRepository;
 import com.slife.marketplace.repository.ListingLikeRepository;
 import com.slife.marketplace.repository.ListingRepository;
 import com.slife.marketplace.repository.SavedListingRepository;
+import com.slife.marketplace.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,7 @@ class ListingServiceTest {
     @Mock private ListingExpiryBatchService listingExpiryBatchService;
     @Mock private SystemEmailService systemEmailService;
     @Mock private ContentModerationService contentModerationService;
+    @Mock private UserRepository userRepository;
 
     private ListingService listingService;
 
@@ -73,7 +75,8 @@ class ListingServiceTest {
                 notificationService,
                 listingExpiryBatchService,
                 systemEmailService,
-                contentModerationService
+                contentModerationService,
+                userRepository
         );
     }
 
