@@ -33,7 +33,6 @@ import {
     AddPhotoAlternateOutlined as AddPhotoAlternateOutlinedIcon,
     MoreHoriz as MoreIcon,
     Close as CloseIcon,
-    Flag as ReportIcon,
     EditOutlined as EditIcon,
     DeleteOutline as DeleteIcon,
 } from '@mui/icons-material';
@@ -46,7 +45,6 @@ import { useToast } from '../../context/ToastContext';
 import { toggleCommunityPostLike, toggleCommunityPostSave, updateCommunityPost, deleteCommunityPost, getCommunityPost, uploadCommunityPostImages, deleteCommunityPostImage } from '../../api/communityApi';
 import CommunityCommentModal from './CommunityCommentModal';
 import CommunityPostExpandableDescription from './CommunityPostExpandableDescription';
-import ReportDialog from '../report/ReportDialog';
 import ConfirmDialog from '../common/ConfirmDialog';
 
 const LIKE_RED = '#FF4757';
@@ -120,7 +118,6 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
-    const [reportOpen, setReportOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -299,17 +296,6 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
         setMoreAnchorEl(e.currentTarget);
     };
 
-    const handleReportClick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        setMoreAnchorEl(null);
-        if (!isAuthenticated) {
-            showToast('Bạn cần đăng nhập để báo cáo.', 'warning');
-            navigate('/login', { state: { from: location.pathname } });
-            return;
-        }
-        setReportOpen(true);
-    };
 
     const handleEditOpen = async (e) => {
         e.stopPropagation();
@@ -588,9 +574,11 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                                 {formatRelativeShort(post?.createdAt) || 'Vừa đăng'}
                             </Typography>
                         </Stack>
-                        <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.45)' }} onClick={handleMoreOpen}>
-                            <MoreIcon fontSize="small" />
-                        </IconButton>
+                        {isMe && (
+                            <IconButton size="small" sx={{ color: 'rgba(255,255,255,0.45)' }} onClick={handleMoreOpen}>
+                                <MoreIcon fontSize="small" />
+                            </IconButton>
+                        )}
                     </Box>
 
                     <Box
@@ -852,14 +840,7 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                                 <ListItemText primary="Xóa bài viết" primaryTypographyProps={{ fontSize: 14 }} />
                             </MenuItem>,
                         ]
-                    ) : (
-                        <MenuItem onClick={handleReportClick}>
-                            <ListItemIcon sx={{ color: '#FF4757', minWidth: '32px !important' }}>
-                                <ReportIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText primary="Báo cáo" primaryTypographyProps={{ fontSize: 14 }} />
-                        </MenuItem>
-                    )}
+                    ) : null}
                 </Menu>
 
                 <Dialog
@@ -1059,13 +1040,6 @@ function CommunityPostCard({ post, onOpen, onPatchPost, onDeletePost, onRefreshP
                     cancelLabel="Hủy"
                 />
 
-                <ReportDialog
-                    open={reportOpen}
-                    onClose={() => setReportOpen(false)}
-                    targetType="COMMUNITY_POST"
-                    targetId={id}
-                    targetTitle={post?.description || 'Bài viết cộng đồng'}
-                />
             </>
         </Box>
     );
