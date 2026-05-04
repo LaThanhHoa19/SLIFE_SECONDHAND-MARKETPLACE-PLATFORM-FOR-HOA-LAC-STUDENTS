@@ -72,6 +72,7 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AUTH_IDLE_TIMEOUT_MS: ${AUTH_IDLE_TIMEOUT_MS:-14400000}
+      CHAT_ENCRYPTION_KEY: ${CHAT_ENCRYPTION_KEY:-6Bp3bIXQrFN74pqosm4W0zcbQ8GWWMhauIgAHV77NBY=}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
