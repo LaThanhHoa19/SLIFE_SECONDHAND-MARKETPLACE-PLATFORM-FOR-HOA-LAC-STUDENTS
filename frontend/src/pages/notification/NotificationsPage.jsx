@@ -188,8 +188,14 @@ export default function NotificationsPage() {
 
     const handleNotificationClick = async (n) => {
         if (!n) return;
-        if (!n.isRead) await markNotificationRead(n.id);
-        setItems((prev) => (Array.isArray(prev) ? prev : []).map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+        try {
+            if (!n.isRead) {
+                await markNotificationRead(n.id);
+            }
+            setItems((prev) => (Array.isArray(prev) ? prev : []).map((x) => (String(x.id) === String(n.id) ? { ...x, isRead: true } : x)));
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
 
         // Chat: có sessionId → mở đúng cuộc trò chuyện
         if (n?.sessionId) {

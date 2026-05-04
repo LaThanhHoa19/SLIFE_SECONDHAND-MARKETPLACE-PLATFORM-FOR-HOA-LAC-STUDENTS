@@ -11,7 +11,6 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import FlagIcon from '@mui/icons-material/Flag';
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import {
     getAdminDashboard,
     getAdminDashboardCharts,
@@ -623,16 +622,6 @@ export default function DashboardPage() {
                         label="Danh mục"
                         value={fmt(stats?.categoryCount)}
                         color={PALETTE.purple}
-                        loading={statsLoading}
-                    />
-                </Grid>
-                <Grid item xs={6} sm={4} md={3} lg={3}>
-                    <StatCard
-                        icon={<VisibilityOffOutlinedIcon fontSize="small" />}
-                        label="Tin đang ẩn"
-                        value={fmt((stats?.listingHidden ?? 0) + (stats?.listingModHidden ?? 0))}
-                        sub={`${fmt(stats?.listingExpired)} hết hạn`}
-                        color={PALETTE.teal}
                         loading={statsLoading}
                     />
                 </Grid>

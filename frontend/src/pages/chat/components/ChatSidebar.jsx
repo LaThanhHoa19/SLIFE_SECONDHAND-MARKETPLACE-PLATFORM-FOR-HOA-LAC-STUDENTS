@@ -157,7 +157,8 @@ export default function ChatSidebar({
                         const unreadCountRaw =
                             s.unreadCount ?? s.unread_count ?? s.unreadMessages ?? s.unread_messages ?? 0;
                         const unreadCount = Number(unreadCountRaw) || 0;
-                        const unread = unreadCount > 0;
+                        const isActiveSession = String(s.sessionId || '') === String(activeSessionId || '');
+                        const unread = unreadCount > 0 && !isActiveSession;
                         const lid = s.listingId != null ? Number(s.listingId) : NaN;
                         const listingGone =
                             Number.isFinite(lid) && lid > 0 && Boolean(listingUnavailableByListingId[lid]);
