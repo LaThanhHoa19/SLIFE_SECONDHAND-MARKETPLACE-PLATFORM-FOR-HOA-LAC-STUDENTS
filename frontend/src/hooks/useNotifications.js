@@ -1,7 +1,7 @@
 /**
  * Mục đích: Lấy thông báo; làm mới định kỳ (polling).
- * BE dùng STOMP/SockJS tại /chat — không phải Socket.IO; gọi io(localhost:8080) sẽ 403 và spam console.
- * Khi cần realtime: nối STOMP client tới /chat (SockJS), không dùng socket.io-client.
+ * BE dùng STOMP/SockJS tại /ws — không phải Socket.IO; gọi io(localhost:8080) sẽ 403 và spam console.
+ * Khi cần realtime: nối STOMP client tới /ws (SockJS), không dùng socket.io-client.
  * API dùng: GET /api/notifications, PATCH read endpoints.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -17,13 +17,13 @@ import {
 import { useAuth } from './useAuth';
 import { useToast } from '../context/ToastContext';
 
-/** Giống ChatPage: WS ở /chat, không nằm dưới /api */
+/** Giống ChatPage: WS ở /ws, không nằm dưới /api */
 function getChatSockJsUrl(token) {
   const base =
       import.meta.env.VITE_WS_URL ||
       (typeof window !== 'undefined'
-          ? `${window.location.origin}/chat`
-          : 'http://localhost:8080/chat');
+          ? `${window.location.origin}/ws`
+          : 'http://localhost:8080/ws');
   if (!token) return base;
   const sep = base.includes('?') ? '&' : '?';
   return `${base}${sep}token=${encodeURIComponent(token)}`;
@@ -102,7 +102,7 @@ export default function useNotifications(scope = 'all') {
     fetchUnreadCount();
 
     if (token) {
-      // Backend WebSocket: Spring STOMP + SockJS endpoint `/chat`
+      // Backend WebSocket: Spring STOMP + SockJS endpoint `/ws`
       // JwtHandshakeHandler chỉ đọc JWT từ query ?token= (không phải header SockJS GET)
       // NotificationService push unread count to: `/user/queue/notifications`
       stompClient = new Client({

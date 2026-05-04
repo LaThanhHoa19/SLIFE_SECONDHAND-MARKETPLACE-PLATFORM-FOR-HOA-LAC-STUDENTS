@@ -49,7 +49,8 @@ public class SecurityConfig {
                                 "/uploads/**",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
-                                "/chat/**")
+                                "/chat/**",
+                                "/ws/**")
                         .permitAll()
 
                         // Chức năng listing cá nhân

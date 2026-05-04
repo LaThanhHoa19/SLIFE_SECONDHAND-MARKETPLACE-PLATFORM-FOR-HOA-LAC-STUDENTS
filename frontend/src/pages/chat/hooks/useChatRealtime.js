@@ -5,7 +5,7 @@ import { upsertMessages } from '../chatMessageUtils';
 
 const WS_URL =
     import.meta.env.VITE_WS_URL ||
-    (typeof window !== 'undefined' ? `${window.location.origin}/chat` : 'http://localhost:8080/chat');
+    (typeof window !== 'undefined' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws');
 
 export function useChatRealtime({
                                     activeSessionId,
