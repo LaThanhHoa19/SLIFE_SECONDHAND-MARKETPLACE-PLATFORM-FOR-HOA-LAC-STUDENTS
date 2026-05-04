@@ -96,9 +96,10 @@ export default function NotificationsPage() {
         if (loading) return;
         setLoading(true);
         try {
+            const filters = { readFilter, typeFilter, sortBy };
             const resp = isSearching
-                ? await searchNotificationsPage({ q: debouncedQ.trim(), limit: pageSize, cursor: nextCursor || undefined })
-                : await getNotificationsPage({ limit: pageSize, cursor: nextCursor || undefined });
+                ? await searchNotificationsPage({ q: debouncedQ.trim(), limit: pageSize, cursor: nextCursor || undefined, ...filters })
+                : await getNotificationsPage({ limit: pageSize, cursor: nextCursor || undefined, ...filters });
             const page = resp?.data?.data ?? resp?.data;
             const newItems = Array.isArray(page?.items) ? page.items : [];
             setItems((prev) => (reset ? newItems : [...(Array.isArray(prev) ? prev : []), ...newItems]));
@@ -126,7 +127,7 @@ export default function NotificationsPage() {
         restoreScrollRef.current = true;
         void fetchPage({ reset: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedQ]);
+    }, [debouncedQ, readFilter, typeFilter, sortBy]);
 
     // Restore scroll position (window scroll) once after initial load
     useEffect(() => {

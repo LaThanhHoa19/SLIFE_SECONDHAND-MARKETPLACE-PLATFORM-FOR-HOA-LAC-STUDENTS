@@ -43,8 +43,8 @@ import ReportDialog from '../report/ReportDialog';
 import BlockUserConfirmDialog from '../social/BlockUserConfirmDialog';
 import { useBlockActions } from '../../hooks/useBlockActions';
 import { formatPickupDisplayLine } from '../../utils/addressDisplay';
-import { 
-    getConditionInfo, 
+import {
+    getConditionInfo,
     getPurposeInfo,
     getStatusInfo,
     LISTING_ICONS,
@@ -153,6 +153,7 @@ export default function ListingCard({
     const [isSaved, setIsSaved] = useState(() => !!(listing?.isSaved ?? listing?.is_saved));
     const [saveSubmitting, setSaveSubmitting] = useState(false);
     const [shareSubmitting, setShareSubmitting] = useState(false);
+    const [commentCount, setCommentCount] = useState(() => Number(listing?.commentCount ?? listing?.comment_count ?? 0));
 
     const [moreAnchorEl, setMoreAnchorEl] = useState(null);
     const [reportOpen, setReportOpen] = useState(false);
@@ -183,6 +184,10 @@ export default function ListingCard({
     useEffect(() => {
         setIsSaved(Boolean(listing?.isSaved ?? listing?.is_saved));
     }, [listing?.id, listing?.isSaved, listing?.is_saved]);
+
+    useEffect(() => {
+        setCommentCount(Number(listing?.commentCount ?? listing?.comment_count ?? 0));
+    }, [listing?.id, listing?.commentCount, listing?.comment_count]);
 
     const normalizedStatus = String(listing?.status || listing?.itemStatus || '').toUpperCase();
     const unavailableStatuses = new Set([
@@ -816,7 +821,7 @@ export default function ListingCard({
                                     </IconButton>
                                 </Box>
                                 <Typography fontSize={13} fontWeight={600} color="rgba(255,255,255,0.6)">
-                                    {listing?.commentCount || 0}
+                                    {commentCount || 0}
                                 </Typography>
                             </Box>
                         </Tooltip>
@@ -878,6 +883,13 @@ export default function ListingCard({
                 onClose={() => setCommentOpen(false)}
                 listingId={id}
                 listing={listing}
+                onThreadDelta={(delta) => {
+                    setCommentCount((prev) => {
+                        const nextCount = Math.max(0, prev + delta);
+                        onPatchListing?.(id, { commentCount: nextCount });
+                        return nextCount;
+                    });
+                }}
             />
 
             {(!isMe || isSavedPage) && (
