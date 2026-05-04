@@ -640,23 +640,6 @@ export default function NotificationsPage() {
                                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.58)' }}>
                                     Bạn đã xem gần hết thông báo. Hãy quay lại sau để xem cập nhật mới.
                                 </Typography>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                                    sx={{
-                                        textTransform: 'none',
-                                        borderRadius: 999,
-                                        borderColor: 'rgba(255,255,255,0.26)',
-                                        color: 'rgba(255,255,255,0.8)',
-                                        '&:hover': {
-                                            borderColor: 'rgba(157,110,237,0.6)',
-                                            bgcolor: 'rgba(157,110,237,0.1)',
-                                        },
-                                    }}
-                                >
-                                    Lên đầu trang
-                                </Button>
                             </Box>
                         )}
 

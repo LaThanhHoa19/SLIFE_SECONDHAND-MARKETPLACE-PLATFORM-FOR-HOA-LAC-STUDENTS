@@ -237,7 +237,7 @@ public class AuthService {
         response.setToken(accessToken);
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
-        response.setUser(user);
+        response.setUser(com.slife.marketplace.dto.response.UserProfileResponse.fromUser(user));
         return response;
     }
 

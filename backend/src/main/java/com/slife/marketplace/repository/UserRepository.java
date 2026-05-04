@@ -32,6 +32,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT AVG(u.reputationScore) FROM User u WHERE u.status = 'ACTIVE'")
     BigDecimal averageReputationScoreForActiveUsers();
 
+    /** Tìm user (role=USER) chưa bị BANNED nhưng violationCount >= ngưỡng mới. */
+    @Query("SELECT u FROM User u WHERE u.role = 'USER' AND u.status <> 'BANNED' AND u.violationCount >= :threshold")
+    List<User> findUsersEligibleForBan(@org.springframework.data.repository.query.Param("threshold") int threshold);
+
     /** Số người dùng mới đăng ký mỗi ngày trong N ngày gần nhất (role=USER). */
     @Query(value = """
             SELECT DATE(u.created_at) AS day, COUNT(*) AS cnt

@@ -249,6 +249,7 @@ public class AdminService {
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
+                user.getAvatarUrl(),
                 user.getStatus(),
                 user.getRole(),
                 user.getReputationScore(),

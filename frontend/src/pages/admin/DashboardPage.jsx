@@ -11,7 +11,6 @@ import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import FlagIcon from '@mui/icons-material/Flag';
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
-import StarHalfOutlinedIcon from '@mui/icons-material/StarHalfOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import {
     getAdminDashboard,
@@ -39,7 +38,6 @@ const PALETTE = {
 const numberVi = new Intl.NumberFormat('vi-VN');
 const fmt = (n) => (n != null ? numberVi.format(n) : '—');
 const fmtPct = (n, total) => (total ? `${((n / total) * 100).toFixed(1)}%` : '0.0%');
-const fmtScore = (n) => (Number.isFinite(n) ? Number(n).toFixed(2) : '0.00');
 
 function StatCard({ icon, label, value, sub, color, loading }) {
     return (
@@ -377,11 +375,42 @@ function HorizontalBarChart({ items }) {
     );
 }
 
+
 function AuditRow({ log }) {
     const d = log.occurredAt ? new Date(log.occurredAt) : null;
     const timeStr = d
         ? `${d.toLocaleDateString('vi-VN')} ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
         : '—';
+
+    const actionLabel =
+        {
+            REPORT_APPROVE: 'Duyệt báo cáo',
+            REPORT_REJECT: 'Từ chối báo cáo',
+            REPORT_CLOSE: 'Đóng báo cáo',
+            REPORT_ASSIGN: 'Phân công báo cáo',
+            LISTING_APPROVE: 'Duyệt tin đăng',
+            LISTING_REJECT: 'Từ chối tin đăng',
+            LISTING_HIDE: 'Ẩn tin đăng',
+            LISTING_UNHIDE: 'Hiện lại tin đăng',
+            USER_BAN: 'Khóa tài khoản',
+            USER_UNBAN: 'Mở khóa tài khoản',
+            USER_WARN: 'Cảnh báo người dùng',
+            COMMENT_HIDE: 'Ẩn bình luận',
+            COMMENT_UNHIDE: 'Hiện bình luận',
+            SYSTEM_CONFIG_UPDATE: 'Cập nhật cấu hình hệ thống',
+        }[log.action] || log.action?.replaceAll('_', ' ').toLowerCase() || 'Hành động';
+
+    const entityLabel =
+        {
+            REPORT: 'Báo cáo',
+            LISTING: 'Tin đăng',
+            USER: 'Người dùng',
+            COMMENT: 'Bình luận',
+            DEAL: 'Giao dịch',
+            CATEGORY: 'Danh mục',
+            SYSTEM: 'Hệ thống',
+        }[log.entityType] || log.entityType?.replaceAll('_', ' ').toLowerCase() || '';
+
     return (
         <Box
             sx={{
@@ -406,13 +435,12 @@ function AuditRow({ log }) {
             />
             <Box sx={{ flex: 1 }}>
                 <Typography variant="body2" sx={{ color: TEXT, fontWeight: 600, lineHeight: 1.4 }}>
-                    {log.action}
-                    {log.entityType ? ` — ${log.entityType}` : ''}
+                    {actionLabel}
+                    {entityLabel ? ` — ${entityLabel}` : ''}
                     {log.entityId ? ` #${log.entityId}` : ''}
                 </Typography>
                 <Typography variant="caption" sx={{ color: TEXT_MUTED }}>
-                    {log.actorType ?? 'SYSTEM'}
-                    {log.actorUserId ? ` (ID ${log.actorUserId})` : ''} · {timeStr}
+                    {timeStr}
                 </Typography>
             </Box>
         </Box>
@@ -480,36 +508,36 @@ export default function DashboardPage() {
 
     const listingStatusData = stats
         ? [
-              { name: 'Đang hiển thị', value: stats.listingActive, color: PALETTE.green },
-              { name: 'Đang ẩn', value: stats.listingHidden + (stats.listingModHidden ?? 0), color: PALETTE.orange },
-              { name: 'Hết hạn', value: stats.listingExpired, color: PALETTE.red },
-              { name: 'Bản nháp', value: stats.listingDraft, color: 'rgba(255,255,255,0.25)' },
-          ]
+            { name: 'Đang hiển thị', value: stats.listingActive, color: PALETTE.green },
+            { name: 'Đang ẩn', value: stats.listingHidden + (stats.listingModHidden ?? 0), color: PALETTE.orange },
+            { name: 'Hết hạn', value: stats.listingExpired, color: PALETTE.red },
+            { name: 'Bản nháp', value: stats.listingDraft, color: 'rgba(255,255,255,0.25)' },
+        ]
         : [];
 
     const userStatusData = stats
         ? [
-              { name: 'Hoạt động', value: stats.userActive, color: PALETTE.green },
-              { name: 'Bị khóa', value: stats.userBanned, color: PALETTE.red },
-              { name: 'Hạn chế', value: stats.userRestricted, color: PALETTE.orange },
-          ]
+            { name: 'Hoạt động', value: stats.userActive, color: PALETTE.green },
+            { name: 'Bị khóa', value: stats.userBanned, color: PALETTE.red },
+            { name: 'Hạn chế', value: stats.userRestricted, color: PALETTE.orange },
+        ]
         : [];
 
     const dealStatusData = stats
         ? [
-              { name: 'Đang chờ', value: stats.dealPending, color: PALETTE.orange },
-              { name: 'Đã xác nhận', value: stats.dealConfirmed, color: PALETTE.blue },
-              { name: 'Hoàn thành', value: stats.dealCompleted, color: PALETTE.green },
-              { name: 'Đã hủy', value: stats.dealCancelled, color: PALETTE.red },
-          ]
+            { name: 'Đang chờ', value: stats.dealPending, color: PALETTE.orange },
+            { name: 'Đã xác nhận', value: stats.dealConfirmed, color: PALETTE.blue },
+            { name: 'Hoàn thành', value: stats.dealCompleted, color: PALETTE.green },
+            { name: 'Đã hủy', value: stats.dealCancelled, color: PALETTE.red },
+        ]
         : [];
 
     const reportStatusData = stats
         ? [
-              { name: 'Chờ xử lý', value: stats.reportPending, color: PALETTE.orange },
-              { name: 'Đã xử lý', value: stats.reportResolved, color: PALETTE.green },
-              { name: 'Từ chối', value: stats.reportRejected, color: PALETTE.red },
-          ]
+            { name: 'Chờ xử lý', value: stats.reportPending, color: PALETTE.orange },
+            { name: 'Đã xử lý', value: stats.reportResolved, color: PALETTE.green },
+            { name: 'Từ chối', value: stats.reportRejected, color: PALETTE.red },
+        ]
         : [];
 
     const growthData = useMemo(() => {
@@ -580,9 +608,9 @@ export default function DashboardPage() {
                         label="Giao dịch"
                         value={fmt(
                             (stats?.dealPending ?? 0) +
-                                (stats?.dealConfirmed ?? 0) +
-                                (stats?.dealCompleted ?? 0) +
-                                (stats?.dealCancelled ?? 0),
+                            (stats?.dealConfirmed ?? 0) +
+                            (stats?.dealCompleted ?? 0) +
+                            (stats?.dealCancelled ?? 0),
                         )}
                         sub={`${fmt(stats?.dealCompleted)} hoàn thành`}
                         color={PALETTE.green}
@@ -618,38 +646,10 @@ export default function DashboardPage() {
                         loading={statsLoading}
                     />
                 </Grid>
-                <Grid item xs={6} sm={4} md={3} lg={3}>
-                    <StatCard
-                        icon={<StarHalfOutlinedIcon fontSize="small" />}
-                        label="Reputation TB"
-                        value={fmtScore(stats?.avgReputationScore)}
-                        sub="điểm uy tín người dùng"
-                        color={PALETTE.indigo}
-                        loading={statsLoading}
-                    />
-                </Grid>
             </Grid>
 
             <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-                <Grid item xs={12} lg={8}>
-                    <Section title="Hoạt động 30 ngày gần nhất (cùng thang Y)">
-                        {chartsLoading ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 260 }}>
-                                <CircularProgress size={32} />
-                            </Box>
-                        ) : growthData.length === 0 ? (
-                            <Box sx={{ textAlign: 'center', py: 6 }}>
-                                <Typography variant="body2" color="text.secondary">
-                                    Chưa có dữ liệu
-                                </Typography>
-                            </Box>
-                        ) : (
-                            <SvgMultiLineChart data={growthData} series={GROWTH_SERIES} height={240} />
-                        )}
-                    </Section>
-                </Grid>
-
-                <Grid item xs={12} sm={6} lg={4}>
+                <Grid item xs={12}>
                     <Section title="Phân bổ tin đăng" minHeight={320}>
                         {statsLoading ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 220 }}>
