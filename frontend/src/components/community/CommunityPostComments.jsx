@@ -44,6 +44,14 @@ export const PURPLE = '#9D6EED';
 
 const BUBBLE_BG = 'rgba(255, 255, 255, 0.05)';
 
+const countCommentThreads = (items) => {
+    if (!Array.isArray(items) || items.length === 0) return 0;
+    return items.reduce((sum, item) => {
+        const replies = Array.isArray(item?.replies) ? item.replies : [];
+        return sum + 1 + countCommentThreads(replies);
+    }, 0);
+};
+
 const CommentInput = ({
                           currentUser,
                           value,
@@ -373,6 +381,8 @@ export default function CommunityPostComments({ postId, onNotify, onThreadDelta 
         if (onNotify) onNotify('Đã gửi bình luận!');
     };
 
+    const totalComments = countCommentThreads(comments);
+
     const handleUpdate = async (id, content) => {
         if (!content.trim()) return;
         try {
@@ -404,7 +414,7 @@ export default function CommunityPostComments({ postId, onNotify, onThreadDelta 
         <Box sx={{ p: 0, position: 'relative', minHeight: comments.length > 0 ? '150px' : 'auto', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ p: 2, flex: 1, pb: 5 }}>
                 <Typography fontSize={15} fontWeight={800} color={TEXT_PRI} sx={{ mb: 2.5 }}>
-                    {comments.length > 0 ? `${comments.length} bình luận` : 'Chưa có bình luận'}
+                    {totalComments > 0 ? `${totalComments} bình luận` : 'Chưa có bình luận'}
                 </Typography>
 
                 {loading ? (

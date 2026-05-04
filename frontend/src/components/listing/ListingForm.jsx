@@ -1033,126 +1033,6 @@ export default function ListingForm({
         }
     }, []);
 
-    // GPS: lấy vị trí thiết bị → chạy qua validation giống map click
-    const [gpsLoading, setGpsLoading] = useState(false);
-    const handleGpsClick = useCallback(async () => {
-        const currentAdminAtGps = adminLocationRef.current;
-        if (!isAdminSelectionComplete(currentAdminAtGps)) {
-            setPinStatus('missing_admin');
-            return;
-        }
-        if (!navigator.geolocation) {
-            alert('Trình duyệt không hỗ trợ GPS.');
-            return;
-        }
-        // Geolocation chỉ chạy trên HTTPS hoặc localhost (secure context). S3 static website = HTTP → bị chặn.
-        if (typeof window !== 'undefined' && !window.isSecureContext) {
-            alert(
-                'GPS không dùng được trên trang HTTP (vd. S3 website). Hãy chọn vị trí trên bản đồ, hoặc bật HTTPS (CloudFront + chứng chỉ).'
-            );
-            return;
-        }
-        if (!mapEnabled) setMapEnabled(true);
-        setGpsLoading(true);
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                setGpsLoading(false);
-                mapRef.current?.flyTo({ center: [lng, lat], zoom: 17, essential: true });
-                if (pendingMarkerRef.current) {
-                    pendingMarkerRef.current.setLngLat([lng, lat]);
-                } else if (mapRef.current && window.vietmapgl) {
-                    pendingMarkerRef.current = new window.vietmapgl.Marker({
-                        element: createPinElement(), anchor: 'bottom',
-                    }).setLngLat([lng, lat]).addTo(mapRef.current);
-                }
-                setPendingPin(null); setPinStatus('idle');
-                let addressText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-                let reverseProvince = '';
-                let reverseDistrict = '';
-                let reverseWard = '';
-                try {
-                    const res = await reverseGeocode({ lat, lng });
-                    const data = res?.data?.data ?? res?.data;
-                    if (data && typeof data === 'object') {
-                        const line = buildFullAddressLine((data.locationName || '').trim(), (data.addressText || '').trim());
-                        if (line) addressText = line;
-                        reverseProvince = (data.province || data.city || '').trim();
-                        reverseDistrict = (data.district || '').trim();
-                        reverseWard = (data.ward || '').trim();
-                    }
-                } catch { /* ignore */ }
-
-                if (!reverseProvince) {
-                    const osm = await fetchOsmReverse(lat, lng);
-                    if (osm) {
-                        reverseProvince = osm.province;
-                        reverseDistrict = osm.district;
-                        reverseWard = osm.ward || '';
-                        if (addressText === `${lat.toFixed(5)}, ${lng.toFixed(5)}` && osm.addressText) {
-                            addressText = osm.addressText;
-                        }
-                    }
-                } else {
-                    const admPeek = adminLocationRef.current;
-                    if (admPeek?.ward?.name) {
-                        const osm = await fetchOsmReverse(lat, lng);
-                        if (osm?.ward) reverseWard = osm.ward;
-                    }
-                }
-                const currentAdmin = adminLocationRef.current;
-                if (!isAdminSelectionComplete(currentAdmin)) { setPendingPin({ lat, lng, addressText }); setPinStatus('missing_admin'); return; }
-
-                const {
-                    isValid,
-                    provinceMatch,
-                    districtMatch,
-                    wardMatch,
-                    bboxInside,
-                } = computePinValidity({
-                    lat,
-                    lng,
-                    addressText,
-                    reverseProvince,
-                    reverseDistrict,
-                    reverseWard,
-                    admin: currentAdmin,
-                    adminBbox: adminBboxRef.current,
-                });
-
-                if (import.meta.env.DEV) {
-                    // eslint-disable-next-line no-console
-                    console.log('===== DEBUG GPS VALIDATION =====', {
-                        chosen: `${normalize(currentAdmin.province?.name || '')} | ${normalize(currentAdmin.district?.name || '')} | ${normalize(currentAdmin.ward?.name || '')}`,
-                        reverse: `${normalize(reverseProvince)} | ${normalize(reverseDistrict)} | ${normalize(reverseWard)}`,
-                        address: normalize(addressText),
-                        provinceMatch,
-                        districtMatch,
-                        wardMatch,
-                        bboxInside,
-                        isValid,
-                    });
-                }
-
-                setPendingPin({ lat, lng, addressText, districtHint: isValid ? null : currentAdmin.district?.name });
-                setPinStatus(isValid ? 'valid' : 'invalid');
-            },
-            (err) => {
-                setGpsLoading(false);
-                const msg = err?.message || String(err);
-                if (/secure origin|Only secure origins/i.test(msg)) {
-                    alert(
-                        'GPS chỉ hoạt động trên HTTPS hoặc localhost. Hãy chọn vị trí trên bản đồ hoặc triển khai HTTPS (CloudFront).'
-                    );
-                    return;
-                }
-                alert(`Không lấy được GPS: ${msg}`);
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    }, [mapEnabled]);
-
     const isAdminComplete = isAdminSelectionComplete(adminLocation);
 
     const outerFormSx = isStudioLayout
@@ -1536,23 +1416,8 @@ export default function ListingForm({
                                         endAdornment: <InputAdornment position="end"><Box sx={{ fontSize: 14, fontWeight: 700, ml: 0.5, color: "#fff" }}>đ</Box></InputAdornment>
                                     }}
                                     sx={{
-                                        "& .MuiInputBase-root": {
-                                            backgroundColor: "#312F37"
-                                        },
                                         "& .MuiInputBase-input": {
                                             fontSize: "14px"
-                                        },
-                                        "& .MuiInputBase-input:-webkit-autofill": {
-                                            WebkitBoxShadow: "0 0 0 100px #312F37 inset",
-                                            WebkitTextFillColor: "#fff",
-                                            caretColor: "#fff",
-                                            borderRadius: "inherit",
-                                            transition: "background-color 9999s ease-out 0s"
-                                        },
-                                        "& .MuiInputBase-input:-webkit-autofill:hover, & .MuiInputBase-input:-webkit-autofill:focus, & .MuiInputBase-input:-webkit-autofill:active": {
-                                            WebkitBoxShadow: "0 0 0 100px #312F37 inset",
-                                            WebkitTextFillColor: "#fff",
-                                            caretColor: "#fff"
                                         },
                                         "& .MuiInputBase-input.Mui-disabled": {
                                             WebkitTextFillColor: "#fff"
@@ -1594,33 +1459,6 @@ export default function ListingForm({
                                     sx={{ width: '100%' }}
                                 >
                                     <ToggleButton
-                                        value="USED_GOOD"
-                                        sx={{
-                                            px: 2.5,
-                                            py: 0.8,
-                                            fontSize: "13px",
-                                            borderRadius: "12px",
-                                            backgroundColor: "#E0E0E0",
-                                            color: "#201D26",
-                                            border: "none",
-
-                                            "&:hover": {
-                                                backgroundColor: "#d5d5d5"
-                                            },
-
-                                            "&.Mui-selected": {
-                                                backgroundColor: "#9D6EED",
-                                                color: "#fff",
-                                                "&:hover": {
-                                                    backgroundColor: "#B794F6"
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        ĐÃ SỬ DỤNG
-                                    </ToggleButton>
-
-                                    <ToggleButton
                                         value="NEW"
                                         sx={{
                                             px: 2.5,
@@ -1645,6 +1483,33 @@ export default function ListingForm({
                                         }}
                                     >
                                         MỚI
+                                    </ToggleButton>
+
+                                    <ToggleButton
+                                        value="USED_GOOD"
+                                        sx={{
+                                            px: 2.5,
+                                            py: 0.8,
+                                            fontSize: "13px",
+                                            borderRadius: "12px",
+                                            backgroundColor: "#E0E0E0",
+                                            color: "#201D26",
+                                            border: "none",
+
+                                            "&:hover": {
+                                                backgroundColor: "#d5d5d5"
+                                            },
+
+                                            "&.Mui-selected": {
+                                                backgroundColor: "#9D6EED",
+                                                color: "#fff",
+                                                "&:hover": {
+                                                    backgroundColor: "#B794F6"
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        ĐÃ DÙNG
                                     </ToggleButton>
                                 </ToggleButtonGroup>
                             </Grid>
@@ -1797,7 +1662,7 @@ export default function ListingForm({
                                             sx={{ color: '#f87171', fontSize: 12, fontWeight: 700 }}>Chọn lại</Button>
                                 }
                             >
-                                Vị trí phải nằm trong khu vực Hòa Lạc.
+                                Vị trí bạn chọn chưa khớp với khu vực đã chọn.
                                 {pendingPin.districtHint ? ` (${pendingPin.districtHint})` : ''}
                                 Vui lòng chọn lại điểm khác.
                             </Alert>
@@ -1838,29 +1703,9 @@ export default function ListingForm({
                             }}
                         />
 
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" mt={0.5}>
-                            <Typography fontSize={13} color="rgba(255,255,255,0.45)">
-                                Chọn khu vực → bản đồ bay về → bấm trên bản đồ để ghim vị trí → xác nhận.
-                            </Typography>
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={handleGpsClick}
-                                disabled={gpsLoading || !isAdminComplete}
-                                sx={{
-                                    color: '#9D6EED', borderColor: 'rgba(157,110,237,0.5)',
-                                    fontSize: 12, textTransform: 'none', py: 0.2, px: 1,
-                                    '&:hover': { bgcolor: 'rgba(157,110,237,0.1)', borderColor: '#9D6EED' },
-                                    '&.Mui-disabled': {
-                                        color: 'rgba(148,163,184,0.65)',
-                                        borderColor: 'rgba(148,163,184,0.4)',
-                                        bgcolor: 'rgba(148,163,184,0.08)',
-                                    },
-                                }}
-                            >
-                                {gpsLoading ? 'Đang lấy...' : 'Vị trí của tôi'}
-                            </Button>
-                        </Stack>
+                        <Typography fontSize={13} color="rgba(255,255,255,0.45)" mt={0.5}>
+                            Chọn khu vực → bản đồ bay về → bấm trên bản đồ để ghim vị trí → xác nhận.
+                        </Typography>
 
                         {!mapEnabled ? (
                             <Box

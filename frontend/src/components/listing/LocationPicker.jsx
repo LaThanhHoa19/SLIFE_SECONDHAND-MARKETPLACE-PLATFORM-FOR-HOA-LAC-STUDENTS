@@ -18,7 +18,7 @@ function normalize(str = '') {
 }
 
 // ——— Sub-component: single row dropdown ————————————————————————————————
-function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
+function AdminDropdown({ label, options, value, onChange, disabled, loading, locked = false }) {
     const [inputVal, setInputVal] = useState('');
     const [open, setOpen] = useState(false);
     const wrapRef = useRef(null);
@@ -44,6 +44,7 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
     }, [value]);
 
     const handleSelect = (option) => {
+        if (locked) return;
         onChange(option);
         setInputVal(option.name);
         setOpen(false);
@@ -51,6 +52,7 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
 
     const handleClear = (e) => {
         e.stopPropagation();
+        if (locked) return;
         onChange(null);
         setInputVal('');
         setOpen(false);
@@ -63,17 +65,19 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
                 size="small"
                 label={label}
                 value={inputVal}
-                onFocus={() => { if (!disabled) setOpen(true); }}
+                onFocus={() => { if (!disabled && !locked) setOpen(true); }}
                 onChange={(e) => {
+                    if (locked) return;
                     setInputVal(e.target.value);
                     setOpen(true);
                 }}
                 disabled={disabled}
+                inputProps={{ readOnly: locked }}
                 placeholder={disabled ? '' : `Chọn ${label.toLowerCase()}`}
                 InputProps={{
                     endAdornment: loading
                         ? <CircularProgress size={14} sx={{ color: '#9D6EED' }} />
-                        : value
+                        : value && !locked
                             ? <IconButton size="small" onClick={handleClear} sx={{ p: 0.3, color: 'rgba(255,255,255,0.4)' }}><CloseIcon sx={{ fontSize: 14 }} /></IconButton>
                             : null,
                 }}
@@ -97,9 +101,12 @@ function AdminDropdown({ label, options, value, onChange, disabled, loading }) {
                     '& .MuiInputBase-input.Mui-disabled': {
                         WebkitTextFillColor: 'rgba(255,255,255,0.35)',
                     },
+                    '& .MuiInputBase-input[readonly]': {
+                        cursor: 'default',
+                    },
                 }}
             />
-            {open && !disabled && filtered.length > 0 && (
+            {open && !disabled && !locked && filtered.length > 0 && (
                 <Box
                     sx={{
                         position: 'absolute',
@@ -294,20 +301,26 @@ export default function LocationPicker({ onConfirm, value, defaultToHoaLac = tru
                             Khu vực được chọn
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
-                            <RadioButtonCheckedIcon sx={{ fontSize: 16, color: '#9D6EED' }} />
-                            <Typography fontSize={14} fontWeight={700} color="#B794F6">
+                            <Box sx={{ width: 18, minWidth: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: '#9D6EED' }} />
+                            </Box>
+                            <Typography fontSize={14} fontWeight={700} color="#B794F6" sx={{ lineHeight: 1.2 }}>
                                 {province.name}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3, pl: 0.5 }}>
-                            <RadioButtonUncheckedIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }} />
-                            <Typography fontSize={13} color="rgba(255,255,255,0.75)">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.3 }}>
+                            <Box sx={{ width: 18, minWidth: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: '#9D6EED' }} />
+                            </Box>
+                            <Typography fontSize={13} color="rgba(255,255,255,0.75)" sx={{ lineHeight: 1.2 }}>
                                 {district.name}
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 0.5 }}>
-                            <RadioButtonUncheckedIcon sx={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }} />
-                            <Typography fontSize={13} color="rgba(255,255,255,0.75)">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 18, minWidth: 18, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                                <CheckCircleIcon sx={{ fontSize: 14, color: '#9D6EED' }} />
+                            </Box>
+                            <Typography fontSize={13} color="rgba(255,255,255,0.75)" sx={{ lineHeight: 1.2 }}>
                                 {ward.name}
                             </Typography>
                         </Box>
@@ -340,6 +353,7 @@ export default function LocationPicker({ onConfirm, value, defaultToHoaLac = tru
                     onChange={setProvince}
                     disabled={false}
                     loading={loadingProvinces}
+                    locked={true}
                 />
                 <AdminDropdown
                     label="Quận / Huyện"
@@ -348,6 +362,7 @@ export default function LocationPicker({ onConfirm, value, defaultToHoaLac = tru
                     onChange={setDistrict}
                     disabled={!province || loadingDistricts}
                     loading={loadingDistricts}
+                    locked={true}
                 />
                 <AdminDropdown
                     label="Phường / Xã"

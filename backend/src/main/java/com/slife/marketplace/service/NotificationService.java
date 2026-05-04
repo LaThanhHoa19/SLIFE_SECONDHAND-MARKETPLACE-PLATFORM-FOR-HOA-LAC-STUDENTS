@@ -552,7 +552,10 @@ public class NotificationService {
             Long userId,
             int limit,
             String cursor,
-            NotificationScope scope
+            NotificationScope scope,
+            String readFilter,
+            String typeFilter,
+            String sortBy
     ) {
         int size = Math.max(1, Math.min(limit, 50));
         NotificationCursorCodec.Cursor c = NotificationCursorCodec.decode(cursor);
@@ -560,8 +563,11 @@ public class NotificationService {
         Long cursorId = c != null ? c.id() : null;
         Pageable pageable = PageRequest.of(0, size);
         String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
-        List<Notification> list = notificationRepository.findPageByUser(userId, scopeName, cursorCreatedAt, cursorId, pageable);
-        List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
+        String normalizedReadFilter = normalizeFilter(readFilter, "ALL");
+        String normalizedTypeFilter = normalizeFilter(typeFilter, "ALL");
+        List<Notification> list = notificationRepository.findPageByUser(
+                userId, scopeName, normalizedReadFilter, normalizedTypeFilter, cursorCreatedAt, cursorId, pageable);
+        List<NotificationResponse> items = applySort(list, sortBy).stream().map(this::toResponse).toList();
         boolean hasMore = list.size() == size;
         String nextCursor = null;
         if (hasMore) {
@@ -577,7 +583,10 @@ public class NotificationService {
             String q,
             int limit,
             String cursor,
-            NotificationScope scope
+            NotificationScope scope,
+            String readFilter,
+            String typeFilter,
+            String sortBy
     ) {
         String query = q != null ? q.trim() : "";
         if (query.length() > 100) query = query.substring(0, 100);
@@ -587,8 +596,11 @@ public class NotificationService {
         Long cursorId = c != null ? c.id() : null;
         Pageable pageable = PageRequest.of(0, size);
         String scopeName = (scope != null ? scope : NotificationScope.ALL).name();
-        List<Notification> list = notificationRepository.searchPageByUser(userId, scopeName, query, cursorCreatedAt, cursorId, pageable);
-        List<NotificationResponse> items = list.stream().map(this::toResponse).toList();
+        String normalizedReadFilter = normalizeFilter(readFilter, "ALL");
+        String normalizedTypeFilter = normalizeFilter(typeFilter, "ALL");
+        List<Notification> list = notificationRepository.searchPageByUser(
+                userId, scopeName, query, normalizedReadFilter, normalizedTypeFilter, cursorCreatedAt, cursorId, pageable);
+        List<NotificationResponse> items = applySort(list, sortBy).stream().map(this::toResponse).toList();
         boolean hasMore = list.size() == size;
         String nextCursor = null;
         if (hasMore) {
@@ -618,6 +630,23 @@ public class NotificationService {
     }
 
     // ── Internals ─────────────────────────────────────────────────────────────
+
+    private static String normalizeFilter(String value, String defaultValue) {
+        if (value == null || value.isBlank()) return defaultValue;
+        return value.trim().toUpperCase();
+    }
+
+    private static List<Notification> applySort(List<Notification> list, String sortBy) {
+        if (list == null || list.size() <= 1) return list;
+        if (!"OLDEST".equalsIgnoreCase(sortBy)) return list;
+        return list.stream()
+                .sorted((a, b) -> {
+                    int cmp = a.getCreatedAt().compareTo(b.getCreatedAt());
+                    if (cmp != 0) return cmp;
+                    return a.getId().compareTo(b.getId());
+                })
+                .toList();
+    }
 
     private Notification buildNotification(User user, String type, String refType, Long refId, String content) {
         Notification n = new Notification();

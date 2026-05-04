@@ -1,13 +1,12 @@
 package com.slife.marketplace.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.slife.marketplace.dto.request.AuthRequest;
 import com.slife.marketplace.dto.request.GoogleLoginRequest;
 import com.slife.marketplace.dto.response.AuthResponse;
 import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
+import com.slife.marketplace.integrations.google.GoogleOAuthClient;
 import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.security.JwtTokenProvider;
 import com.slife.marketplace.security.JwtUserSessionValidator;
@@ -18,11 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -38,7 +33,7 @@ public class AuthService {
     private final TokenBlacklistService tokenBlacklistService;
     private final StudentVerificationService studentVerificationService;
     private final SystemEmailService systemEmailService;
-    private final ObjectMapper objectMapper;
+    private final GoogleOAuthClient googleOAuthClient;
     private final String googleClientId;
     private final String googleClientSecret;
 
@@ -57,7 +52,7 @@ public class AuthService {
             TokenBlacklistService tokenBlacklistService,
             StudentVerificationService studentVerificationService,
             SystemEmailService systemEmailService,
-            ObjectMapper objectMapper,
+            GoogleOAuthClient googleOAuthClient,
             @Value("${google.clientId:}") String googleClientId,
             @Value("${google.clientSecret:}") String googleClientSecret
     ) {
@@ -68,7 +63,7 @@ public class AuthService {
         this.tokenBlacklistService = tokenBlacklistService;
         this.studentVerificationService = studentVerificationService;
         this.systemEmailService = systemEmailService;
-        this.objectMapper = objectMapper;
+        this.googleOAuthClient = googleOAuthClient;
         this.googleClientId = googleClientId;
         this.googleClientSecret = googleClientSecret;
     }
@@ -151,7 +146,7 @@ public class AuthService {
         if (request == null || request.getCredential() == null || request.getCredential().isBlank()) {
             throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
-        Map<String, Object> googlePayload = verifyGoogleIdToken(request.getCredential());
+        Map<String, Object> googlePayload = googleOAuthClient.verifyIdToken(request.getCredential());
         return buildAuthResponseFromGooglePayload(googlePayload);
     }
 
@@ -168,12 +163,13 @@ public class AuthService {
 
     public AuthResponse googleCallback(String code) {
         String redirectUri = backendUrl + "/api/auth/google/callback";
-        Map<String, Object> tokenData = exchangeCodeForTokens(code, redirectUri);
+        Map<String, Object> tokenData = googleOAuthClient.exchangeCodeForTokens(
+                code, redirectUri, googleClientId, googleClientSecret);
         String idToken = stringValue(tokenData.get("id_token"));
         if (idToken == null) {
             throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
         }
-        Map<String, Object> googlePayload = verifyGoogleIdToken(idToken);
+        Map<String, Object> googlePayload = googleOAuthClient.verifyIdToken(idToken);
         return buildAuthResponseFromGooglePayload(googlePayload);
     }
 
@@ -241,7 +237,7 @@ public class AuthService {
         response.setToken(accessToken);
         response.setAccessToken(accessToken);
         response.setRefreshToken(refreshToken);
-        response.setUser(user);
+        response.setUser(com.slife.marketplace.dto.response.UserProfileResponse.fromUser(user));
         return response;
     }
 
@@ -281,52 +277,6 @@ public class AuthService {
 
         user.setUpdatedAt(LocalDateTime.now());
         return userRepository.save(user);
-    }
-
-    private Map<String, Object> verifyGoogleIdToken(String idToken) {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://oauth2.googleapis.com/tokeninfo?id_token=" + enc(idToken)))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
-            }
-            return objectMapper.readValue(response.body(), new TypeReference<>() {});
-        } catch (SlifeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
-        }
-    }
-
-    private Map<String, Object> exchangeCodeForTokens(String code, String redirectUri) {
-        try {
-            String body = "code=" + enc(code)
-                    + "&client_id=" + enc(googleClientId)
-                    + "&client_secret=" + enc(googleClientSecret)
-                    + "&redirect_uri=" + enc(redirectUri)
-                    + "&grant_type=authorization_code";
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://oauth2.googleapis.com/token"))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .POST(HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-
-            HttpResponse<String> response = HttpClient.newHttpClient()
-                    .send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() != 200) {
-                throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
-            }
-            return objectMapper.readValue(response.body(), new TypeReference<>() {});
-        } catch (SlifeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new SlifeException(ErrorCode.INVALID_GOOGLE_TOKEN);
-        }
     }
 
     private static String enc(String value) {

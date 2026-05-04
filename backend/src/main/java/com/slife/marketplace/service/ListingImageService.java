@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 
@@ -25,6 +28,14 @@ public class ListingImageService {
     /** Đồng bộ với frontend (ImageUploader / ListingForm: tối đa 10 ảnh/tin). */
     private static final int DEFAULT_MAX_IMAGES_PER_POST = 10;
     private static final String[] ALLOWED_EXT = { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static final String[] ALLOWED_MIME = {
+            "image/jpeg",
+            "image/jpg",
+            "image/pjpeg",
+            "image/png",
+            "image/gif",
+            "image/webp"
+    };
 
     private final ListingRepository listingRepository;
     private final ListingImageRepository listingImageRepository;
@@ -67,6 +78,7 @@ public class ListingImageService {
             if (file.getSize() > MAX_IMAGE_SIZE) {
                 throw new SlifeException(ErrorCode.FILE_TOO_LARGE);
             }
+            validateRealImage(file);
             String ext = getImageExtension(file.getOriginalFilename());
             String filename = listingId + "_" + System.currentTimeMillis() + "_" + displayOrder + ext;
             String url = fileStorage.storeMultipart(file, "listings/" + filename);
@@ -77,6 +89,31 @@ public class ListingImageService {
             image.setDisplayOrder(displayOrder++);
             image.setCreatedAt(Instant.now());
             listingImageRepository.save(image);
+        }
+    }
+
+    private void validateRealImage(MultipartFile file) {
+        String contentType = file.getContentType();
+        if (contentType != null) {
+            String normalized = contentType.toLowerCase().trim();
+            boolean allowed = false;
+            for (String mime : ALLOWED_MIME) {
+                if (mime.equals(normalized)) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if (!allowed) {
+                throw new SlifeException(ErrorCode.INVALID_FILE_TYPE);
+            }
+        }
+
+        try (InputStream in = file.getInputStream()) {
+            if (ImageIO.read(in) == null) {
+                throw new SlifeException(ErrorCode.INVALID_FILE_TYPE);
+            }
+        } catch (IOException e) {
+            throw new SlifeException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
 

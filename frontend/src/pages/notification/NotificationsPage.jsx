@@ -96,9 +96,10 @@ export default function NotificationsPage() {
         if (loading) return;
         setLoading(true);
         try {
+            const filters = { readFilter, typeFilter, sortBy };
             const resp = isSearching
-                ? await searchNotificationsPage({ q: debouncedQ.trim(), limit: pageSize, cursor: nextCursor || undefined })
-                : await getNotificationsPage({ limit: pageSize, cursor: nextCursor || undefined });
+                ? await searchNotificationsPage({ q: debouncedQ.trim(), limit: pageSize, cursor: nextCursor || undefined, ...filters })
+                : await getNotificationsPage({ limit: pageSize, cursor: nextCursor || undefined, ...filters });
             const page = resp?.data?.data ?? resp?.data;
             const newItems = Array.isArray(page?.items) ? page.items : [];
             setItems((prev) => (reset ? newItems : [...(Array.isArray(prev) ? prev : []), ...newItems]));
@@ -126,7 +127,7 @@ export default function NotificationsPage() {
         restoreScrollRef.current = true;
         void fetchPage({ reset: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedQ]);
+    }, [debouncedQ, readFilter, typeFilter, sortBy]);
 
     // Restore scroll position (window scroll) once after initial load
     useEffect(() => {
@@ -639,23 +640,6 @@ export default function NotificationsPage() {
                                 <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.58)' }}>
                                     Bạn đã xem gần hết thông báo. Hãy quay lại sau để xem cập nhật mới.
                                 </Typography>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                                    sx={{
-                                        textTransform: 'none',
-                                        borderRadius: 999,
-                                        borderColor: 'rgba(255,255,255,0.26)',
-                                        color: 'rgba(255,255,255,0.8)',
-                                        '&:hover': {
-                                            borderColor: 'rgba(157,110,237,0.6)',
-                                            bgcolor: 'rgba(157,110,237,0.1)',
-                                        },
-                                    }}
-                                >
-                                    Lên đầu trang
-                                </Button>
                             </Box>
                         )}
 

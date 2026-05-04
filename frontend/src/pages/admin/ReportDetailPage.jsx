@@ -440,6 +440,8 @@ export default function ReportDetailPage() {
         report.listingId ?? (tt === 'LISTING' || tt === 'POST' ? report.targetId : null);
     const reportedAvatar = reportedUserAvatarUrl(report);
     const evidenceImage = reportEvidenceImageUrl(report);
+    const violationCount = report?.targetViolationCount ?? 0;
+    const violationThreshold = report?.violationThreshold ?? null;
 
     return (
         <Box
@@ -596,7 +598,7 @@ export default function ReportDetailPage() {
                 {((tt === 'LISTING' || tt === 'POST') || tt === 'USER' || tt === 'COMMUNITY_POST') && (
                     <Chip
                         size="small"
-                        label={`Cờ vi phạm: ${report?.targetViolationCount ?? 0}/${report?.violationThreshold ?? 3}`}
+                        label={`Cờ vi phạm: ${violationCount}/${violationThreshold}`}
                         sx={{ bgcolor: 'rgba(251, 191, 36, 0.14)', color: '#fde68a', border: '1px solid rgba(251, 191, 36, 0.42)', fontWeight: 800 }}
                     />
                 )}
@@ -890,10 +892,10 @@ export default function ReportDetailPage() {
                                         />
                                     ) : null}
                                     {((tt === 'USER' || tt === 'COMMUNITY_POST' || tt === 'LISTING' || tt === 'POST')
-                                        && (report?.violationThreshold != null || report?.targetViolationCount != null)) ? (
+                                        && (report?.violationThreshold != null || report?.targetViolationCount != null || reportedUserInfo?.violationCount != null)) ? (
                                         <Chip
                                             size="small"
-                                            label={`Vi phạm: ${report?.targetViolationCount ?? reportedUserInfo?.violationCount ?? 0} / ${report?.violationThreshold ?? 3}`}
+                                            label={`Vi phạm: ${violationCount} / ${violationThreshold}`}
                                             sx={{
                                                 bgcolor: 'rgba(251, 191, 36, 0.14)',
                                                 color: '#fde68a',
@@ -1111,10 +1113,10 @@ export default function ReportDetailPage() {
                     </Box>
                 </Stack>
                 <Stack direction="row" spacing={1.25} justifyContent="flex-end" flexWrap="wrap" useFlexGap sx={{ flexShrink: 0 }}>
-                    {canAct && (tt === 'LISTING' || tt === 'POST') && (
+                    {canAct && (tt === 'LISTING' || tt === 'POST' || tt === 'USER') && (
                         <Chip
                             size="small"
-                            label={`Vi phạm hiện tại: ${report?.targetViolationCount ?? 0} / ${report?.violationThreshold ?? 3}`}
+                            label={`Vi phạm hiện tại: ${violationCount}${violationThreshold != null ? ` / ${violationThreshold}` : ''}`}
                             sx={{
                                 height: 32,
                                 px: 0.75,
