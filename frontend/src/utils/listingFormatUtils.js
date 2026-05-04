@@ -16,10 +16,9 @@ export const BRAND_COLORS = {
 export const CONDITION_MAP = {
     NEW: { label: 'Mới', color: BRAND_COLORS.GREEN },
     USED_LIKE_NEW: { label: 'Như mới', color: BRAND_COLORS.TEAL },
-    USED_GOOD: { label: 'Đã dùng – tốt', color: BRAND_COLORS.PURPLE },
+    USED_GOOD: { label: 'Đã dùng', color: BRAND_COLORS.PURPLE },
     USED_FAIR: { label: 'Đã dùng', color: BRAND_COLORS.ORANGE },
     USED: { label: 'Đã qua sử dụng', color: BRAND_COLORS.PURPLE },
-    SECOND_HAND: { label: 'Đã qua sử dụng', color: BRAND_COLORS.PURPLE },
 };
 
 /** Lấy thông tin tình trạng hàng (nhãn, màu sắc, icon mặc định) */
@@ -29,12 +28,12 @@ export const getConditionInfo = (condition) => {
 };
 
 /** Định dạng giá tiền VNĐ */
-export const formatCurrency = (value) => 
+export const formatCurrency = (value) =>
     value == null ? '—' : `${Number(value).toLocaleString('vi-VN')} ₫`;
 
 /**
  * Định dạng thời gian rút gọn: "1m", "5h", "3d", "12 thg 3"
- * @param {string|Date} value 
+ * @param {string|Date} value
  * @returns {string}
  */
 export const formatRelativeShort = (value) => {
@@ -62,7 +61,7 @@ export const getPurposeInfo = (isGiveaway, price) => {
             isFree: true
         };
     }
-    
+
     return {
         label: 'Cần bán',
         color: BRAND_COLORS.RED,
