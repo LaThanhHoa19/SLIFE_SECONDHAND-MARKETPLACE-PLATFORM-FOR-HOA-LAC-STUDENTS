@@ -10,7 +10,7 @@ import { useAuth } from './useAuth';
 function sockJsChatUrl(token) {
     const base =
         import.meta.env.VITE_WS_URL ||
-        (typeof window !== 'undefined' ? `${window.location.origin}/chat` : 'http://localhost:8080/chat');
+        (typeof window !== 'undefined' ? `${window.location.origin}/ws` : 'http://localhost:8080/ws');
     if (!token) return base;
     const sep = base.includes('?') ? '&' : '?';
     return `${base}${sep}token=${encodeURIComponent(token)}`;
