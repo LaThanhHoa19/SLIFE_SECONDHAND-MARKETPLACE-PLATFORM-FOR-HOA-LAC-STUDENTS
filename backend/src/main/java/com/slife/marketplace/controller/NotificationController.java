@@ -25,11 +25,15 @@ public class NotificationController {
     public ResponseEntity<ApiResponse<CursorPageResponse<NotificationResponse>>> getNotifications(
             @RequestParam(value = "limit", required = false, defaultValue = "30") int limit,
             @RequestParam(value = "cursor", required = false) String cursor,
-            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope,
+            @RequestParam(value = "readFilter", required = false, defaultValue = "ALL") String readFilter,
+            @RequestParam(value = "typeFilter", required = false, defaultValue = "ALL") String typeFilter,
+            @RequestParam(value = "sortBy", required = false, defaultValue = "NEWEST") String sortBy
     ) {
         User user = userService.getCurrentUser();
         NotificationScope s = NotificationScope.from(scope);
-        CursorPageResponse<NotificationResponse> page = notificationService.getNotificationResponsesPage(user.getId(), limit, cursor, s);
+        CursorPageResponse<NotificationResponse> page = notificationService.getNotificationResponsesPage(
+                user.getId(), limit, cursor, s, readFilter, typeFilter, sortBy);
         return ResponseEntity.ok(ApiResponse.success("OK", page));
     }
 
@@ -38,11 +42,15 @@ public class NotificationController {
             @RequestParam("q") String q,
             @RequestParam(value = "limit", required = false, defaultValue = "30") int limit,
             @RequestParam(value = "cursor", required = false) String cursor,
-            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope
+            @RequestParam(value = "scope", required = false, defaultValue = "all") String scope,
+            @RequestParam(value = "readFilter", required = false, defaultValue = "ALL") String readFilter,
+            @RequestParam(value = "typeFilter", required = false, defaultValue = "ALL") String typeFilter,
+            @RequestParam(value = "sortBy", required = false, defaultValue = "NEWEST") String sortBy
     ) {
         User user = userService.getCurrentUser();
         NotificationScope s = NotificationScope.from(scope);
-        CursorPageResponse<NotificationResponse> page = notificationService.searchNotificationResponsesPage(user.getId(), q, limit, cursor, s);
+        CursorPageResponse<NotificationResponse> page = notificationService.searchNotificationResponsesPage(
+                user.getId(), q, limit, cursor, s, readFilter, typeFilter, sortBy);
         return ResponseEntity.ok(ApiResponse.success("OK", page));
     }
 

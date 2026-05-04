@@ -1,21 +1,25 @@
 /** Mục đích/API: GET /api/notifications, PATCH /api/notifications/{id}/read, PATCH /api/notifications/read-all. */
 import axiosClient from './axiosClient';
-export const getNotificationsPage = ({ limit = 30, cursor, scope = 'all' } = {}) =>
+
+const buildNotificationParams = ({ limit = 30, cursor, scope = 'all', readFilter = 'ALL', typeFilter = 'ALL', sortBy = 'NEWEST' } = {}) => ({
+    limit,
+    scope,
+    readFilter,
+    typeFilter,
+    sortBy,
+    ...(cursor ? { cursor } : {}),
+});
+
+export const getNotificationsPage = ({ limit = 7, cursor, scope = 'all', readFilter = 'ALL', typeFilter = 'ALL', sortBy = 'NEWEST' } = {}) =>
     axiosClient.get('/api/notifications', {
-        params: {
-            limit,
-            scope,
-            ...(cursor ? { cursor } : {}),
-        },
+        params: buildNotificationParams({ limit, cursor, scope, readFilter, typeFilter, sortBy }),
     });
 
-export const searchNotificationsPage = ({ q, limit = 30, cursor, scope = 'all' } = {}) =>
+export const searchNotificationsPage = ({ q, limit = 30, cursor, scope = 'all', readFilter = 'ALL', typeFilter = 'ALL', sortBy = 'NEWEST' } = {}) =>
     axiosClient.get('/api/notifications/search', {
         params: {
             q: q ?? '',
-            limit,
-            scope,
-            ...(cursor ? { cursor } : {}),
+            ...buildNotificationParams({ limit, cursor, scope, readFilter, typeFilter, sortBy }),
         },
     });
 
