@@ -501,10 +501,11 @@ public class ReportService {
         Integer targetViolationCount = null;
         Integer violationThreshold = null;
         String reportType = String.valueOf(report.getTargetType()).toUpperCase(Locale.ROOT);
-        if ("LISTING".equals(reportType) || "POST".equals(reportType)) {
-            Listing listing = listingRepository.findById(report.getTargetId()).orElse(null);
-            if (listing != null && listing.getSeller() != null) {
-                targetViolationCount = listing.getSeller().getViolationCount() == null ? 0 : listing.getSeller().getViolationCount();
+        if ("LISTING".equals(reportType) || "POST".equals(reportType)
+                || "USER".equals(reportType) || "COMMUNITY_POST".equals(reportType)) {
+            Long violationUserId = resolveViolationUserId(report);
+            if (violationUserId != null) {
+                targetViolationCount = Math.toIntExact(resolveCurrentViolationCount(violationUserId));
                 violationThreshold = Math.max(1, configService.getIntConfigValue("REPORT_THRESHOLD", DEFAULT_REPORT_THRESHOLD));
             }
         }
@@ -721,6 +722,41 @@ public class ReportService {
         userRepository.save(owner);
         log.info("Violation strike applied to listing owner. userId={}, listingId={}, violationCount={}, threshold={}",
                 owner.getId(), listingId, nextViolation, banThreshold);
+    }
+
+    /** Vô hiệu hóa mọi JWT đã cấp trước đó (claim tv). */
+    private Long resolveViolationUserId(Report report) {
+        if (report == null || report.getTargetType() == null || report.getTargetId() == null) {
+            return null;
+        }
+        String type = report.getTargetType().toUpperCase(Locale.ROOT);
+        try {
+            if ("LISTING".equals(type)) {
+                return listingRepository.findById(report.getTargetId())
+                        .map(l -> l.getSeller() != null ? l.getSeller().getId() : null)
+                        .orElse(null);
+            }
+            if ("USER".equals(type)) {
+                return report.getTargetId();
+            }
+            if ("COMMUNITY_POST".equals(type)) {
+                return communityPostRepository.findById(report.getTargetId())
+                        .map(p -> p.getAuthor() != null ? p.getAuthor().getId() : null)
+                        .orElse(null);
+            }
+        } catch (Exception ex) {
+            log.warn("resolveViolationUserId failed reportId={} targetType={} targetId={}: {}",
+                    report.getId(), report.getTargetType(), report.getTargetId(), ex.getMessage());
+        }
+        return null;
+    }
+
+    private long resolveCurrentViolationCount(Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user != null && user.getViolationCount() != null) {
+            return user.getViolationCount();
+        }
+        return 0L;
     }
 
     /** Vô hiệu hóa mọi JWT đã cấp trước đó (claim tv). */

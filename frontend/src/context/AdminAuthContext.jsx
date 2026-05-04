@@ -6,7 +6,7 @@ import adminAxiosClient, {
     refreshAdminSessionToken,
     setAdminAccessToken,
 } from '../api/adminAxiosClient';
-import { clearAdminUserSnapshot, setAdminUserSnapshot } from '../adminSessionStore';
+import { clearAdminUserSnapshot, getAdminUserSnapshot, setAdminUserSnapshot } from '../adminSessionStore';
 
 const TOKEN_REFRESH_THRESHOLD = 5 * 60 * 1000;
 
@@ -32,7 +32,7 @@ export const AdminAuthContext = createContext(null);
 
 export function AdminAuthProvider({ children }) {
     const [adminToken, setAdminToken] = useState(() => getAdminAccessToken());
-    const [adminUser, setAdminUser] = useState(null);
+    const [adminUser, setAdminUser] = useState(() => getAdminUserSnapshot());
     const [isAdminAuthLoading, setAdminAuthLoading] = useState(true);
     const refreshIntervalRef = useRef(null);
 
@@ -148,6 +148,12 @@ export function AdminAuthProvider({ children }) {
         const onClearAdmin = () => {
             clearAdminLocal();
         };
+        if (!adminUser) {
+            const snapshot = getAdminUserSnapshot();
+            if (snapshot) {
+                setAdminUser(snapshot);
+            }
+        }
         window.addEventListener('slife-admin-bootstrap', onBootstrap);
         window.addEventListener('slife-clear-admin-session', onClearAdmin);
         return () => {

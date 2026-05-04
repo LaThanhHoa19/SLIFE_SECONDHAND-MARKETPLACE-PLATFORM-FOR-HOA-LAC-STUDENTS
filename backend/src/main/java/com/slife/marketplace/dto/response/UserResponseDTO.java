@@ -7,6 +7,7 @@ public record UserResponseDTO(
         Long id,
         String fullName,
         String email,
+        String avatarUrl,
         String status,
         String role,
         BigDecimal reputationScore,

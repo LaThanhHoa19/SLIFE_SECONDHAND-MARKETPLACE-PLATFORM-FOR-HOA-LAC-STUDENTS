@@ -9,16 +9,17 @@ export const BRAND_COLORS = {
     GREEN: '#2ED573',
     ORANGE: '#FFA502',
     TEAL: '#1DD3B0',
+    GRAY: '#9AA0A6',
     TEXT_PRI: 'rgba(255,255,255,0.95)',
     TEXT_SEC: 'rgba(255,255,255,0.55)',
 };
 
 export const CONDITION_MAP = {
     NEW: { label: 'Mới', color: BRAND_COLORS.GREEN },
-    USED_LIKE_NEW: { label: 'Như mới', color: BRAND_COLORS.TEAL },
+    USED_LIKE_NEW: { label: 'Đã dùng', color: BRAND_COLORS.PURPLE },
     USED_GOOD: { label: 'Đã dùng', color: BRAND_COLORS.PURPLE },
-    USED_FAIR: { label: 'Đã dùng', color: BRAND_COLORS.ORANGE },
-    USED: { label: 'Đã qua sử dụng', color: BRAND_COLORS.PURPLE },
+    USED_FAIR: { label: 'Đã dùng', color: BRAND_COLORS.PURPLE },
+    USED: { label: 'Đã dùng', color: BRAND_COLORS.PURPLE },
 };
 
 /** Lấy thông tin tình trạng hàng (nhãn, màu sắc, icon mặc định) */
@@ -43,11 +44,11 @@ export const formatRelativeShort = (value) => {
     const diffMs = Date.now() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins}m`;
+    if (diffMins < 60) return `${diffMins} phút`;
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h`;
+    if (diffHours < 24) return `${diffHours} giờ`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d`;
+    if (diffDays < 7) return `${diffDays} ngày`;
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 };
 
