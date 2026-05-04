@@ -10,13 +10,17 @@ import com.slife.marketplace.entity.User;
 import com.slife.marketplace.exception.ErrorCode;
 import com.slife.marketplace.exception.SlifeException;
 import com.slife.marketplace.repository.ConfigRepository;
+import com.slife.marketplace.repository.UserRepository;
 import com.slife.marketplace.util.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +29,8 @@ import java.util.Set;
 
 @Service
 public class ConfigService {
+
+    private static final Logger log = LoggerFactory.getLogger(ConfigService.class);
 
     private static final Set<String> NUMERIC_CONFIG_KEYS = Set.of(
             "MAX_IMAGES",
@@ -57,9 +63,11 @@ public class ConfigService {
             "LISTING_EXPIRING_SOON_HOURS_BEFORE",
             new ConfigValidationMetaDTO("integer", 1, 720, "Giá trị hợp lệ: 1–720 giờ trước khi hết hạn."));
     private final ConfigRepository configRepository;
+    private final UserRepository userRepository;
 
-    public ConfigService(ConfigRepository configRepository) {
+    public ConfigService(ConfigRepository configRepository, UserRepository userRepository) {
         this.configRepository = configRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -163,6 +171,12 @@ public class ConfigService {
             configRepository.save(configuration);
         }
 
+        // Nếu bulk update có chứa REPORT_THRESHOLD, enforce ban ngay
+        ConfigUpdateRequest reportThresholdReq = byNormalizedKey.get("REPORT_THRESHOLD");
+        if (reportThresholdReq != null) {
+            enforceNewReportThreshold(Integer.parseInt(normalizeValue(reportThresholdReq.value())));
+        }
+
         return Constants.MSG19;
     }
 
@@ -180,7 +194,35 @@ public class ConfigService {
         }
         configuration.setUpdatedBy(admin);
         configuration.setUpdatedAt(Instant.now());
-        return toConfigResponseDTO(configRepository.save(configuration));
+        ConfigResponseDTO result = toConfigResponseDTO(configRepository.save(configuration));
+
+        // Khi admin giảm ngưỡng REPORT_THRESHOLD, ban ngay những user đã đạt ngưỡng mới
+        if ("REPORT_THRESHOLD".equals(key)) {
+            enforceNewReportThreshold(Integer.parseInt(value));
+        }
+
+        return result;
+    }
+
+    /**
+     * Ban tất cả user (role=USER, chưa BANNED) có violationCount >= ngưỡng mới.
+     * Được gọi khi admin giảm REPORT_THRESHOLD.
+     */
+    private void enforceNewReportThreshold(int newThreshold) {
+        List<User> eligibleUsers = userRepository.findUsersEligibleForBan(newThreshold);
+        if (eligibleUsers.isEmpty()) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (User user : eligibleUsers) {
+            user.setStatus("BANNED");
+            long tokenRev = user.getTokenRevision() == null ? 0L : user.getTokenRevision();
+            user.setTokenRevision(tokenRev + 1);
+            user.setUpdatedAt(now);
+            userRepository.save(user);
+            log.warn("User auto-banned after REPORT_THRESHOLD lowered. userId={}, violationCount={}, newThreshold={}",
+                    user.getId(), user.getViolationCount(), newThreshold);
+        }
     }
 
     @Transactional

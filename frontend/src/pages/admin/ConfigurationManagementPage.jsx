@@ -167,7 +167,6 @@ const CONFIG_LABELS = {
     REPORT_THRESHOLD: 'Ngưỡng vi phạm trước khi xử lý',
     DEAL_TIMEOUT_DAYS: 'Thời gian chờ giao dịch để tự xử lý',
     DEAL_TIMEOUT_UNIT: 'Đơn vị thời gian tự động đóng giao dịch (NGÀY / PHÚT)',
-    AUTO_HIDE_REPORT_THRESHOLD: 'Ngưỡng báo cáo để tự ẩn tin đăng hoặc bình luận',
     PICKUP_REMINDER_HOURS: 'Số giờ nhắc trước khi nhận hàng',
     MAX_ACTIVE_LISTINGS_PER_USER: 'Giới hạn số tin đang hiển thị mỗi người',
     LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Số giờ trước khi hết hạn để gửi mail nhắc',
@@ -182,7 +181,6 @@ const CONFIG_HELPERS = {
     REPORT_THRESHOLD: 'Đủ ngưỡng thì áp dụng cảnh báo hoặc ban khi admin duyệt báo cáo.',
     DEAL_TIMEOUT_DAYS: 'Dùng cho thời hạn chờ xử lý giao dịch.',
     DEAL_TIMEOUT_UNIT: 'Nhập DAYS (ngày) hoặc MINUTES (phút). Ví dụ: DAYS = tính theo ngày, MINUTES = tính theo phút (dùng để test nhanh).',
-    AUTO_HIDE_REPORT_THRESHOLD: 'Tự động ẩn tin đăng hoặc bình luận khi số báo cáo đang chờ duyệt đạt ngưỡng này.',
     PICKUP_REMINDER_HOURS: 'Hệ thống sẽ gửi email nhắc trước số giờ này.',
     MAX_ACTIVE_LISTINGS_PER_USER: '0 nghĩa là không giới hạn số tin đang hiển thị.',
     LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Dùng để gửi email nhắc sắp hết hạn.',
@@ -197,7 +195,6 @@ const DISPLAY_DESCRIPTION_OVERRIDES = {
     REPORT_THRESHOLD: 'Số báo cáo cần đạt để hệ thống bắt đầu xử lý vi phạm khi admin duyệt.',
     DEAL_TIMEOUT_DAYS: 'Số ngày chờ giao dịch trước khi hệ thống tự xử lý.',
     DEAL_TIMEOUT_UNIT: 'Đơn vị thời gian để tự động đóng (CLOSED) giao dịch quá hạn. Nhập DAYS hoặc MINUTES.',
-    AUTO_HIDE_REPORT_THRESHOLD: 'Số báo cáo đang chờ duyệt cần đạt để hệ thống tự ẩn tin đăng hoặc bình luận.',
     PICKUP_REMINDER_HOURS: 'Số giờ trước thời điểm nhận hàng mà hệ thống sẽ gửi email nhắc.',
     MAX_ACTIVE_LISTINGS_PER_USER: '0 nghĩa là không giới hạn số tin đang hiển thị của mỗi người.',
     LISTING_EXPIRING_SOON_HOURS_BEFORE: 'Số giờ trước khi tin đăng hết hạn để gửi email nhắc.',
@@ -484,7 +481,7 @@ export default function ConfigurationManagementPage() {
         const groups = [
             {
                 title: 'Báo cáo & kiểm duyệt',
-                items: ['REPORT_THRESHOLD', 'AUTO_HIDE_REPORT_THRESHOLD'],
+                items: ['REPORT_THRESHOLD'],
             },
             {
                 title: 'Ảnh & tin đăng',
